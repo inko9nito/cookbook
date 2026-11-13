@@ -22,6 +22,20 @@ A personal recipe app to replace **Prepear** (a subscription app that hasn't imp
    - Notes, plus a Reminder (**not wanted**, left out).
 3. **Info:** course-type icon grid (Breakfast, Lunch, Snack, Dinner, Appetizer, Soup, Salad, Side, Dessert, Drink; more than one allowed). Picking one also adds a **#hashtag** (#dinner, #dessert). Free-form hashtags; How many servings, How much in a serving ("1 slice"), Prep time, Cook time; Privacy (Public / Grapevine / Secret, which I don't need).
 
+**Recipe page and its actions:**
+- **Top bar icons:** back, **Save** (add to cookbook), **Plan** (add to planner), **Shop** (add to grocery list), **Share**, and **⋯** (Report, Edit, Organize, Print, Delete).
+- **Header:**
+  - Large hero photo, title and author.
+  - Star rating with review count, **"2 Prepear'd"** (times I've made it), and "Ready in 1h 15m".
+- **Ingredients:**
+  - An **Add to Grocery List** button and a servings control ("8 Servings" with + / −).
+  - A bulleted list of ingredients.
+  - A floating **Cook Mode** button.
+- **Add Recipe to Planner:** a full-screen list of weeks ("Nov 9 – Nov 15"), each with days, and each day has an "Add Recipe to Friday" slot. Tap a day to place the recipe.
+- **Add Ingredients to List:** a servings stepper, "What day to cook?" (Fri Nov 13, Edit), and a checklist of every ingredient (all checked by default, untick what I already have) → **Save**.
+- **Add Recipe to Cookbook:** "Create a New Cookbook" plus a three-column grid of cookbook covers. Tap to toggle a green check mark (several allowed) → **Save**.
+- **Edit:** the same three-tab editor as Add, with delete and replace buttons on the photo.
+
 **Cookbooks:**
 - **Cookbook list:** a two-column grid of cover tiles with name and recipe count (Bread 6, Dressings and sauces 2, Everything else 70, Grilling 11…).
 - **Inside a cookbook ("Everything else"):** a search bar ("Search Cookbook") and a **⋯** menu.
@@ -126,7 +140,7 @@ recipes
                       --   { type: "item", raw: "1-2 tsp salt, divided",
                       --     qty: 1, qty_max: 2, unit: "tsp", name: "salt", note: "divided" }
   steps        jsonb  -- ordered: { type: "header", text } | { type: "step", text, timer_minutes? }
-  notes, rating (0–5), is_favorite
+  notes, rating (0–5), is_favorite, times_cooked ("Made it" count, like "2 Prepear'd")
   created_at, updated_at, last_cooked_at
 
 recipe_photos      id, recipe_id, storage_path, position, is_cover
@@ -204,10 +218,18 @@ Bottom tab bar (Framework7 tabbar, with a `View` per tab so each tab keeps its o
 4. **Groceries** *(maybe later)*
 
 **Recipe detail** (pushed page)
-- Photo, title, source link, times, tags.
+- Large photo (tap → `Photo Browser`), title, source link, star rating, "Made it N times", and Prep / Cook / Total time.
+- **Action row** under the title, with icon buttons like Apple's apps:
+  - **Cookbook:** a `Popup` with a cover grid. Tap to toggle a check mark, "+ New Cookbook" at the top, and pick a section if the cookbook has sections.
+  - **Plan:** a `Popup` with the calendar, by weeks and days. Tap a day to add the recipe there.
+  - **Groceries** *(later)*: a `Sheet` with a servings stepper and an ingredient checklist (untick what I have).
+  - **Share:** the iOS share sheet via the Web Share API, sending a link or the recipe as text.
 - **Servings stepper / ×½ ×2 ×3 chips** that scale ingredients live, ranges included (R5).
 - Ingredients you can tap to check off while cooking, then numbered steps with section headers, then notes.
-- Navbar: Edit, plus a **⋯** menu: Add to cookbook, Add to meal plan, Duplicate, Share, Delete.
+- **Cook Mode** button: keeps the screen awake (Wake Lock API), big text, one step at a time, with ingredients a swipe away.
+- **"I made this"** button: adds 1 to times-cooked and sets the last-cooked date (feeds the "Recently cooked" sort).
+- Navbar: back, plus **Edit** and a **⋯** `Actions` sheet: Duplicate, Print / Save as PDF (a clean print layout), Delete (confirm).
+  - Prepear's "Report" isn't needed, and "Organize" moves into the Cookbook popup.
 
 **New / Edit Recipe** (`Popup`, push style, swipe-down to dismiss). Everything is **one scrolling page** rather than Prepear's three tabs with Next buttons.
 - Navbar: **Cancel** / title / **Save**. Cancel or swipe-down with unsaved changes → action sheet "Discard changes?"
@@ -260,7 +282,7 @@ Edits are live. **Done**, swipe-down, and tapping outside all keep the changes. 
 - The Prepear migration investigation, then a bulk import of my 353 recipes.
 - Export all (R8).
 
-**Phase 4: Cookbooks.** **Phase 5: Meal plans.** **Phase 6 (maybe): Grocery list, cook mode (screen stays awake, big text, step timers).**
+**Phase 4: Cookbooks.** **Phase 5: Meal plans.** **Phase 6: Grocery list** (if I use it). **Cook mode and "I made this"** are small and can ship with Phase 2 or 3.
 Reminders: **not wanted**, dropped.
 
 ---

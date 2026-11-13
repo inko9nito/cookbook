@@ -12,7 +12,9 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - Check the Framework7 v9 docs for a component's props before using it. Don't guess.
 
 ## Stack
-Vite + TypeScript, TanStack Query, Zod, Supabase (Postgres/Auth/Storage/Edge Functions), vite-plugin-pwa, `parse-ingredient`.
+Vite + TypeScript, TanStack Query, Zod, vite-plugin-pwa, `parse-ingredient`.
+Everything runs on **Netlify**: static hosting, Netlify Functions (API), Netlify Database (Postgres), Netlify Blobs (photos), single-user passcode login. Fallback for data only: Supabase.
+No reminders feature (user declined).
 
 ## Data rules
 - Always keep the raw ingredient line exactly as typed, alongside the parsed fields.

@@ -19,8 +19,25 @@ A personal recipe app to replace **Prepear** (a subscription app that hasn't imp
    - **Move/Delete** mode: drag handles and red trash icons on every row, then **Done**.
    - **Tapping an ingredient** opens an "Edit Ingredient" panel: a header line, "Name of ingredient", Amount, Measurement, Detail, a "We can't find *X* in our database… Send it to our review team" message, and a red **Delete Ingredient** button. There's no clear save, so I'm never sure whether to tap something or just close it.
    - Directions: numbered steps, the same paste, groups, and Move/Delete. Pasting with blank lines creates **empty numbered steps**. Sub-headings like "Now make some béchamel sauce" become numbered steps.
-   - Notes, plus a **Reminder** ("What day?" / "How long before?", for example a day-before reminder).
+   - Notes, plus a Reminder (**not wanted**, left out).
 3. **Info:** course-type icon grid (Breakfast, Lunch, Snack, Dinner, Appetizer, Soup, Salad, Side, Dessert, Drink; more than one allowed). Picking one also adds a **#hashtag** (#dinner, #dessert). Free-form hashtags; How many servings, How much in a serving ("1 slice"), Prep time, Cook time; Privacy (Public / Grapevine / Secret, which I don't need).
+
+**Cookbooks:**
+- **Cookbook list:** a two-column grid of cover tiles with name and recipe count (Bread 6, Dressings and sauces 2, Everything else 70, Grilling 11…).
+- **Inside a cookbook ("Everything else"):** a search bar ("Search Cookbook") and a **⋯** menu.
+  - **Sections** shown as cover tiles with counts (Meat 18, Seafood 13, Other 17).
+  - Below them, **"Uncategorized Recipes (22)"**: recipes in the cookbook but in no section. It has **Organize** and **Add Recipes** buttons.
+- **Inside a section ("Meat"):** a header showing the parent cookbook, "Recipes (18)" with **Organize** / **Add Recipes**, and a recipe card grid.
+  - The **⋯** menu has Edit Section Title, Select Cover Image, Delete Section.
+- **Add Recipes:** a search screen with recent searches. Each result has an **Add** button.
+
+**Meal plans** (in Prepear these are reusable *templates*, separate from the dated **Planner** tab):
+- **Plan page:**
+  - Hero photo, title, "by Vera", length (1 Week) and recipe count (8).
+  - A **Meal Plan Guide** text with a "More" link.
+  - An **Add To Planner** button, and a "Search this Meal Plan" bar.
+- **Days:** plan days are listed ("Tuesday, Week 1", "Wednesday, Week 1"…), each with its recipes. Each week has a **"This Week's Prep Tips and Notes"** row.
+- **⋯ menu:** Start Meal Plan, Edit Meal Plan, Delete Meal Plan.
 
 ---
 
@@ -82,12 +99,17 @@ We do **not** build iOS components, animations, gestures, or overlay stacking ou
 | Server data | TanStack Query | caching, optimistic saves, persisted to IndexedDB so recipes open offline in the kitchen |
 | Validation / types | Zod | one schema shared by forms and DB rows |
 | Ingredient parsing | `parse-ingredient` | "1-2 tsp kosher salt, divided" → `qty 1, qty_max 2, unit tsp, name kosher salt, note divided` (it understands ranges and fractions) |
-| Backend | **Supabase** (Postgres + Auth + Storage + Edge Functions) | magic-link login for me only, photo storage, import function |
-| Hosting | **Netlify** (static site; Netlify Functions available if needed) | |
+| Hosting + backend | **All on Netlify** | one account, auto-deploys from this GitHub repo |
+| ↳ App | Netlify static hosting | the PWA itself |
+| ↳ API | Netlify Functions | small server code: save/load recipes, URL import, export |
+| ↳ Database | **Netlify Database** (Postgres) | recipes, tags, cookbooks, meal plans, settings |
+| ↳ Photos | **Netlify Blobs** + Netlify Image CDN | photos are resized automatically for fast loading |
+| ↳ Login | single-user passcode | one passcode (stored as a Netlify secret) → a long-lived secure cookie. No accounts or sign-up. Only I use it. |
 | Testing | Vitest (parsing and scaling logic, heavily), Playwright with iPhone emulation | final feel-check is always on my real phone |
 
 **Why a backend and not local-only:** iOS can clear website storage, and 350+ recipes must not live only in one browser's IndexedDB. The TanStack Query cache gives offline reading.
-*Caveat:* Supabase's free tier pauses a project after a week with no activity. That's fine for regular use, and a tiny scheduled ping (e.g. a Netlify scheduled function) fixes it if needed.
+**Why all-Netlify:** one account I already have, nothing to sign up for, and no "paused after a week of inactivity" problem.
+*Check before Phase 1:* Netlify Database is only offered on Netlify's credit-based plans, and pricing should be confirmed for my account. **Fallback:** Supabase (free Postgres + photo storage) with the app still hosted on Netlify. The data model doesn't change either way.
 
 ---
 
@@ -114,15 +136,22 @@ recipe_tags        recipe_id, tag_id
 user_settings      recipe_sort ("newest" default), recipe_filter_tags[], filter_mode ("all"|"any"), …
 
 -- LATER: cookbooks (tables created now so the shape is settled)
-cookbooks          id, name, description, cover_photo_path, position
-cookbook_recipes   cookbook_id, recipe_id, position      -- a recipe can be in many cookbooks
+cookbooks          id, name, description, cover_photo_path?, position
+cookbook_sections  id, cookbook_id, name, cover_photo_path?, position   -- "Meat", "Seafood"
+cookbook_recipes   cookbook_id, section_id? (null = Uncategorized), recipe_id, position
+                   -- a recipe can be in many cookbooks; cover defaults to the first recipe's photo
 
--- LATER: meal plans
-meal_plan_entries  id, date, slot ("breakfast"|"lunch"|"dinner"|"snack"),
-                   recipe_id?, note?, servings?, position
+-- LATER: meal plans = reusable templates (like Prepear's "Dr. Gundry's 3-day kickstart")
+meal_plans         id, name, cover_photo_path?, guide_text, length_weeks
+meal_plan_weeks    meal_plan_id, week_number, prep_tips_text
+meal_plan_items    id, meal_plan_id, week_number, day_of_week, slot?, recipe_id | note, position
 
--- MAYBE LATER: reminders ("take chicken out of freezer the day before") and grocery list
-recipe_reminders   recipe_id, text, days_before, time_before
+-- LATER: the Planner = my actual calendar
+planner_entries    id, date, slot ("breakfast"|"lunch"|"dinner"|"snack")?,
+                   recipe_id | note, servings?, position, from_meal_plan_id?
+                   -- "Add To Planner" places a template's items on real dates from a start date I pick
+
+-- MAYBE LATER: grocery list
 grocery_items      id, name, qty, unit, aisle, checked, from_recipe_id?
 ```
 
@@ -139,7 +168,7 @@ Most recipe sites publish a machine-readable `schema.org/Recipe` block (JSON-LD)
 
 1. **iOS Shortcut in the Safari share sheet ("Save to Cookbook"):** the main path.
    The Shortcuts action *Run JavaScript on Web Page* runs on the page **already loaded in my Safari**, reads the recipe JSON-LD, and opens my app with it. The app shows a pre-filled **New Recipe** form for review and saving. No server ever fetches the site, so bot-blocking and "don't import" lists don't apply. I install the shortcut once from a link the app provides. (A PWA can't add itself to the iOS share sheet directly, which is why we use a Shortcut.)
-2. **Paste a link** in the app → an Edge Function fetches the page and reads the JSON-LD. This is convenient, but some sites block servers, so it falls back to option 1 or 3.
+2. **Paste a link** in the app → a Netlify Function fetches the page and reads the JSON-LD. This is convenient, but some sites block servers, so it falls back to option 1 or 3.
 3. **Paste the whole page** (Select All → Copy in Safari, or a Reader-mode copy) → the app finds the ingredient and direction lists in the text and opens them for review.
 4. **Paste ingredients / directions separately:** the Prepear-style paste box, which already works well and stays.
 5. *(Optional, later)* **Photo/screenshot of a recipe** (cookbook page, Instagram) → AI extraction into the form.
@@ -160,9 +189,17 @@ Bottom tab bar (Framework7 tabbar, with a `View` per tab so each tab keeps its o
    - A sort menu (`Actions` sheet: Newest, Oldest, A–Z, Recently cooked, Rating) that is **remembered** (R1).
    - Grid or list toggle, also remembered.
    - **+** in the navbar → New Recipe (Write manually / Paste link / Paste text).
-2. **Cookbooks**: *(later)*
-3. **Meal Plan**: *(later)*
-4. **Groceries**: *(maybe later)*
+2. **Cookbooks** *(later)*
+   - Cover grid of cookbooks → a cookbook page with section tiles and "Uncategorized" recipes below → a section page.
+   - Navigation uses normal iOS push pages with swipe-back.
+   - **Add Recipes** opens a `Popup` with a searchbar, where tapping recipes toggles a check mark (adding several at once).
+   - **Organize** means drag-to-reorder and moving recipes between sections.
+   - The **⋯** menus are `Actions` sheets.
+3. **Plan** *(later)*
+   - Top `Segmented` control: **Calendar** (the dated planner: week view, tap a day, add recipe or note) and **Meal Plans** (templates).
+   - A template page shows the guide, then days grouped by week with prep tips.
+   - **Add to Calendar** asks for a start date (`Calendar` picker) and places the template's recipes onto real days.
+4. **Groceries** *(maybe later)*
 
 **Recipe detail** (pushed page)
 - Photo, title, source link, times, tags.
@@ -208,7 +245,7 @@ Edits are live. **Done**, swipe-down, and tapping outside all keep the changes. 
 - I add it to my home screen and **confirm it feels native** before real work starts.
 
 **Phase 1: Foundations and the recipe list.**
-- Supabase project, schema and migrations, login.
+- Netlify Database, schema and migrations, Functions API, passcode login, photo storage in Blobs.
 - Ingredient parser and **scaling engine with tests (R5)**.
 - Recipe list with **remembered sort (R1)** and **tag filters (R2)**, plus recipe detail with scaling, all on seed data.
 
@@ -221,13 +258,12 @@ Edits are live. **Done**, swipe-down, and tapping outside all keep the changes. 
 - The Prepear migration investigation, then a bulk import of my 353 recipes.
 - Export all (R8).
 
-**Phase 4: Cookbooks.** **Phase 5: Meal plans.** **Phase 6 (maybe): Grocery list, reminders, cook mode (screen stays awake, big text, step timers).**
+**Phase 4: Cookbooks.** **Phase 5: Meal plans.** **Phase 6 (maybe): Grocery list, cook mode (screen stays awake, big text, step timers).**
+Reminders: **not wanted**, dropped.
 
 ---
 
 ## 9. Still open
 
-1. The videos showed creating a recipe and my profile page with counts, but **not viewing cookbooks or meal plans**. I'll need a short clip of those before Phases 4–5.
-2. Reminders ("day before"): do I actually use them? If not, they move to "maybe".
-3. Supabase account: I'll need to create one (free) before Phase 1.
-4. Does "Prepear on the web" exist for my account (prepear.com login)? This decides migration option (a).
+1. **Netlify setup (Phase 0):** connect this GitHub repo to a new Netlify site, so every push auto-deploys. Before Phase 1, check whether my account can use Netlify Database (credit-based plan) and what it costs. If not, fall back to Supabase for data only.
+2. **Prepear migration:** Prepear has a website (app.prepear.com). Claude's sandbox can't reach it, and my recipes need my login anyway. Plan: in Phase 3, Claude writes a one-time script that I run in my **own browser while logged into Prepear** (easiest on a computer). It downloads my recipes, cookbooks and meal plans as a file, which this app imports. Do I have a Mac/PC to run it on?

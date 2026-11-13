@@ -1,6 +1,6 @@
 # Cookbook — Plan
 
-A personal recipe app to replace **Prepear** (a subscription app that hasn't improved in years). It's for one user (me), on my iPhone, as an installable web app (PWA) that should feel native. Hosted on **Netlify**.
+A personal recipe app to replace **Prepear** (a subscription app that hasn't improved in years). It's for one user (me), on my iPhone, as an installable web app (PWA) that should feel native. Hosted on **Netlify** at **https://cookbk.netlify.app**.
 
 **Current focus: creating and editing recipes.** Cookbooks and meal plans come later, but the architecture needs to plan for them now.
 
@@ -104,12 +104,12 @@ We do **not** build iOS components, animations, gestures, or overlay stacking ou
 | ↳ API | Netlify Functions | small server code: save/load recipes, URL import, export |
 | ↳ Database | **Netlify Database** (Postgres) | recipes, tags, cookbooks, meal plans, settings |
 | ↳ Photos | **Netlify Blobs** + Netlify Image CDN | photos are resized automatically for fast loading |
-| ↳ Login | single-user passcode | one passcode (stored as a Netlify secret) → a long-lived secure cookie. No accounts or sign-up. Only I use it. |
+| ↳ Login | **Netlify Identity with Google sign-in** | registration set to *invite only*, and only my Google account is invited, so nobody else can get in. Functions reject any request without my login. |
 | Testing | Vitest (parsing and scaling logic, heavily), Playwright with iPhone emulation | final feel-check is always on my real phone |
 
 **Why a backend and not local-only:** iOS can clear website storage, and 350+ recipes must not live only in one browser's IndexedDB. The TanStack Query cache gives offline reading.
-**Why all-Netlify:** one account I already have, nothing to sign up for, and no "paused after a week of inactivity" problem.
-*Check before Phase 1:* Netlify Database is only offered on Netlify's credit-based plans, and pricing should be confirmed for my account. **Fallback:** Supabase (free Postgres + photo storage) with the app still hosted on Netlify. The data model doesn't change either way.
+**Decision: all-Netlify, one service.** Supabase can't host the app, so using it would mean two services. All-Netlify is one account I already have, and it has no "paused after a week of inactivity" problem.
+*Check before Phase 1:* Netlify Database runs on Netlify's credit-based plans (the Free plan includes 300 credits/month). Confirm my team is on a credit-based plan and watch credit usage for the first month. A one-person recipe app should use very little.
 
 ---
 
@@ -173,10 +173,12 @@ Most recipe sites publish a machine-readable `schema.org/Recipe` block (JSON-LD)
 4. **Paste ingredients / directions separately:** the Prepear-style paste box, which already works well and stays.
 5. *(Optional, later)* **Photo/screenshot of a recipe** (cookbook page, Instagram) → AI extraction into the form.
 
-**Bringing my 353 Prepear recipes over:** Prepear has no export button. To investigate in Phase 3:
-- (a) Prepear's website, while I'm logged in: if it loads my recipes as data, a one-time script I run in my own browser can download them all.
-- (b) My recipes' public Prepear pages may carry JSON-LD, which the importer can read.
-- (c) Fallback: most of my recipes came from websites, so the original source URLs can be re-imported in bulk.
+**Bringing my 353 Prepear recipes over: a bookmarklet.** Prepear has no export button, but it has a website (app.prepear.com) that I can log into. Claude's sandbox can't reach that site, and my data needs my login anyway, so the work runs in **my own browser**:
+1. **Step 1, a "peek" bookmarklet.** I tap it once while logged into app.prepear.com. It saves a small file describing how Prepear's site loads my recipes (no password or login token in it), and I send that file to Claude. Claude can't see the site, so this is how it learns its shape.
+2. **Step 2, the export bookmarklet.** Claude writes it from what the peek showed. I tap it on app.prepear.com and it downloads **all my recipes, cookbooks (with sections) and meal plans** as one file.
+3. **Step 3:** in my app, Settings → Import from Prepear → choose that file. Photos are copied over too.
+- Best run on my **Mac in Safari or Chrome**, which handles a big download more easily. It also works on iPhone Safari.
+- Fallback if Prepear's site doesn't expose the data: most of my recipes came from websites, so their source URLs can be re-imported in bulk.
 
 ---
 
@@ -265,5 +267,5 @@ Reminders: **not wanted**, dropped.
 
 ## 9. Still open
 
-1. **Netlify setup (Phase 0):** connect this GitHub repo to a new Netlify site, so every push auto-deploys. Before Phase 1, check whether my account can use Netlify Database (credit-based plan) and what it costs. If not, fall back to Supabase for data only.
-2. **Prepear migration:** Prepear has a website (app.prepear.com). Claude's sandbox can't reach it, and my recipes need my login anyway. Plan: in Phase 3, Claude writes a one-time script that I run in my **own browser while logged into Prepear** (easiest on a computer). It downloads my recipes, cookbooks and meal plans as a file, which this app imports. Do I have a Mac/PC to run it on?
+1. **Netlify site:** `cookbk.netlify.app` exists. Confirm it's linked to this GitHub repo so pushes auto-deploy. Before Phase 1, confirm the team is on a credit-based plan (needed for Netlify Database).
+2. **Google sign-in:** in Phase 1, enable Netlify Identity on the site, add the Google provider, set registration to invite-only, and invite my Google address.

@@ -13,7 +13,8 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 
 ## Stack
 Vite + TypeScript, TanStack Query, Zod, vite-plugin-pwa, `parse-ingredient`.
-Everything runs on **Netlify**: static hosting, Netlify Functions (API), Netlify Database (Postgres), Netlify Blobs (photos), single-user passcode login. Fallback for data only: Supabase.
+Everything runs on **Netlify**: static hosting, Netlify Functions (API), Netlify Database (Postgres), Netlify Blobs (photos), Netlify Identity with Google sign-in (invite-only, the user's account only). Do NOT add Supabase or any second service; the user wants one.
+Live site: https://cookbk.netlify.app
 No reminders feature (user declined).
 
 ## Data rules

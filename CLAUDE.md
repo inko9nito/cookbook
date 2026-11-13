@@ -17,3 +17,9 @@ Vite + TypeScript, TanStack Query, Zod, Supabase (Postgres/Auth/Storage/Edge Fun
 ## Data rules
 - Always keep the raw ingredient line exactly as typed, alongside the parsed fields.
 - Cookbooks and meal plans reference recipes by id. Never copy recipe data into them.
+
+## Requirements from the user's Prepear frustrations (see docs/PLAN.md §2)
+- R1 recipe sort defaults to newest-first and is remembered. R2 filter recipes by tags.
+- R4 ingredient edit sheet: only Amount / Unit / Ingredient / Note, changes apply live, single Done.
+- R5 ranges scale ("1-2 tsp" ×2 → "2-4 tsp"); non-numeric amounts are never silently scaled.
+- R6 pasting ignores blank lines; heading-like lines become section headers, not steps.

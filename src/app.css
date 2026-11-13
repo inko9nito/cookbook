@@ -1,0 +1,18 @@
+/*
+  App styles. Colors, spacing and typography ONLY.
+  No animations, transforms, gestures or z-index here: Framework7 owns those (see CLAUDE.md).
+*/
+:root {
+  --f7-font-family: -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+}
+
+/* Ingredient rows: amount in bold, note in grey */
+.ingredient-amount {
+  font-weight: 600;
+}
+.ingredient-note {
+  color: var(--f7-list-item-footer-text-color);
+}
+.demo-banner {
+  color: var(--f7-block-footer-text-color);
+}

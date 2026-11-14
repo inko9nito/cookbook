@@ -11,7 +11,7 @@ const SWATCHES: [string, string][] = [
   ['Tomato', '--ck-accent'], ['Tomato pressed', '--ck-accent-press'], ['Error', '--ck-error'],
 ];
 
-/** Every Cookbook component in one place, to check the design on the phone. Spec: docs/DESIGN.md */
+/** Every Cookbook component in one place, to check the design on the phone. Spec: DESIGN.md */
 export default function StyleGuidePage() {
   const [chip, setChip] = useState('All');
   const [servings, setServings] = useState(8);

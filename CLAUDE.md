@@ -12,10 +12,18 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - Check the Framework7 v9 docs for a component's props before using it. Don't guess.
 
 ## Design: the Cookbook design system
-- Spec: `docs/DESIGN.md`. Tokens and Framework7 mapping: `src/theme/cookbook.css`. Visual check: in-app Settings → Style Guide.
+- Spec: `DESIGN.md`. Tokens and Framework7 mapping: `src/theme/cookbook.css`. Visual check: in-app Settings → Style Guide.
 - The user picked each component's shape from a different design system (RED, Starbucks, Headspace, Pinterest, Instacart, DoorDash) and unified all colors: Cool grey neutrals, **Tomato `#e4572e`** accent, iPhone system font. Light mode only for now.
-- Never hard-code colors in components. Use `var(--ck-*)` tokens or Framework7 variables. Add new tokens to `cookbook.css` and `docs/DESIGN.md` together.
-- The repo is public: never commit the user's personal or scraped recipe photos.
+- Never hard-code colors in components. Use `var(--ck-*)` tokens or Framework7 variables. Add new tokens to `cookbook.css` and `DESIGN.md` (both the YAML front matter and the prose) together.
+- Tomato for **text** is `--ck-accent-ink` `#c4421c` (also Framework7's theme color); bright Tomato `--ck-accent` is for fills only. Muted text is `#6e6e73`. These were chosen to pass WCAG AA contrast.
+- **Icons: Lucide only** (`lucide-react`, the same library as the user's other apps). Use the shared props in `src/components/ui/icons.ts` (`navIcon`, `tabIcon`, `inlineIcon`). Don't add another icon set. Framework7's built-in glyphs (back chevron, list chevrons, checkmarks, search magnifier) stay as they are.
+- The repo is public: never commit the user's personal or scraped recipe photos. `src/theme/placeholder-photos.css` is temporary until real photos exist.
+
+## Impeccable (design quality)
+- Installed for Claude Code at `.claude/skills/impeccable` (v4.9.1, copied from github.com/pbakaus/impeccable because impeccable.style is blocked in cloud sessions). Its design hook in `.claude/settings.json` checks UI files after every edit and does a deeper pass at the end of a turn.
+- Context: `PRODUCT.md` (who and why) and `DESIGN.md` (tokens and components) at the repo root. Keep both current.
+- After building or changing a screen, run `/impeccable polish <screen>` or `/impeccable audit <screen>`. Before calling UI work done, scan the running app: `CHROME_PATH=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome .claude/skills/impeccable/scripts/impeccable detect http://localhost:4173/` (after `npm run build && npx vite preview --port 4173`). Fix findings rather than ignoring them; record any deliberate exception in `.impeccable/config.json` with a reason.
+- Impeccable guidance never overrides the Framework7 rules above: no hand-built animations, gestures or z-index.
 
 ## Stack
 Vite + TypeScript, TanStack Query, Zod, vite-plugin-pwa, `parse-ingredient`.

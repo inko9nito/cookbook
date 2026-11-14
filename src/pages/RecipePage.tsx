@@ -3,7 +3,9 @@ import {
   Page, Navbar, NavRight, Link, BlockTitle, Block, List, ListItem, Stepper, Segmented, Button,
   Actions, ActionsGroup, ActionsButton, f7,
 } from 'framework7-react';
+import { Ellipsis } from 'lucide-react';
 import { useStore } from '../demo/store';
+import { navIcon } from '../components/ui/icons';
 import { scaleAmount } from '../demo/quickParse';
 import { formatMinutes } from '../components/ui/FeaturedRecipeCard';
 
@@ -32,7 +34,9 @@ export default function RecipePage({ f7route, f7router }: Props) {
       <Navbar title={recipe.title} backLink>
         <NavRight>
           <Link onClick={() => openEditor(recipe.id)}>Edit</Link>
-          <Link iconF7="ellipsis_circle" onClick={() => setMoreOpen(true)} />
+          <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
+            <Ellipsis {...navIcon} />
+          </Link>
         </NavRight>
       </Navbar>
 

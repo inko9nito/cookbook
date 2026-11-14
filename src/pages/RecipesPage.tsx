@@ -3,7 +3,9 @@ import {
   Page, Navbar, NavLeft, NavTitle, NavTitleLarge, NavRight, Link, Subnavbar, Searchbar,
   List, ListItem, Block, BlockTitle, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton,
 } from 'framework7-react';
+import { Settings, ArrowUpDown, Plus } from 'lucide-react';
 import { useStore, type SortKey } from '../demo/store';
+import { navIcon } from '../components/ui/icons';
 import FeaturedRecipeCard, { formatMinutes } from '../components/ui/FeaturedRecipeCard';
 
 const SORT_LABELS: Record<SortKey, string> = { newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
@@ -31,12 +33,18 @@ export default function RecipesPage() {
     <Page name="recipes">
       <Navbar large>
         <NavLeft>
-          <Link iconF7="gear" href="/settings/" />
+          <Link iconOnly href="/settings/" aria-label="Settings">
+            <Settings {...navIcon} />
+          </Link>
         </NavLeft>
         <NavTitle>Recipes</NavTitle>
         <NavRight>
-          <Link iconF7="arrow_up_arrow_down" onClick={() => setSortOpen(true)} />
-          <Link iconF7="plus" onClick={() => openEditor()} />
+          <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
+            <ArrowUpDown {...navIcon} />
+          </Link>
+          <Link iconOnly onClick={() => openEditor()} aria-label="New recipe">
+            <Plus {...navIcon} />
+          </Link>
         </NavRight>
         <NavTitleLarge>Recipes</NavTitleLarge>
         <Subnavbar inner={false}>

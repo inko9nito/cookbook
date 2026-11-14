@@ -29,4 +29,7 @@ Netlify builds with `npm run build` and publishes `dist/` (see `netlify.toml`).
 
 ## Design
 
-The app uses its own **Cookbook design system** (`docs/DESIGN.md`): component shapes picked from six design systems, with one unified theme (Cool grey, Tomato accent, iPhone system font). See it on the phone under Settings → Style Guide.
+The app uses its own **Cookbook design system** (`DESIGN.md`): component shapes picked from six design systems, with one unified theme (Cool grey, Tomato accent, iPhone system font). See it on the phone under Settings → Style Guide.
+
+- Icons: [Lucide](https://lucide.dev) (`lucide-react`).
+- Design quality: [Impeccable](https://impeccable.style) is installed for Claude Code (`.claude/skills/impeccable`), with `PRODUCT.md` and `DESIGN.md` as its context. Scan the running app with `.claude/skills/impeccable/scripts/impeccable detect http://localhost:4173/`.

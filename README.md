@@ -27,12 +27,6 @@ Netlify builds with `npm run build` and publishes `dist/` (see `netlify.toml`).
 - paste ingredients
 - drag to reorder and swipe to delete
 
-## Design systems
+## Design
 
-Settings (gear icon) → **Design System** lets you pick any of 195 Open Design design systems. The choice applies live and is remembered.
-To refresh the token data:
-
-```bash
-git clone --depth 1 https://github.com/feimacode/open-design-agent-kit /tmp/odak
-node scripts/import-design-systems.mjs /tmp/odak/packages/content/assets/open-design/design-systems
-```
+The app uses its own **Cookbook design system** (`docs/DESIGN.md`): component shapes picked from six design systems, with one unified theme (Cool grey, Tomato accent, iPhone system font). See it on the phone under Settings → Style Guide.

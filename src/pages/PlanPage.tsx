@@ -7,7 +7,7 @@ export default function PlanPage() {
         <NavTitle>Plan</NavTitle>
         <NavTitleLarge>Plan</NavTitleLarge>
       </Navbar>
-      <Block className="demo-banner">Placeholder. The calendar and meal plans are Phase 5.</Block>
+      <Block className="ck-note">Placeholder. The calendar and meal plans are Phase 5.</Block>
     </Page>
   );
 }

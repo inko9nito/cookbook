@@ -11,10 +11,11 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - If Framework7 lacks something, **stop and ask the user** before building a custom version.
 - Check the Framework7 v9 docs for a component's props before using it. Don't guess.
 
-## Design systems
-- Look and feel come from an Open Design design system (feimacode/open-design-agent-kit), chosen by the user in Settings → Design System.
-- `scripts/import-design-systems.mjs` copies the tokens into `src/theme/design-systems.json`. `src/theme/adapter.css` maps `--ds-*` tokens onto Framework7 CSS variables (colors, fonts, corner radii only).
-- When styling screens, use `var(--ds-*)` tokens or Framework7 variables, never hard-coded colors. For layout guidance, follow the chosen system's DESIGN.md.
+## Design: the Cookbook design system
+- Spec: `docs/DESIGN.md`. Tokens and Framework7 mapping: `src/theme/cookbook.css`. Visual check: in-app Settings → Style Guide.
+- The user picked each component's shape from a different design system (RED, Starbucks, Headspace, Pinterest, Instacart, DoorDash) and unified all colors: Cool grey neutrals, **Tomato `#e4572e`** accent, iPhone system font. Light mode only for now.
+- Never hard-code colors in components. Use `var(--ck-*)` tokens or Framework7 variables. Add new tokens to `cookbook.css` and `docs/DESIGN.md` together.
+- The repo is public: never commit the user's personal or scraped recipe photos.
 
 ## Stack
 Vite + TypeScript, TanStack Query, Zod, vite-plugin-pwa, `parse-ingredient`.

@@ -15,6 +15,8 @@ export type DemoRecipe = {
   minutes: number;
   servings: number;
   createdAt: string;
+  /** Placeholder photo color until real photos arrive in Phase 1 */
+  tone: 'corn' | 'grill' | 'soup' | 'drink' | 'green';
   tags: string[];
   ingredients: DemoIngredient[];
   steps: string[];
@@ -27,6 +29,7 @@ export const demoRecipes: DemoRecipe[] = [
   {
     id: '1',
     title: 'Corn pudding',
+    tone: 'corn',
     source: 'My recipe',
     minutes: 75,
     servings: 8,
@@ -52,6 +55,7 @@ export const demoRecipes: DemoRecipe[] = [
   {
     id: '2',
     title: 'Middle Eastern Chicken Kebabs',
+    tone: 'grill',
     source: 'onceuponachef.com',
     minutes: 45,
     servings: 4,
@@ -67,6 +71,7 @@ export const demoRecipes: DemoRecipe[] = [
   {
     id: '3',
     title: 'Best Lentil Soup',
+    tone: 'soup',
     source: 'My recipe',
     minutes: 50,
     servings: 6,
@@ -81,6 +86,7 @@ export const demoRecipes: DemoRecipe[] = [
   {
     id: '4',
     title: 'German Glühwein',
+    tone: 'drink',
     source: 'thekitchn.com',
     minutes: 25,
     servings: 6,

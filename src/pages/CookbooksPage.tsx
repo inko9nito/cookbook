@@ -8,7 +8,7 @@ export default function CookbooksPage() {
         <NavTitle>Cookbooks</NavTitle>
         <NavTitleLarge>Cookbooks</NavTitleLarge>
       </Navbar>
-      <Block className="demo-banner">Placeholder. Cookbooks are Phase 4.</Block>
+      <Block className="ck-note">Placeholder. Cookbooks are Phase 4.</Block>
       <List strongIos insetIos dividersIos>
         {demoCookbooks.map((c) => (
           <ListItem key={c.id} title={c.name} after={`${c.count}`} />

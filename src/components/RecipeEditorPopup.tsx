@@ -16,6 +16,7 @@ const emptyRecipe = (): DemoRecipe => ({
   minutes: 30,
   servings: 4,
   createdAt: new Date().toISOString().slice(0, 10),
+  tone: 'green',
   tags: [],
   ingredients: [],
   steps: [],
@@ -99,8 +100,9 @@ export default function RecipeEditorPopup() {
             </NavRight>
           </Navbar>
 
-          <List strongIos insetIos dividersIos>
+          <List>
             <ListInput
+              outline
               label="Title"
               type="text"
               placeholder="Recipe name"
@@ -109,6 +111,7 @@ export default function RecipeEditorPopup() {
               clearButton
             />
             <ListInput
+              outline
               label="Source"
               type="text"
               placeholder="Website or person"
@@ -116,12 +119,14 @@ export default function RecipeEditorPopup() {
               onInput={(e) => setDraft({ ...draft, source: e.target.value })}
               clearButton
             />
+          </List>
+          <List strongIos insetIos dividersIos>
             <ListItem title="Servings">
-              <Stepper slot="after" small round fill value={draft.servings} min={1} max={99} onStepperChange={(v: number) => setDraft((d) => ({ ...d, servings: v }))} />
+              <Stepper slot="after" round className="ck-stepper" value={draft.servings} min={1} max={99} onStepperChange={(v: number) => setDraft((d) => ({ ...d, servings: v }))} />
             </ListItem>
           </List>
 
-          <BlockTitle>Ingredients</BlockTitle>
+          <BlockTitle medium>Ingredients</BlockTitle>
           <List
             strongIos
             insetIos
@@ -157,7 +162,7 @@ export default function RecipeEditorPopup() {
             <ListButton title="Add Ingredient" onClick={addIngredient} />
             <ListButton title="Paste Ingredients" onClick={() => setPasteOpen(true)} />
           </List>
-          <Block className="demo-banner">
+          <Block className="ck-note">
             Tap a row to edit · swipe left to delete · drag ☰ (or long-press) to reorder
           </Block>
 
@@ -183,8 +188,9 @@ export default function RecipeEditorPopup() {
               </div>
             </Toolbar>
             <PageContent>
-              <List strongIos insetIos>
+              <List>
                 <ListInput
+                  outline
                   type="textarea"
                   label="One ingredient per line"
                   placeholder={'1-2 tsp kosher salt, divided\n2 cups flour'}

@@ -1,6 +1,4 @@
-import { useEffect } from 'react';
-import { App, Views, View, Toolbar, ToolbarPane, Link, f7ready } from 'framework7-react';
-import { applyDesignSystem, savedDesignSystemId } from './theme/designSystem';
+import { App, Views, View, Toolbar, ToolbarPane, Link } from 'framework7-react';
 import routes from './routes';
 import { StoreProvider } from './demo/store';
 import RecipeEditorPopup from './components/RecipeEditorPopup';
@@ -8,8 +6,8 @@ import RecipeEditorPopup from './components/RecipeEditorPopup';
 const f7params = {
   name: 'Cookbook',
   theme: 'ios', // locked to iOS (see CLAUDE.md)
-  darkMode: 'auto',
-  colors: { primary: '#d9572b' },
+  darkMode: false, // the Cookbook design is light-only for now (docs/DESIGN.md)
+  colors: { primary: '#e4572e' }, // Tomato, same as --ck-accent
   routes,
   // Long-press to start dragging a row (sortableTapHold) needs tap-hold events.
   touch: { tapHold: true },
@@ -19,13 +17,6 @@ const f7params = {
 };
 
 export default function CookbookApp() {
-  // Re-apply the design system chosen last time.
-  useEffect(() => {
-    f7ready(() => {
-      applyDesignSystem(savedDesignSystemId(), false);
-    });
-  }, []);
-
   return (
     <StoreProvider>
       <App {...f7params}>

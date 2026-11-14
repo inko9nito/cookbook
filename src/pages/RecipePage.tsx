@@ -5,6 +5,7 @@ import {
 } from 'framework7-react';
 import { useStore } from '../demo/store';
 import { scaleAmount } from '../demo/quickParse';
+import { formatMinutes } from '../components/ui/FeaturedRecipeCard';
 
 type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void } };
 
@@ -24,6 +25,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
   }
 
   const factor = servings / recipe.servings;
+  const soon = (what: string) => f7.toast.show({ text: `${what} comes in a later phase`, closeTimeout: 1500 });
 
   return (
     <Page name="recipe">
@@ -34,17 +36,19 @@ export default function RecipePage({ f7route, f7router }: Props) {
         </NavRight>
       </Navbar>
 
-      <BlockTitle large>{recipe.title}</BlockTitle>
       <Block>
-        {recipe.source} · {recipe.minutes} min
+        <div className="ck-feature ck-photo" data-tone={recipe.tone} role="img" aria-label={recipe.title} style={{ minHeight: 240 }} />
+      </Block>
+      <BlockTitle large>{recipe.title}</BlockTitle>
+      <Block className="ck-note" style={{ fontSize: 15 }}>
+        {recipe.source} · {formatMinutes(recipe.minutes)}
       </Block>
 
-      <List strongIos insetIos dividersIos>
-        <ListItem title="Servings">
-          <Stepper slot="after" small round fill value={servings} min={1} max={99} onStepperChange={setServings} />
-        </ListItem>
-      </List>
-      <Block>
+      <Block className="ck-stack">
+        <div className="ck-row" style={{ justifyContent: 'space-between' }}>
+          <b>Servings</b>
+          <Stepper round className="ck-stepper" value={servings} min={1} max={99} onStepperChange={setServings} />
+        </div>
         <Segmented strong>
           {[0.5, 1, 2, 3].map((m) => (
             <Button key={m} active={Math.abs(factor - m) < 0.001} onClick={() => setServings(recipe.servings * m)}>
@@ -54,24 +58,42 @@ export default function RecipePage({ f7route, f7router }: Props) {
         </Segmented>
       </Block>
 
-      <BlockTitle>Ingredients</BlockTitle>
+      <BlockTitle medium>Ingredients</BlockTitle>
       <List strongIos insetIos dividersIos>
         {recipe.ingredients.map((i) => (
-          <ListItem key={i.id} checkbox title={[scaleAmount(i.amount, factor), i.unit, i.name].filter(Boolean).join(' ')} footer={i.note || undefined} />
+          <ListItem key={i.id} checkbox>
+            <span slot="title">
+              <span className="ck-amount">{[scaleAmount(i.amount, factor), i.unit].filter(Boolean).join(' ')}</span> {i.name}
+              {i.note && <span className="ck-note">, {i.note}</span>}
+            </span>
+          </ListItem>
         ))}
       </List>
 
-      <BlockTitle>Directions</BlockTitle>
-      <List strongIos insetIos dividersIos>
+      <BlockTitle medium>Directions</BlockTitle>
+      <List mediaList strongIos insetIos dividersIos>
         {recipe.steps.map((s, idx) => (
           <ListItem key={idx} header={`Step ${idx + 1}`} text={s} />
         ))}
       </List>
 
+      <Block className="ck-stack">
+        <Button large fill className="ck-main" onClick={() => soon('Cook mode')}>
+          Start cooking
+        </Button>
+        <div className="ck-row">
+          <Button large className="ck-soft" style={{ flex: 1 }} onClick={() => soon('Cookbooks')}>
+            Add to cookbook
+          </Button>
+          <Button large className="ck-soft" style={{ flex: 1 }} onClick={() => soon('Grocery list')}>
+            Add to list
+          </Button>
+        </div>
+      </Block>
+
       <Actions opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>
         <ActionsGroup>
-          <ActionsButton onClick={() => f7.toast.show({ text: 'Add to cookbook — Phase 4', closeTimeout: 1500 })}>Add to Cookbook</ActionsButton>
-          <ActionsButton onClick={() => f7.toast.show({ text: 'Add to plan — Phase 5', closeTimeout: 1500 })}>Add to Plan</ActionsButton>
+          <ActionsButton onClick={() => soon('Add to plan')}>Add to Plan</ActionsButton>
           <ActionsButton
             color="red"
             onClick={() =>

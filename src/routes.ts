@@ -3,7 +3,7 @@ import RecipePage from './pages/RecipePage';
 import CookbooksPage from './pages/CookbooksPage';
 import PlanPage from './pages/PlanPage';
 import SettingsPage from './pages/SettingsPage';
-import DesignSystemsPage from './pages/DesignSystemsPage';
+import StyleGuidePage from './pages/StyleGuidePage';
 
 const routes = [
   { path: '/', component: RecipesPage },
@@ -11,7 +11,7 @@ const routes = [
   { path: '/cookbooks/', component: CookbooksPage },
   { path: '/plan/', component: PlanPage },
   { path: '/settings/', component: SettingsPage },
-  { path: '/settings/design/', component: DesignSystemsPage },
+  { path: '/settings/style-guide/', component: StyleGuidePage },
 ];
 
 export default routes;

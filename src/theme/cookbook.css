@@ -1,0 +1,174 @@
+/*
+  Cookbook design system (spec: docs/DESIGN.md).
+  Tokens, the mapping onto Framework7's own CSS variables, and a few component classes.
+  Colors, sizes, corners and typography only: Framework7 owns motion, gestures and z-index (see CLAUDE.md).
+*/
+:root {
+  --ck-bg: #f5f5f5;
+  --ck-surface: #ffffff;
+  --ck-soft: #ececee;
+  --ck-fg: #262628;
+  --ck-fg2: #55555a;
+  --ck-muted: #86868c;
+  --ck-line: #e6e6e9;
+  --ck-strong: #c9c9ce;
+  --ck-accent: #e4572e;
+  --ck-accent-press: #c9461f;
+  --ck-accent-tint: color-mix(in srgb, var(--ck-accent) 13%, var(--ck-surface));
+  --ck-error: #d93025;
+  --ck-font: -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+}
+
+/* ── Framework7 mapping (beats Framework7's own `.ios` scope) ── */
+html.ios {
+  --f7-font-family: var(--ck-font);
+  --f7-text-color: var(--ck-fg);
+  --f7-page-bg-color: var(--ck-bg);
+
+  /* lists */
+  --f7-list-strong-bg-color: var(--ck-surface);
+  --f7-list-item-border-color: var(--ck-line);
+  --f7-list-inset-border-radius: 16px;
+  --f7-list-item-footer-text-color: var(--ck-muted);
+  --f7-list-item-header-text-color: var(--ck-muted);
+  --f7-list-item-text-text-color: var(--ck-fg2);
+  --f7-list-item-subtitle-text-color: var(--ck-muted);
+  --f7-list-item-after-text-color: var(--ck-muted);
+  --f7-block-footer-text-color: var(--ck-muted);
+  --f7-block-header-text-color: var(--ck-muted);
+
+  /* section titles: dark and bold (RED / Headspace) */
+  --f7-block-title-text-color: var(--ck-muted);
+  --f7-block-title-medium-text-color: var(--ck-fg);
+  --f7-block-title-medium-font-size: 20px;
+  --f7-block-title-medium-font-weight: 700;
+  --f7-block-title-large-text-color: var(--ck-fg);
+
+  /* search bar (RED): white pill on the grey page */
+  --f7-searchbar-input-bg-color: var(--ck-surface);
+  --f7-searchbar-input-border-radius: 9999px;
+  --f7-searchbar-input-text-color: var(--ck-fg);
+  --f7-searchbar-placeholder-color: var(--ck-muted);
+
+  /* filter chips (Starbucks) */
+  --f7-chip-bg-color: var(--ck-surface);
+  --f7-chip-text-color: var(--ck-fg);
+  --f7-chip-outline-border-color: var(--ck-strong);
+  --f7-chip-outline-text-color: var(--ck-fg);
+  --f7-chip-border-radius: 9999px;
+  --f7-chip-height: 34px;
+  --f7-chip-font-size: 14px;
+  --f7-chip-font-weight: 600;
+  --f7-chip-padding-horizontal: 14px;
+
+  /* buttons: "Other buttons" (Pinterest) are the default; the main button is .ck-main */
+  --f7-button-font-weight: 600;
+  --f7-button-border-radius: 16px;
+  --f7-button-large-height: 46px;
+  --f7-button-large-font-size: 16px;
+  --f7-button-large-font-weight: 600;
+
+  /* servings stepper and segmented control (Pinterest) */
+  --f7-stepper-border-width: 0px;
+  --f7-stepper-small-border-width: 0px;
+  --f7-stepper-border-color: transparent;
+  --f7-stepper-border-radius: 9999px;
+  --f7-stepper-button-bg-color: var(--ck-soft);
+  --f7-stepper-button-text-color: var(--ck-fg);
+  --f7-stepper-value-text-color: var(--ck-fg);
+  --f7-stepper-value-font-weight: 700;
+  --f7-segmented-strong-bg-color: var(--ck-soft);
+  --f7-segmented-strong-button-text-color: var(--ck-fg2);
+  --f7-segmented-strong-button-active-bg-color: var(--ck-fg);
+  --f7-segmented-strong-button-active-text-color: var(--ck-surface);
+  --f7-segmented-strong-button-active-font-weight: 600;
+
+  /* ingredients (Instacart): Tomato check */
+  --f7-checkbox-active-color: var(--ck-accent);
+  --f7-checkbox-inactive-color: var(--ck-strong);
+
+  /* form fields (Instacart): boxed "outline" inputs */
+  --f7-input-outline-border-color: var(--ck-strong);
+  --f7-input-outline-focused-border-color: var(--ck-fg);
+  --f7-input-outline-invalid-border-color: var(--ck-error);
+  --f7-input-outline-border-radius: 10px;
+  --f7-input-text-color: var(--ck-fg);
+  --f7-input-placeholder-color: var(--ck-muted);
+  --f7-input-error-text-color: var(--ck-error);
+  --f7-label-text-color: var(--ck-fg2);
+  --f7-label-focused-text-color: var(--ck-fg);
+
+  /* tab bar (DoorDash colors; the bar keeps its native iOS 26 shape) */
+  --f7-tabbar-link-active-color: var(--ck-accent);
+  --f7-tabbar-link-inactive-color: var(--ck-muted);
+  --f7-tabbar-label-font-weight: 600;
+}
+
+/* ── Sheets: white, so boxed field labels sit on white ── */
+.sheet-modal {
+  --f7-sheet-bg-color: var(--ck-surface);
+  --f7-page-bg-color: var(--ck-surface);
+}
+
+/* ── Stepper (Pinterest): two soft round buttons with the number between ── */
+.stepper.ck-stepper { gap: 10px; }
+.stepper.ck-stepper .stepper-button-minus,
+.stepper.ck-stepper .stepper-button-plus { border-radius: 9999px; width: var(--f7-stepper-height); }
+
+/* ── Main button (DoorDash): full pill, 52px, bold ── */
+.button.ck-main {
+  --f7-button-border-radius: 28px;
+  --f7-button-large-height: 52px;
+  --f7-button-large-font-weight: 700;
+  --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
+}
+
+/* ── Other buttons (Pinterest): soft grey fill, dark text ── */
+.button.ck-soft {
+  --f7-button-bg-color: var(--ck-soft);
+  --f7-button-text-color: var(--ck-fg);
+  --f7-button-pressed-bg-color: var(--ck-strong);
+  background-color: var(--ck-soft);
+  color: var(--ck-fg);
+}
+
+/* ── Filter chips: active state ── */
+.chip.ck-chip { border: 1px solid var(--ck-strong); }
+.chip.ck-chip.ck-chip-on { background: var(--ck-fg); border-color: var(--ck-fg); color: var(--ck-surface); }
+.ck-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ── Photos and placeholders ── */
+.ck-photo { background-color: var(--ck-soft); background-size: cover; background-position: center; }
+.ck-photo[data-tone='corn'] { background-image: radial-gradient(circle at 32% 38%, #f8d27a 0%, #eaa53a 38%, #b8671f 78%, #7a3e14 100%); }
+.ck-photo[data-tone='grill'] { background-image: radial-gradient(circle at 60% 40%, #d98a3d 0%, #a4521f 40%, #5d2a10 75%), linear-gradient(#f2c94c, #f2c94c); }
+.ck-photo[data-tone='soup'] { background-image: radial-gradient(circle at 45% 45%, #e07a3a 0%, #b8452a 45%, #6e2416 85%); }
+.ck-photo[data-tone='drink'] { background-image: radial-gradient(circle at 40% 35%, #c2415a 0%, #8c1f3a 50%, #4a0f20 90%); }
+.ck-photo[data-tone='green'] { background-image: radial-gradient(circle at 40% 40%, #a8c66c 0%, #6e9440 45%, #3f5f22 85%); }
+
+/* ── Featured recipe card (Headspace shape) ── */
+.ck-feature {
+  position: relative; display: flex; align-items: flex-end; min-height: 200px; border-radius: 24px; overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); color: #ffffff; text-decoration: none;
+}
+.ck-feature-scrim { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.58), rgba(0, 0, 0, 0) 62%); }
+.ck-feature-text { position: relative; display: grid; gap: 6px; justify-items: start; padding: 16px; }
+.ck-feature-title { font-size: 22px; font-weight: 700; line-height: 1.2; }
+.ck-feature-meta { font-size: 13px; opacity: 0.85; }
+.ck-tag { display: inline-flex; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; background: rgba(255, 255, 255, 0.26); color: #ffffff; }
+.ck-badge { display: inline-flex; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: var(--ck-accent-tint); color: var(--ck-accent-press); }
+
+/* ── Recipe list (Pinterest): no dividers, rounded thumbnails, on the page background ── */
+.list.ck-recipes { --f7-list-bg-color: transparent; --f7-list-strong-bg-color: transparent; --f7-list-item-border-color: transparent; }
+.ck-thumb { width: 64px; height: 64px; border-radius: 16px; flex: none; }
+.list.ck-recipes .item-title { font-weight: 600; }
+
+/* ── Ingredients (Instacart) ── */
+.ck-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ck-note { color: var(--ck-muted); font-size: 13px; }
+
+/* ── Style guide swatches ── */
+.ck-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.ck-swatch { display: grid; gap: 4px; font-size: 12px; color: var(--ck-fg2); }
+.ck-swatch span { height: 44px; border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
+.ck-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ck-stack { display: grid; gap: 10px; }

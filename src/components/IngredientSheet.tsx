@@ -37,8 +37,9 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
       <PageContent>
         {ingredient && (
           <>
-            <List strongIos insetIos dividersIos>
+            <List>
               <ListInput
+                outline
                 label="Amount"
                 type="text"
                 inputmode="decimal"
@@ -48,6 +49,7 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
                 clearButton
               />
               <ListInput
+                outline
                 label="Unit"
                 type="text"
                 placeholder="cup, tsp, lb…"
@@ -57,6 +59,7 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
                 clearButton
               />
               <ListInput
+                outline
                 label="Ingredient"
                 type="text"
                 placeholder="kosher salt"
@@ -65,6 +68,7 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
                 clearButton
               />
               <ListInput
+                outline
                 label="Note"
                 type="text"
                 placeholder="divided, chopped…"
@@ -73,7 +77,7 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
                 clearButton
               />
             </List>
-            <Block className="demo-banner">{formatIngredient(ingredient) || 'Preview'}</Block>
+            <Block className="ck-note">{formatIngredient(ingredient) || 'Preview'}</Block>
             <Block>
               <Button large color="red" onClick={() => onDelete(ingredient.id)}>
                 Delete Ingredient

@@ -20,7 +20,7 @@ colors:
 typography:
   large-title:
     fontFamily: "-apple-system, system-ui, SF Pro Display, sans-serif"
-    fontSize: "34px"
+    fontSize: "30px"
     fontWeight: 700
   section-title:
     fontFamily: "-apple-system, system-ui, SF Pro Display, sans-serif"
@@ -144,8 +144,8 @@ Where each component's shape comes from:
 
 | Component | Source | Shape |
 |---|---|---|
-| Background, titles | RED (Xiaohongshu) | Grey page, white content, soft near-black text, no shadows |
-| Search bar | RED | White pill on the grey page, 38–40px tall, leading magnifier |
+| Background, titles | RED (Xiaohongshu) | Grey page, white content, soft near-black text, no shadows. **Flat bars:** iOS 26 "liquid glass" is turned off: the top bar is solid grey, its buttons are soft grey circles, and the large title is 30px bold |
+| Search bar | RED | White pill on the grey page, no outline, leading magnifier. It sits in the page content and scrolls away (not pinned under the top bar) |
 | Filter chips | Starbucks | Full pill, white with a 1px border, 600 weight. Active = filled `--ck-fg` with white text |
 | Featured recipe card | Headspace | Photo card, 24px corners, ~200px tall, dark gradient from the bottom, small dark see-through tag pill, 22px bold white title, soft shadow |
 | Recipe list | Pinterest | No dividers, 64px photo thumbnails with 16px corners, 600-weight title, muted meta line |
@@ -154,7 +154,7 @@ Where each component's shape comes from:
 | Main button | DoorDash | Full-width pill, 52px tall, 28px corners, 19px bold white label, Tomato fill |
 | Other buttons | Pinterest | Soft grey fill, 16px corners, 46px tall, 600 weight, dark text |
 | Form fields | Instacart | White box, 1px `--ck-strong` border, 10px corners, small label set into the top border (Framework7 "outline" inputs). Focus = `--ck-fg` border, error = red border + red helper text |
-| Tab bar | DoorDash | Tomato active tab, muted inactive, 600-weight labels. The bar keeps Framework7's native iOS 26 floating shape |
+| Tab bar | DoorDash | Flat white with a hairline (no glass), Tomato ink active tab, muted inactive, 600-weight labels. Keeps Framework7's floating iOS 26 shape |
 
 ## Do's and Don'ts
 

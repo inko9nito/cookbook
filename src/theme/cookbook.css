@@ -26,6 +26,21 @@ html.ios {
   --f7-text-color: var(--ck-fg);
   --f7-page-bg-color: var(--ck-bg);
 
+  /* Flat instead of iOS 26 "liquid glass": navbar buttons, search bar, tab bar, action sheets.
+     The user's mix (RED / DoorDash) is flat white with a hairline and no glow. */
+  --f7-glass-bg-color: var(--ck-surface);
+  --f7-glass-shadow: 0 0 0 1px var(--ck-line);
+  --f7-glass-shadow-thumb: 0 0 0 1px var(--ck-line);
+  --f7-bars-bg-color: var(--ck-bg);
+  --f7-navbar-bg-color: var(--ck-bg);
+  --f7-subnavbar-bg-color: var(--ck-bg);
+  --f7-toolbar-bg-color: var(--ck-bg);
+
+  /* titles: RED's compact heading scale (semibold, not the heavy iOS large title) */
+  --f7-navbar-large-title-font-size: 30px;
+  --f7-navbar-large-title-font-weight: 700;
+  --f7-navbar-large-title-letter-spacing: -0.02em;
+
   /* lists */
   --f7-list-strong-bg-color: var(--ck-surface);
   --f7-list-item-border-color: var(--ck-line);
@@ -103,6 +118,27 @@ html.ios {
   --f7-tabbar-link-active-color: var(--ck-accent-ink);
   --f7-tabbar-link-inactive-color: var(--ck-muted);
   --f7-tabbar-label-font-weight: 600;
+}
+
+/* ── Solid top bar (RED): Framework7's iOS 26 navbar fades to transparent over content; the mix uses an opaque bar ── */
+html.ios .navbar-bg::after {
+  background-image: none;
+  background-color: var(--ck-bg);
+}
+
+/* ── Navbar buttons: soft grey circles (RED), not white glass ── */
+html.ios .navbar {
+  --f7-glass-bg-color: var(--ck-soft);
+  --f7-glass-shadow: none;
+}
+
+/* ── Search bar in the page: a plain white pill, no outline (RED) ── */
+html.ios {
+  --f7-searchbar-in-page-content-box-shadow: none;
+}
+html.ios .searchbar {
+  --f7-glass-shadow: none;
+  --f7-searchbar-input-border-color: transparent;
 }
 
 /* ── Icons (Lucide): sized by the size prop, colored by the link ── */

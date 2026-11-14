@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Page, Navbar, NavLeft, NavTitle, NavTitleLarge, NavRight, Link, Subnavbar, Searchbar,
+  Page, Navbar, NavLeft, NavTitle, NavTitleLarge, NavRight, Link, Searchbar,
   List, ListItem, Block, BlockTitle, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton,
 } from 'framework7-react';
 import { Settings, ArrowUpDown, Plus } from 'lucide-react';
@@ -47,10 +47,12 @@ export default function RecipesPage() {
           </Link>
         </NavRight>
         <NavTitleLarge>Recipes</NavTitleLarge>
-        <Subnavbar inner={false}>
-          <Searchbar searchContainer=".ck-recipes" searchIn=".item-title" placeholder="Search recipes" disableButtonText="Cancel" />
-        </Subnavbar>
       </Navbar>
+
+      {/* RED: the search bar is part of the page and scrolls with it (wrapped, so Framework7 keeps it in the page content instead of pinning it) */}
+      <div>
+        <Searchbar searchContainer=".ck-recipes" searchIn=".item-title" placeholder="Search recipes" disableButton={false} />
+      </div>
 
       <Block className="ck-chips">
         <Chip text="All" className={`ck-chip ${tags.length === 0 ? 'ck-chip-on' : ''}`} onClick={() => setTags([])} />

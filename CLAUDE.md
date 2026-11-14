@@ -24,6 +24,8 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - Installed for Claude Code at `.claude/skills/impeccable` (v4.9.1, copied from github.com/pbakaus/impeccable because impeccable.style is blocked in cloud sessions). Its design hook in `.claude/settings.json` checks UI files after every edit and does a deeper pass at the end of a turn.
 - Context: `PRODUCT.md` (who and why) and `DESIGN.md` (tokens and components) at the repo root. Keep both current.
 - After building or changing a screen, run `/impeccable polish <screen>` or `/impeccable audit <screen>`. Before calling UI work done, scan the running app: `CHROME_PATH=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome .claude/skills/impeccable/scripts/impeccable detect http://localhost:4173/` (after `npm run build && npx vite preview --port 4173`). Fix findings rather than ignoring them; record any deliberate exception in `.impeccable/config.json` with a reason.
+- Impeccable only scans a page as it first loads. Also run **`npm run check:ui`** (with the preview server running): it taps through interactive states (selected segments, swiped rows, open sheets and action sheets, the editor), runs axe contrast checks and flags overlapping buttons, and saves screenshots to `ui-states/`. **Look at those screenshots** before saying UI work is done. It runs in Chromium; iPhone Safari can still differ (e.g. sticky hover after a tap), so ask the user to check on the phone.
+- When you add a screen or an interactive state, add it to `scripts/check-ui-states.cjs`.
 - Impeccable guidance never overrides the Framework7 rules above: no hand-built animations, gestures or z-index.
 
 ## Stack

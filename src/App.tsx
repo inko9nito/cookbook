@@ -9,7 +9,7 @@ const f7params = {
   name: 'Cookbook',
   theme: 'ios', // locked to iOS (see CLAUDE.md)
   darkMode: false, // the Cookbook design is light-only for now (DESIGN.md)
-  colors: { primary: '#c4421c' }, // Tomato ink (--ck-accent-ink): links and text. Fills use bright Tomato via --ck-accent
+  colors: { primary: '#c4421c', red: '#d1291f' }, // Tomato ink (--ck-accent-ink): links and text. Fills use bright Tomato via --ck-accent
   routes,
   // Titles sit on the left in the same row as the buttons (the agreed design, not iOS 26 centered titles)
   navbar: { iosCenterTitle: false },

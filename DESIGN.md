@@ -13,7 +13,7 @@ colors:
   tomato: "#e4572e"
   tomato-pressed: "#c9461f"
   tomato-ink: "#c4421c"
-  error-red: "#d93025"
+  error-red: "#d1291f"
   photo-scrim: "rgba(0, 0, 0, 0.58)"
   tag-glass: "rgba(0, 0, 0, 0.45)"
   card-shadow: "rgba(0, 0, 0, 0.08)"
@@ -133,7 +133,7 @@ Implementation: `src/theme/cookbook.css` (tokens and Framework7 variable mapping
 | `--ck-accent` | `#e4572e` | **Tomato.** Main button, links, checked ingredients, active tab, badges |
 | `--ck-accent-press` | `#c9461f` | Pressed main button |
 | `--ck-accent-ink` | `#c4421c` | **Tomato ink.** Tomato for text: links, Edit / Save / Done, active tab label, badges. Framework7's theme color |
-| `--ck-error` | `#d93025` | Field errors |
+| `--ck-error` | `#d1291f` | Field errors and destructive actions (Delete, Discard). Replaces iOS's `#ff3b30`, which is too faint on white |
 
 ## Typography
 

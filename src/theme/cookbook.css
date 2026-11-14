@@ -16,7 +16,7 @@
   --ck-accent-press: #c9461f;
   --ck-accent-ink: #c4421c; /* Tomato for text: passes 4.5:1 on white and on the grey page */
   --ck-accent-tint: color-mix(in srgb, var(--ck-accent) 13%, var(--ck-surface));
-  --ck-error: #d93025;
+  --ck-error: #d1291f; /* also the destructive red (Delete, Discard): 5.2:1 on white, 4.8:1 on the grey page */
   --ck-font: -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
 }
 
@@ -36,6 +36,10 @@ html.ios {
   --f7-subnavbar-bg-color: var(--ck-bg);
   --f7-toolbar-bg-color: var(--ck-bg);
 
+
+  /* destructive actions and action-sheet labels */
+  --f7-swipeout-delete-button-bg-color: var(--ck-error);
+  --f7-actions-label-text-color: var(--ck-muted);
 
   /* lists */
   --f7-list-strong-bg-color: var(--ck-surface);
@@ -263,6 +267,16 @@ html.ios .searchbar {
 .list.ck-recipes { --f7-list-bg-color: transparent; --f7-list-strong-bg-color: transparent; --f7-list-item-border-color: transparent; }
 .ck-thumb { width: 64px; height: 64px; border-radius: 16px; flex: none; }
 .list.ck-recipes .item-title { font-weight: 600; }
+
+/* ── Segmented control: the selected segment always has white text.
+   iPhone Safari keeps a tapped button in its hover/pressed state, which showed grey text on the dark segment. ── */
+html.ios .segmented-strong .button.button-active,
+html.ios .segmented-strong .button.button-active:hover,
+html.ios .segmented-strong .button.button-active.active-state {
+  --f7-button-text-color: var(--ck-surface);
+  --f7-button-pressed-text-color: var(--ck-surface);
+  color: var(--ck-surface);
+}
 
 /* ── Ingredients (Instacart) ── */
 .ck-amount { font-weight: 700; font-variant-numeric: tabular-nums; }

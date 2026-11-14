@@ -133,6 +133,7 @@ export default function RecipeEditorPopup() {
             dividersIos
             sortable
             sortableEnabled
+            sortableOpposite // drag handles on the left, so they never sit on top of the swipe-to-delete button on the right
             sortableTapHold
             onSortableSort={(data: { from: number; to: number }) =>
               setDraft((d) => ({ ...d, ingredients: move(d.ingredients, data.from, data.to) }))
@@ -163,7 +164,7 @@ export default function RecipeEditorPopup() {
             <ListButton title="Paste Ingredients" onClick={() => setPasteOpen(true)} />
           </List>
           <Block className="ck-note">
-            Tap a row to edit · swipe left to delete · drag ☰ (or long-press) to reorder
+            Tap a row to edit · swipe left to delete · drag ☰ on the left (or long-press) to reorder
           </Block>
 
           <IngredientSheet

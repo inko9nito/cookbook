@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Page, Navbar, NavTitle, NavTitleLarge, NavRight, Link, Subnavbar, Searchbar,
+  Page, Navbar, NavLeft, NavTitle, NavTitleLarge, NavRight, Link, Subnavbar, Searchbar,
   List, ListItem, Block, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton,
 } from 'framework7-react';
 import { useStore, type SortKey } from '../demo/store';
@@ -28,6 +28,9 @@ export default function RecipesPage() {
   return (
     <Page name="recipes">
       <Navbar large>
+        <NavLeft>
+          <Link iconF7="gear" href="/settings/" />
+        </NavLeft>
         <NavTitle>Recipes</NavTitle>
         <NavRight>
           <Link iconF7="arrow_up_arrow_down" onClick={() => setSortOpen(true)} />

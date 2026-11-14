@@ -4,6 +4,7 @@ import Framework7React from 'framework7-react';
 
 import 'framework7/css/bundle';
 import 'framework7-icons/css/framework7-icons.css';
+import './theme/adapter.css';
 import './app.css';
 
 import CookbookApp from './App';

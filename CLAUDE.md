@@ -11,6 +11,11 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - If Framework7 lacks something, **stop and ask the user** before building a custom version.
 - Check the Framework7 v9 docs for a component's props before using it. Don't guess.
 
+## Design systems
+- Look and feel come from an Open Design design system (feimacode/open-design-agent-kit), chosen by the user in Settings → Design System.
+- `scripts/import-design-systems.mjs` copies the tokens into `src/theme/design-systems.json`. `src/theme/adapter.css` maps `--ds-*` tokens onto Framework7 CSS variables (colors, fonts, corner radii only).
+- When styling screens, use `var(--ds-*)` tokens or Framework7 variables, never hard-coded colors. For layout guidance, follow the chosen system's DESIGN.md.
+
 ## Stack
 Vite + TypeScript, TanStack Query, Zod, vite-plugin-pwa, `parse-ingredient`.
 Everything runs on **Netlify**: static hosting, Netlify Functions (API), Netlify Database (Postgres), Netlify Blobs (photos), Netlify Identity with Google sign-in (invite-only, the user's account only). Do NOT add Supabase or any second service; the user wants one.

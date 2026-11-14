@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "src/theme/placeholder-photos.css"
+        ],
+        "createdAt": "2026-11-14T03:58:54.070Z",
+        "reason": "Temporary photo placeholders until real photos (Phase 1)"
+      }
+    ]
+  }
+}

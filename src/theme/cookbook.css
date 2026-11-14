@@ -1,0 +1,212 @@
+/*
+  Cookbook design system (spec: DESIGN.md).
+  Tokens, the mapping onto Framework7's own CSS variables, and a few component classes.
+  Colors, sizes, corners and typography only: Framework7 owns motion, gestures and z-index (see CLAUDE.md).
+*/
+:root {
+  --ck-bg: #f5f5f5;
+  --ck-surface: #ffffff;
+  --ck-soft: #ececee;
+  --ck-fg: #262628;
+  --ck-fg2: #55555a;
+  --ck-muted: #6e6e73;
+  --ck-line: #e6e6e9;
+  --ck-strong: #c9c9ce;
+  --ck-accent: #e4572e;
+  --ck-accent-press: #c9461f;
+  --ck-accent-ink: #c4421c; /* Tomato for text: passes 4.5:1 on white and on the grey page */
+  --ck-accent-tint: color-mix(in srgb, var(--ck-accent) 13%, var(--ck-surface));
+  --ck-error: #d93025;
+  --ck-font: -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+}
+
+/* ── Framework7 mapping (beats Framework7's own `.ios` scope) ── */
+html.ios {
+  --f7-font-family: var(--ck-font);
+  --f7-text-color: var(--ck-fg);
+  --f7-page-bg-color: var(--ck-bg);
+
+  /* Flat instead of iOS 26 "liquid glass": navbar buttons, search bar, tab bar, action sheets.
+     The user's mix (RED / DoorDash) is flat white with a hairline and no glow. */
+  --f7-glass-bg-color: var(--ck-surface);
+  --f7-glass-shadow: 0 0 0 1px var(--ck-line);
+  --f7-glass-shadow-thumb: 0 0 0 1px var(--ck-line);
+  --f7-bars-bg-color: var(--ck-bg);
+  --f7-navbar-bg-color: var(--ck-bg);
+  --f7-subnavbar-bg-color: var(--ck-bg);
+  --f7-toolbar-bg-color: var(--ck-bg);
+
+  /* titles: RED's compact heading scale (semibold, not the heavy iOS large title) */
+  --f7-navbar-large-title-font-size: 30px;
+  --f7-navbar-large-title-font-weight: 700;
+  --f7-navbar-large-title-letter-spacing: -0.02em;
+
+  /* lists */
+  --f7-list-strong-bg-color: var(--ck-surface);
+  --f7-list-item-border-color: var(--ck-line);
+  --f7-list-inset-border-radius: 16px;
+  --f7-list-item-footer-text-color: var(--ck-muted);
+  --f7-list-item-header-text-color: var(--ck-muted);
+  --f7-list-item-text-text-color: var(--ck-fg2);
+  --f7-list-item-subtitle-text-color: var(--ck-muted);
+  --f7-list-item-after-text-color: var(--ck-muted);
+  --f7-block-footer-text-color: var(--ck-muted);
+  --f7-block-header-text-color: var(--ck-muted);
+
+  /* section titles: dark and bold (RED / Headspace) */
+  --f7-block-title-text-color: var(--ck-muted);
+  --f7-block-title-medium-text-color: var(--ck-fg);
+  --f7-block-title-medium-font-size: 20px;
+  --f7-block-title-medium-font-weight: 700;
+  --f7-block-title-large-text-color: var(--ck-fg);
+
+  /* search bar (RED): white pill on the grey page */
+  --f7-searchbar-input-bg-color: var(--ck-surface);
+  --f7-searchbar-input-border-radius: 9999px;
+  --f7-searchbar-input-text-color: var(--ck-fg);
+  --f7-searchbar-placeholder-color: var(--ck-muted);
+
+  /* filter chips (Starbucks) */
+  --f7-chip-bg-color: var(--ck-surface);
+  --f7-chip-text-color: var(--ck-fg);
+  --f7-chip-outline-border-color: var(--ck-strong);
+  --f7-chip-outline-text-color: var(--ck-fg);
+  --f7-chip-border-radius: 9999px;
+  --f7-chip-height: 34px;
+  --f7-chip-font-size: 14px;
+  --f7-chip-font-weight: 600;
+  --f7-chip-padding-horizontal: 14px;
+
+  /* buttons: "Other buttons" (Pinterest) are the default; the main button is .ck-main */
+  --f7-button-font-weight: 600;
+  --f7-button-border-radius: 16px;
+  --f7-button-large-height: 46px;
+  --f7-button-large-font-size: 16px;
+  --f7-button-large-font-weight: 600;
+
+  /* servings stepper and segmented control (Pinterest) */
+  --f7-stepper-border-width: 0px;
+  --f7-stepper-small-border-width: 0px;
+  --f7-stepper-border-color: transparent;
+  --f7-stepper-border-radius: 9999px;
+  --f7-stepper-button-bg-color: var(--ck-soft);
+  --f7-stepper-button-text-color: var(--ck-fg);
+  --f7-stepper-value-text-color: var(--ck-fg);
+  --f7-stepper-value-font-weight: 700;
+  --f7-segmented-strong-bg-color: var(--ck-soft);
+  --f7-segmented-strong-button-text-color: var(--ck-fg2);
+  --f7-segmented-strong-button-active-bg-color: var(--ck-fg);
+  --f7-segmented-strong-button-active-text-color: var(--ck-surface);
+  --f7-segmented-strong-button-active-font-weight: 600;
+
+  /* ingredients (Instacart): Tomato check */
+  --f7-checkbox-active-color: var(--ck-accent);
+  --f7-checkbox-inactive-color: var(--ck-strong);
+
+  /* form fields (Instacart): boxed "outline" inputs */
+  --f7-input-outline-border-color: var(--ck-strong);
+  --f7-input-outline-focused-border-color: var(--ck-fg);
+  --f7-input-outline-invalid-border-color: var(--ck-error);
+  --f7-input-outline-border-radius: 10px;
+  --f7-input-text-color: var(--ck-fg);
+  --f7-input-placeholder-color: var(--ck-muted);
+  --f7-input-error-text-color: var(--ck-error);
+  --f7-label-text-color: var(--ck-fg2);
+  --f7-label-focused-text-color: var(--ck-fg);
+
+  /* tab bar (DoorDash colors; the bar keeps its native iOS 26 shape) */
+  --f7-tabbar-link-active-color: var(--ck-accent-ink);
+  --f7-tabbar-link-inactive-color: var(--ck-muted);
+  --f7-tabbar-label-font-weight: 600;
+}
+
+/* ── Solid top bar (RED): Framework7's iOS 26 navbar fades to transparent over content; the mix uses an opaque bar ── */
+html.ios .navbar-bg::after {
+  background-image: none;
+  background-color: var(--ck-bg);
+}
+
+/* ── Navbar buttons: soft grey circles (RED), not white glass ── */
+html.ios .navbar {
+  --f7-glass-bg-color: var(--ck-soft);
+  --f7-glass-shadow: none;
+}
+
+/* ── Search bar in the page: a plain white pill, no outline (RED) ── */
+html.ios {
+  --f7-searchbar-in-page-content-box-shadow: none;
+}
+html.ios .searchbar {
+  --f7-glass-shadow: none;
+  --f7-searchbar-input-border-color: transparent;
+}
+
+/* ── Icons (Lucide): sized by the size prop, colored by the link ── */
+.ck-icon { display: block; flex: none; }
+
+/* ── Sheets: white, so boxed field labels sit on white ── */
+.sheet-modal {
+  --f7-sheet-bg-color: var(--ck-surface);
+  --f7-page-bg-color: var(--ck-surface);
+}
+
+/* ── Stepper (Pinterest): two soft round buttons with the number between ── */
+.stepper.ck-stepper { gap: 10px; }
+.stepper.ck-stepper .stepper-button-minus,
+.stepper.ck-stepper .stepper-button-plus { border-radius: 9999px; width: var(--f7-stepper-height); }
+
+/* ── Main button (DoorDash): full pill, 52px, bold ── */
+.button.ck-main {
+  /* Framework7's theme color is Tomato ink (for text), so the bright Tomato fill is set here */
+  --f7-button-fill-bg-color: var(--ck-accent);
+  --f7-button-border-radius: 28px;
+  --f7-button-large-height: 52px;
+  --f7-button-large-font-weight: 700;
+  --f7-button-large-font-size: 19px; /* large text: white on Tomato (3.7:1) meets WCAG AA for large text */
+  --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
+}
+
+/* ── Other buttons (Pinterest): soft grey fill, dark text ── */
+.button.ck-soft {
+  --f7-button-bg-color: var(--ck-soft);
+  --f7-button-text-color: var(--ck-fg);
+  --f7-button-pressed-bg-color: var(--ck-strong);
+  background-color: var(--ck-soft);
+  color: var(--ck-fg);
+}
+
+/* ── Filter chips: active state ── */
+.chip.ck-chip { border: 1px solid var(--ck-strong); }
+.chip.ck-chip.ck-chip-on { background: var(--ck-fg); border-color: var(--ck-fg); color: var(--ck-surface); }
+.ck-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ── Photos ── */
+.ck-photo { background-color: var(--ck-soft); background-size: cover; background-position: center; }
+
+/* ── Featured recipe card (Headspace shape) ── */
+.ck-feature {
+  position: relative; display: flex; align-items: flex-end; min-height: 200px; border-radius: 24px; overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); color: #ffffff; text-decoration: none;
+}
+.ck-feature-scrim { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.58), rgba(0, 0, 0, 0) 62%); }
+.ck-feature-text { position: relative; display: grid; gap: 6px; justify-items: start; padding: 16px; }
+.ck-feature-title { font-size: 22px; font-weight: 700; line-height: 1.2; }
+.ck-feature-meta { font-size: 13px; opacity: 0.85; }
+.ck-tag { display: inline-flex; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; background: rgba(0, 0, 0, 0.45); color: #ffffff; }
+.ck-badge { display: inline-flex; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: var(--ck-accent-tint); color: var(--ck-accent-ink); }
+
+/* ── Recipe list (Pinterest): no dividers, rounded thumbnails, on the page background ── */
+.list.ck-recipes { --f7-list-bg-color: transparent; --f7-list-strong-bg-color: transparent; --f7-list-item-border-color: transparent; }
+.ck-thumb { width: 64px; height: 64px; border-radius: 16px; flex: none; }
+.list.ck-recipes .item-title { font-weight: 600; }
+
+/* ── Ingredients (Instacart) ── */
+.ck-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ck-note { color: var(--ck-muted); font-size: 13px; }
+
+/* ── Style guide swatches ── */
+.ck-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.ck-swatch { display: grid; gap: 4px; font-size: 12px; color: var(--ck-fg2); }
+.ck-swatch span { height: 44px; border-radius: 10px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
+.ck-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ck-stack { display: grid; gap: 10px; }

@@ -7,9 +7,10 @@ import { Settings, ArrowUpDown, Plus } from 'lucide-react';
 import { useStore, type SortKey } from '../demo/store';
 import { navIcon } from '../components/ui/icons';
 import FeaturedRecipeCard, { formatMinutes } from '../components/ui/FeaturedRecipeCard';
+import { photoStyle } from '../components/ui/photo';
 
 const SORT_LABELS: Record<SortKey, string> = { newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
-const TAGS = ['dinner', 'soup', 'side', 'dessert', 'drink'];
+const TAGS = ['dinner', 'side', 'dessert', 'quick'];
 const label = (t: string) => t[0].toUpperCase() + t.slice(1);
 
 export default function RecipesPage() {
@@ -79,7 +80,7 @@ export default function RecipesPage() {
       <List mediaList className="ck-recipes searchbar-found">
         {shown.map((r) => (
           <ListItem key={r.id} link={`/recipe/${r.id}/`} noChevron title={r.title} text={`${formatMinutes(r.minutes)} · Serves ${r.servings} · ${r.tags.map(label).join(', ')}`}>
-            <span slot="media" className="ck-thumb ck-photo" data-tone={r.tone} />
+            <span slot="media" className="ck-thumb ck-photo" data-tone={r.tone} style={photoStyle(r.photo)} role="img" aria-label={r.title} />
           </ListItem>
         ))}
       </List>

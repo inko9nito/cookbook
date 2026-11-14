@@ -40,7 +40,7 @@ Built for exactly one cook's habits, with no social, discovery or sharing featur
   - R8: full export so data is never locked in.
 - Stack: Vite + React + TypeScript, Framework7 v9 (iOS theme) for every native-feeling component, gesture and transition. Hosting, functions, database, photo storage and Google sign-in all on Netlify (one service only).
 - No reminders feature (declined by the user).
-- The GitHub repository is public: personal or scraped recipe photos must never be committed.
+- The GitHub repository is public. Sample photos in `public/photos/` were committed with the owner's approval; real recipe photos belong in Netlify Blobs, not the repo.
 
 ## Brand Commitments
 
@@ -52,7 +52,7 @@ Built for exactly one cook's habits, with no social, discovery or sharing featur
 ## Evidence on Hand
 
 - Screen recordings of Prepear's add-recipe, recipe page, cookbook and meal-plan flows (shared in chat, not in the repo).
-- No real recipe data or photos in the repo yet; the app runs on sample data until Phase 1.
+- Sample recipes with six sample photos (`public/photos/`); the app runs on sample data until Phase 1.
 
 ## Product Principles
 

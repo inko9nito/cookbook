@@ -8,6 +8,7 @@ import { useStore } from '../demo/store';
 import { navIcon } from '../components/ui/icons';
 import { scaleAmount } from '../demo/quickParse';
 import { formatMinutes } from '../components/ui/FeaturedRecipeCard';
+import { photoStyle } from '../components/ui/photo';
 
 type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void } };
 
@@ -41,7 +42,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
       </Navbar>
 
       <Block>
-        <div className="ck-feature ck-photo" data-tone={recipe.tone} role="img" aria-label={recipe.title} style={{ minHeight: 240 }} />
+        <div className="ck-feature ck-photo" data-tone={recipe.tone} role="img" aria-label={recipe.title} style={{ minHeight: 240, ...photoStyle(recipe.photo) }} />
       </Block>
       <BlockTitle large>{recipe.title}</BlockTitle>
       <Block className="ck-note" style={{ fontSize: 15 }}>

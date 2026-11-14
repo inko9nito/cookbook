@@ -1,6 +1,5 @@
 /*
-  TEMPORARY: warm color placeholders standing in for recipe photos until photo upload (Phase 1).
-  Delete this file once recipes have real photos. Excluded from Impeccable's design-system color check.
+  Warm color placeholders for recipes that have no photo yet (new recipes until photo upload in Phase 1). Excluded from Impeccable's design-system color check.
 */
 .ck-photo[data-tone='corn'] { background-image: radial-gradient(circle at 32% 38%, #f8d27a 0%, #eaa53a 38%, #b8671f 78%, #7a3e14 100%); }
 .ck-photo[data-tone='grill'] { background-image: radial-gradient(circle at 60% 40%, #d98a3d 0%, #a4521f 40%, #5d2a10 75%), linear-gradient(#f2c94c, #f2c94c); }

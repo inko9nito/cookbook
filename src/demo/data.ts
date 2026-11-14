@@ -15,7 +15,9 @@ export type DemoRecipe = {
   minutes: number;
   servings: number;
   createdAt: string;
-  /** Placeholder photo color until real photos arrive in Phase 1 */
+  /** Sample photo (in public/photos). Recipes without one show a warm color placeholder. */
+  photo?: string;
+  /** Placeholder color used when there is no photo */
   tone: 'corn' | 'grill' | 'soup' | 'drink' | 'green';
   tags: string[];
   ingredients: DemoIngredient[];
@@ -30,6 +32,7 @@ export const demoRecipes: DemoRecipe[] = [
     id: '1',
     title: 'Corn pudding',
     tone: 'corn',
+    photo: '/photos/corn.jpg',
     source: 'My recipe',
     minutes: 75,
     servings: 8,
@@ -56,6 +59,7 @@ export const demoRecipes: DemoRecipe[] = [
     id: '2',
     title: 'Middle Eastern Chicken Kebabs',
     tone: 'grill',
+    photo: '/photos/kebabs.jpg',
     source: 'onceuponachef.com',
     minutes: 45,
     servings: 4,
@@ -70,30 +74,53 @@ export const demoRecipes: DemoRecipe[] = [
   },
   {
     id: '3',
-    title: 'Best Lentil Soup',
+    title: 'Italian Turkey Zucchini Meatballs',
     tone: 'soup',
+    photo: '/photos/meatballs.jpg',
     source: 'My recipe',
-    minutes: 50,
+    minutes: 40,
     servings: 6,
-    createdAt: '2026-08-21',
-    tags: ['soup', 'dinner'],
+    createdAt: '2026-09-14',
+    tags: ['dinner'],
     ingredients: [
-      { id: 'c1', amount: '1', unit: 'cup', name: 'brown lentils', note: 'rinsed' },
-      { id: 'c2', amount: '1', unit: 'large', name: 'onion', note: 'chopped' },
+      { id: 'c1', amount: '1', unit: 'lb', name: 'ground turkey', note: '' },
+      { id: 'c2', amount: '1', unit: 'small', name: 'zucchini', note: 'grated and squeezed dry' },
+      { id: 'c3', amount: '1/2-1', unit: 'tsp', name: 'red pepper flakes', note: 'optional' },
     ],
-    steps: ['Sauté the onion.', 'Add lentils and stock; simmer 30 minutes.'],
+    steps: ['Mix everything gently.', 'Roll into balls and bake 20 minutes.', 'Simmer in marinara for 5 minutes.'],
   },
   {
     id: '4',
-    title: 'German Glühwein',
-    tone: 'drink',
-    source: 'thekitchn.com',
-    minutes: 25,
+    title: 'Pulled Beef with Parsnip Purée',
+    tone: 'grill',
+    photo: '/photos/pulled-beef.jpg',
+    source: 'My recipe',
+    minutes: 210,
     servings: 6,
-    createdAt: '2025-12-01',
-    tags: ['drink'],
-    ingredients: [{ id: 'd1', amount: '1', unit: 'bottle', name: 'red wine', note: '' }],
-    steps: ['Warm everything gently. Do not boil.'],
+    createdAt: '2026-08-21',
+    tags: ['dinner'],
+    ingredients: [
+      { id: 'd1', amount: '3', unit: 'lb', name: 'chuck roast', note: '' },
+      { id: 'd2', amount: '2', unit: 'lb', name: 'parsnips', note: 'peeled' },
+    ],
+    steps: ['Brown the beef, then braise 3 hours.', 'Boil and purée the parsnips.', 'Shred the beef over the purée.'],
+  },
+  {
+    id: '5',
+    title: 'Mustard Dill Chicken Thighs',
+    tone: 'green',
+    photo: '/photos/mustard-chicken.jpg',
+    source: 'sepcooks.com',
+    minutes: 35,
+    servings: 4,
+    createdAt: '2026-07-30',
+    tags: ['dinner', 'quick'],
+    ingredients: [
+      { id: 'e1', amount: '2', unit: 'lb', name: 'chicken thighs', note: 'boneless' },
+      { id: 'e2', amount: '2', unit: 'tbsp', name: 'Dijon mustard', note: '' },
+      { id: 'e3', amount: '1-2', unit: 'tbsp', name: 'fresh dill', note: 'chopped' },
+    ],
+    steps: ['Coat the chicken in mustard and dill.', 'Roast at 425°F for 25 minutes.'],
   },
 ];
 

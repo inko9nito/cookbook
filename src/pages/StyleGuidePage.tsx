@@ -4,6 +4,7 @@ import {
 } from 'framework7-react';
 import FeaturedRecipeCard from '../components/ui/FeaturedRecipeCard';
 import { demoRecipes } from '../demo/data';
+import { photoStyle } from '../components/ui/photo';
 
 const SWATCHES: [string, string][] = [
   ['Background', '--ck-bg'], ['Surface', '--ck-surface'], ['Soft', '--ck-soft'], ['Text', '--ck-fg'],
@@ -51,7 +52,7 @@ export default function StyleGuidePage() {
       <List mediaList className="ck-recipes">
         {demoRecipes.slice(1, 4).map((r) => (
           <ListItem key={r.id} title={r.title} text={`${r.minutes} min · Serves ${r.servings}`}>
-            <span slot="media" className="ck-thumb ck-photo" data-tone={r.tone} />
+            <span slot="media" className="ck-thumb ck-photo" data-tone={r.tone} style={photoStyle(r.photo)} />
           </ListItem>
         ))}
       </List>

@@ -17,7 +17,7 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - Never hard-code colors in components. Use `var(--ck-*)` tokens or Framework7 variables. Add new tokens to `cookbook.css` and `DESIGN.md` (both the YAML front matter and the prose) together.
 - Tomato for **text** is `--ck-accent-ink` `#c4421c` (also Framework7's theme color); bright Tomato `--ck-accent` is for fills only. Muted text is `#6e6e73`. These were chosen to pass WCAG AA contrast.
 - **Icons: Lucide only** (`lucide-react`, the same library as the user's other apps). Use the shared props in `src/components/ui/icons.ts` (`navIcon`, `tabIcon`, `inlineIcon`). Don't add another icon set. Framework7's built-in glyphs (back chevron, list chevrons, checkmarks, search magnifier) stay as they are.
-- The repo is public: never commit the user's personal or scraped recipe photos. `src/theme/placeholder-photos.css` is temporary until real photos exist.
+- The repo is public. The user explicitly approved committing the sample photos in `public/photos/` (cropped from their Prepear recordings; mostly from recipe websites). Don't add more third-party photos without asking. Real photos will live in Netlify Blobs (Phase 1). `src/theme/placeholder-photos.css` covers recipes without a photo.
 
 ## Impeccable (design quality)
 - Installed for Claude Code at `.claude/skills/impeccable` (v4.9.1, copied from github.com/pbakaus/impeccable because impeccable.style is blocked in cloud sessions). Its design hook in `.claude/settings.json` checks UI files after every edit and does a deeper pass at the end of a turn.

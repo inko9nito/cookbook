@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Page, Navbar, NavLeft, NavTitle, NavTitleLarge, NavRight, Link, Searchbar,
+  Page, Navbar, NavTitle, NavRight, Link, Searchbar,
   List, ListItem, Block, BlockTitle, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton,
 } from 'framework7-react';
 import { Settings, ArrowUpDown, Plus } from 'lucide-react';
@@ -32,12 +32,7 @@ export default function RecipesPage() {
 
   return (
     <Page name="recipes">
-      <Navbar large>
-        <NavLeft>
-          <Link iconOnly href="/settings/" aria-label="Settings">
-            <Settings {...navIcon} />
-          </Link>
-        </NavLeft>
+      <Navbar className="ck-navbar-root">
         <NavTitle>Recipes</NavTitle>
         <NavRight>
           <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
@@ -46,8 +41,10 @@ export default function RecipesPage() {
           <Link iconOnly onClick={() => openEditor()} aria-label="New recipe">
             <Plus {...navIcon} />
           </Link>
+          <Link iconOnly href="/settings/" aria-label="Settings">
+            <Settings {...navIcon} />
+          </Link>
         </NavRight>
-        <NavTitleLarge>Recipes</NavTitleLarge>
       </Navbar>
 
       {/* RED: the search bar is part of the page and scrolls with it (wrapped, so Framework7 keeps it in the page content instead of pinning it) */}

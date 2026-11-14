@@ -1,12 +1,9 @@
-import { Page, Navbar, NavTitle, NavTitleLarge, Block } from 'framework7-react';
+import { Page, Navbar, Block } from 'framework7-react';
 
 export default function PlanPage() {
   return (
     <Page name="plan">
-      <Navbar large>
-        <NavTitle>Plan</NavTitle>
-        <NavTitleLarge>Plan</NavTitleLarge>
-      </Navbar>
+      <Navbar className="ck-navbar-root" title="Plan" />
       <Block className="ck-note">Placeholder. The calendar and meal plans are Phase 5.</Block>
     </Page>
   );

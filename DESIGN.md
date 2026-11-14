@@ -18,10 +18,14 @@ colors:
   tag-glass: "rgba(0, 0, 0, 0.45)"
   card-shadow: "rgba(0, 0, 0, 0.08)"
 typography:
-  large-title:
+  screen-title:
     fontFamily: "-apple-system, system-ui, SF Pro Display, sans-serif"
-    fontSize: "30px"
+    fontSize: "24px"
     fontWeight: 700
+  nav-title:
+    fontFamily: "-apple-system, system-ui, SF Pro Text, sans-serif"
+    fontSize: "17px"
+    fontWeight: 600
   section-title:
     fontFamily: "-apple-system, system-ui, SF Pro Display, sans-serif"
     fontSize: "20px"
@@ -144,7 +148,7 @@ Where each component's shape comes from:
 
 | Component | Source | Shape |
 |---|---|---|
-| Background, titles | RED (Xiaohongshu) | Grey page, white content, soft near-black text, no shadows. **Flat bars:** iOS 26 "liquid glass" is turned off: the top bar is solid grey, its buttons are soft grey circles, and the large title is 30px bold |
+| Background, titles | RED (Xiaohongshu) | Grey page, white content, soft near-black text, no shadows. **No iOS 26 elements:** no liquid glass, no floating bars. The top bar is solid grey with the title on the left (24px bold on tab screens, 17px semibold on pushed screens) in the same row as separate 40px soft grey round buttons |
 | Search bar | RED | White pill on the grey page, no outline, leading magnifier. It sits in the page content and scrolls away (not pinned under the top bar) |
 | Filter chips | Starbucks | Full pill, white with a 1px border, 600 weight. Active = filled `--ck-fg` with white text |
 | Featured recipe card | Headspace | Photo card, 24px corners, ~200px tall, dark gradient from the bottom, small dark see-through tag pill, 22px bold white title, soft shadow |
@@ -153,8 +157,9 @@ Where each component's shape comes from:
 | Ingredients | Instacart | Light hairline rows, round check that fills Tomato, bold amount + regular name, muted note |
 | Main button | DoorDash | Full-width pill, 52px tall, 28px corners, 19px bold white label, Tomato fill |
 | Other buttons | Pinterest | Soft grey fill, 16px corners, 46px tall, 600 weight, dark text |
+| Sheet headers | (RED) | Plain bold title on the left, Tomato ink text button ("Done") on the right, no glass bubbles |
 | Form fields | Instacart | White box, 1px `--ck-strong` border, 10px corners, small label set into the top border (Framework7 "outline" inputs). Focus = `--ck-fg` border, error = red border + red helper text |
-| Tab bar | DoorDash | Flat white with a hairline (no glass), Tomato ink active tab, muted inactive, 600-weight labels. Keeps Framework7's floating iOS 26 shape |
+| Tab bar | DoorDash | Docked across the full bottom edge (not floating), 56px plus the safe area, flat white with a hairline on top, no bubble behind the active tab. Four tabs: Recipes, Cookbooks, Plan, Groceries. Tomato ink active, muted inactive, 600-weight labels |
 
 ## Do's and Don'ts
 

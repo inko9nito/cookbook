@@ -36,10 +36,6 @@ html.ios {
   --f7-subnavbar-bg-color: var(--ck-bg);
   --f7-toolbar-bg-color: var(--ck-bg);
 
-  /* titles: RED's compact heading scale (semibold, not the heavy iOS large title) */
-  --f7-navbar-large-title-font-size: 30px;
-  --f7-navbar-large-title-font-weight: 700;
-  --f7-navbar-large-title-letter-spacing: -0.02em;
 
   /* lists */
   --f7-list-strong-bg-color: var(--ck-surface);
@@ -126,10 +122,78 @@ html.ios .navbar-bg::after {
   background-color: var(--ck-bg);
 }
 
-/* ── Navbar buttons: soft grey circles (RED), not white glass ── */
+/* ──────────────────────────────────────────────────────────────────────────
+   Not iOS 26. Framework7 v9's iOS theme draws a floating "liquid glass" tab bar
+   and groups navbar buttons into glass capsules. The agreed design (Mix & match,
+   see DESIGN.md) uses a docked flat tab bar and separate round buttons, so these
+   rules restyle Framework7's own elements: spacing, corners and colors only.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Navbar (RED): title on the left in the same row as separate soft grey round buttons */
 html.ios .navbar {
-  --f7-glass-bg-color: var(--ck-soft);
+  --f7-navbar-title-font-size: 17px;
+  --f7-navbar-title-font-weight: 600;
+}
+html.ios .navbar.ck-navbar-root {
+  --f7-navbar-title-font-size: 24px;
+  --f7-navbar-title-font-weight: 700;
+}
+html.ios .navbar .left,
+html.ios .navbar .right {
+  --f7-glass-bg-color: transparent;
   --f7-glass-shadow: none;
+  gap: 8px;
+}
+html.ios .navbar .left .link,
+html.ios .navbar .right .link {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  background-color: var(--ck-soft);
+  color: var(--ck-fg);
+}
+html.ios .navbar .link.icon-only,
+html.ios .navbar .link.back {
+  width: 40px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* Tab bar (DoorDash): docked full width, flat white, hairline on top, no active bubble */
+html.ios {
+  --f7-tabbar-icons-height: 56px;
+  --f7-tabbar-link-highlight-bg-color: transparent;
+  --f7-tabbar-link-highlight-active-bg-color: transparent;
+}
+html.ios .toolbar.tabbar::before,
+html.ios .toolbar.tabbar::after {
+  display: none;
+}
+html.ios .toolbar.tabbar .toolbar-inner {
+  padding: 0 0 var(--f7-safe-area-bottom);
+  background-color: var(--ck-surface);
+  border-top: 1px solid var(--ck-line);
+}
+/* Sheet header (ingredient sheet, paste sheet): plain bold title, Tomato text button, no glass bubbles */
+html.ios .sheet-modal .toolbar .left,
+html.ios .sheet-modal .toolbar .right {
+  --f7-glass-bg-color: transparent;
+  --f7-glass-shadow: none;
+}
+html.ios .sheet-modal .toolbar::before,
+html.ios .sheet-modal .toolbar::after {
+  display: none;
+}
+html.ios .sheet-modal .toolbar .link {
+  color: var(--ck-accent-ink);
+  font-weight: 600;
+}
+html.ios .toolbar.tabbar .toolbar-pane {
+  width: 100%;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
 }
 
 /* ── Search bar in the page: a plain white pill, no outline (RED) ── */

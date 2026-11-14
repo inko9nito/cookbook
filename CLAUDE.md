@@ -7,7 +7,8 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - Use Framework7 components for every sheet, popup, drawer, page transition, swipe gesture, action sheet, picker, stepper, sortable list, swipeout, toast, searchbar, and tab bar.
 - Use the **Framework7 router** (not React Router) so iOS push transitions and swipe-back work.
 - Do **not** write custom CSS or JS for animations, transforms, gestures, or z-index. Do not wrap `Page` content in custom scroll containers.
-- Custom styling is limited to colors, spacing, and typography, preferably through Framework7 CSS variables.
+- Custom styling is limited to colors, spacing, corners and typography, preferably through Framework7 CSS variables.
+- **No iOS 26 look.** The user rejected Framework7 v9's liquid glass, floating tab bar and capsule nav buttons. The "Not iOS 26" block in `src/theme/cookbook.css` restyles them to the agreed design (flat docked tab bar, left titles, separate round buttons). Keep new screens consistent with it.
 - If Framework7 lacks something, **stop and ask the user** before building a custom version.
 - Check the Framework7 v9 docs for a component's props before using it. Don't guess.
 

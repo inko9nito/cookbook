@@ -14,6 +14,11 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - **Approved exception (Nov 2026):** photo cropping uses **Cropper.js 1.x** (`src/components/PhotoCropper.tsx`), because Framework7 has no cropper. It runs inside a Framework7 Popup, with a fixed 4:3 frame (pinch to zoom, drag to move). Swiping through photos and full-screen zoom stay Framework7 (Swiper, Photo Browser).
 - Check the Framework7 v9 docs for a component's props before using it. Don't guess.
 
+## Workflow: preview before merging
+- Every change goes to the user as a **pull request with a Netlify deploy preview**: push to the working branch, open a PR into `main` if none is open (or keep updating the open one), and give the user the preview link `https://deploy-preview-<PR number>--cookbk.netlify.app` each time it updates.
+- **Merge only when the user asks.** They look at the preview on the phone first.
+- Preview links are public, and a preview has its own copy of the production database (real recipes). Previews share the photo store with production.
+
 ## Design: the Cookbook design system
 - Spec: `DESIGN.md`. Tokens and Framework7 mapping: `src/theme/cookbook.css`. Visual check: in-app Settings → Style Guide.
 - The user picked each component's shape from a different design system (RED, Starbucks, Headspace, Pinterest, Instacart, DoorDash; recipe cards from Prepear itself) and unified all colors: Cool grey neutrals, **Tomato `#e4572e`** accent, iPhone system font. Light mode only for now.

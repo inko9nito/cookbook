@@ -609,6 +609,12 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 .list.ck-edit-list li .item-link { margin-right: var(--f7-sortable-handler-width); }
 .list.ck-edit-list li.swipeout-opened .sortable-handler,
 .list.ck-edit-list li.swipeout-active .sortable-handler { opacity: 0; pointer-events: none; }
+/* the row being held or dragged (Framework7 marks it .sorting as soon as the long press registers): a pale Tomato
+   fill and rounded corners, so it's clear which row moves */
+.list.ck-edit-list li.sorting,
+.list.ck-edit-list li.ck-group-row.sorting { background-color: var(--ck-accent-tint); border-radius: 16px; }
+/* the long press also leaves the row's pressed shade on; drop it so the tint reads clean */
+.list.ck-edit-list li.sorting .item-link.active-state { background-color: transparent; }
 /* ↑ ↓ on group rows: move the whole group past its neighbour */
 .ck-group-move { display: flex; gap: 6px; align-self: center; }
 /* group row: a small "Group" kicker over the name, both in the title so ↑ ↓ sit beside them */

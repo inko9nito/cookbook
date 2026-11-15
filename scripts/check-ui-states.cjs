@@ -477,6 +477,26 @@ async function swipeLeft(ctx, page, locator) {
     const side = await page.evaluate(() => { const li = document.querySelector('.page-current .ck-edit-list li:not(.ck-group-row)'); return li.querySelector('.sortable-handler').getBoundingClientRect().left - li.getBoundingClientRect().left > li.getBoundingClientRect().width / 2; });
     if (!side) throw new Error('drag handles are on the left');
   });
+  // a long press on a row picks it up: it turns pale Tomato (no grey pressed shade) while held and dragged
+  let holdCdp;
+  await step('11d-row-held', async () => {
+    const li = page.locator('.page-current .ck-edit-list li:not(.ck-group-row)').nth(2);
+    await li.scrollIntoViewIfNeeded();
+    const box = await li.boundingBox();
+    const before = await li.evaluate((e) => getComputedStyle(e).backgroundColor);
+    holdCdp = await ctx.newCDPSession(page);
+    await holdCdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + 120, y: box.y + box.height / 2 }] });
+    await page.waitForTimeout(900);
+    const held = await li.evaluate((e) => ({ sorting: e.classList.contains('sorting'), bg: getComputedStyle(e).backgroundColor, tint: getComputedStyle(e).getPropertyValue('--ck-accent-tint'), link: getComputedStyle(e.querySelector('.item-link')).backgroundColor }));
+    if (!held.sorting) throw new Error('long press did not pick the row up');
+    if (held.bg === before) throw new Error('held row looks the same as the others');
+    if (held.link !== 'rgba(0, 0, 0, 0)') throw new Error(`held row keeps the pressed shade (${held.link})`);
+  });
+  if (holdCdp) {
+    await holdCdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }).catch(() => {});
+    await holdCdp.detach().catch(() => {});
+    await page.waitForTimeout(500);
+  }
   await step('12-edit-paste', async () => {
     await page.locator('.page-current textarea[placeholder^="Add one ingredient"]').fill('For the topping:\n\n1/2 cup brown sugar\n2 tbsp butter, melted');
     await page.waitForTimeout(300);

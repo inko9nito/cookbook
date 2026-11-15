@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { getUser, handleAuthCallback, logout, oauthLogin, onAuthChange } from '@netlify/identity';
 import { isDemo } from './api';
+import { keepSavedSessionCookies, restoreAuthCookies } from './session';
 
 type Auth = {
   status: 'checking' | 'signedIn' | 'signedOut';
@@ -16,6 +17,9 @@ type Auth = {
 };
 
 const Ctx = createContext<Auth | null>(null);
+
+// iOS drops the sign-in cookies when it closes the home-screen app: put them back before anything checks (session.ts)
+if (!isDemo && typeof document !== 'undefined') restoreAuthCookies();
 
 const demoSignIn = isDemo && typeof location !== 'undefined' && new URLSearchParams(location.search).has('signin');
 
@@ -41,9 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // drop the token from the address so a reload doesn't try to use it again
       if (/(access_token|invite_token|error)=/.test(location.hash)) history.replaceState(null, '', location.pathname);
       const user = await getUser();
+      if (user) keepSavedSessionCookies();
       if (live) setState(user ? { status: 'signedIn', email: user.email } : { status: 'signedOut', problem });
     })();
     const off = onAuthChange((_event, user) => {
+      // the library writes new cookies (that iOS would drop) on sign-in and every token renewal: make them last
+      if (user) keepSavedSessionCookies();
       if (!live) return;
       setState((s) => (user ? { status: 'signedIn', email: user.email } : { status: 'signedOut', problem: s.problem }));
     });

@@ -5,6 +5,7 @@
 import { refreshSession } from '@netlify/identity';
 import { Settings, type Recipe } from '../lib/recipe';
 import { sampleRecipes } from '../demo/data';
+import { restoreAuthCookies } from './session';
 
 export type Backend = {
   listRecipes: () => Promise<Recipe[]>;
@@ -32,7 +33,9 @@ export const isDemo =
 // ── the API ──
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
-  // the sign-in token lasts an hour: renew it first when it's about to run out (a no-op otherwise)
+  // the cookies the API reads may have been dropped by iOS (session.ts); then the sign-in token lasts an hour: renew it
+  // first when it's about to run out (a no-op otherwise)
+  restoreAuthCookies();
   await refreshSession().catch(() => null);
   const send = () => fetch(path, { ...init, credentials: 'same-origin' });
   let res = await send();

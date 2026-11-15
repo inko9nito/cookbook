@@ -147,6 +147,16 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
       return next;
     });
 
+  // ticking a step slides its ingredients and timers up out of the way (Framework7 accordion), unticking slides them back
+  const tickStep = (id: string, input: Element) => {
+    const extra = input.closest('li')?.querySelector<HTMLElement>('.ck-step-extra');
+    if (extra) {
+      if (doneSteps.has(id)) f7.accordion.open(extra);
+      else f7.accordion.close(extra);
+    }
+    toggle(setDoneSteps, id);
+  };
+
   // ── the divider: drag (pointer) or arrow keys to move the split ──
   const saveSplit = (n: number) => {
     try {
@@ -290,35 +300,45 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
                   }
                   const done = doneSteps.has(s.id);
                   const uses = stepIngredients(s.text, recipe.ingredients);
+                  const stepTimerList = stepTimers(s.text);
                   return (
-                    <ListItem key={s.id} checkbox checked={done} onChange={() => toggle(setDoneSteps, s.id)} className={done ? 'ck-done' : ''}>
+                    <ListItem key={s.id} checkbox checked={done} onChange={(e: { target: Element }) => tickStep(s.id, e.target)} className={done ? 'ck-done' : ''}>
                       <div slot="title" className="ck-cook-step">
                         <span className="ck-cook-text">
                           <b className="ck-step-no">{s.n}</b> {s.text}
                         </span>
-                        {!done && uses.length > 0 && (
-                          <span className="ck-cook-uses">{uses.map((i) => `${amountText(i, factor)} ${i.name}`.trim()).join(' · ')}</span>
+                        {(uses.length > 0 || stepTimerList.length > 0) && (
+                          // a Framework7 accordion item, so ticking the step slides this up (Framework7's own collapse) instead of
+                          // it vanishing. The class string never changes, so React leaves the open/closed state to Framework7.
+                          <div className="accordion-item accordion-item-opened ck-step-extra">
+                            <div className="accordion-item-content">
+                              <div className="ck-step-extra-inner">
+                                {uses.length > 0 && (
+                                  <span className="ck-cook-uses">{uses.map((i) => `${amountText(i, factor)} ${i.name}`.trim()).join(' · ')}</span>
+                                )}
+                                {stepTimerList.map((t) => {
+                                  const running = timers.find((x) => x.step === s.n && x.label === t.label);
+                                  return (
+                                    <Button
+                                      key={t.label}
+                                      className={`ck-soft ck-timer-button ${running ? 'ck-timer-running' : ''}`}
+                                      onClick={(e: { preventDefault: () => void; stopPropagation: () => void }) => {
+                                        // a tap on the timer must not tick the step
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (running) setTimers((cur) => cur.filter((x) => x.id !== running.id));
+                                        else startTimer(s.n, t.label, t.seconds);
+                                      }}
+                                    >
+                                      <TimerIcon {...inlineIcon} />
+                                      {running ? `${clock((running.endsAt - now) / 1000)} left · Stop` : `${t.label} timer`}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
                         )}
-                        {!done &&
-                          stepTimers(s.text).map((t) => {
-                            const running = timers.find((x) => x.step === s.n && x.label === t.label);
-                            return (
-                              <Button
-                                key={t.label}
-                                className={`ck-soft ck-timer-button ${running ? 'ck-timer-running' : ''}`}
-                                onClick={(e: { preventDefault: () => void; stopPropagation: () => void }) => {
-                                  // a tap on the timer must not tick the step
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  if (running) setTimers((cur) => cur.filter((x) => x.id !== running.id));
-                                  else startTimer(s.n, t.label, t.seconds);
-                                }}
-                              >
-                                <TimerIcon {...inlineIcon} />
-                                {running ? `${clock((running.endsAt - now) / 1000)} left · Stop` : `${t.label} timer`}
-                              </Button>
-                            );
-                          })}
                       </div>
                     </ListItem>
                   );

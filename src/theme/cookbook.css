@@ -455,7 +455,10 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 /* the checkbox (a direct child of the row, no item-media) centred on the first 26px line of step text: row padding + (26 - 22) / 2 */
 .list.ck-cook-steps .item-content > .icon-checkbox { align-self: flex-start; margin-top: calc(var(--f7-list-item-padding-vertical) + 2px); }
 .ck-cook-step-group { padding: 18px 16px 2px; list-style: none; }
-.ck-cook-step { display: grid; gap: 8px; justify-items: start; white-space: normal; }
+.ck-cook-step { display: grid; justify-items: start; white-space: normal; }
+/* a step's ingredients and timers: a Framework7 accordion item that collapses when the step is ticked */
+.ck-step-extra { justify-self: stretch; }
+.ck-step-extra-inner { display: grid; gap: 8px; justify-items: start; padding-top: 8px; }
 .ck-cook-text { font-size: 18px; line-height: 1.45; }
 .ck-cook-text .ck-step-no { font-size: 18px; margin-right: 4px; }
 .ck-cook-uses { font-size: 14px; line-height: 1.4; color: var(--ck-fg2); }

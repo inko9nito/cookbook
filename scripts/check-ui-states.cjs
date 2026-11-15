@@ -302,8 +302,17 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator('.ck-cook .ck-pane-ingredients li.ck-done').count())) throw new Error('ticked ingredient is not crossed out');
   });
   await step('16c-cook-step-ticked', async () => {
-    await page.locator('.ck-cook .ck-pane-steps li.ck-done, .ck-cook .ck-pane-steps li:has(label)').first().locator('label').tap();
-    await page.waitForTimeout(300);
+    const li = page.locator('.ck-cook .ck-pane-steps li:has(label)').first();
+    const extra = li.locator('.ck-step-extra .accordion-item-content');
+    const h0 = await extra.evaluate((e) => e.getBoundingClientRect().height);
+    await li.locator('label').tap();
+    // its ingredients and timers slide up (Framework7 accordion), not vanish in one frame
+    await page.waitForTimeout(80);
+    const mid = await extra.evaluate((e) => e.getBoundingClientRect().height);
+    await page.waitForTimeout(500);
+    const end = await extra.evaluate((e) => e.getBoundingClientRect().height);
+    if (!(mid > 0 && mid < h0)) throw new Error(`step extras didn't slide (height ${Math.round(h0)} → ${Math.round(mid)} after 80ms)`);
+    if (end !== 0) throw new Error(`step extras still ${Math.round(end)}px tall after ticking`);
   });
   await step('16d-cook-timer-running', async () => {
     const before = await page.locator('.ck-cook .ck-pane-steps li.ck-done').count();

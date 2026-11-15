@@ -18,7 +18,7 @@ type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: 
 /**
  * Recipe page (Airbnb listing layout), reading like a plain recipe: photo, title, info, ingredients,
  * directions, notes. App controls stay out of the content: back and ••• (edit, cookbook, plan, groceries,
- * share, duplicate, delete) on top; the footer holds the servings/scale button and Start cooking.
+ * share, duplicate, delete) on top; the servings button next to Ingredients opens Adjust amounts; the footer holds Start cooking.
  * The tab bar is hidden here.
  */
 export default function RecipePage({ f7route, f7router }: Props) {
@@ -45,7 +45,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
 
   return (
     <Page name="recipe" className="ck-recipe-page" onPageBeforeIn={hideTabbar}>
-      {/* App controls stay in the bars: back and ••• on top, scaling and Start cooking in the footer */}
+      {/* App controls stay out of the content: back and ••• on top, Start cooking in the footer */}
       <Navbar title={recipe.title} backLink transparent>
         <NavRight>
           <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
@@ -55,11 +55,6 @@ export default function RecipePage({ f7route, f7router }: Props) {
       </Navbar>
 
       <Toolbar bottom className="ck-cta">
-        <Link className="ck-scale-button" onClick={() => setScaleOpen(true)} aria-label="Adjust amounts">
-          <Scale {...inlineIcon} />
-          <span>{servingsLabel}</span>
-          <ChevronDown {...inlineIcon} />
-        </Link>
         <Button fill large className="ck-cta-button" onClick={() => soon('Cook mode')}>
           Start cooking
         </Button>
@@ -94,11 +89,12 @@ export default function RecipePage({ f7route, f7router }: Props) {
 
         <div className="ck-sec">
           <h2>Ingredients</h2>
-          {scaled ? (
-            <Link onClick={() => setScaleOpen(true)}>×{friendly(factor)} · {servingsLabel}</Link>
-          ) : (
-            <span className="ck-note">{servingsLabel}</span>
-          )}
+          {/* the one place servings show: tap to adjust amounts */}
+          <Link className="ck-scale-button" onClick={() => setScaleOpen(true)} aria-label="Adjust amounts">
+            <Scale {...inlineIcon} />
+            <span>{scaled ? `×${friendly(factor)} · ${servingsLabel}` : servingsLabel}</span>
+            <ChevronDown {...inlineIcon} />
+          </Link>
         </div>
       </div>
 

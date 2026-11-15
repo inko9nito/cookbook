@@ -361,7 +361,7 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
   border-radius: 0;
   box-shadow: inset 0 -2px 0 var(--ck-fg);
 }
-.ck-sec { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ck-sec { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .ck-sec h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 .ck-sec .link { font-size: 14px; font-weight: 600; }
 .list.ck-plain-list {
@@ -392,15 +392,16 @@ html.ios .toolbar.ck-cta .toolbar-inner {
   background-color: var(--ck-surface);
   border-top: 1px solid var(--ck-line);
 }
-/* footer: servings / adjust-amounts button (opens the scale sheet), then Start cooking */
+/* servings pill next to "Ingredients" (opens Adjust amounts); the footer is just Start cooking, full width */
+.button.ck-cta-button { flex: 1; }
+.ck-sec .link.ck-scale-button { font-size: 14px; }
 .link.ck-scale-button {
-  height: 44px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 12px;
   gap: 6px;
   border-radius: 9999px;
   background-color: var(--ck-soft);
   color: var(--ck-fg);
-  font-size: 15px;
   font-weight: 600;
 }
 .button.ck-cta-button {

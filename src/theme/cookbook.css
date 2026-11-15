@@ -10,6 +10,7 @@
   --ck-fg: #262628;
   --ck-fg2: #55555a;
   --ck-muted: #6e6e73;
+  --ck-done-ink: #a5a5aa; /* ticked rows in cook mode: deliberately below 4.5:1 (about 2.3:1), finished items fade back */
   --ck-line: #e6e6e9;
   --ck-strong: #c9c9ce;
   --ck-accent: #e4572e;
@@ -448,7 +449,8 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 /* ticking a row only crosses it out: no grey pressed flash */
 .list.ck-cook-list { --f7-list-item-title-font-size: 17px; --f7-list-item-footer-font-size: 14px; --f7-list-link-pressed-bg-color: transparent; }
 .list.ck-cook-list li.ck-done .item-title,
-.list.ck-cook-list li.ck-done .item-footer { text-decoration: line-through; color: var(--ck-muted); }
+.list.ck-cook-list li.ck-done .item-footer { text-decoration: line-through; color: var(--ck-done-ink); }
+.list.ck-cook-list li.ck-done .ck-step-no { color: inherit; }
 .list.ck-cook-steps { --f7-list-item-padding-vertical: 10px; }
 /* long steps: the checkbox lines up with the first line of text, not the middle of the row */
 .list.ck-cook-steps .item-content { align-items: flex-start; }

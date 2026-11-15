@@ -27,7 +27,8 @@ async function audit(page, name) {
   await page.screenshot({ path: path.join(OUT, `${name}.png`) });
   await page.addScriptTag({ content: AXE });
   const contrast = await page.evaluate(async () => {
-    const r = await window.axe.run(document, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
+    // ticked rows in cook mode fade below AA on purpose (--ck-done-ink, DESIGN.md); everything else must pass
+    const r = await window.axe.run({ include: [document], exclude: [['.ck-cook li.ck-done']] }, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
     return r.violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(' ')}: ${n.any[0]?.message ?? v.help}`));
   });
   const overlaps = await page.evaluate(() => {

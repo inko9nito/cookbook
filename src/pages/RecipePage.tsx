@@ -122,9 +122,10 @@ export default function RecipePage({ f7route, f7router }: Props) {
       {groupIngredients(recipe.ingredients).map((g) => (
         <div key={g.id} className="ck-ing-group">
           {g.label && <div className="ck-group-label">{g.label}</div>}
-          <List dividers className="ck-plain-list">
+          <List dividers className="ck-plain-list ck-ing-list">
             {g.items.map((i) => (
               <ListItem key={i.id}>
+                <span slot="media" className="ck-bullet" aria-hidden="true" />
                 <span slot="title">
                   <span className="ck-amount">{[scaleAmount(i.amount, factor), unitFor(i.unit, scaleAmount(i.amount, factor))].filter(Boolean).join(' ')}</span> {i.name}
                 </span>

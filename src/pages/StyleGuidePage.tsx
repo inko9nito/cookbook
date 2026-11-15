@@ -69,11 +69,13 @@ export default function StyleGuidePage() {
       <BlockFooter>15px rows with hairlines, bold amount, muted note. No checkboxes: checking off comes with Start cooking. Steps use plain bold numbers.</BlockFooter>
       <div className="ck-ing-group">
         <div className="ck-group-label">Marinade</div>
-        <List dividers className="ck-plain-list">
+        <List dividers className="ck-plain-list ck-ing-list">
           <ListItem>
+            <span slot="media" className="ck-bullet" aria-hidden="true" />
             <span slot="title"><span className="ck-amount">1 cup</span> plain whole milk Greek yogurt</span>
           </ListItem>
           <ListItem>
+            <span slot="media" className="ck-bullet" aria-hidden="true" />
             <span slot="title"><span className="ck-amount">½–1 tsp</span> crushed red pepper flakes</span>
             <span slot="footer">reduce if you don’t like heat</span>
           </ListItem>

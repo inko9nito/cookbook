@@ -396,6 +396,10 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
    and the steps grid has a 14px gap plus ~2px line-height slack. */
 /* sentence case as typed, dark and bigger than the rows, so a group stands out without shouting */
 .ck-group-label { font-size: 17px; font-weight: 700; line-height: 22px; letter-spacing: -0.01em; color: var(--ck-fg); }
+/* ingredient rows are bulleted (like Prepear), which indents them under their group label so the groups stand out */
+.list.ck-ing-list { --f7-list-item-media-margin: 12px; }
+.list.ck-ing-list .item-media { align-self: flex-start; }
+.ck-bullet { width: 5px; height: 5px; border-radius: 9999px; background-color: var(--ck-fg2); margin: 8px 0 0 6px; }
 .ck-ing-group { padding-top: 18px; } /* first group: clear of the servings pill, like Directions under its heading */
 .ck-ing-group + .ck-ing-group { padding-top: calc(var(--ck-group-gap) - 10px); }
 .ck-ing-group > .ck-group-label { padding: 0 16px; margin-bottom: calc(var(--ck-group-label-gap) - 10px); }
@@ -435,7 +439,8 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 .ck-split-handle:focus-visible { outline: 2px solid var(--ck-accent-ink); outline-offset: -2px; }
 .ck-split-grip { display: grid; place-items: center; width: 48px; height: 22px; border-radius: 9999px; background-color: var(--ck-accent); color: var(--ck-surface); }
 /* big text so it reads from the counter */
-.list.ck-cook-list { --f7-list-item-title-font-size: 17px; --f7-list-item-footer-font-size: 14px; }
+/* ticking a row only crosses it out: no grey pressed flash */
+.list.ck-cook-list { --f7-list-item-title-font-size: 17px; --f7-list-item-footer-font-size: 14px; --f7-list-link-pressed-bg-color: transparent; }
 .list.ck-cook-list li.ck-done .item-title,
 .list.ck-cook-list li.ck-done .item-footer { text-decoration: line-through; color: var(--ck-muted); }
 .list.ck-cook-steps { --f7-list-item-padding-vertical: 10px; }

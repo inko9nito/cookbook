@@ -262,6 +262,9 @@ async function swipeLeft(ctx, page, locator) {
     // the divider has no solid band over the text under it (only a hairline and a fade, drawn as gradients)
     const bg = await page.locator('.ck-cook .ck-split-handle').evaluate((el) => getComputedStyle(el).backgroundColor);
     if (bg !== 'rgba(0, 0, 0, 0)') throw new Error(`divider has a solid background (${bg})`);
+    // ticking a row only crosses it out: Framework7's grey pressed flash is off
+    const pressed = await page.locator('.ck-cook .ck-cook-list').first().evaluate((el) => getComputedStyle(el).getPropertyValue('--f7-list-link-pressed-bg-color').trim());
+    if (pressed !== 'transparent') throw new Error(`cook rows flash grey when tapped (${pressed})`);
     // nothing sits under the divider's fade at the ends: the Directions heading at the top, the last ingredient at the bottom
     const ends = await page.evaluate(() => {
       const handle = document.querySelector('.ck-cook .ck-split-handle').getBoundingClientRect();

@@ -13,7 +13,9 @@ const f7params = {
   // Titles sit on the left in the same row as the buttons (the agreed design, not iOS 26 centered titles)
   navbar: { iosCenterTitle: false },
   // Long-press to start dragging a row (sortableTapHold) needs tap-hold events.
-  touch: { tapHold: true },
+  // touchHighlight off: it's iOS 26's press effect (the tab bar, round bar buttons and toasts swell and glow under
+  // the finger), which read as a bounce and isn't part of the agreed design.
+  touch: { tapHold: true, touchHighlight: false },
   // React owns the list contents: Framework7 animates, then React updates state.
   swipeout: { removeElements: false },
   sortable: { moveElements: false },

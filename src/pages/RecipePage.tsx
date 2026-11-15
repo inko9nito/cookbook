@@ -170,7 +170,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
         )}
       </div>
 
-      {cooking && <CookMode recipe={recipe} factor={factor} onClose={() => setCooking(false)} />}
+      {cooking && <CookMode recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setCooking(false)} />}
 
       <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setScaleOpen(false)} />
 

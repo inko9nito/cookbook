@@ -4,14 +4,15 @@ import {
   Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Button, List, ListItem,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
-import { X, GripHorizontal, Timer as TimerIcon } from 'lucide-react';
+import { X, GripHorizontal, ChevronDown, Timer as TimerIcon } from 'lucide-react';
 import type { DemoIngredient, DemoRecipe } from '../demo/data';
 import { scaleAmount, unitFor, friendly } from '../demo/quickParse';
 import { stepTimers, stepIngredients, clock } from '../demo/cook';
 import { navIcon, inlineIcon } from './ui/icons';
 import { useStore } from '../demo/store';
+import ScaleSheet from './ScaleSheet';
 
-type Props = { recipe: DemoRecipe; factor: number; onClose: () => void };
+type Props = { recipe: DemoRecipe; factor: number; onFactor: (f: number) => void; onClose: () => void };
 type RunningTimer = { id: number; label: string; step: number; endsAt: number };
 type WakeLock = { release: () => Promise<void> };
 
@@ -42,7 +43,7 @@ const readSplit = () => {
  * - Timers keep running; the soonest counts down in the top bar.
  * - The screen stays on. Closing after ticking every step offers "Mark as made".
  */
-export default function CookMode({ recipe, factor, onClose }: Props) {
+export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
   const { saveRecipe } = useStore();
   const [split, setSplit] = useState(readSplit);
   const [doneIng, setDoneIng] = useState<Set<string>>(new Set());
@@ -52,6 +53,9 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
   const [now, setNow] = useState(Date.now());
   const splitBox = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  // while a finger is on the handle it shows bigger (like Prepear), so you can tell you've got it
+  const [holding, setHolding] = useState(false);
+  const [scaleOpen, setScaleOpen] = useState(false);
   const audio = useRef<AudioContext | null>(null);
   const nextTimerId = useRef(1);
 
@@ -143,6 +147,7 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
   };
   const onHandleDown = (e: PointerEvent<HTMLDivElement>) => {
     dragging.current = true;
+    setHolding(true);
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onHandleMove = (e: PointerEvent<HTMLDivElement>) => {
@@ -155,6 +160,7 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
   const onHandleUp = () => {
     if (!dragging.current) return;
     dragging.current = false;
+    setHolding(false);
     saveSplit(split);
   };
   const onHandleKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -194,6 +200,7 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
 
   const soonest = [...timers].sort((a, b) => a.endsAt - b.endsAt)[0];
   const scaled = Math.abs(factor - 1) > 0.001;
+  const servingsText = scaled ? `×${friendly(factor)} · ${friendly(recipe.servings * factor)} servings` : `${recipe.servings} servings`;
 
   // ingredient rows grouped under their labels
   const ingGroups: { id: string; label?: string; items: DemoIngredient[] }[] = [];
@@ -233,7 +240,11 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
             <div className="ck-pane ck-pane-ingredients" style={{ flexBasis: `${split * 100}%` }}>
               <div className="ck-pane-head">
                 <h2>Ingredients</h2>
-                <span className="ck-note">{scaled ? `×${friendly(factor)} · ${friendly(recipe.servings * factor)} servings` : `${recipe.servings} servings`}</span>
+                {/* same pill as the recipe page: tap to change servings without leaving cook mode */}
+                <Link className="ck-scale-button" onClick={() => setScaleOpen(true)} aria-label={`${servingsText}, adjust amounts`}>
+                  <span>{servingsText}</span>
+                  <ChevronDown {...inlineIcon} />
+                </Link>
               </div>
               {ingGroups.filter((g) => g.items.length).map((g) => (
                 <div key={g.id} className="ck-ing-group">
@@ -307,7 +318,7 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
             {/* the divider: drag to give either half more room. Last in the markup and placed on the split line, so it sits over
                 both halves (their lists are positioned too) without a z-index */}
             <div
-              className="ck-split-handle"
+              className={`ck-split-handle${holding ? ' ck-split-holding' : ''}`}
               style={{ top: `calc(${split * 100}% - var(--ck-split-half))` }}
               role="separator"
               aria-orientation="horizontal"
@@ -329,7 +340,10 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
           </div>
           </div>
         </Page>
+        {/* the Adjust amounts sheet's backdrop, inside the popup so it dims cook mode */}
+        <div className="sheet-backdrop ck-cook-backdrop" />
       </Popup>
+      <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={onFactor} onClose={() => setScaleOpen(false)} backdropEl=".ck-cook-backdrop" />
 
       <Actions opened={timersOpen} onActionsClosed={() => setTimersOpen(false)}>
         <ActionsGroup>

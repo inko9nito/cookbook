@@ -279,6 +279,23 @@ async function swipeLeft(ctx, page, locator) {
     if (ends.lastBottom > ends.fadeTop + 1) throw new Error(`last ingredient ends ${Math.round(ends.lastBottom - ends.fadeTop)}px into the divider's fade when scrolled to the end`);
     if (ends.headTop < ends.fadeBottom - 1) throw new Error(`Directions heading starts ${Math.round(ends.fadeBottom - ends.headTop)}px inside the divider's fade`);
   });
+  await step('16a-cook-servings-sheet', async () => {
+    await page.locator('.ck-cook .ck-scale-button').tap(); await page.waitForTimeout(700);
+    // the sheet and its dimmed backdrop are over cook mode, not behind it
+    const top = await page.evaluate(() => {
+      const r = document.querySelector('.sheet-modal.modal-in').getBoundingClientRect();
+      const onSheet = !!document.elementFromPoint(r.left + 40, r.top + 20).closest('.sheet-modal.modal-in');
+      const above = document.elementFromPoint(40, 120);
+      return { onSheet, dimmed: !!above.closest('.sheet-backdrop.backdrop-in') };
+    });
+    if (!top.onSheet || !top.dimmed) throw new Error(`Adjust amounts isn't on top of cook mode (sheet ${top.onSheet}, backdrop ${top.dimmed})`);
+  });
+  await step('16a2-cook-servings-changed', async () => {
+    await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(300);
+    await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(700);
+    const pill = await page.locator('.ck-cook .ck-scale-button').innerText();
+    if (!/×2/.test(pill)) throw new Error(`cook mode servings pill didn't update (${pill})`);
+  });
   await step('16b-cook-ingredient-ticked', async () => {
     await page.locator('.ck-cook .ck-pane-ingredients li').first().locator('label').tap();
     await page.waitForTimeout(300);
@@ -301,6 +318,9 @@ async function swipeLeft(ctx, page, locator) {
     const box = await page.locator('.ck-cook .ck-split-handle').boundingBox();
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
+    // while held, the grip shows bigger so you can tell you've got it
+    const held = await page.locator('.ck-cook .ck-split-grip').boundingBox();
+    if (held.width < 64) throw new Error(`grip doesn't grow while held (${held.width}px wide)`);
     for (let i = 1; i <= 8; i++) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 15 * i);
     await page.mouse.up();
     await page.waitForTimeout(300);
@@ -397,7 +417,18 @@ async function swipeLeft(ctx, page, locator) {
   await step('13-settings', async () => { await page.locator('.view-main .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700); });
   await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Style Guide' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {
-    await step(`15-tab-${tab.toLowerCase()}`, async () => { await page.locator('.tabbar a', { hasText: tab }).tap(); await page.waitForTimeout(500); });
+    await step(`15-tab-${tab.toLowerCase()}`, async () => {
+      // hold a finger on the tab first: the tab bar must not swell under it (Framework7's iOS 26 touch highlight is off)
+      const box = await page.locator('.tabbar a', { hasText: tab }).boundingBox();
+      const cdp = await ctx.newCDPSession(page);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }] });
+      await page.waitForTimeout(250);
+      const scale = await page.evaluate(() => [...document.querySelectorAll('.tabbar, .tabbar *')].map((e) => e.style.scale).filter(Boolean));
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await cdp.detach();
+      await page.waitForTimeout(500);
+      if (scale.length) throw new Error(`tab bar swells under the finger (scale ${scale.join(', ')})`);
+    });
   }
 
   if (errors.length) {

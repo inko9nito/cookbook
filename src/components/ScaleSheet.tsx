@@ -9,6 +9,8 @@ type Props = {
   factor: number;
   onFactor: (f: number) => void;
   onClose: () => void;
+  /** where the dimmed backdrop goes; cook mode passes one inside its popup, which would otherwise cover the shared one */
+  backdropEl?: string;
 };
 
 type Mode = 'servings' | 'have';
@@ -24,7 +26,7 @@ const amountText = (i: DemoIngredient, factor: number) => {
  * - What I have (issue #3): tap an ingredient, type how much of it you have, and everything scales to match.
  *   The amount is asked in an iOS dialog right where you tapped, so there is nothing to find further down the sheet.
  */
-export default function ScaleSheet({ opened, recipe, factor, onFactor, onClose }: Props) {
+export default function ScaleSheet({ opened, recipe, factor, onFactor, onClose, backdropEl }: Props) {
   const [mode, setMode] = useState<Mode>('servings');
   const [matched, setMatched] = useState<{ id: string; have: string } | null>(null);
   const scalable = recipe.ingredients.filter((i) => i.kind !== 'header' && amountValue(i.amount) !== null);
@@ -61,7 +63,7 @@ export default function ScaleSheet({ opened, recipe, factor, onFactor, onClose }
   };
 
   return (
-    <Sheet opened={opened} onSheetClosed={onClose} swipeToClose backdrop closeByBackdropClick style={{ height: 'auto', maxHeight: '85vh' }} className="ck-edit-sheet ck-scale-sheet">
+    <Sheet opened={opened} onSheetClosed={onClose} swipeToClose backdrop backdropEl={backdropEl} closeByBackdropClick style={{ height: 'auto', maxHeight: '85vh' }} className="ck-edit-sheet ck-scale-sheet">
       <Toolbar>
         <div className="left">
           <b>Adjust amounts</b>

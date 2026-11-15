@@ -425,7 +425,7 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 /* room for the handle's fade: the last ingredient and the Directions heading can scroll clear of it */
 .ck-pane-ingredients::after,
 .ck-pane-steps::before { content: ''; display: block; height: var(--ck-split-half); }
-.ck-pane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 16px 16px 2px; }
+.ck-pane-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 16px 2px; }
 .ck-pane-head h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 .ck-split-handle {
   /* laid over the split line (top is set inline): a 2px Tomato line, with the page colour fading in towards it from both
@@ -436,6 +436,9 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
     linear-gradient(transparent, var(--ck-bg) 40%, var(--ck-bg) 60%, transparent);
   touch-action: none; cursor: row-resize;
 }
+/* held: a thicker line and a bigger grip (an instant size change, no animation) */
+.ck-split-handle.ck-split-holding { background-size: 100% 4px, auto; }
+.ck-split-holding .ck-split-grip { width: 72px; height: 32px; }
 .ck-split-handle:focus-visible { outline: 2px solid var(--ck-accent-ink); outline-offset: -2px; }
 .ck-split-grip { display: grid; place-items: center; width: 48px; height: 22px; border-radius: 9999px; background-color: var(--ck-accent); color: var(--ck-surface); }
 /* big text so it reads from the counter */

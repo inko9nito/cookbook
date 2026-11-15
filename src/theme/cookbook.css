@@ -827,3 +827,10 @@ html.ios .popover.ck-convert .popover-inner { transition-duration: 0s; }
   content: ''; position: absolute; inset: 0; margin: auto; width: 8px; height: 8px; border-radius: 50%;
   background-color: var(--ck-surface);
 }
+
+/* Unit choices in a bottom sheet (issue #6): the same radio rows as the popover, on the sheet's grey, in a white
+   inset card like the other sheets' lists */
+.sheet-modal.ck-unit-sheet .list.ck-unit-sheet-list { margin: 4px 16px calc(16px + var(--f7-safe-area-bottom)); }
+.sheet-modal.ck-unit-sheet .list.ck-unit-sheet-list ul { border-radius: 16px; overflow: hidden; background-color: var(--ck-surface); }
+/* the sheet's rows start below its title bar (Framework7 does this for a .page-content, which this sheet doesn't use) */
+.sheet-modal.ck-unit-sheet .ck-unit-sheet-body { padding-top: var(--f7-toolbar-height); }

@@ -3,9 +3,16 @@ import { showTabbar } from '../components/ui/tabbar';
 import { useAuth } from '../data/auth';
 import { clearCache } from '../data/store';
 import { isDemo } from '../data/api';
+import { useState } from 'react';
+import { readUnitPickerMode, saveUnitPickerMode, type UnitPickerMode } from '../components/ui/unitPickerMode';
 
 export default function SettingsPage() {
   const { email, signOut } = useAuth();
+  const [unitPicker, setUnitPicker] = useState<UnitPickerMode>(readUnitPickerMode);
+  const pickUnitPicker = (mode: UnitPickerMode) => {
+    saveUnitPickerMode(mode);
+    setUnitPicker(mode);
+  };
   const confirmSignOut = () =>
     f7.dialog
       .create({
@@ -41,6 +48,13 @@ export default function SettingsPage() {
           </>
         )}
       </List>
+      {/* TEMPORARY (issue #6): compare the two ways of showing unit choices on the phone, then remove this */}
+      <BlockTitle>Try out: unit conversions</BlockTitle>
+      <List strongIos insetIos dividersIos>
+        <ListItem radio name="ck-unit-picker" checked={unitPicker === 'sheet'} onChange={() => pickUnitPicker('sheet')} title="Bottom sheet" />
+        <ListItem radio name="ck-unit-picker" checked={unitPicker === 'popover'} onChange={() => pickUnitPicker('popover')} title="Popover beside the amount" />
+      </List>
+      <BlockFooter>Where the unit choices open when you tap an underlined amount. Temporary, while you choose.</BlockFooter>
       <List strongIos insetIos dividersIos>
         <ListItem link="/settings/style-guide/" title="Style Guide" />
       </List>

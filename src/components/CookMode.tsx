@@ -12,7 +12,8 @@ import { stepTimers, stepIngredients, clock } from '../lib/cook';
 import { navIcon, inlineIcon } from './ui/icons';
 import { useStore } from '../data/store';
 import ScaleSheet from './ScaleSheet';
-import UnitPopover, { ConvertibleAmount, type ConvertTarget } from './UnitPopover';
+import { ConvertibleAmount, type ConvertTarget } from './UnitPopover';
+import UnitPicker from './UnitPicker';
 
 type Props = {
   recipe: Recipe;
@@ -386,7 +387,7 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
             </div>
           </div>
           </div>
-          <UnitPopover slot="fixed" containerEl=".popup.ck-cook" target={converting} factor={factor} picks={picks} onPick={onPick} onClosed={() => setConverting(null)} />
+          <UnitPicker slot="fixed" containerEl=".popup.ck-cook" target={converting} factor={factor} picks={picks} onPick={onPick} onClosed={() => setConverting(null)} />
         </Page>
         {/* the Adjust amounts sheet's backdrop, inside the popup so it dims cook mode */}
         <div className="sheet-backdrop ck-cook-backdrop" />

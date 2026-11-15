@@ -11,7 +11,8 @@ import { useStore } from '../data/store';
 import { titleCase, type Ingredient } from '../lib/recipe';
 import { friendly } from '../lib/ingredients';
 import { footerText, type UnitPicks } from '../components/ui/ingredientLine';
-import UnitPopover, { ConvertibleAmount, withPick, type ConvertTarget } from '../components/UnitPopover';
+import { ConvertibleAmount, withPick, type ConvertTarget } from '../components/UnitPopover';
+import UnitPicker from '../components/UnitPicker';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
@@ -178,7 +179,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
 
       {cooking && <CookMode recipe={recipe} factor={factor} picks={picks} onPick={pickUnit} onFactor={setFactor} onClose={() => setCooking(false)} />}
 
-      <UnitPopover slot="fixed" target={converting} factor={factor} picks={picks} onPick={pickUnit} onClosed={() => setConverting(null)} />
+      <UnitPicker slot="fixed" target={converting} factor={factor} picks={picks} onPick={pickUnit} onClosed={() => setConverting(null)} />
       <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setScaleOpen(false)} />
 
       <Actions opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>

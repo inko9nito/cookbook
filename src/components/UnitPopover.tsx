@@ -111,8 +111,6 @@ export default function UnitPopover({ target, factor, picks, onPick, onClosed, c
   };
 
   const ing = target?.ing;
-  const scaled = ing ? scaleAmount(ing.amount, factor) : '';
-  const simpler = ing ? neaterAmount(scaled, ing.unit)?.id : undefined;
 
   return (
     <Popover
@@ -133,29 +131,7 @@ export default function UnitPopover({ target, factor, picks, onPick, onClosed, c
           <div className="ck-convert-head">
             <span className="ck-convert-name">{titleCase(ing.name)}</span>
           </div>
-          <List className="ck-convert-list" dividersIos>
-            <ListItem
-              radio
-              radioIcon="start"
-              name="ck-unit"
-              checked={!picks[ing.id]}
-              onChange={() => pick(null)}
-              title={originalAmount(ing, factor)}
-              after="Original"
-            />
-            {conversions(scaled, ing.unit).map((c) => (
-              <ListItem
-                key={c.id}
-                radio
-                radioIcon="start"
-                name="ck-unit"
-                checked={picks[ing.id] === c.id}
-                onChange={() => pick(c.id)}
-                title={formatConverted(c)}
-                after={simpler === c.id ? 'Simpler' : undefined}
-              />
-            ))}
-          </List>
+          <UnitOptions ing={ing} factor={factor} picks={picks} onPick={pick} />
         </>
       )}
     </Popover>
@@ -167,3 +143,41 @@ export const withPick = (picks: UnitPicks, id: string, unit: string | null): Uni
   const { [id]: _old, ...rest } = picks;
   return unit ? { ...rest, [id]: unit } : rest;
 };
+
+/**
+ * The choices for one ingredient, as radio rows: the recipe's own amount ("Original"), then the same amount in the
+ * other units, the neatest marked "Simpler". Used by the popover and the bottom sheet.
+ */
+export function UnitOptions({
+  ing,
+  factor,
+  picks,
+  onPick,
+  className = '',
+}: {
+  ing: Ingredient;
+  factor: number;
+  picks: UnitPicks;
+  onPick: (unit: string | null) => void;
+  className?: string;
+}) {
+  const scaled = scaleAmount(ing.amount, factor);
+  const simpler = neaterAmount(scaled, ing.unit)?.id;
+  return (
+    <List className={`ck-convert-list ${className}`} dividersIos>
+      <ListItem radio radioIcon="start" name="ck-unit" checked={!picks[ing.id]} onChange={() => onPick(null)} title={originalAmount(ing, factor)} after="Original" />
+      {conversions(scaled, ing.unit).map((c) => (
+        <ListItem
+          key={c.id}
+          radio
+          radioIcon="start"
+          name="ck-unit"
+          checked={picks[ing.id] === c.id}
+          onChange={() => onPick(c.id)}
+          title={formatConverted(c)}
+          after={simpler === c.id ? 'Simpler' : undefined}
+        />
+      ))}
+    </List>
+  );
+}

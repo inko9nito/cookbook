@@ -677,6 +677,8 @@ async function swipeLeft(ctx, page, locator) {
   // popover pointing at it, with a distinct header and radio options; picking one replaces the amount, and the
   // Original option puts it back
   await step('22-unit-underline', async () => {
+    // TEMPORARY (issue #6): these states check the popover; the bottom sheet (the default) is checked in 24-*
+    await page.evaluate(() => localStorage.setItem('cookbook.unitPicker', 'popover'));
     await page.locator('.page-current .ck-scale-button').tap(); await page.waitForTimeout(700);
     await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(300);
     await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).first().tap(); await page.waitForTimeout(700);
@@ -773,6 +775,46 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.ck-cook .navbar a').first().tap(); await page.waitForTimeout(1200);
     const recipe = await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').textContent();
     if (recipe !== '⅛ cup') throw new Error(`the recipe page reads "${recipe}" after picking ⅛ cup in cook mode`);
+  });
+
+  // issue #6, the bottom sheet (the default): out from under the thumb, the page not dimmed, the tapped ingredient
+  // kept in view above it; picking closes it and replaces the amount; in cook mode it opens over cook mode
+  await step('24-unit-sheet', async () => {
+    await page.evaluate(() => localStorage.removeItem('cookbook.unitPicker'));
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 700)); await page.waitForTimeout(400);
+    await page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);
+    const t = await page.evaluate(() => {
+      const sh = document.querySelector('.sheet-modal.modal-in.ck-unit-sheet'); const r = sh?.getBoundingClientRect();
+      const row = document.querySelector('.page-current li.ck-ing-on')?.getBoundingClientRect();
+      return { sheet: !!sh, title: sh?.querySelector('.toolbar b')?.textContent, rowAbove: row && r && row.bottom <= r.top, dimmed: !!document.querySelector('.sheet-backdrop.backdrop-in'), popover: !!document.querySelector('.popover.modal-in'), radios: sh?.querySelectorAll('input[type=radio]').length };
+    });
+    if (!t.sheet || t.popover) throw new Error('tapping an amount did not open the bottom sheet');
+    if (t.title !== 'Kosher salt') throw new Error(`sheet title reads "${t.title}"`);
+    if (!t.rowAbove) throw new Error('the tapped ingredient is hidden behind the sheet');
+    if (t.dimmed) throw new Error('the page is dimmed behind the sheet');
+    if (t.radios !== 3) throw new Error(`the sheet has ${t.radios} options, expected 3 (1½ tsp, ½ tbsp, 7.4 ml)`);
+  });
+  await step('24b-unit-sheet-picked', async () => {
+    await page.locator('.sheet-modal.modal-in li', { hasText: 'tbsp' }).tap(); await page.waitForTimeout(800);
+    if (await page.locator('.sheet-modal.modal-in.ck-unit-sheet').count()) throw new Error('the sheet stayed open after picking');
+    const text = await page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible').textContent();
+    if (text !== '½ tbsp') throw new Error(`after picking ½ tbsp the amount reads "${text}"`);
+  });
+  await step('24c-cook-unit-sheet', async () => {
+    await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    await page.locator('.ck-cook .ck-cook-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);
+    const t = await page.evaluate(() => {
+      const sh = document.querySelector('.sheet-modal.modal-in.ck-unit-sheet'); const r = sh?.getBoundingClientRect();
+      const hit = sh && document.elementFromPoint(r.left + r.width / 2, r.top + 30);
+      const li = [...document.querySelectorAll('.ck-cook .ck-cook-list li')].find((l) => l.textContent.includes('lemon juice'));
+      return { onTop: !!hit?.closest('.sheet-modal'), ticked: li.querySelector('input').checked };
+    });
+    if (!t.onTop) throw new Error('the unit sheet is not shown over cook mode');
+    if (t.ticked) throw new Error('tapping the amount ticked the ingredient');
+    await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(700);
+    await page.locator('.ck-cook .navbar a').first().tap(); await page.waitForTimeout(1000);
   });
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)

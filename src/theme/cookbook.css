@@ -809,3 +809,15 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 /* the recipe list it opens (a popup): search, then None and the recipes as two separate cards */
 .ck-link-search { --f7-searchbar-in-page-content-margin: 8px 16px 0; }
 .popup.ck-link-popup .list.ck-convert-list { margin: 16px var(--f7-list-inset-side-margin); }
+/* the ingredient sheet lives in the page's view (so the recipe list can stack over both): the view's room for the tab
+   bar doesn't apply inside it */
+.sheet-modal.ck-edit-sheet { --f7-page-toolbar-bottom-offset: 0px; }
+
+/* Cook mode with a linked recipe open (issue #11): a tab for each recipe in cook mode, under the title (a Framework7
+   subnavbar), scrolling sideways when they don't fit. The one shown is the dark chip, like a picked filter */
+/* not iOS 26: no glass capsule around the row, which runs the full width on the bar colour */
+html.ios .subnavbar.ck-cook-tabs { --f7-subnavbar-offset-left: 0px; --f7-subnavbar-offset-right: 0px; border-radius: 0; box-shadow: none; }
+.subnavbar.ck-cook-tabs .subnavbar-inner { padding: 0; }
+.subnavbar.ck-cook-tabs .ck-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; padding: 0 16px; box-sizing: border-box; }
+.subnavbar.ck-cook-tabs .ck-chips::-webkit-scrollbar { display: none; }
+.subnavbar.ck-cook-tabs .chip { flex: none; max-width: 240px; }

@@ -106,26 +106,15 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
   const editingIngredient = draft.ingredients.find((i) => i.id === editingIngredientId) ?? null;
   const updateIngredient = (next: Ingredient) => set({ ingredients: draft.ingredients.map((i) => (i.id === next.id ? withRaw(next) : i)) });
   const removeIngredient = (rid: string) => setDraft((d) => ({ ...d, ingredients: d.ingredients.filter((i) => i.id !== rid) }));
-  // issue #11: the recipes an ingredient can link to (not this one), A–Z. Picking one closes the ingredient sheet
-  // (Framework7 stacks sheets above popups), opens the list, then brings the sheet back for the same ingredient.
+  // issue #11: the recipes an ingredient can link to (not this one), A–Z. "Recipe" in the ingredient sheet opens the
+  // list stacked over the page and the sheet, which stays open behind it
   const others = useMemo(() => recipes.filter((r) => r.id !== draft.id).sort((a, b) => a.title.localeCompare(b.title)), [recipes, draft.id]);
-  const [linkingId, setLinkingId] = useState<string | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
-  const linking = draft.ingredients.find((i) => i.id === linkingId);
-  const startLinking = () => {
-    setLinkingId(editingIngredientId);
-    setEditingIngredientId(null);
-    setLinkOpen(true);
-  };
   const linkRecipe = (recipeId: string | undefined) => {
     const r = others.find((x) => x.id === recipeId);
-    if (linking) updateIngredient({ ...linking, recipeId: r?.id, ...(r && !linking.name.trim() ? { name: r.title.toLowerCase() } : {}) });
+    const i = editingIngredient;
+    if (i) updateIngredient({ ...i, recipeId: r?.id, ...(r && !i.name.trim() ? { name: r.title.toLowerCase() } : {}) });
     setLinkOpen(false);
-  };
-  const doneLinking = () => {
-    setLinkOpen(false); // Cancel or a swipe down closes it without a pick
-    setEditingIngredientId(linkingId);
-    setLinkingId(null);
   };
   const addPastedIngredients = () => {
     const rows: Ingredient[] = pastedLines(ingredientPaste).map((line) => {
@@ -520,7 +509,8 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
       <IngredientSheet
         ingredient={editingIngredient && editingIngredient.kind !== 'header' ? editingIngredient : null}
         linkedTitle={editingIngredient ? linkedRecipe(editingIngredient, recipes)?.title : undefined}
-        onLink={startLinking}
+        onLink={() => setLinkOpen(true)}
+        containerEl=".views > .view.tab-active"
         onChange={updateIngredient}
         onDelete={(rid) => {
           setEditingIngredientId(null);
@@ -528,7 +518,7 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
         }}
         onClose={() => setEditingIngredientId(null)}
       />
-      <RecipeLinkPopup opened={linkOpen} recipes={others} current={linking?.recipeId} onPick={linkRecipe} onClosed={doneLinking} />
+      <RecipeLinkPopup opened={linkOpen} recipes={others} current={editingIngredient?.recipeId} onPick={linkRecipe} onClosed={() => setLinkOpen(false)} />
       <StepSheet
         noun="Step"
         value={editingStep && editingStep.kind !== 'header' ? editingStep : null}

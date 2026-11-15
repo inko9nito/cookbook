@@ -782,36 +782,67 @@ async function swipeLeft(ctx, page, locator) {
     const row = page.locator('.ck-cook.modal-in .ck-pane-ingredients li', { hasText: 'tahini sauce' });
     await row.scrollIntoViewIfNeeded();
     await row.locator('.ck-ing-linked').tap(); await page.waitForTimeout(1200);
+    // the sauce is a card stacked over the kebabs (Framework7 popup push): the kebabs' card peeks out behind it
     const t = await page.evaluate(() => {
       const open = [...document.querySelectorAll('.popup.ck-cook.modal-in')];
-      const top = open[open.length - 1]; const r = top?.getBoundingClientRect();
+      const top = open.find((p) => !p.classList.contains('popup-behind')); const r = top?.getBoundingClientRect();
+      const behind = open.find((p) => p.classList.contains('popup-behind'))?.getBoundingClientRect();
       const hit = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       const li = [...open[0].querySelectorAll('.ck-pane-ingredients li')].find((l) => l.textContent.includes('tahini sauce'));
-      return { count: open.length, title: top?.querySelector('.navbar .title')?.textContent, onTop: !!hit && top.contains(hit), ticked: li.querySelector('input').checked };
+      const tabs = [...(top?.querySelectorAll('.ck-cook-tabs .chip') ?? [])].map((c) => c.textContent);
+      const first = top?.querySelector('.ck-pane-head')?.getBoundingClientRect(); const bar = top?.querySelector('.subnavbar')?.getBoundingClientRect();
+      return { count: open.length, title: top?.querySelector('.navbar .title')?.textContent, onTop: !!hit && top.contains(hit), ticked: li.querySelector('input').checked,
+        peeks: !!behind && behind.top < r.top, tabs, clear: !!first && !!bar && first.top >= bar.bottom };
     });
     if (t.count !== 2) throw new Error(`${t.count} cook modes open, expected the sauce's over the kebabs'`);
-    if (t.title !== 'Tahini Sauce' || !t.onTop) throw new Error(`the cook mode on top is "${t.title}"`);
+    if (t.title !== 'Tahini Sauce' || !t.onTop) throw new Error(`the card on top is "${t.title}"`);
+    if (!t.peeks) throw new Error('the kebabs card does not show behind the sauce');
     if (t.ticked) throw new Error('tapping the linked name ticked the ingredient');
+    if (t.tabs.length !== 2 || !t.tabs[1].includes('Tahini')) throw new Error(`the recipe tabs read ${JSON.stringify(t.tabs)}`);
+    if (!t.clear) throw new Error('the tabs cover the Ingredients heading');
   });
   await step('25d-cook-linked-units', async () => {
-    // the sauce's unit sheet opens inside the sauce's cook mode, not the kebabs' one underneath
-    await page.locator('.ck-cook.modal-in').last().locator('.ck-pane-ingredients li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);
+    // the sauce's unit sheet opens inside the sauce's card, not the kebabs' one underneath
+    const top = page.locator('.popup.ck-cook.modal-in:not(.popup-behind)');
+    await top.locator('.ck-pane-ingredients li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);
     const t = await page.evaluate(() => {
-      const open = [...document.querySelectorAll('.popup.ck-cook.modal-in')];
+      const top = document.querySelector('.popup.ck-cook.modal-in:not(.popup-behind)');
       const sh = document.querySelector('.sheet-modal.modal-in.ck-unit-sheet'); const r = sh?.getBoundingClientRect();
       const hit = sh && document.elementFromPoint(r.left + r.width / 2, r.top + 30);
-      return { inTop: !!sh && open[open.length - 1].contains(sh), onTop: !!hit?.closest('.sheet-modal') };
+      return { inTop: !!sh && top.contains(sh), onTop: !!hit?.closest('.sheet-modal') };
     });
-    if (!t.inTop || !t.onTop) throw new Error('the unit sheet is not shown over the sauce’s cook mode');
+    if (!t.inTop || !t.onTop) throw new Error('the unit sheet is not shown over the sauce’s card');
     await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(700);
-    // closing the sauce comes back to the kebabs' cook mode
-    await page.locator('.ck-cook.modal-in').last().locator('.navbar a').first().tap(); await page.waitForTimeout(1000);
+  });
+  // progress is kept: tick something in the sauce, tap the kebabs card behind to go back, then the sauce's tab
+  await step('25d2-cook-back-to-main', async () => {
+    const top = page.locator('.popup.ck-cook.modal-in:not(.popup-behind)');
+    await top.locator('.ck-pane-ingredients li', { hasText: 'ice water' }).locator('label').tap({ position: { x: 330, y: 12 } }); await page.waitForTimeout(400);
+    await top.locator('.ck-pane-steps li:has(label)').first().locator('label').tap({ position: { x: 330, y: 12 } }); await page.waitForTimeout(600);
+    const box = await page.locator('.popup.ck-cook.popup-behind').boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + 8); await page.waitForTimeout(1200);
+    const titles = await page.locator('.popup.ck-cook.modal-in .navbar .title').allTextContents();
+    if (titles.length !== 1 || !titles[0].includes('Kebabs')) throw new Error(`tapping the card behind shows ${JSON.stringify(titles)}`);
+    if (!(await page.locator('.popup.ck-cook.modal-in .ck-cook-tabs .chip').count())) throw new Error('the kebabs card has no tabs');
+  });
+  await step('25d3-cook-progress-kept', async () => {
+    await page.locator('.popup.ck-cook.modal-in .ck-cook-tabs .chip', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(1200);
+    const top = page.locator('.popup.ck-cook.modal-in:not(.popup-behind)');
+    if ((await top.locator('.navbar .title').textContent()) !== 'Tahini Sauce') throw new Error('the Tahini Sauce tab did not bring the sauce back');
+    const ing = await top.locator('.ck-pane-ingredients li.ck-done').allTextContents();
+    const steps = await top.locator('.ck-pane-steps li.ck-done').count();
+    if (ing.length !== 1 || !ing[0].includes('ice water') || steps !== 1) throw new Error(`reopened sauce has ${ing.length} ingredients and ${steps} steps ticked, expected the ice water and step 1`);
+    const folded = await top.locator('.ck-pane-steps li.ck-done .ck-step-extra').first().evaluate((e) => e.classList.contains('accordion-item-opened')).catch(() => false);
+    if (folded) throw new Error('a step ticked before reopening still shows its ingredients');
+    // X closes the sauce's card: back to the kebabs, which then close too
+    await top.locator('.navbar a').first().tap(); await page.waitForTimeout(1200);
     const titles = await page.locator('.popup.ck-cook.modal-in .navbar .title').allTextContents();
     if (titles.length !== 1 || !titles[0].includes('Kebabs')) throw new Error(`after closing the sauce, cook mode shows ${JSON.stringify(titles)}`);
     await page.locator('.ck-cook.modal-in .navbar a').first().tap(); await page.waitForTimeout(1000);
   });
   // the editor: a linked row reads "Recipe: …" under it; the ingredient sheet's Recipe row opens a searchable list of
-  // recipes (Framework7 smart select) to link one; a pasted line named like a recipe links itself
+  // recipes stacked over the page and the sheet (Framework7 popup push) to link one; a pasted line named like a recipe
+  // links itself
   await step('25e-edit-linked', async () => {
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1200);
@@ -829,6 +860,7 @@ async function swipeLeft(ctx, page, locator) {
       return { open: !!p, onTop: !!hit && p.contains(hit), search: !!p?.querySelector('.searchbar'), self: [...(p?.querySelectorAll('li') ?? [])].some((l) => l.textContent.includes('Kebabs')), sheet: !!document.querySelector('.sheet-modal.modal-in') };
     });
     if (!t.open || !t.onTop) throw new Error('the recipe list is not shown on top');
+    if (!t.sheet) throw new Error('the ingredient sheet closed instead of staying behind the recipe list');
     if (!t.search) throw new Error('the recipe list has no search');
     if (t.self) throw new Error('a recipe can be linked to itself');
   });

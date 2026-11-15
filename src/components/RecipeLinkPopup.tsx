@@ -15,11 +15,12 @@ type Props = {
 /**
  * Issue #11: pick the recipe an ingredient is made from (a sauce, a pie crust). A full-screen Framework7 popup with a
  * search bar, "None" to unlink, and the recipes A–Z as radio rows; picking one closes it.
- * It's opened from the ingredient sheet, which closes first: Framework7 stacks sheets above popups.
+ * It's opened from the ingredient sheet and stacks over it like an iOS card (Framework7's popup push): the page and
+ * the sheet, which lives in the page's view, shrink back behind it. Swipe the title bar down, or Cancel, to go back.
  */
 export default function RecipeLinkPopup({ opened, recipes, current, onPick, onClosed }: Props) {
   return (
-    <Popup className="ck-link-popup" opened={opened} onPopupClosed={onClosed} swipeToClose>
+    <Popup className="ck-link-popup" opened={opened} onPopupClosed={onClosed} push swipeToClose="to-bottom" swipeHandler=".navbar">
       <Page>
         <Navbar title="Link a Recipe">
           <NavRight>

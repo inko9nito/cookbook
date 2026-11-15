@@ -7,6 +7,8 @@ type Props = {
   /** issue #11: the name of the recipe it's made from, and opening the list to pick one */
   linkedTitle?: string;
   onLink: () => void;
+  /** where Framework7 puts the sheet: the page's view, so the recipe list stacks over the page and this sheet together */
+  containerEl?: string;
   onChange: (i: Ingredient) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
@@ -16,9 +18,9 @@ type Props = {
  * R4: edit one ingredient. Exactly four fields, changes apply live (no save step),
  * one Done button; swipe down or tap outside also keeps the changes.
  * Issue #11: under them, "Recipe" links the ingredient to another recipe (a sauce, a pie crust): it opens the
- * recipe list (RecipeLinkPopup), closing this sheet meanwhile, since Framework7 stacks sheets above popups.
+ * recipe list (RecipeLinkPopup) stacked over the page and this sheet, which stays open behind it.
  */
-export default function IngredientSheet({ ingredient, linkedTitle, onLink, onChange, onDelete, onClose }: Props) {
+export default function IngredientSheet({ ingredient, linkedTitle, onLink, containerEl, onChange, onDelete, onClose }: Props) {
   const set = (patch: Partial<Ingredient>) => ingredient && onChange({ ...ingredient, ...patch });
   return (
     <Sheet
@@ -29,6 +31,7 @@ export default function IngredientSheet({ ingredient, linkedTitle, onLink, onCha
       backdrop
       closeByBackdropClick
       style={{ height: 'auto' }}
+      {...(containerEl ? { containerEl } : {})}
     >
       <Toolbar>
         <div className="left">

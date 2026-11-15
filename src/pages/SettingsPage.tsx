@@ -3,9 +3,16 @@ import { showTabbar } from '../components/ui/tabbar';
 import { useAuth } from '../data/auth';
 import { clearCache } from '../data/store';
 import { isDemo } from '../data/api';
+import { useState } from 'react';
+import { readConvertLayout, saveConvertLayout, type ConvertLayout } from '../components/ui/convertLayout';
 
 export default function SettingsPage() {
   const { email, signOut } = useAuth();
+  const [layout, setLayout] = useState<ConvertLayout>(readConvertLayout);
+  const pickLayout = (l: ConvertLayout) => {
+    saveConvertLayout(l);
+    setLayout(l);
+  };
   const confirmSignOut = () =>
     f7.dialog
       .create({
@@ -41,6 +48,13 @@ export default function SettingsPage() {
           </>
         )}
       </List>
+      {/* TEMPORARY (issue #6): try both layouts of the unit popover on the phone, then remove this */}
+      <BlockTitle>Try out: unit conversions</BlockTitle>
+      <List strongIos insetIos dividersIos className="ck-try-layout">
+        <ListItem radio name="ck-layout" checked={layout === 'beside'} onChange={() => pickLayout('beside')} title="Beside the amount" />
+        <ListItem radio name="ck-layout" checked={layout === 'above'} onChange={() => pickLayout('above')} title="Above the ingredient" />
+      </List>
+      <BlockFooter>Where the list of units opens when you tap an underlined amount. Temporary, while you choose.</BlockFooter>
       <List strongIos insetIos dividersIos>
         <ListItem link="/settings/style-guide/" title="Style Guide" />
       </List>

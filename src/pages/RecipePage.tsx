@@ -12,6 +12,7 @@ import { titleCase, type Ingredient } from '../lib/recipe';
 import { scaleAmount, friendly } from '../lib/ingredients';
 import { conversions, formatConverted, neaterAmount } from '../lib/units';
 import { amountText, canConvert, footerText, originalAmount, type UnitPicks } from '../components/ui/ingredientLine';
+import { readConvertLayout, type ConvertLayout } from '../components/ui/convertLayout';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
@@ -47,6 +48,8 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [cooking, setCooking] = useState(false);
   const [converting, setConverting] = useState<{ ing: Ingredient; el: Element } | null>(null);
+  // where the unit popover sits (temporary switch in Settings while choosing): beside the amount, or above the row
+  const [layout, setLayout] = useState<ConvertLayout>(readConvertLayout);
   // issue #6: units picked for some ingredients, until the recipe is closed (cook mode shows them too)
   const [picks, setPicks] = useState<UnitPicks>({});
   const convertPopover = useRef(null) as unknown as PopoverRef;
@@ -57,10 +60,30 @@ export default function RecipePage({ f7route, f7router }: Props) {
     setPicks(({ [id]: _old, ...rest }) => (unit ? { ...rest, [id]: unit } : rest));
     convertPopover.current?.f7Popover().close();
   };
+  // the popover's arrow points at the middle of what was tapped (Framework7 v9 draws no arrow; this is a CSS triangle)
+  const pointArrow = () => {
+    const el = convertPopover.current?.el;
+    if (!el || !converting) return;
+    const amount = converting.el.getBoundingClientRect();
+    const row = (converting.el.closest('li') ?? converting.el).getBoundingClientRect();
+    // where Framework7 put it (its top/left, in screen pixels): the open animation scales it, so its measured box
+    // isn't its real one yet
+    const left = parseFloat(el.style.left);
+    const top = parseFloat(el.style.top);
+    // which side the arrow goes on (Framework7's own classes for this are wiped when React re-renders)
+    el.dataset.arrow = left >= amount.right - 1 ? 'left' : top + el.offsetHeight <= row.top + 1 ? 'down' : 'up';
+    el.style.setProperty('--ck-arrow-y', `${amount.top + amount.height / 2 - top}px`);
+    el.style.setProperty('--ck-arrow-x', `${amount.left + amount.width / 2 - left}px`);
+  };
+
+
   // issue #6: once the tapped amount's options are rendered, point the popover at it
   useEffect(() => {
-    if (converting) convertPopover.current?.f7Popover().open(converting.el as HTMLElement);
-  }, [converting]);
+    if (!converting) return;
+    // beside: point at the amount; above: point at the whole row
+    const target = layout === 'above' ? (converting.el.closest('li') ?? converting.el) : converting.el;
+    convertPopover.current?.f7Popover().open(target as HTMLElement);
+  }, [converting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!recipe) {
     return (
@@ -138,7 +161,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
           {g.label && <div className="ck-group-label">{g.label}</div>}
           <List dividers className="ck-plain-list ck-ing-list">
             {g.items.map((i) => (
-              <ListItem key={i.id}>
+              <ListItem key={i.id} className={converting?.ing.id === i.id ? 'ck-ing-on' : ''}>
                 <span slot="media" className="ck-bullet" aria-hidden="true" />
                 <span slot="title">
                   {/* issue #6: an amount in a measuring unit is underlined; tap it to pick another unit */}
@@ -147,7 +170,10 @@ export default function RecipePage({ f7route, f7router }: Props) {
                       type="button"
                       className={`ck-amount ck-convertible ${picks[i.id] ? 'ck-converted' : ''}`}
                       aria-label={`${amountText(i, factor, picks)}, show in other units`}
-                      onClick={(e) => setConverting({ ing: i, el: e.currentTarget })}
+                      onClick={(e) => {
+                        setLayout(readConvertLayout());
+                        setConverting({ ing: i, el: e.currentTarget });
+                      }}
                     >
                       {amountText(i, factor, picks)}
                     </button>
@@ -202,7 +228,16 @@ export default function RecipePage({ f7route, f7router }: Props) {
 
       {/* issue #6: pick the unit an amount is shown in. Opened from code, pointing at the tapped amount (see the effect
           above); slot="fixed" keeps it outside the scrolling content, where Framework7 positions it */}
-      <Popover slot="fixed" ref={convertPopover} className="ck-convert" onPopoverClosed={() => setConverting(null)}>
+      <Popover
+        slot="fixed"
+        key={layout}
+        ref={convertPopover}
+        className={`ck-convert ck-convert-${layout}`}
+        verticalPosition={layout === 'beside' ? 'middle' : 'auto'}
+        // after Framework7 has placed it (its own open handler runs after this one)
+        onPopoverOpen={() => requestAnimationFrame(pointArrow)}
+        onPopoverClosed={() => setConverting(null)}
+      >
         {converting && (
           <>
             <div className="ck-convert-head">

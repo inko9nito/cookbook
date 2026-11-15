@@ -241,6 +241,9 @@ export default function RecipePage({ f7route, f7router }: Props) {
         slot="fixed"
         ref={convertPopover}
         className="ck-convert"
+        // no dimmed page behind it, like iOS's menus; a tap anywhere else still closes it
+        backdrop={false}
+        closeByOutsideClick
         style={{ '--f7-popover-width': `${CONVERT_WIDTH}px` } as CSSProperties}
         // after Framework7 has placed it (its own open handler runs after this one)
         onPopoverOpen={() => requestAnimationFrame(pointArrow)}

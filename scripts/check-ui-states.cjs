@@ -724,6 +724,9 @@ async function swipeLeft(ctx, page, locator) {
     // against the right side of the screen (the 16px gutter), narrow, beside the amount and level with it
     if (t.gutter !== 16 || t.width > 220 || !t.clearOfAmount || !t.level) throw new Error(`popover isn't narrow at the right, level with the amount (${JSON.stringify(t)})`);
     if (t.sub) throw new Error('the popover still has a sub-heading');
+    // like iOS's edit menu: 10px corners, a soft shadow, and no dimmed page behind it
+    const look = await page.evaluate(() => { const po = document.querySelector('.popover.modal-in'); const cs = getComputedStyle(po); return { radius: cs.borderTopLeftRadius, filter: cs.filter, dimmed: !!document.querySelector('.popover-backdrop.backdrop-in') }; });
+    if (look.radius !== '10px' || !look.filter.includes('drop-shadow') || look.dimmed) throw new Error(`popover doesn't look like iOS's edit menu: ${JSON.stringify(look)}`);
     // the tapped row: pale Tomato with rounded corners, set in from the screen edges (rounded corners never touch them)
     const h = t.highlight;
     if (!h) throw new Error('the tapped ingredient is not highlighted');

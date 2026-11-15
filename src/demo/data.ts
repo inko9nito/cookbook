@@ -1,76 +1,20 @@
-// Sample data for the Phase 0 demo. Replaced by the real database in Phase 1.
+// Sample recipes: the demo backend (local checks) starts with these, and the first database migration seeds them.
 
-/** One row in a recipe's ingredient list: an ingredient, or a group header ("For the sauce"). */
-export type DemoIngredient = {
-  id: string;
-  /** 'header' rows are group titles; their title is in `name` */
-  kind?: 'header';
-  amount: string;
-  unit: string;
-  name: string;
-  note: string;
-};
+import type { Ingredient, Recipe, Step } from '../lib/recipe';
 
-/** One row in a recipe's directions: a step, or a group header ("Prep", "Grill"). */
-export type DemoStep = {
-  id: string;
-  kind?: 'header';
-  text: string;
-};
+let nextRow = 1000;
+const rowId = () => `s${nextRow++}`;
 
-/** A recipe photo: the 4:3 crop that's shown, plus the full photo and the crop box so the crop can be redone. */
-export type DemoPhoto = {
-  id: string;
-  /** what shows: a sample photo (public/photos) or the 4:3 crop of a photo picked on the phone (data URL) */
-  src: string;
-  /** the full photo as picked (downscaled), when it was cropped on the phone */
-  original?: string;
-  /** the crop box on the original, in its pixels */
-  crop?: { x: number; y: number; width: number; height: number };
-};
+const ing = (amount: string, unit: string, name: string, note = ''): Ingredient => ({ id: rowId(), amount, unit, name, note });
+const group = (name: string): Ingredient => ({ id: rowId(), kind: 'header', amount: '', unit: '', name, note: '' });
+const step = (text: string): Step => ({ id: rowId(), text });
+const stepGroup = (text: string): Step => ({ id: rowId(), kind: 'header', text });
 
-export const coverPhoto = (r: DemoRecipe): string | undefined => r.photos[0]?.src;
-
-export type DemoRecipe = {
-  id: string;
-  title: string;
-  source: string;
-  servings: number;
-  servingSize: string;
-  prepMinutes: number;
-  cookMinutes: number;
-  /** total time, kept in sync with prep + cook by the editor */
-  minutes: number;
-  createdAt: string;
-  /** Photos, the first is the cover (cards, the top of the recipe page). Empty: a plain grey chef-hat placeholder shows. */
-  photos: DemoPhoto[];
-  /** Placeholder color used when there is no photo */
-  tone: 'corn' | 'grill' | 'soup' | 'drink' | 'green';
-  /** Course types (from COURSES) and the user's own tags, all lowercase */
-  tags: string[];
-  ingredients: DemoIngredient[];
-  steps: DemoStep[];
-  notes: string;
-  rating: number;
-  timesMade: number;
-};
-
-export const COURSES = ['breakfast', 'lunch', 'dinner', 'snack', 'appetizer', 'soup', 'salad', 'side', 'dessert', 'drink'];
-
-let nextId = 1000;
-export const newId = () => String(nextId++);
-
-const ing = (amount: string, unit: string, name: string, note = ''): DemoIngredient => ({ id: newId(), amount, unit, name, note });
-const group = (name: string): DemoIngredient => ({ id: newId(), kind: 'header', amount: '', unit: '', name, note: '' });
-const step = (text: string): DemoStep => ({ id: newId(), text });
-const stepGroup = (text: string): DemoStep => ({ id: newId(), kind: 'header', text });
-
-export const demoRecipes: DemoRecipe[] = [
+export const sampleRecipes: Recipe[] = [
   {
     id: '1',
     title: 'Corn pudding',
-    tone: 'corn',
-    photos: [{ id: newId(), src: '/photos/corn.jpg' }],
+    photos: [{ id: rowId(), src: '/photos/corn.jpg' }],
     source: 'My recipe',
     servings: 8,
     servingSize: '1 square',
@@ -114,8 +58,7 @@ export const demoRecipes: DemoRecipe[] = [
   {
     id: '2',
     title: 'Middle Eastern Chicken Kebabs',
-    tone: 'grill',
-    photos: [{ id: newId(), src: '/photos/kebabs.jpg' }],
+    photos: [{ id: rowId(), src: '/photos/kebabs.jpg' }],
     source: 'onceuponachef.com',
     servings: 4,
     servingSize: '2 skewers',
@@ -166,8 +109,7 @@ export const demoRecipes: DemoRecipe[] = [
   {
     id: '3',
     title: 'Italian Turkey Zucchini Meatballs',
-    tone: 'soup',
-    photos: [{ id: newId(), src: '/photos/meatballs.jpg' }],
+    photos: [{ id: rowId(), src: '/photos/meatballs.jpg' }],
     source: 'My recipe',
     servings: 6,
     servingSize: '4 meatballs',
@@ -208,8 +150,7 @@ export const demoRecipes: DemoRecipe[] = [
   {
     id: '4',
     title: 'Pulled Beef with Parsnip Purée',
-    tone: 'grill',
-    photos: [{ id: newId(), src: '/photos/pulled-beef.jpg' }],
+    photos: [{ id: rowId(), src: '/photos/pulled-beef.jpg' }],
     source: 'My recipe',
     servings: 6,
     servingSize: '',
@@ -254,8 +195,7 @@ export const demoRecipes: DemoRecipe[] = [
   {
     id: '5',
     title: 'Mustard Dill Chicken Thighs',
-    tone: 'green',
-    photos: [{ id: newId(), src: '/photos/mustard-chicken.jpg' }],
+    photos: [{ id: rowId(), src: '/photos/mustard-chicken.jpg' }],
     source: 'sepcooks.com',
     servings: 4,
     servingSize: '',
@@ -289,34 +229,9 @@ export const demoRecipes: DemoRecipe[] = [
   },
 ];
 
-export const emptyRecipe = (): DemoRecipe => ({
-  id: newId(),
-  title: '',
-  source: '',
-  servings: 4,
-  servingSize: '',
-  prepMinutes: 0,
-  cookMinutes: 0,
-  minutes: 0,
-  createdAt: new Date().toISOString().slice(0, 10),
-  tone: 'green',
-  photos: [],
-  tags: [],
-  ingredients: [],
-  steps: [],
-  notes: '',
-  rating: 0,
-  timesMade: 0,
-});
-
 export const demoCookbooks = [
   { id: 'k1', name: 'Bread', count: 6 },
   { id: 'k2', name: 'Dressings and sauces', count: 2 },
   { id: 'k3', name: 'Everything else', count: 70 },
   { id: 'k4', name: 'Grilling', count: 11 },
 ];
-
-export const formatIngredient = (i: Pick<DemoIngredient, 'amount' | 'unit' | 'name' | 'note'>) =>
-  [i.amount, i.unit, i.name].filter(Boolean).join(' ') + (i.note ? `, ${i.note}` : '');
-
-export const titleCase = (t: string) => (t ? t[0].toUpperCase() + t.slice(1) : t);

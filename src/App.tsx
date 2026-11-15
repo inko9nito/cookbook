@@ -2,7 +2,9 @@ import { App, Views, View, Toolbar, ToolbarPane, Link } from 'framework7-react';
 import { ChefHat, BookOpen, CalendarDays, ShoppingCart } from 'lucide-react';
 import routes from './routes';
 import { tabIcon } from './components/ui/icons';
-import { StoreProvider } from './demo/store';
+import { AuthProvider } from './data/auth';
+import { SessionGuard, StoreProvider } from './data/store';
+import SignInScreen from './components/SignInScreen';
 
 const f7params = {
   name: 'Cookbook',
@@ -23,8 +25,9 @@ const f7params = {
 
 export default function CookbookApp() {
   return (
-    <StoreProvider>
-      <App {...f7params}>
+    <AuthProvider>
+      <StoreProvider>
+        <App {...f7params}>
         <Views tabs className="safe-areas">
           <Toolbar tabbar icons bottom>
             <ToolbarPane>
@@ -47,7 +50,10 @@ export default function CookbookApp() {
           <View id="view-plan" name="plan" tab url="/plan/" iosSwipeBack />
           <View id="view-groceries" name="groceries" tab url="/groceries/" iosSwipeBack />
         </Views>
+        <SignInScreen />
+        <SessionGuard />
       </App>
-    </StoreProvider>
+      </StoreProvider>
+    </AuthProvider>
   );
 }

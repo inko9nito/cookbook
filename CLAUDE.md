@@ -31,9 +31,17 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - Impeccable guidance never overrides the Framework7 rules above: no hand-built animations, gestures or z-index.
 
 ## Stack
-Vite + TypeScript, TanStack Query, Zod, vite-plugin-pwa, `parse-ingredient`.
+Vite + TypeScript, TanStack Query, Zod, vite-plugin-pwa, `parse-ingredient`, Vitest.
 Everything runs on **Netlify**: static hosting, Netlify Functions (API), Netlify Database (Postgres), Netlify Blobs (photos), Netlify Identity with Google sign-in (invite-only, the user's account only). Do NOT add Supabase or any second service; the user wants one.
 Live site: https://cookbk.netlify.app
+
+### Where things are (Phase 1)
+- `src/lib/recipe.ts`: the recipe shape (Zod), shared by the app and the API. `src/lib/ingredients.ts`: parsing and scaling (tests beside it; run `npm test`).
+- `src/data/`: `api.ts` (the API client, plus a **demo backend** used on `localhost` so the UI check runs without sign-in), `auth.tsx` (Netlify Identity, Google), `store.tsx` (TanStack Query, optimistic changes, IndexedDB cache; `useStore()` is what pages use).
+- `netlify/functions/*.mts`: the API (v2 functions, `export default`), each checks `refuseUnlessAdmin()` first (the Identity `admin` role, given in the Netlify UI; a role change counts from the next sign-in or token refresh). `netlify/lib/`: shared server code, tested against a local Postgres (`@netlify/database-dev`).
+- `netlify/database/migrations/`: SQL migrations applied by the deploy. **Never edit or delete one that has been deployed**; add a new one (`<timestamp>_<slug>.sql`). Never run DDL against the hosted database directly.
+- Photos: picked and cropped on the phone, uploaded to Netlify Blobs (`photos` store) on save; the recipe stores their `/api/photos/<key>` addresses. Only the production deploy deletes stored photos (deploy previews share the store).
+- Deploy previews get their own copy of the production database, with real recipes, and preview links are public: say so before sharing one.
 No reminders feature (user declined).
 
 ## Data rules

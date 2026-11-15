@@ -1,13 +1,13 @@
 import { Link } from 'framework7-react';
 import { Star, ChefHat } from 'lucide-react';
-import { coverPhoto, type DemoRecipe } from '../../demo/data';
+import { coverPhoto, type Recipe } from '../../lib/recipe';
 import { photoStyle } from './photo';
 
 /**
  * Recipe card (Prepear's grid): white card, photo on top, title (two lines max), source, and stars once rated.
  * Shown two to a row on the Recipes screen. No shadow: the white card on the grey page is enough.
  */
-export default function RecipeCard({ recipe }: { recipe: DemoRecipe }) {
+export default function RecipeCard({ recipe }: { recipe: Recipe }) {
   return (
     <Link href={`/recipe/${recipe.id}/`} noLinkClass className="ck-card">
       {coverPhoto(recipe) ? (

@@ -27,6 +27,16 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,woff2}'],
         navigateFallback: '/index.html',
+        // the API and Netlify's own endpoints (sign-in) always go to the network
+        navigateFallbackDenylist: [/^\/api\//, /^\/\.netlify\//],
+        runtimeCaching: [
+          {
+            // stored recipe photos never change (a new crop is a new photo), so keep them for the kitchen offline
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/photos/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'recipe-photos', expiration: { maxEntries: 2000 }, cacheableResponse: { statuses: [200] } },
+          },
+        ],
       },
     }),
   ],

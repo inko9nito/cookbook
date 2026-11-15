@@ -88,6 +88,8 @@ spacing:
   gutter: "16px"
   chip-gap: "8px"
   stack: "10px"
+  group-gap: "24px"
+  group-label-gap: "8px"
 components:
   button-main:
     backgroundColor: "{colors.tomato}"
@@ -172,12 +174,13 @@ Where each component's shape comes from:
 | Other buttons | Pinterest | Soft grey fill, pill, 46px tall, 600 weight, dark text. **Every button in the app is a pill** (text buttons, dashed "Separate into groups", nav buttons, footer buttons); icon-only buttons are circles |
 | Sheet headers | (RED) | Plain bold title on the left, Tomato ink text button ("Done") on the right, no glass bubbles |
 | Form fields | Headspace | Soft grey filled box, 18px corners, no border, 12px semibold label above. Focus = 1.5px Tomato ring, error = red ring + red helper text. Edit screens use compact 14px text (like Prepear) |
+| Group labels | (shared) | Ingredient and direction groups ("MARINADE", "PREP"): 12px bold uppercase, 0.06em tracking, muted grey. **Plain text that scrolls with the content**, not Framework7's list group title (that is a list row with hairlines and no space above it, and inside a list group it pins while scrolling). Spacing, measured text to text so Ingredients and Directions look the same: **24px above a label** (`group-gap`, from the last line of the group before it), **8px from a label to its first line** (`group-label-gap`). The first ingredient label sits about 22px below the servings pill, matching Directions under its heading. Labels line up with the page's 16px gutter. No hairline above a label |
 | Tab bar | DoorDash | Docked across the full bottom edge (not floating), 56px plus the safe area, flat white with a hairline on top, no bubble behind the active tab. Four tabs: Recipes, Cookbooks, Plan, Groceries. Tomato ink active, muted inactive, 600-weight labels |
 
 ### Screens (picked in Side by side, Nov 2026)
 
 - **Recipes list (Headspace):** large soft search pill, soft chips, photo card with title over a dark gradient, hairline list with rounded thumbnails.
-- **Recipe page (Airbnb), reads like a plain recipe:** full-bleed square photo under a see-through top bar with only back and •••; a panel with 28px top corners overlaps the photo; centered 26px title and meta; stats row (rating · made it · total time) with hairline dividers; plain ingredient rows with hairlines and uppercase group labels; numbered directions (Tomato-tint number circles) in groups; notes card. **App controls stay out of the content:** ••• holds Edit, Add to Cookbook / Plan / Grocery List, Share, Duplicate, Delete; a "N servings ▾" pill next to the Ingredients heading is the only place servings show (it opens **Adjust amounts**, and reads "×1.5 · 6 servings" when scaled); the footer holds a full-width "Start cooking". The tab bar hides on this page.
+- **Recipe page (Airbnb), reads like a plain recipe:** full-bleed square photo under a see-through top bar with only back and •••; a panel with 28px top corners overlaps the photo; centered 26px title and meta; stats row (rating · made it · total time) with hairline dividers; plain ingredient rows with hairlines, split into groups under plain uppercase group labels (see Group labels); numbered directions (Tomato-tint number circles) in groups; notes card. **App controls stay out of the content:** ••• holds Edit, Add to Cookbook / Plan / Grocery List, Share, Duplicate, Delete; a "N servings ▾" pill next to the Ingredients heading is the only place servings show (it opens **Adjust amounts**, and reads "×1.5 · 6 servings" when scaled); the footer holds a full-width "Start cooking". The tab bar hides on this page.
 - **Adjust amounts (sheet):** servings −/+, quick ×½ ×1 ×2 ×3 chips, and "Or match what you have": pick an ingredient, type the amount you have, and everything scales to match (issue #3). "Back to original amounts" resets. Scaling resets when the recipe is reopened; ranges scale from their low end.
 - **Edit (Headspace, stacked page, not a sheet):** Cancel · Edit Recipe · Save (filled Tomato ink pill, white text); photo with remove/replace buttons; soft fields; ingredients and directions in soft 24px cards with drag handles on the left, swipe to delete, group rows; a paste box under each list (blank lines skipped, "For the sauce:" lines become groups); dashed "Separate into groups"; notes; course chips; tags; servings; serving size; prep and cook time; source. All text 14px.
 

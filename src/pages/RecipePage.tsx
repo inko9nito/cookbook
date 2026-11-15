@@ -6,12 +6,25 @@ import {
 import { Ellipsis, Star, Scale, ChevronDown } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
 import { useStore } from '../demo/store';
-import { titleCase } from '../demo/data';
+import { titleCase, type DemoIngredient } from '../demo/data';
 import { scaleAmount, unitFor, friendly } from '../demo/quickParse';
 import { formatMinutes } from '../components/ui/FeaturedRecipeCard';
 import { photoStyle } from '../components/ui/photo';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
+
+/** Splits the ingredient list at group rows: [{ label, items }]. Rows before the first group get no label. */
+function groupIngredients(list: DemoIngredient[]) {
+  const groups: { id: string; label?: string; items: DemoIngredient[] }[] = [];
+  for (const i of list) {
+    if (i.kind === 'header') groups.push({ id: i.id, label: i.name, items: [] });
+    else {
+      if (!groups.length) groups.push({ id: 'ungrouped', items: [] });
+      groups[groups.length - 1].items.push(i);
+    }
+  }
+  return groups.filter((g) => g.items.length || g.label);
+}
 
 type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void; navigate: (url: string) => void } };
 
@@ -98,20 +111,22 @@ export default function RecipePage({ f7route, f7router }: Props) {
         </div>
       </div>
 
-      <List dividers className="ck-plain-list">
-        {recipe.ingredients.map((i) =>
-          i.kind === 'header' ? (
-            <ListItem key={i.id} groupTitle title={i.name} />
-          ) : (
-            <ListItem key={i.id} checkbox>
-              <span slot="title">
-                <span className="ck-amount">{[scaleAmount(i.amount, factor), unitFor(i.unit, scaleAmount(i.amount, factor))].filter(Boolean).join(' ')}</span> {i.name}
-              </span>
-              {i.note && <span slot="footer">{i.note}</span>}
-            </ListItem>
-          ),
-        )}
-      </List>
+      {/* each group: a plain label that scrolls with the content (not F7's sticky group title), then its rows */}
+      {groupIngredients(recipe.ingredients).map((g) => (
+        <div key={g.id} className="ck-ing-group">
+          {g.label && <div className="ck-group-label">{g.label}</div>}
+          <List dividers className="ck-plain-list">
+            {g.items.map((i) => (
+              <ListItem key={i.id} checkbox>
+                <span slot="title">
+                  <span className="ck-amount">{[scaleAmount(i.amount, factor), unitFor(i.unit, scaleAmount(i.amount, factor))].filter(Boolean).join(' ')}</span> {i.name}
+                </span>
+                {i.note && <span slot="footer">{i.note}</span>}
+              </ListItem>
+            ))}
+          </List>
+        </div>
+      ))}
 
       <div className="ck-panel ck-panel-rest">
         <div className="ck-sec">

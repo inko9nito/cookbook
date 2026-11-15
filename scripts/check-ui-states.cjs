@@ -2,7 +2,10 @@
   UI state check: taps through the app's interactive states and, for each one,
   - saves a screenshot to ui-states/ (gitignored) for a human or Claude to look at,
   - runs axe-core's color-contrast rule (catches unreadable text in selected/pressed states),
-  - flags tappable elements that overlap each other (e.g. a drag handle on top of a Delete button).
+  - flags tappable elements that overlap each other (e.g. a drag handle on top of a Delete button),
+  - flags text painted over other text in the same scrolling page or sheet,
+  - flags sticky elements inside page content (Framework7 list group titles pin while scrolling inside a list group;
+    DESIGN.md says group labels scroll with the content).
 
   Impeccable's detector only scans a page as it first loads; this covers what happens after taps and swipes.
   Note: this runs in Chromium. iPhone Safari can still differ, so check on the phone too.
@@ -60,7 +63,50 @@ async function audit(page, name) {
     }
     return found;
   });
-  const issues = [...contrast.map((c) => `contrast: ${c}`), ...overlaps.map((o) => `overlap: ${o}`)];
+  const textOverlaps = await page.evaluate(() => {
+    // every visible run of text in the current page's content and in open sheets/popups, one rect per line
+    const scopes = [...document.querySelectorAll('.page-current .page-content, .sheet-modal.modal-in, .popup.modal-in, .actions-modal.modal-in')];
+    const runs = [];
+    for (const scope of scopes) {
+      const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT) });
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const el = n.parentElement;
+        if (!el || !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        for (const r of range.getClientRects()) {
+          if (r.width < 2 || r.height < 2 || r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) continue;
+          runs.push({ node: n, scope, r, text: n.textContent.trim().slice(0, 18) });
+        }
+      }
+    }
+    const found = new Set();
+    for (let i = 0; i < runs.length; i++) {
+      for (let j = i + 1; j < runs.length; j++) {
+        const a = runs[i], b = runs[j];
+        if (a.node === b.node || a.scope !== b.scope) continue;
+        const w = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+        const h = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+        // ignore lines that just touch (tight line heights make glyph boxes overlap by a pixel or two)
+        if (w <= 4 || h <= 4) continue;
+        const smaller = Math.min(a.r.width * a.r.height, b.r.width * b.r.height);
+        if ((w * h) / smaller < 0.25) continue;
+        found.add(`"${a.text}" overlaps "${b.text}"`);
+      }
+    }
+    return [...found];
+  });
+  const sticky = await page.evaluate(() =>
+    [...document.querySelectorAll('.page-current .page-content *')]
+      .filter((el) => getComputedStyle(el).position === 'sticky' && !el.closest('.navbar, .toolbar, .searchbar'))
+      .map((el) => `.${String(el.className).trim().split(/\s+/).join('.')} "${el.textContent.trim().slice(0, 18)}"`),
+  );
+  const issues = [
+    ...contrast.map((c) => `contrast: ${c}`),
+    ...overlaps.map((o) => `overlap: ${o}`),
+    ...textOverlaps.map((o) => `text overlap: ${o}`),
+    ...sticky.map((o) => `sticky in page content: ${o}`),
+  ];
   console.log(`${issues.length ? '✗' : '✓'} ${name}${issues.length ? '' : ''}`);
   issues.forEach((i) => console.log(`    ${i}`));
   return issues.length;
@@ -108,6 +154,11 @@ async function swipeLeft(ctx, page, locator) {
   await page.waitForTimeout(500);
 
   await step('04-recipe-page', async () => { await page.locator('.ck-recipes a', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(900); });
+  // scroll through the page: sticky or overlapping content only shows up mid-scroll
+  for (const y of [300, 450, 600, 800, 1000]) {
+    await step(`04-recipe-scroll-${y}`, async () => { await page.evaluate((top) => document.querySelector('.page-current .page-content').scrollTo(0, top), y); });
+  }
+  await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 0));
   await step('05-scale-sheet', async () => { await page.locator('.page-current .ck-scale-button').tap(); await page.waitForTimeout(800); });
   await step('05b-scale-x2', async () => { await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(400); });
   await step('05c-scale-by-ingredient', async () => {

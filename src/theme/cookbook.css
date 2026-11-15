@@ -14,6 +14,8 @@
   --ck-strong: #c9c9ce;
   --ck-accent: #e4572e;
   --ck-accent-press: #c9461f;
+  --ck-group-gap: 24px;       /* space above a group label (text to text) */
+  --ck-group-label-gap: 8px;  /* group label to its first row's text */
   --ck-accent-ink: #c4421c; /* Tomato for text: passes 4.5:1 on white and on the grey page */
   --ck-accent-tint: color-mix(in srgb, var(--ck-accent) 13%, var(--ck-surface));
   --ck-error: #d1291f; /* also the destructive red (Delete, Discard): 5.2:1 on white, 4.8:1 on the grey page */
@@ -367,15 +369,20 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 .list.ck-plain-list {
   --f7-list-bg-color: transparent;
   --f7-list-strong-bg-color: transparent;
-  --f7-list-group-title-bg-color: var(--ck-bg);
-  --f7-list-group-title-font-size: 12px;
-  --f7-list-group-title-font-weight: 700;
   --f7-list-item-title-white-space: normal;
   margin: 0;
 }
-.list.ck-plain-list .list-group-title { text-transform: uppercase; letter-spacing: 0.06em; }
+/* Group labels (ingredients and directions): plain uppercase text that scrolls with the content.
+   Spacing (DESIGN.md "Group labels"), measured text to text: --ck-group-gap above a label, --ck-group-label-gap below it.
+   The offsets subtract what rows already carry: ingredient rows have ~12px padding above and below their text,
+   and the steps grid has a 14px gap plus ~2px line-height slack. */
+.ck-group-label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; line-height: 16px; text-transform: uppercase; color: var(--ck-muted); }
+.ck-ing-group { padding-top: 18px; } /* first group: clear of the servings pill, like Directions under its heading */
+.ck-ing-group + .ck-ing-group { padding-top: calc(var(--ck-group-gap) - 12px); }
+.ck-ing-group > .ck-group-label { padding: 0 16px; margin-bottom: calc(var(--ck-group-label-gap) - 16px); }
 .ck-steps { display: grid; gap: 14px; }
-.ck-group-label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ck-muted); padding-top: 4px; }
+.ck-steps > .ck-group-label { margin-bottom: calc(var(--ck-group-label-gap) - 16px); }
+.ck-steps > .ck-step + .ck-group-label { margin-top: calc(var(--ck-group-gap) - 16px); }
 .ck-step { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start; }
 .ck-step-no { width: 26px; height: 26px; border-radius: 9999px; display: grid; place-items: center; font-size: 13px; font-weight: 700; background-color: var(--ck-accent-tint); color: var(--ck-accent-ink); }
 .ck-step-text { font-size: 15px; line-height: 1.45; white-space: normal; }

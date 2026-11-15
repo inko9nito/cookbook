@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent, PointerEvent } from 'react';
 import {
-  Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Toolbar, Button, Tabs, Tab, Block, List, ListItem,
-  Sheet, PageContent, Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
+  Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Button, List, ListItem,
+  Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
-import { X, ListChecks, Timer as TimerIcon } from 'lucide-react';
+import { X, GripHorizontal, Timer as TimerIcon } from 'lucide-react';
 import type { DemoIngredient, DemoRecipe } from '../demo/data';
 import { scaleAmount, unitFor, friendly } from '../demo/quickParse';
 import { stepTimers, stepIngredients, clock } from '../demo/cook';
@@ -14,101 +15,62 @@ type Props = { recipe: DemoRecipe; factor: number; onClose: () => void };
 type RunningTimer = { id: number; label: string; step: number; endsAt: number };
 type WakeLock = { release: () => Promise<void> };
 
+const SPLIT_KEY = 'cookbook.cookSplit';
+const MIN_SPLIT = 0.18;
+const MAX_SPLIT = 0.82;
+const clampSplit = (n: number) => Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, n));
+
 const amountText = (i: DemoIngredient, factor: number) => {
   const a = scaleAmount(i.amount, factor);
   return [a, unitFor(i.unit, a)].filter(Boolean).join(' ');
 };
 
-/** Rows of an ingredient list with group labels; with `checks`, each row can be ticked off. */
-function IngredientRows({ recipe, factor, only, checked, onToggle }: {
-  recipe: DemoRecipe; factor: number; only?: DemoIngredient[]; checked?: Set<string>; onToggle?: (id: string) => void;
-}) {
-  const list = only ?? recipe.ingredients;
-  const groups: { id: string; label?: string; items: DemoIngredient[] }[] = [];
-  for (const i of list) {
-    if (i.kind === 'header') groups.push({ id: i.id, label: i.name, items: [] });
-    else {
-      if (!groups.length) groups.push({ id: 'ungrouped', items: [] });
-      groups[groups.length - 1].items.push(i);
-    }
+const readSplit = () => {
+  try {
+    const n = Number(localStorage.getItem(SPLIT_KEY));
+    return n ? clampSplit(n) : 0.45;
+  } catch {
+    return 0.45;
   }
-  return (
-    <>
-      {groups.filter((g) => g.items.length).map((g) => (
-        <div key={g.id} className="ck-ing-group">
-          {g.label && <div className="ck-group-label">{g.label}</div>}
-          <List dividers className="ck-plain-list ck-cook-list">
-            {g.items.map((i) => (
-              <ListItem key={i.id} checkbox={!!onToggle} checked={checked?.has(i.id)} onChange={onToggle ? () => onToggle(i.id) : undefined}>
-                <span slot="title">
-                  <span className="ck-amount">{amountText(i, factor)}</span> {i.name}
-                </span>
-                {i.note && <span slot="footer">{i.note}</span>}
-              </ListItem>
-            ))}
-          </List>
-        </div>
-      ))}
-    </>
-  );
-}
+};
 
 /**
- * Cook mode: full screen, one step at a time (swipe or Next), the screen kept awake.
- * - First page: every ingredient as a checklist to get things out; the checklist button in the top bar opens it from any step.
- * - Each step: its group, big text, the ingredients it mentions with today's amounts, and timers for the times it mentions.
- * - Timers keep running while you move between steps; the soonest shows in the top bar.
- * - Finish offers to mark the recipe as made.
+ * Cook mode, laid out like Prepear's: Ingredients on top, Directions below, each half scrolling on its own,
+ * with a handle between them to drag the split (the one hand-built gesture in the app, approved by the user).
+ * - Tick ingredients and steps as you go; ticked rows are crossed out.
+ * - Steps show the ingredients they mention (at the current scale) and timer buttons for the times they mention.
+ * - Timers keep running; the soonest counts down in the top bar.
+ * - The screen stays on. Closing after ticking every step offers "Mark as made".
  */
 export default function CookMode({ recipe, factor, onClose }: Props) {
   const { saveRecipe } = useStore();
-  const steps = useMemo(() => {
-    let group: string | undefined;
-    const out: { id: string; text: string; group?: string; groupStart: boolean }[] = [];
-    for (const s of recipe.steps) {
-      if (s.kind === 'header') group = s.text;
-      else {
-        out.push({ id: s.id, text: s.text, group, groupStart: !!group && out[out.length - 1]?.group !== group });
-      }
-    }
-    return out;
-  }, [recipe.steps]);
-  const pages = steps.length + 1; // page 0 is the ingredients checklist
-  const tabId = (n: number) => `ck-cook-${recipe.id}-${n}`;
-
-  const [index, setIndex] = useState(0);
-  const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [ingOpen, setIngOpen] = useState(false);
-  const [timersOpen, setTimersOpen] = useState(false);
+  const [split, setSplit] = useState(readSplit);
+  const [doneIng, setDoneIng] = useState<Set<string>>(new Set());
+  const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set());
   const [timers, setTimers] = useState<RunningTimer[]>([]);
+  const [timersOpen, setTimersOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
-  const [awake, setAwake] = useState(false);
+  const splitBox = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
   const audio = useRef<AudioContext | null>(null);
   const nextTimerId = useRef(1);
-  // the step pages are a Swiper (Framework7 swipeable tabs); its slide events tell us which step is showing
-  type SwiperEl = HTMLElement & { swiper?: { activeIndex: number; slideTo: (i: number) => void } };
-  const tabsRef = useRef<{ el: HTMLElement | null }>({ el: null });
-  const tabsEl = () => tabsRef.current?.el as SwiperEl | null;
-  useEffect(() => {
-    const el = tabsEl();
-    if (!el) return;
-    const sync = () => el.swiper && setIndex(el.swiper.activeIndex);
-    el.addEventListener('swiperslidechange', sync);
-    return () => el.removeEventListener('swiperslidechange', sync);
-  }, []);
 
-  // keep the screen on while cooking (Screen Wake Lock; iPhone Safari 16.4+ and home screen apps on newer iOS)
+  const steps = useMemo(() => {
+    let n = 0;
+    return recipe.steps.map((s) => (s.kind === 'header' ? { ...s, n: 0 } : { ...s, n: (n += 1) }));
+  }, [recipe.steps]);
+  const stepCount = steps.filter((s) => s.kind !== 'header').length;
+
+  // keep the screen on while cooking (Screen Wake Lock)
   useEffect(() => {
     let lock: WakeLock | null = null;
     let done = false;
     const request = async () => {
       try {
         const wl = (navigator as unknown as { wakeLock?: { request: (t: 'screen') => Promise<WakeLock> } }).wakeLock;
-        if (!wl || done) return;
-        lock = await wl.request('screen');
-        setAwake(true);
+        if (wl && !done) lock = await wl.request('screen');
       } catch {
-        setAwake(false);
+        /* not supported or not allowed: the screen just follows auto-lock */
       }
     };
     request();
@@ -162,39 +124,89 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
     setNow(Date.now());
     setTimers((cur) => [...cur, { id: nextTimerId.current++, label, step, endsAt: Date.now() + seconds * 1000 }]);
   };
-  const cancelTimer = (id: number) => setTimers((cur) => cur.filter((x) => x.id !== id));
 
-  const go = (n: number) => tabsEl()?.swiper?.slideTo(Math.max(0, Math.min(pages - 1, n)));
-  const finish = () =>
-    f7.dialog
-      .create({
-        title: 'Done cooking?',
-        text: `Mark ${recipe.title} as made? You’ve made it ${recipe.timesMade}× so far.`,
-        buttons: [
-          { text: 'Not now', onClick: () => f7.popup.close('.ck-cook') },
-          {
-            text: 'Mark as made',
-            strong: true,
-            onClick: () => {
-              saveRecipe({ ...recipe, timesMade: recipe.timesMade + 1 });
-              f7.toast.show({ text: `Marked as made · ${recipe.timesMade + 1}×`, closeTimeout: 1800 });
-              f7.popup.close('.ck-cook');
-            },
-          },
-        ],
-      })
-      .open();
-
-  const toggle = (id: string) =>
-    setChecked((cur) => {
+  const toggle = (set: typeof setDoneIng, id: string) =>
+    set((cur) => {
       const next = new Set(cur);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
 
+  // ── the divider: drag (pointer) or arrow keys to move the split ──
+  const saveSplit = (n: number) => {
+    try {
+      localStorage.setItem(SPLIT_KEY, String(n));
+    } catch {
+      /* private mode: the split just isn't remembered */
+    }
+  };
+  const onHandleDown = (e: PointerEvent<HTMLDivElement>) => {
+    dragging.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onHandleMove = (e: PointerEvent<HTMLDivElement>) => {
+    const el = splitBox.current;
+    if (!dragging.current || !el) return;
+    // measure inside the padding (the area under the top bar and the home indicator doesn't count),
+    // and keep the middle of the handle under the finger
+    const box = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    const top = box.top + parseFloat(cs.paddingTop);
+    const height = box.height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const handle = e.currentTarget.offsetHeight;
+    setSplit(clampSplit((e.clientY - top - handle / 2) / height));
+  };
+  const onHandleUp = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    saveSplit(split);
+  };
+  const onHandleKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+    const next = clampSplit(split + (e.key === 'ArrowDown' ? 0.05 : -0.05));
+    setSplit(next);
+    saveSplit(next);
+  };
+
+  const close = () => {
+    if (stepCount > 0 && doneSteps.size >= stepCount) {
+      f7.dialog
+        .create({
+          title: 'Done cooking?',
+          text: `Mark ${recipe.title} as made? You’ve made it ${recipe.timesMade}× so far.`,
+          buttons: [
+            { text: 'Not now', onClick: () => f7.popup.close('.ck-cook') },
+            {
+              text: 'Mark as made',
+              strong: true,
+              onClick: () => {
+                saveRecipe({ ...recipe, timesMade: recipe.timesMade + 1 });
+                f7.toast.show({ text: `Marked as made · ${recipe.timesMade + 1}×`, closeTimeout: 1800 });
+                f7.popup.close('.ck-cook');
+              },
+            },
+          ],
+        })
+        .open();
+    } else {
+      f7.popup.close('.ck-cook');
+    }
+  };
+
   const soonest = [...timers].sort((a, b) => a.endsAt - b.endsAt)[0];
   const scaled = Math.abs(factor - 1) > 0.001;
+
+  // ingredient rows grouped under their labels
+  const ingGroups: { id: string; label?: string; items: DemoIngredient[] }[] = [];
+  for (const i of recipe.ingredients) {
+    if (i.kind === 'header') ingGroups.push({ id: i.id, label: i.name, items: [] });
+    else {
+      if (!ingGroups.length) ingGroups.push({ id: 'ungrouped', items: [] });
+      ingGroups[ingGroups.length - 1].items.push(i);
+    }
+  }
 
   return (
     <>
@@ -202,11 +214,11 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
         <Page pageContent={false}>
           <Navbar>
             <NavLeft>
-              <Link iconOnly popupClose aria-label="Close cook mode">
+              <Link iconOnly onClick={close} aria-label="Close cook mode">
                 <X {...navIcon} />
               </Link>
             </NavLeft>
-            <NavTitle>{index === 0 ? 'Get ready' : `Step ${index} of ${steps.length}`}</NavTitle>
+            <NavTitle>{recipe.title}</NavTitle>
             <NavRight>
               {soonest && (
                 <Link className="ck-timer-pill" onClick={() => setTimersOpen(true)} aria-label={`Timers, next in ${clock((soonest.endsAt - now) / 1000)}`}>
@@ -214,100 +226,114 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
                   <span>{clock((soonest.endsAt - now) / 1000)}</span>
                 </Link>
               )}
-              <Link iconOnly onClick={() => setIngOpen(true)} aria-label="Ingredients checklist">
-                <ListChecks {...navIcon} />
-              </Link>
             </NavRight>
           </Navbar>
 
-          <Toolbar bottom className="ck-cta ck-cook-bar">
-            {index > 0 && (
-              <Button large className="ck-soft ck-cook-back" onClick={() => go(index - 1)}>
-                Back
-              </Button>
-            )}
-            <Button large fill className="ck-cta-button" onClick={() => (index === pages - 1 ? finish() : go(index + 1))}>
-              {index === 0 ? 'Start' : index === pages - 1 ? 'Finish' : 'Next step'}
-            </Button>
-          </Toolbar>
+          <div className="page-content ck-split" ref={splitBox}>
+            {/* top half: ingredients */}
+            <div className="ck-pane ck-pane-ingredients" style={{ flexBasis: `${split * 100}%` }}>
+              <div className="ck-pane-head">
+                <h2>Ingredients</h2>
+                <span className="ck-note">{scaled ? `×${friendly(factor)} · ${friendly(recipe.servings * factor)} servings` : `${recipe.servings} servings`}</span>
+              </div>
+              {ingGroups.filter((g) => g.items.length).map((g) => (
+                <div key={g.id} className="ck-ing-group">
+                  {g.label && <div className="ck-group-label">{g.label}</div>}
+                  <List dividers className="ck-plain-list ck-cook-list">
+                    {g.items.map((i) => (
+                      <ListItem key={i.id} checkbox checked={doneIng.has(i.id)} onChange={() => toggle(setDoneIng, i.id)} className={doneIng.has(i.id) ? 'ck-done' : ''}>
+                        <span slot="title">
+                          <span className="ck-amount">{amountText(i, factor)}</span> {i.name}
+                        </span>
+                        {i.note && <span slot="footer">{i.note}</span>}
+                      </ListItem>
+                    ))}
+                  </List>
+                </div>
+              ))}
+            </div>
 
-          <Tabs swipeable ref={tabsRef}>
-            <Tab id={tabId(0)} className="page-content" tabActive>
-              <Block className="ck-cook-head">
-                <h1 className="ck-cook-title">{recipe.title}</h1>
-                <span className="ck-note">
-                  {[scaled ? `×${friendly(factor)} · ${friendly(recipe.servings * factor)} servings` : `${recipe.servings} servings`, awake ? 'Screen stays on' : '']
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
-                <span className="ck-note">Tick things off as you get them out. Swipe or tap Start for step 1.</span>
-              </Block>
-              <IngredientRows recipe={recipe} factor={factor} checked={checked} onToggle={toggle} />
-            </Tab>
+            {/* the divider: drag to give either half more room */}
+            <div
+              className="ck-split-handle"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize ingredients and directions"
+              aria-valuemin={Math.round(MIN_SPLIT * 100)}
+              aria-valuemax={Math.round(MAX_SPLIT * 100)}
+              aria-valuenow={Math.round(split * 100)}
+              tabIndex={0}
+              onPointerDown={onHandleDown}
+              onPointerMove={onHandleMove}
+              onPointerUp={onHandleUp}
+              onPointerCancel={onHandleUp}
+              onKeyDown={onHandleKey}
+            >
+              <span className="ck-split-grip">
+                <GripHorizontal {...inlineIcon} />
+              </span>
+            </div>
 
-            {steps.map((s, k) => {
-              const n = k + 1;
-              const ings = stepIngredients(s.text, recipe.ingredients);
-              return (
-                <Tab key={s.id} id={tabId(n)} className="page-content">
-                  <Block className="ck-cook-step">
-                    {s.group && <div className="ck-group-label">{s.group}</div>}
-                    <p className="ck-cook-text">{s.text}</p>
-                    {stepTimers(s.text).map((t) => {
-                      const running = timers.find((x) => x.step === n && x.label === t.label);
-                      return running ? (
-                        <Button key={t.label} large className="ck-soft ck-timer-button ck-timer-running" onClick={() => cancelTimer(running.id)}>
-                          <TimerIcon {...inlineIcon} />
-                          {clock((running.endsAt - now) / 1000)} left · Stop
-                        </Button>
-                      ) : (
-                        <Button key={t.label} large className="ck-soft ck-timer-button" onClick={() => startTimer(n, t.label, t.seconds)}>
-                          <TimerIcon {...inlineIcon} />
-                          Start {t.label} timer
-                        </Button>
-                      );
-                    })}
-                  </Block>
-                  {ings.length > 0 && (
-                    <>
-                      <Block className="ck-cook-sub">For this step</Block>
-                      <IngredientRows recipe={recipe} factor={factor} only={ings} />
-                    </>
-                  )}
-                </Tab>
-              );
-            })}
-          </Tabs>
+            {/* bottom half: directions */}
+            <div className="ck-pane ck-pane-steps">
+              <div className="ck-pane-head">
+                <h2>Directions</h2>
+              </div>
+              <List className="ck-plain-list ck-cook-list ck-cook-steps">
+                {steps.map((s) => {
+                  if (s.kind === 'header') {
+                    return (
+                      <li key={s.id} className="ck-cook-step-group">
+                        <span className="ck-group-label">{s.text}</span>
+                      </li>
+                    );
+                  }
+                  const done = doneSteps.has(s.id);
+                  const uses = stepIngredients(s.text, recipe.ingredients);
+                  return (
+                    <ListItem key={s.id} checkbox checked={done} onChange={() => toggle(setDoneSteps, s.id)} className={done ? 'ck-done' : ''}>
+                      <div slot="title" className="ck-cook-step">
+                        <span className="ck-cook-text">
+                          <b className="ck-step-no">{s.n}</b> {s.text}
+                        </span>
+                        {!done && uses.length > 0 && (
+                          <span className="ck-cook-uses">{uses.map((i) => `${amountText(i, factor)} ${i.name}`.trim()).join(' · ')}</span>
+                        )}
+                        {!done &&
+                          stepTimers(s.text).map((t) => {
+                            const running = timers.find((x) => x.step === s.n && x.label === t.label);
+                            return (
+                              <Button
+                                key={t.label}
+                                className={`ck-soft ck-timer-button ${running ? 'ck-timer-running' : ''}`}
+                                onClick={(e: { preventDefault: () => void; stopPropagation: () => void }) => {
+                                  // a tap on the timer must not tick the step
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (running) setTimers((cur) => cur.filter((x) => x.id !== running.id));
+                                  else startTimer(s.n, t.label, t.seconds);
+                                }}
+                              >
+                                <TimerIcon {...inlineIcon} />
+                                {running ? `${clock((running.endsAt - now) / 1000)} left · Stop` : `${t.label} timer`}
+                              </Button>
+                            );
+                          })}
+                      </div>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </div>
+          </div>
         </Page>
       </Popup>
-
-      <Sheet
-        opened={ingOpen}
-        onSheetClosed={() => setIngOpen(false)}
-        swipeToClose
-        backdrop
-        closeByBackdropClick
-        style={{ height: 'auto', maxHeight: '80vh' }}
-        className="ck-edit-sheet ck-cook-sheet"
-      >
-        <Toolbar>
-          <div className="left">
-            <b>Ingredients</b>
-          </div>
-          <div className="right">
-            <Link sheetClose>Done</Link>
-          </div>
-        </Toolbar>
-        <PageContent>
-          <IngredientRows recipe={recipe} factor={factor} checked={checked} onToggle={toggle} />
-        </PageContent>
-      </Sheet>
 
       <Actions opened={timersOpen} onActionsClosed={() => setTimersOpen(false)}>
         <ActionsGroup>
           <ActionsLabel>Timers</ActionsLabel>
           {timers.map((t) => (
-            <ActionsButton key={t.id} onClick={() => go(t.step)}>
+            <ActionsButton key={t.id}>
               Step {t.step} · {t.label} · {clock((t.endsAt - now) / 1000)} left
             </ActionsButton>
           ))}

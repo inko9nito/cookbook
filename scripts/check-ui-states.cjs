@@ -75,7 +75,16 @@ async function audit(page, name) {
         if (!el || !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
         const range = document.createRange();
         range.selectNodeContents(n);
-        for (const r of range.getClientRects()) {
+        // text scrolled out of a scrolling box (e.g. one half of cook mode) is clipped, not overlapping
+        const clips = [];
+        for (let a = el; a && a !== scope.parentElement; a = a.parentElement) {
+          const cs = getComputedStyle(a);
+          if (cs.overflowY !== 'visible' || cs.overflowX !== 'visible') clips.push(a.getBoundingClientRect());
+        }
+        for (const raw of range.getClientRects()) {
+          let r = { left: raw.left, top: raw.top, right: raw.right, bottom: raw.bottom };
+          for (const c of clips) r = { left: Math.max(r.left, c.left), top: Math.max(r.top, c.top), right: Math.min(r.right, c.right), bottom: Math.min(r.bottom, c.bottom) };
+          r.width = r.right - r.left; r.height = r.bottom - r.top;
           if (r.width < 2 || r.height < 2 || r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) continue;
           runs.push({ node: n, scope, r, text: n.textContent.trim().slice(0, 18) });
         }
@@ -222,37 +231,50 @@ async function swipeLeft(ctx, page, locator) {
   await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap().catch(() => {});
   await page.waitForTimeout(500);
 
-  // cook mode
-  await step('16-cook-get-ready', async () => { await page.locator('.page-current .ck-cta-button', { hasText: 'Start cooking' }).tap(); await page.waitForTimeout(900); });
-  await step('16b-cook-ticked', async () => { await page.locator('.ck-cook .swiper-slide-active li').first().locator('label').tap(); await page.waitForTimeout(300); });
-  await step('16c-cook-step-1', async () => { await page.locator('.ck-cook .ck-cook-bar .button', { hasText: 'Start' }).tap(); await page.waitForTimeout(700); });
+  // cook mode (Prepear layout: ingredients on top, directions below, drag handle between)
+  await step('16-cook-open', async () => { await page.locator('.page-current .ck-cta-button', { hasText: 'Start cooking' }).tap(); await page.waitForTimeout(900); });
+  await step('16b-cook-ingredient-ticked', async () => {
+    await page.locator('.ck-cook .ck-pane-ingredients li').first().locator('label').tap();
+    await page.waitForTimeout(300);
+    if (!(await page.locator('.ck-cook .ck-pane-ingredients li.ck-done').count())) throw new Error('ticked ingredient is not crossed out');
+  });
+  await step('16c-cook-step-ticked', async () => {
+    await page.locator('.ck-cook .ck-pane-steps li.ck-done, .ck-cook .ck-pane-steps li:has(label)').first().locator('label').tap();
+    await page.waitForTimeout(300);
+  });
   await step('16d-cook-timer-running', async () => {
-    await page.locator('.ck-cook .ck-cook-bar .button', { hasText: 'Next step' }).tap();
-    await page.waitForTimeout(700);
-    await page.locator('.ck-cook .swiper-slide-active .ck-timer-button').first().tap();
+    const before = await page.locator('.ck-cook .ck-pane-steps li.ck-done').count();
+    await page.locator('.ck-cook .ck-pane-steps .ck-timer-button').first().tap();
     await page.waitForTimeout(1300);
     if (!(await page.locator('.ck-cook .ck-timer-pill').count())) throw new Error('no running timer in the top bar');
+    if ((await page.locator('.ck-cook .ck-pane-steps li.ck-done').count()) !== before) throw new Error('tapping the timer ticked the step');
   });
-  await step('16e-cook-swiped', async () => {
-    // a full-width swipe, like a thumb across the screen
-    const cdp = await ctx.newCDPSession(page);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 330, y: 400 }] });
-    for (let i = 1; i <= 20; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 330 - 13 * i, y: 400 }] }); await page.waitForTimeout(16); }
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await page.waitForTimeout(700);
-    const title = await page.locator('.ck-cook .navbar .title').textContent();
-    if (!/Step 3 of/.test(title)) throw new Error(`swipe did not move to step 3 (title "${title}")`);
+  await step('16e-cook-divider-dragged', async () => {
+    const pane = page.locator('.ck-cook .ck-pane-ingredients');
+    const h0 = (await pane.boundingBox()).height;
+    const box = await page.locator('.ck-cook .ck-split-handle').boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 15 * i);
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    const h1 = (await pane.boundingBox()).height;
+    const after = await page.locator('.ck-cook .ck-split-handle').boundingBox();
+    const missed = Math.abs(after.y + after.height / 2 - (box.y + box.height / 2 - 120));
+    if (h1 >= h0 || missed > 24) throw new Error(`divider did not follow the drag (ingredients ${Math.round(h0)} → ${Math.round(h1)}px, handle ${Math.round(missed)}px from the finger)`);
   });
-  await step('16f-cook-checklist-sheet', async () => { await page.locator('.ck-cook a[aria-label="Ingredients checklist"]').tap(); await page.waitForTimeout(800); });
-  await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
-  await page.waitForTimeout(600);
-  await step('16g-cook-finish', async () => {
-    for (let i = 0; i < 12 && !(await page.locator('.ck-cook .ck-cook-bar .button', { hasText: 'Finish' }).count()); i++) {
-      await page.locator('.ck-cook .ck-cook-bar .button', { hasText: 'Next step' }).tap();
-      await page.waitForTimeout(500);
+  await step('16f-cook-all-steps-done', async () => {
+    const open = page.locator('.ck-cook .ck-pane-steps li:not(.ck-done):has(label)');
+    for (let i = 0; i < 12 && (await open.count()); i++) {
+      await open.first().locator('label').scrollIntoViewIfNeeded();
+      await open.first().locator('label').tap();
+      await page.waitForTimeout(200);
     }
-    await page.locator('.ck-cook .ck-cook-bar .button', { hasText: 'Finish' }).tap();
+  });
+  await step('16g-cook-mark-as-made', async () => {
+    await page.locator('.ck-cook a[aria-label="Close cook mode"]').tap();
     await page.waitForTimeout(600);
+    if (!(await page.locator('.dialog.modal-in', { hasText: 'Mark as made' }).count())) throw new Error('no Mark as made prompt after ticking every step');
   });
   await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Not now' }).tap().catch(() => {});
   await page.waitForTimeout(900);

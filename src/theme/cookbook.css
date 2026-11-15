@@ -179,7 +179,7 @@ html.ios .navbar .link.back {
 /* Tab bar (DoorDash): docked full width, flat white, hairline on top, no active bubble */
 html.ios {
   /* icons only, no labels */
-  --f7-tabbar-icons-height: 50px;
+  --f7-tabbar-icons-height: 60px; /* as tall as the user's other app's tab bar (60pt above the home indicator) */
   --f7-tabbar-link-highlight-bg-color: transparent;
   --f7-tabbar-link-highlight-active-bg-color: transparent;
 }

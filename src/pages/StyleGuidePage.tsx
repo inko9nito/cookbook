@@ -33,10 +33,10 @@ export default function StyleGuidePage() {
         </div>
       </Block>
 
-      <BlockTitle medium>Search bar · RED</BlockTitle>
-      <BlockFooter>A white pill on the grey background. See it at the top of the Recipes screen.</BlockFooter>
+      <BlockTitle medium>Search bar · Headspace</BlockTitle>
+      <BlockFooter>A soft grey pill. See it at the top of the Recipes screen.</BlockFooter>
 
-      <BlockTitle medium>Filter chips · Starbucks</BlockTitle>
+      <BlockTitle medium>Filter chips · Headspace</BlockTitle>
       <Block className="ck-chips">
         {['All', 'Dinner', 'Soup', 'Dessert', 'Under 30 min'].map((t) => (
           <Chip key={t} text={t} className={`ck-chip ${chip === t ? 'ck-chip-on' : ''}`} onClick={() => setChip(t)} />
@@ -48,8 +48,8 @@ export default function StyleGuidePage() {
         <FeaturedRecipeCard recipe={demoRecipes[0]} />
       </Block>
 
-      <BlockTitle medium>Recipe list · Pinterest</BlockTitle>
-      <List mediaList className="ck-recipes">
+      <BlockTitle medium>Recipe list · Headspace</BlockTitle>
+      <List mediaList dividers className="ck-recipes">
         {demoRecipes.slice(1, 4).map((r) => (
           <ListItem key={r.id} title={r.title} text={`${r.minutes} min · Serves ${r.servings}`}>
             <span slot="media" className="ck-thumb ck-photo" data-tone={r.tone} style={photoStyle(r.photo)} />
@@ -57,7 +57,7 @@ export default function StyleGuidePage() {
         ))}
       </List>
 
-      <BlockTitle medium>Servings and scaling · Pinterest</BlockTitle>
+      <BlockTitle medium>Servings and scaling · Pinterest (list) / Airbnb (recipe page)</BlockTitle>
       <Block className="ck-stack">
         <div className="ck-row" style={{ justifyContent: 'space-between' }}>
           <b>Servings</b>
@@ -81,7 +81,7 @@ export default function StyleGuidePage() {
         </ListItem>
       </List>
 
-      <BlockTitle medium>Buttons · DoorDash main, Pinterest others</BlockTitle>
+      <BlockTitle medium>Buttons · main pill, soft others</BlockTitle>
       <Block className="ck-stack">
         <Button large fill className="ck-main">Start cooking</Button>
         <div className="ck-row">
@@ -94,15 +94,18 @@ export default function StyleGuidePage() {
         </div>
       </Block>
 
-      <BlockTitle medium>Form fields · Instacart</BlockTitle>
-      <List>
-        <ListInput outline label="Title" type="text" defaultValue="Corn pudding" clearButton />
-        <ListInput outline label="Amount" type="text" placeholder="e.g. 1-2" info="Ranges like 1-2 scale correctly" />
-        <ListInput outline label="Recipe name" type="text" placeholder="Recipe name" errorMessage="Give your recipe a name to save it" errorMessageForce />
-      </List>
+      <BlockTitle medium>Form fields · Headspace (edit page, 14px)</BlockTitle>
+      <div className="ck-edit">
+        <List className="ck-fields">
+          <ListInput label="Recipe name" type="text" defaultValue="Corn pudding" clearButton />
+          <ListInput label="Amount" type="text" placeholder="e.g. 1-2" info="Ranges like 1-2 scale correctly" />
+          <ListInput label="Recipe name" type="text" placeholder="Name of recipe" errorMessage="Give your recipe a name to save it" errorMessageForce />
+          <ListInput type="textarea" placeholder="Add one ingredient per line, or paste your ingredient list here" />
+        </List>
+      </div>
 
-      <BlockTitle medium>Tab bar · DoorDash colors</BlockTitle>
-      <BlockFooter>The tab bar at the bottom of the screen uses Tomato for the active tab. It keeps the native iOS 26 floating shape.</BlockFooter>
+      <BlockTitle medium>Tab bar · DoorDash</BlockTitle>
+      <BlockFooter>Docked flat white bar with a hairline on top; Tomato ink for the active tab. It hides on the recipe and edit pages.</BlockFooter>
     </Page>
   );
 }

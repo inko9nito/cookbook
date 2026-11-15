@@ -1,5 +1,6 @@
 import RecipesPage from './pages/RecipesPage';
 import RecipePage from './pages/RecipePage';
+import RecipeEditPage from './pages/RecipeEditPage';
 import CookbooksPage from './pages/CookbooksPage';
 import PlanPage from './pages/PlanPage';
 import GroceriesPage from './pages/GroceriesPage';
@@ -8,6 +9,8 @@ import StyleGuidePage from './pages/StyleGuidePage';
 
 const routes = [
   { path: '/', component: RecipesPage },
+  { path: '/recipe/new/', component: RecipeEditPage },
+  { path: '/recipe/:id/edit/', component: RecipeEditPage },
   { path: '/recipe/:id/', component: RecipePage },
   { path: '/cookbooks/', component: CookbooksPage },
   { path: '/plan/', component: PlanPage },

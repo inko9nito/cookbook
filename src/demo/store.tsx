@@ -11,10 +11,6 @@ type Store = {
   deleteRecipe: (id: string) => void;
   sort: SortKey;
   setSort: (s: SortKey) => void;
-  editorOpen: boolean;
-  editingId: string | null;
-  openEditor: (id?: string) => void;
-  closeEditor: () => void;
 };
 
 const Ctx = createContext<Store | null>(null);
@@ -33,8 +29,6 @@ const readSort = (): SortKey => {
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [recipes, setRecipes] = useState(demoRecipes);
   const [sort, setSortState] = useState<SortKey>(readSort);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
 
   const store: Store = {
     recipes,
@@ -50,13 +44,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         /* storage unavailable */
       }
     },
-    editorOpen,
-    editingId,
-    openEditor: (id) => {
-      setEditingId(id ?? null);
-      setEditorOpen(true);
-    },
-    closeEditor: () => setEditorOpen(false),
   };
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;

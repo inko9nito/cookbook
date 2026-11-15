@@ -107,35 +107,62 @@ async function swipeLeft(ctx, page, locator) {
   await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap().catch(() => {});
   await page.waitForTimeout(500);
 
-  await step('04-recipe-page', async () => { await page.locator('.ck-recipes a', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(700); });
+  await step('04-recipe-page', async () => { await page.locator('.ck-recipes a', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(900); });
   for (const label of ['×½', '×2', '×3']) {
     await step(`05-recipe-scale-${label.replace('×', 'x').replace('½', 'half')}`, async () => {
       await page.locator('.page-current .segmented .button', { hasText: label }).tap();
     });
   }
   await step('06-recipe-bottom', async () => { await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 99999)); });
-  await step('07-more-actions', async () => { await page.locator('.view-main .navbar a[aria-label="More actions"]').tap(); });
+  await step('07-more-actions', async () => { await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); });
   await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap().catch(() => {});
   await page.waitForTimeout(500);
 
-  await step('08-editor', async () => { await page.locator('.view-main .navbar a.link:visible', { hasText: 'Edit' }).tap(); await page.waitForTimeout(800); });
-  await step('09-editor-row-swiped', async () => {
-    await swipeLeft(ctx, page, page.locator('.popup .sortable li.swipeout').nth(1));
+  await step('08-edit-page', async () => {
+    await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap();
+    await page.waitForTimeout(500);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap();
+    await page.waitForTimeout(900);
+  });
+  await step('09-edit-row-swiped', async () => {
+    await swipeLeft(ctx, page, page.locator('.page-current .ck-edit-list li.swipeout').nth(2));
     await page.waitForTimeout(600);
   });
   await step('10-ingredient-sheet', async () => {
-    await page.locator('.popup .sortable li.swipeout').nth(0).locator('.item-content').first().tap();
+    await page.locator('.page-current .ck-edit-list li.swipeout').nth(1).locator('.item-content').first().tap();
     await page.waitForTimeout(800);
   });
   await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
   await page.waitForTimeout(600);
-  await step('11-paste-sheet', async () => { await page.locator('.popup .list-button', { hasText: 'Paste Ingredients' }).tap(); await page.waitForTimeout(800); });
-  await page.locator('.sheet-modal.modal-in a', { hasText: 'Cancel' }).tap().catch(() => {});
-  await page.waitForTimeout(600);
-  await step('12-discard-prompt', async () => {
-    await page.locator('.popup input[placeholder="Recipe name"]').fill('Changed title');
-    await page.locator('.popup .navbar a', { hasText: 'Cancel' }).tap();
+  await step('11-group-sheet', async () => {
+    await page.locator('.page-current .ck-edit-list li.ck-group-row').first().locator('.item-content').first().tap();
+    await page.waitForTimeout(800);
   });
+  await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
+  await page.waitForTimeout(600);
+  await step('12-edit-paste', async () => {
+    await page.locator('.page-current textarea[placeholder^="Add one ingredient"]').fill('For the topping:\n\n1/2 cup brown sugar\n2 tbsp butter, melted');
+    await page.waitForTimeout(300);
+  });
+  await step('12b-edit-pasted', async () => {
+    await page.locator('.page-current .button', { hasText: 'Add 3 lines' }).tap();
+    await page.waitForTimeout(500);
+  });
+  await step('12c-edit-step-sheet', async () => {
+    await page.locator('.page-current .ck-edit-list').nth(1).locator('li.swipeout:not(.ck-group-row)').first().locator('.item-content').first().tap();
+    await page.waitForTimeout(800);
+  });
+  await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
+  await page.waitForTimeout(600);
+  await step('12d-edit-recipe-info', async () => { await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 99999)); });
+  await step('12e-discard-prompt', async () => { await page.locator('.navbar a', { hasText: 'Cancel' }).filter({ visible: true }).first().tap(); });
+  await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Discard Changes' }).tap().catch(() => {});
+  await page.waitForTimeout(900);
+  await step('12f-recipe-scrolled', async () => { await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 500)); });
+
+  await page.goto(BASE);
+  await page.waitForTimeout(900);
+  await step('12g-new-recipe', async () => { await page.locator('.navbar a[aria-label="New recipe"]').first().tap(); await page.waitForTimeout(900); });
 
   await page.goto(BASE);
   await page.waitForTimeout(900);

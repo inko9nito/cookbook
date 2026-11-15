@@ -17,6 +17,7 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
 
   return (
     <Sheet
+      className="ck-edit-sheet"
       opened={!!ingredient}
       onSheetClosed={onClose}
       swipeToClose
@@ -37,9 +38,8 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
       <PageContent>
         {ingredient && (
           <>
-            <List>
+            <List className="ck-fields">
               <ListInput
-                outline
                 label="Amount"
                 type="text"
                 inputmode="decimal"
@@ -49,7 +49,6 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
                 clearButton
               />
               <ListInput
-                outline
                 label="Unit"
                 type="text"
                 placeholder="cup, tsp, lb…"
@@ -59,7 +58,6 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
                 clearButton
               />
               <ListInput
-                outline
                 label="Ingredient"
                 type="text"
                 placeholder="kosher salt"
@@ -68,7 +66,6 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
                 clearButton
               />
               <ListInput
-                outline
                 label="Note"
                 type="text"
                 placeholder="divided, chopped…"

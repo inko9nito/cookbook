@@ -1,8 +1,9 @@
 import { Page, Navbar, List, ListItem, BlockFooter } from 'framework7-react';
+import { showTabbar } from '../components/ui/tabbar';
 
 export default function SettingsPage() {
   return (
-    <Page name="settings">
+    <Page name="settings" onPageAfterIn={showTabbar}>
       <Navbar title="Settings" backLink />
       <List strongIos insetIos dividersIos>
         <ListItem link="/settings/style-guide/" title="Style Guide" />

@@ -6,6 +6,7 @@ import {
 import { Settings, ArrowUpDown, Plus } from 'lucide-react';
 import { useStore, type SortKey } from '../demo/store';
 import { navIcon } from '../components/ui/icons';
+import { showTabbar } from '../components/ui/tabbar';
 import FeaturedRecipeCard, { formatMinutes } from '../components/ui/FeaturedRecipeCard';
 import { photoStyle } from '../components/ui/photo';
 
@@ -13,8 +14,10 @@ const SORT_LABELS: Record<SortKey, string> = { newest: 'Newest first', oldest: '
 const TAGS = ['dinner', 'side', 'dessert', 'quick'];
 const label = (t: string) => t[0].toUpperCase() + t.slice(1);
 
-export default function RecipesPage() {
-  const { recipes, sort, setSort, openEditor } = useStore();
+type Props = { f7router?: { navigate: (url: string) => void } };
+
+export default function RecipesPage({ f7router }: Props) {
+  const { recipes, sort, setSort } = useStore();
   const [sortOpen, setSortOpen] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
 
@@ -31,14 +34,14 @@ export default function RecipesPage() {
   const toggleTag = (t: string) => setTags((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
 
   return (
-    <Page name="recipes">
+    <Page name="recipes" onPageAfterIn={showTabbar}>
       <Navbar className="ck-navbar-root">
         <NavTitle>Recipes</NavTitle>
         <NavRight>
           <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
             <ArrowUpDown {...navIcon} />
           </Link>
-          <Link iconOnly onClick={() => openEditor()} aria-label="New recipe">
+          <Link iconOnly onClick={() => f7router?.navigate('/recipe/new/')} aria-label="New recipe">
             <Plus {...navIcon} />
           </Link>
           <Link iconOnly href="/settings/" aria-label="Settings">
@@ -74,7 +77,7 @@ export default function RecipesPage() {
       <List className="searchbar-not-found">
         <ListItem title="No recipes found" />
       </List>
-      <List mediaList className="ck-recipes searchbar-found">
+      <List mediaList dividers className="ck-recipes searchbar-found">
         {shown.map((r) => (
           <ListItem key={r.id} link={`/recipe/${r.id}/`} noChevron title={r.title} text={`${formatMinutes(r.minutes)} · Serves ${r.servings} · ${r.tags.map(label).join(', ')}`}>
             <span slot="media" className="ck-thumb ck-photo" data-tone={r.tone} style={photoStyle(r.photo)} role="img" aria-label={r.title} />

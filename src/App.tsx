@@ -3,7 +3,6 @@ import { ChefHat, BookOpen, CalendarDays, ShoppingCart } from 'lucide-react';
 import routes from './routes';
 import { tabIcon } from './components/ui/icons';
 import { StoreProvider } from './demo/store';
-import RecipeEditorPopup from './components/RecipeEditorPopup';
 
 const f7params = {
   name: 'Cookbook',
@@ -50,7 +49,6 @@ export default function CookbookApp() {
           <View id="view-plan" name="plan" tab url="/plan/" iosSwipeBack />
           <View id="view-groceries" name="groceries" tab url="/groceries/" iosSwipeBack />
         </Views>
-        <RecipeEditorPopup />
       </App>
     </StoreProvider>
   );

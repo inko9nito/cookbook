@@ -288,3 +288,183 @@ html.ios .segmented-strong .button.button-active.active-state {
 .ck-swatch span { height: 44px; border-radius: 10px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
 .ck-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ck-stack { display: grid; gap: 10px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Screens picked in Side by side (Nov 2026): Recipes list = Headspace,
+   Recipe page = Airbnb, Edit = Headspace (compact 14px text, like Prepear).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Recipes list (Headspace): soft grey search and chips, rounded thumbnails, thin row lines ── */
+html.ios {
+  --f7-searchbar-input-bg-color: var(--ck-soft);
+  /* placeholders sit on soft grey fills: the darker secondary grey keeps them readable (muted would be 4.3:1) */
+  --f7-searchbar-placeholder-color: var(--ck-fg2);
+  --f7-input-placeholder-color: var(--ck-fg2);
+  --f7-searchbar-input-border-radius: 20px;
+  --f7-chip-bg-color: var(--ck-soft);
+  --f7-chip-padding-horizontal: 15px;
+  --f7-block-title-medium-font-size: 19px;
+  --f7-block-title-medium-font-weight: 800;
+}
+.chip.ck-chip { border: 0; }
+.list.ck-recipes { --f7-list-item-border-color: var(--ck-line); }
+.ck-thumb { border-radius: 18px; }
+
+/* ── Recipe page (Airbnb) ── */
+.page.ck-recipe-page .page-content { --f7-page-navbar-offset: 0px; } /* the photo starts under the see-through top bar */
+html.ios .navbar-transparent:not(.navbar-transparent-visible) .left .link,
+html.ios .navbar-transparent:not(.navbar-transparent-visible) .right .link {
+  background-color: rgba(255, 255, 255, 0.94);
+}
+.ck-hero { width: 100%; aspect-ratio: 1 / 1; max-height: 62vh; }
+.ck-panel {
+  position: relative;
+  margin-top: -28px;
+  border-radius: 28px 28px 0 0;
+  background-color: var(--ck-bg);
+  padding: 22px 16px 4px;
+  display: grid;
+  gap: 18px;
+}
+.ck-panel.ck-panel-rest { margin-top: 0; border-radius: 0; padding: 6px 16px 28px; }
+.ck-panel-head { display: grid; gap: 4px; text-align: center; }
+.ck-recipe-title { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; }
+.ck-stats { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
+.ck-stats > div { display: grid; gap: 2px; justify-items: center; border-left: 1px solid var(--ck-line); }
+.ck-stats > div:first-child { border-left: 0; }
+.ck-stats b { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ck-stats span { font-size: 12px; color: var(--ck-muted); }
+.ck-stars { display: inline-flex; gap: 2px; }
+.ck-stars svg { fill: var(--ck-strong); }
+.ck-stars svg.on { fill: var(--ck-fg); }
+.ck-actions4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ck-action { display: grid; justify-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ck-fg2); }
+.ck-action-icon { width: 44px; height: 44px; border-radius: 9999px; display: grid; place-items: center; background-color: var(--ck-soft); color: var(--ck-fg); }
+.stepper.ck-stepper-outline {
+  --f7-stepper-button-bg-color: var(--ck-surface);
+}
+.stepper.ck-stepper-outline .stepper-button-minus,
+.stepper.ck-stepper-outline .stepper-button-plus { box-shadow: inset 0 0 0 1px var(--ck-strong); }
+/* ×½–×3 as underlined tabs (Airbnb) instead of a filled segmented control */
+.segmented.ck-underline-tabs {
+  --f7-segmented-strong-bg-color: transparent;
+  --f7-segmented-strong-padding: 0px;
+  --f7-segmented-strong-button-text-color: var(--ck-muted);
+}
+.segmented.ck-underline-tabs .segmented-highlight { display: none; }
+html.ios .segmented.ck-underline-tabs .button.button-active,
+html.ios .segmented.ck-underline-tabs .button.button-active:hover,
+html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
+  --f7-button-text-color: var(--ck-fg);
+  --f7-button-pressed-text-color: var(--ck-fg);
+  color: var(--ck-fg);
+  border-radius: 0;
+  box-shadow: inset 0 -2px 0 var(--ck-fg);
+}
+.ck-sec { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ck-sec h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.ck-sec .link { font-size: 14px; font-weight: 600; }
+.list.ck-plain-list {
+  --f7-list-bg-color: transparent;
+  --f7-list-strong-bg-color: transparent;
+  --f7-list-group-title-bg-color: var(--ck-bg);
+  --f7-list-group-title-font-size: 12px;
+  --f7-list-group-title-font-weight: 700;
+  --f7-list-item-title-white-space: normal;
+  margin: 0;
+}
+.list.ck-plain-list .list-group-title { text-transform: uppercase; letter-spacing: 0.06em; }
+.ck-steps { display: grid; gap: 14px; }
+.ck-group-label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ck-muted); padding-top: 4px; }
+.ck-step { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start; }
+.ck-step-no { width: 26px; height: 26px; border-radius: 9999px; display: grid; place-items: center; font-size: 13px; font-weight: 700; background-color: var(--ck-accent-tint); color: var(--ck-accent-ink); }
+.ck-step-text { font-size: 15px; line-height: 1.45; white-space: normal; }
+.ck-notes { background-color: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.45; color: var(--ck-fg2); }
+/* bottom bar with servings and "Start cooking" (the tab bar is hidden on this page) */
+html.ios .toolbar.ck-cta::before,
+html.ios .toolbar.ck-cta::after { display: none; }
+html.ios .toolbar.ck-cta {
+  --f7-toolbar-height: 64px;
+}
+html.ios .toolbar.ck-cta .toolbar-inner {
+  justify-content: space-between;
+  padding: 0 16px var(--f7-safe-area-bottom);
+  background-color: var(--ck-surface);
+  border-top: 1px solid var(--ck-line);
+}
+.ck-cta-text { display: grid; gap: 1px; }
+.ck-cta-text b { font-size: 16px; }
+.button.ck-cta-button {
+  --f7-button-fill-bg-color: var(--ck-accent);
+  --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
+  --f7-button-border-radius: 10px;
+  --f7-button-large-height: 48px;
+  --f7-button-large-font-size: 19px; /* large text: white on Tomato meets WCAG AA for large text */
+  --f7-button-large-font-weight: 700;
+  padding: 0 22px;
+}
+
+/* ── Edit (Headspace): soft filled fields with the label above, compact 14px text like Prepear ── */
+.page.ck-edit,
+.sheet-modal.ck-edit-sheet {
+  --f7-list-font-size: 14px;
+  --f7-list-item-title-font-size: 14px;
+  --f7-list-item-footer-font-size: 12px;
+  --f7-list-item-header-font-size: 11px;
+  --f7-input-font-size: 14px;
+  --f7-label-font-size: 12px;
+  --f7-label-font-weight: 600;
+}
+.list.ck-fields {
+  --f7-list-bg-color: transparent;
+  --f7-list-strong-bg-color: transparent;
+  --f7-list-item-border-color: transparent;
+  margin: 10px 0;
+}
+.list.ck-fields .item-inner { padding-right: 16px; }
+.list.ck-fields .item-input-wrap {
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 0 14px;
+  border-radius: 18px;
+  background-color: var(--ck-soft);
+}
+.list.ck-fields .item-input-focused .item-input-wrap { box-shadow: inset 0 0 0 1.5px var(--ck-accent); }
+.list.ck-fields .item-input-invalid .item-input-wrap { box-shadow: inset 0 0 0 1.5px var(--ck-error); }
+.list.ck-fields textarea { padding-top: 10px; padding-bottom: 10px; line-height: 1.4; }
+.list.ck-edit-list {
+  --f7-list-item-title-white-space: normal;
+  --f7-list-inset-border-radius: 24px;
+  --f7-list-strong-bg-color: var(--ck-soft);
+  --f7-list-item-border-color: var(--ck-line);
+}
+.list.ck-edit-list .ck-group-row .item-title { font-size: 15px; font-weight: 700; }
+/* small text inside the soft cards uses the darker secondary grey (muted grey on soft fill is only 4.3:1) */
+.list.ck-edit-list { --f7-list-item-footer-text-color: var(--ck-fg2); --f7-list-item-header-text-color: var(--ck-fg2); }
+.list.ck-edit-list .ck-step-text { font-size: 14px; }
+.list.ck-edit-list .ck-step-no { width: 22px; height: 22px; font-size: 12px; }
+.list.ck-edit-list .ck-step { grid-template-columns: 22px minmax(0, 1fr); }
+.button.ck-dashed {
+  --f7-button-text-color: var(--ck-muted);
+  height: 42px;
+  gap: 6px;
+  border: 1.5px dashed var(--ck-strong);
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.ck-edit-photo { position: relative; aspect-ratio: 16 / 10; border-radius: 24px; display: grid; place-items: center; }
+.ck-edit-photo-empty { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ck-fg2); }
+.ck-edit-photo-actions { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 8px; }
+.button.ck-photo-btn {
+  --f7-button-bg-color: rgba(255, 255, 255, 0.94);
+  --f7-button-text-color: var(--ck-fg);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 9999px;
+}
+.ck-label { font-size: 12px; font-weight: 600; color: var(--ck-fg2); }
+.ck-grid2 { display: grid; grid-template-columns: 1fr 1fr; }
+/* Save: filled Tomato ink pill with white text (5:1); Tomato text on the soft grey circle was 4.3:1 */
+html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent-ink); color: var(--ck-surface); font-weight: 700; }

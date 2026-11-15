@@ -34,6 +34,18 @@ typography:
     fontFamily: "-apple-system, system-ui, SF Pro Display, sans-serif"
     fontSize: "22px"
     fontWeight: 700
+  recipe-title:
+    fontFamily: "-apple-system, system-ui, SF Pro Display, sans-serif"
+    fontSize: "26px"
+    fontWeight: 700
+  step:
+    fontFamily: "-apple-system, system-ui, SF Pro Text, sans-serif"
+    fontSize: "15px"
+    fontWeight: 400
+  edit-text:
+    fontFamily: "-apple-system, system-ui, SF Pro Text, sans-serif"
+    fontSize: "14px"
+    fontWeight: 400
   body:
     fontFamily: "-apple-system, system-ui, SF Pro Text, sans-serif"
     fontSize: "17px"
@@ -64,9 +76,11 @@ typography:
     fontWeight: 700
 rounded:
   badge: "6px"
-  field: "10px"
+  field: "18px"
+  search: "20px"
   list-inset: "16px"
-  thumb: "16px"
+  thumb: "18px"
+  cta-button: "10px"
   button: "16px"
   feature-card: "24px"
   main-button: "28px"
@@ -149,17 +163,23 @@ Where each component's shape comes from:
 | Component | Source | Shape |
 |---|---|---|
 | Background, titles | RED (Xiaohongshu) | Grey page, white content, soft near-black text, no shadows. **No iOS 26 elements:** no liquid glass, no floating bars. The top bar is solid grey with the title on the left (24px bold on tab screens, 17px semibold on pushed screens) in the same row as separate 40px soft grey round buttons |
-| Search bar | RED | White pill on the grey page, no outline, leading magnifier. It sits in the page content and scrolls away (not pinned under the top bar) |
-| Filter chips | Starbucks | Full pill, white with a 1px border, 600 weight. Active = filled `--ck-fg` with white text |
+| Search bar | Headspace | Soft grey pill (20px corners), no outline, leading magnifier. It sits in the page content and scrolls away |
+| Filter chips | Headspace | Full pill, soft grey fill, no border, 600 weight. Active = filled `--ck-fg` with white text |
 | Featured recipe card | Headspace | Photo card, 24px corners, ~200px tall, dark gradient from the bottom, small dark see-through tag pill, 22px bold white title, soft shadow |
-| Recipe list | Pinterest | No dividers, 64px photo thumbnails with 16px corners, 600-weight title, muted meta line |
+| Recipe list | Headspace | Thin hairlines between rows, 64px photo thumbnails with 18px corners, 600-weight title, muted meta line. Section titles 19px extra-bold |
 | Servings stepper and ×½–×3 | Pinterest | Soft-filled round buttons; segmented control with a dark active segment |
 | Ingredients | Instacart | Light hairline rows, round check that fills Tomato, bold amount + regular name, muted note |
 | Main button | DoorDash | Full-width pill, 52px tall, 28px corners, 19px bold white label, Tomato fill |
 | Other buttons | Pinterest | Soft grey fill, 16px corners, 46px tall, 600 weight, dark text |
 | Sheet headers | (RED) | Plain bold title on the left, Tomato ink text button ("Done") on the right, no glass bubbles |
-| Form fields | Instacart | White box, 1px `--ck-strong` border, 10px corners, small label set into the top border (Framework7 "outline" inputs). Focus = `--ck-fg` border, error = red border + red helper text |
+| Form fields | Headspace | Soft grey filled box, 18px corners, no border, 12px semibold label above. Focus = 1.5px Tomato ring, error = red ring + red helper text. Edit screens use compact 14px text (like Prepear) |
 | Tab bar | DoorDash | Docked across the full bottom edge (not floating), 56px plus the safe area, flat white with a hairline on top, no bubble behind the active tab. Four tabs: Recipes, Cookbooks, Plan, Groceries. Tomato ink active, muted inactive, 600-weight labels |
+
+### Screens (picked in Side by side, Nov 2026)
+
+- **Recipes list (Headspace):** large soft search pill, soft chips, photo card with title over a dark gradient, hairline list with rounded thumbnails.
+- **Recipe page (Airbnb):** full-bleed square photo under a see-through top bar (round white buttons: back, share, favorite, more); a panel with 28px top corners overlaps the photo; centered 26px title and meta; stats row (rating · made it · total time) with hairline dividers; action row (Cookbook · Plan · Groceries · Share) of 44px soft circles with labels; outlined round servings buttons; ×½–×3 as underlined tabs; plain ingredient rows with hairlines and uppercase group labels; numbered directions (Tomato-tint number circles) in groups; notes card; bottom bar with servings + "Start cooking" (10px corners). The tab bar hides on this page.
+- **Edit (Headspace, stacked page, not a sheet):** Cancel · Edit Recipe · Save (filled Tomato ink pill, white text); photo with remove/replace buttons; soft fields; ingredients and directions in soft 24px cards with drag handles on the left, swipe to delete, group rows; a paste box under each list (blank lines skipped, "For the sauce:" lines become groups); dashed "Separate into groups"; notes; course chips; tags; servings; serving size; prep and cook time; source. All text 14px.
 
 ## Do's and Don'ts
 

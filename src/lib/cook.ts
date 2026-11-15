@@ -1,5 +1,5 @@
 // Helpers for cook mode: timers found in a step's text, and the ingredients a step mentions.
-import type { DemoIngredient } from './data';
+import type { Ingredient } from './recipe';
 
 export type StepTimer = { label: string; seconds: number };
 
@@ -37,7 +37,7 @@ const stem = (w: string) => w.toLowerCase().replace(/[^a-z-]/g, '').replace(/(es
  * "onion"), or all of its specific words ("bell peppers" needs "bell", so "red pepper flakes" in the text doesn't pull
  * in the bell peppers).
  */
-export function stepIngredients(text: string, ingredients: DemoIngredient[]): DemoIngredient[] {
+export function stepIngredients(text: string, ingredients: Ingredient[]): Ingredient[] {
   const words = new Set(text.split(/[^A-Za-z-]+/).filter(Boolean).map(stem));
   const items = ingredients
     .filter((i) => i.kind !== 'header')

@@ -2,13 +2,13 @@ import { useRef } from 'react';
 import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Block } from 'framework7-react';
 import Cropper from 'cropperjs';
 import 'cropperjs/dist/cropper.css';
-import type { DemoPhoto } from '../demo/data';
+import type { Photo } from '../lib/recipe';
 import { PHOTO_RATIO } from './ui/photo';
 
-type Box = NonNullable<DemoPhoto['crop']>;
+type Box = NonNullable<Photo['crop']>;
 type Props = {
   /** the photo being cropped; null when closed */
-  photo: DemoPhoto | null;
+  photo: Photo | null;
   onDone: (box: Box) => void;
   onClose: () => void;
 };

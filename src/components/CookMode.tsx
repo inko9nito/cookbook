@@ -5,14 +5,14 @@ import {
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
 import { X, GripHorizontal, ChevronDown, Timer as TimerIcon } from 'lucide-react';
-import type { DemoIngredient, DemoRecipe } from '../demo/data';
-import { scaleAmount, unitFor, friendly } from '../demo/quickParse';
-import { stepTimers, stepIngredients, clock } from '../demo/cook';
+import type { Ingredient, Recipe } from '../lib/recipe';
+import { scaleAmount, unitFor, friendly } from '../lib/ingredients';
+import { stepTimers, stepIngredients, clock } from '../lib/cook';
 import { navIcon, inlineIcon } from './ui/icons';
-import { useStore } from '../demo/store';
+import { useStore } from '../data/store';
 import ScaleSheet from './ScaleSheet';
 
-type Props = { recipe: DemoRecipe; factor: number; onFactor: (f: number) => void; onClose: () => void };
+type Props = { recipe: Recipe; factor: number; onFactor: (f: number) => void; onClose: () => void };
 type RunningTimer = { id: number; label: string; step: number; endsAt: number };
 type WakeLock = { release: () => Promise<void> };
 
@@ -21,7 +21,7 @@ const MIN_SPLIT = 0.18;
 const MAX_SPLIT = 0.82;
 const clampSplit = (n: number) => Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, n));
 
-const amountText = (i: DemoIngredient, factor: number) => {
+const amountText = (i: Ingredient, factor: number) => {
   const a = scaleAmount(i.amount, factor);
   return [a, unitFor(i.unit, a)].filter(Boolean).join(' ');
 };
@@ -205,7 +205,7 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
               text: 'Mark as made',
               strong: true,
               onClick: () => {
-                saveRecipe({ ...recipe, timesMade: recipe.timesMade + 1 });
+                saveRecipe({ ...recipe, timesMade: recipe.timesMade + 1, lastMadeAt: new Date().toISOString() });
                 f7.toast.show({ text: `Marked as made · ${recipe.timesMade + 1}×`, closeTimeout: 1800 });
                 f7.popup.close('.ck-cook');
               },
@@ -224,7 +224,7 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
   const servingsText = scaled ? `×${friendly(factor)} · ${friendly(recipe.servings * factor)} servings` : `${recipe.servings} servings`;
 
   // ingredient rows grouped under their labels
-  const ingGroups: { id: string; label?: string; items: DemoIngredient[] }[] = [];
+  const ingGroups: { id: string; label?: string; items: Ingredient[] }[] = [];
   for (const i of recipe.ingredients) {
     if (i.kind === 'header') ingGroups.push({ id: i.id, label: i.name, items: [] });
     else {

@@ -4,9 +4,9 @@ import {
   SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton,
 } from 'framework7-react';
 import { Camera, ImagePlus, Trash2, Plus, ArrowUp, ArrowDown, Crop, Star } from 'lucide-react';
-import { useStore } from '../demo/store';
-import { COURSES, emptyRecipe, newId, titleCase, type DemoIngredient, type DemoPhoto, type DemoRecipe, type DemoStep } from '../demo/data';
-import { quickParse, isHeaderLine, headerText, pastedLines } from '../demo/quickParse';
+import { useStore } from '../data/store';
+import { COURSES, emptyRecipe, newId, titleCase, withRaw, type Ingredient, type Photo, type Recipe, type Step } from '../lib/recipe';
+import { parseLine, isHeaderLine, headerText, pastedLines, isStepLabel, stepText } from '../lib/ingredients';
 import IngredientSheet from '../components/IngredientSheet';
 import StepSheet from '../components/StepSheet';
 import { inlineIcon } from '../components/ui/icons';
@@ -61,9 +61,9 @@ function GroupMove({ name, isFirst, isLast, onMove }: { slot: 'after'; name: str
 export default function RecipeEditPage({ f7route, f7router }: Props) {
   const { recipes, saveRecipe } = useStore();
   const id = f7route?.params.id;
-  const original = useMemo<DemoRecipe>(() => recipes.find((r) => r.id === id) ?? emptyRecipe(), []); // eslint-disable-line react-hooks/exhaustive-deps
-  const [draft, setDraft] = useState<DemoRecipe>(original);
-  const set = (patch: Partial<DemoRecipe>) => setDraft((d) => ({ ...d, ...patch }));
+  const original = useMemo<Recipe>(() => recipes.find((r) => r.id === id) ?? emptyRecipe(), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [draft, setDraft] = useState<Recipe>(original);
+  const set = (patch: Partial<Recipe>) => setDraft((d) => ({ ...d, ...patch }));
 
   const [editingIngredientId, setEditingIngredientId] = useState<string | null>(null);
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
@@ -103,19 +103,19 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
 
   // ── ingredients ──
   const editingIngredient = draft.ingredients.find((i) => i.id === editingIngredientId) ?? null;
-  const updateIngredient = (next: DemoIngredient) => set({ ingredients: draft.ingredients.map((i) => (i.id === next.id ? next : i)) });
+  const updateIngredient = (next: Ingredient) => set({ ingredients: draft.ingredients.map((i) => (i.id === next.id ? withRaw(next) : i)) });
   const removeIngredient = (rid: string) => setDraft((d) => ({ ...d, ingredients: d.ingredients.filter((i) => i.id !== rid) }));
   const addPastedIngredients = () => {
-    const rows: DemoIngredient[] = pastedLines(ingredientPaste).map((line) =>
+    const rows: Ingredient[] = pastedLines(ingredientPaste).map((line) =>
       isHeaderLine(line)
         ? { id: newId(), kind: 'header', amount: '', unit: '', name: headerText(line), note: '' }
-        : { id: newId(), ...quickParse(line) },
+        : { id: newId(), ...parseLine(line), raw: line },
     );
     set({ ingredients: [...draft.ingredients, ...rows] });
     setIngredientPaste('');
   };
   const addIngredientGroup = () => {
-    const header: DemoIngredient = { id: newId(), kind: 'header', amount: '', unit: '', name: '', note: '' };
+    const header: Ingredient = { id: newId(), kind: 'header', amount: '', unit: '', name: '', note: '' };
     set({ ingredients: [...draft.ingredients, header] });
     setFocusGroupId(header.id);
   };
@@ -124,15 +124,14 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
   const editingStep = draft.steps.find((s) => s.id === editingStepId) ?? null;
   const updateStep = (text: string) => set({ steps: draft.steps.map((s) => (s.id === editingStepId ? { ...s, text } : s)) });
   const removeStep = (sid: string) => setDraft((d) => ({ ...d, steps: d.steps.filter((s) => s.id !== sid) }));
+  const pastedSteps = pastedLines(stepPaste).filter((line) => !isStepLabel(line));
   const addPastedSteps = () => {
-    const rows: DemoStep[] = pastedLines(stepPaste).map((line) =>
-      isHeaderLine(line) ? { id: newId(), kind: 'header', text: headerText(line) } : { id: newId(), text: line.replace(/^\d+[.)]\s*/, '') },
-    );
+    const rows: Step[] = pastedSteps.map((line) => (isHeaderLine(line) ? { id: newId(), kind: 'header', text: headerText(line) } : { id: newId(), text: stepText(line) }));
     set({ steps: [...draft.steps, ...rows] });
     setStepPaste('');
   };
   const addStepGroup = () => {
-    const header: DemoStep = { id: newId(), kind: 'header', text: '' };
+    const header: Step = { id: newId(), kind: 'header', text: '' };
     set({ steps: [...draft.steps, header] });
     setFocusGroupId(header.id);
   };
@@ -153,7 +152,7 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
 
   // ── photos (kept on this phone only until photo upload in Phase 1). The first is the cover. ──
   const [photoIdx, setPhotoIdx] = useState(0);
-  const [cropping, setCropping] = useState<DemoPhoto | null>(null);
+  const [cropping, setCropping] = useState<Photo | null>(null);
   const shown = draft.photos[Math.min(photoIdx, draft.photos.length - 1)];
   const addPhotos = async (files: FileList | null) => {
     const picked = [...(files ?? [])];
@@ -164,7 +163,7 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
     // one photo: straight to cropping it; several: each is centre-cropped, crop any of them after
     if (added.length === 1) setCropping(added[0]);
   };
-  const applyCrop = async (box: NonNullable<DemoPhoto['crop']>) => {
+  const applyCrop = async (box: NonNullable<Photo['crop']>) => {
     if (!cropping) return;
     const next = await recrop(cropping, box);
     setDraft((d) => ({ ...d, photos: d.photos.map((p) => (p.id === next.id ? next : p)) }));
@@ -402,7 +401,7 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
       <Block className="ck-stack">
         {stepPaste.trim() && (
           <Button large className="ck-soft" onClick={addPastedSteps}>
-            Add {pastedLines(stepPaste).length} {pastedLines(stepPaste).length === 1 ? 'step' : 'steps'}
+            Add {pastedSteps.length} {pastedSteps.length === 1 ? 'step' : 'steps'}
           </Button>
         )}
         <Button className="ck-dashed" onClick={addStepGroup}>

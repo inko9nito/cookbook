@@ -3,7 +3,7 @@ import {
   Page, Navbar, BlockTitle, Block, BlockFooter, List, ListItem, ListInput, Chip, Button, Stepper, Segmented,
 } from 'framework7-react';
 import RecipeCard from '../components/ui/RecipeCard';
-import { demoRecipes } from '../demo/data';
+import { sampleRecipes } from '../demo/data';
 
 const SWATCHES: [string, string][] = [
   ['Background', '--ck-bg'], ['Surface', '--ck-surface'], ['Soft', '--ck-soft'], ['Text', '--ck-fg'],
@@ -45,7 +45,7 @@ export default function StyleGuidePage() {
       <BlockTitle medium>Recipe cards · Prepear grid</BlockTitle>
       <Block>
         <div className="grid grid-cols-2 grid-gap ck-card-grid">
-          {demoRecipes.slice(0, 2).map((r) => (
+          {sampleRecipes.slice(0, 2).map((r) => (
             <RecipeCard key={r.id} recipe={r} />
           ))}
         </div>

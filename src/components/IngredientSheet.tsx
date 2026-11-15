@@ -1,9 +1,10 @@
 import { Sheet, Toolbar, Link, PageContent, List, ListInput, Block, Button } from 'framework7-react';
-import { formatIngredient, type DemoIngredient } from '../demo/data';
+import type { Ingredient } from '../lib/recipe';
+import { formatIngredient } from '../lib/ingredients';
 
 type Props = {
-  ingredient: DemoIngredient | null;
-  onChange: (i: DemoIngredient) => void;
+  ingredient: Ingredient | null;
+  onChange: (i: Ingredient) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
 };
@@ -13,7 +14,7 @@ type Props = {
  * one Done button; swipe down or tap outside also keeps the changes.
  */
 export default function IngredientSheet({ ingredient, onChange, onDelete, onClose }: Props) {
-  const set = (patch: Partial<DemoIngredient>) => ingredient && onChange({ ...ingredient, ...patch });
+  const set = (patch: Partial<Ingredient>) => ingredient && onChange({ ...ingredient, ...patch });
 
   return (
     <Sheet

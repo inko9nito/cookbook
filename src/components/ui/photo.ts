@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { DemoPhoto } from '../../demo/data';
+import type { Photo } from '../../lib/recipe';
 
 /** Background-image style for a recipe photo; empty when the recipe has no photo (the placeholder tone shows instead). */
 export const photoStyle = (photo?: string): CSSProperties => (photo ? { backgroundImage: `url(${photo})` } : {});
@@ -9,7 +9,7 @@ export const PHOTO_RATIO = 4 / 3;
 const MAX_ORIGINAL = 2048; // long edge of the full photo kept for re-cropping
 const MAX_CROP_WIDTH = 1600; // width of the 4:3 crop that's shown
 
-type Box = NonNullable<DemoPhoto['crop']>;
+type Box = NonNullable<Photo['crop']>;
 
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {
@@ -55,7 +55,7 @@ export const cropImage = (img: CanvasImageSource, box: Box) => {
  * A photo picked on the phone: shrunk to a 2048px long edge (kept as the original, for re-cropping) and centre-cropped
  * to 4:3 until it's cropped by hand.
  */
-export async function photoFromFile(file: File, id: string): Promise<DemoPhoto> {
+export async function photoFromFile(file: File, id: string): Promise<Photo> {
   const img = await loadImage(await readFile(file));
   const scale = Math.min(1, MAX_ORIGINAL / Math.max(img.naturalWidth, img.naturalHeight));
   const w = img.naturalWidth * scale;
@@ -67,7 +67,7 @@ export async function photoFromFile(file: File, id: string): Promise<DemoPhoto> 
 }
 
 /** Apply a crop made in the cropper to a photo. */
-export async function recrop(photo: DemoPhoto, box: Box): Promise<DemoPhoto> {
+export async function recrop(photo: Photo, box: Box): Promise<Photo> {
   const original = photo.original ?? photo.src;
   const img = await loadImage(original);
   return { ...photo, original, crop: box, src: cropImage(img, box) };

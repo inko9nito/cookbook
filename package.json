@@ -5,26 +5,41 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.netlify.json && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "check:ui": "node scripts/check-ui-states.cjs"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.netlify.json",
+    "check:ui": "node scripts/check-ui-states.cjs",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@netlify/blobs": "^11.1.9",
+    "@netlify/database": "^2.0.3",
+    "@netlify/identity": "^2.0.1",
+    "@tanstack/query-async-storage-persister": "^5.107.1",
+    "@tanstack/react-query": "^5.107.1",
+    "@tanstack/react-query-persist-client": "^5.107.1",
     "cropperjs": "^1.6.2",
     "framework7": "^9.3.0",
     "framework7-react": "^9.3.0",
+    "idb-keyval": "^6.3.0",
     "lucide-react": "^1.65.0",
+    "parse-ingredient": "^3.2.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@netlify/database-dev": "^1.0.2",
+    "@netlify/functions": "^6.1.1",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "axe-core": "^4.14.0",
+    "pg": "^8.23.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
-    "vite-plugin-pwa": "^2.0.0"
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.0"
   }
 }

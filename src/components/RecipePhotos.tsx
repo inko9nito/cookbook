@@ -1,10 +1,10 @@
 import { useRef } from 'react';
 import { PhotoBrowser } from 'framework7-react';
 import { ChefHat } from 'lucide-react';
-import type { DemoPhoto } from '../demo/data';
+import type { Photo } from '../lib/recipe';
 import { photoStyle } from './ui/photo';
 
-type Props = { photos: DemoPhoto[]; title: string };
+type Props = { photos: Photo[]; title: string };
 
 /**
  * The photos at the top of the recipe page. One photo shows as is; several swipe sideways with page dots
@@ -23,7 +23,7 @@ export default function RecipePhotos({ photos, title }: Props) {
     );
   }
 
-  const slide = (p: DemoPhoto, i: number) => (
+  const slide = (p: Photo, i: number) => (
     <button
       type="button"
       className="ck-hero ck-photo"

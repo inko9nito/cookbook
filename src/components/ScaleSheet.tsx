@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Sheet, Toolbar, Link, PageContent, Block, BlockFooter, List, ListItem, Stepper, Chip, Button, Segmented, f7 } from 'framework7-react';
-import type { DemoIngredient, DemoRecipe } from '../demo/data';
-import { amountValue, friendly, scaleAmount, unitFor } from '../demo/quickParse';
+import type { Ingredient, Recipe } from '../lib/recipe';
+import { amountValue, friendly, scaleAmount, unitFor } from '../lib/ingredients';
 
 type Props = {
   opened: boolean;
-  recipe: DemoRecipe;
+  recipe: Recipe;
   factor: number;
   onFactor: (f: number) => void;
   onClose: () => void;
@@ -15,7 +15,7 @@ type Props = {
 
 type Mode = 'servings' | 'have';
 
-const amountText = (i: DemoIngredient, factor: number) => {
+const amountText = (i: Ingredient, factor: number) => {
   const a = scaleAmount(i.amount, factor);
   return [a, unitFor(i.unit, a)].filter(Boolean).join(' ');
 };
@@ -39,7 +39,7 @@ export default function ScaleSheet({ opened, recipe, factor, onFactor, onClose, 
     onFactor(f);
   };
 
-  const askHave = (i: DemoIngredient) => {
+  const askHave = (i: Ingredient) => {
     const base = amountValue(i.amount);
     if (!base) return;
     const unit = unitFor(i.unit, '2');

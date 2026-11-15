@@ -198,6 +198,27 @@ async function swipeLeft(ctx, page, locator) {
   await page.waitForTimeout(1000);
   await step('01-recipes', async () => {});
   await step('02-recipes-chip-selected', async () => { await page.locator('.ck-chip', { hasText: 'Dinner' }).first().tap(); });
+  // R2: chips come from the tags in use; two picked offer "all" or "any" in the sort sheet; the filter is remembered
+  await step('02b-recipes-two-tags-any', async () => {
+    await page.locator('.ck-chip', { hasText: 'Quick' }).first().tap();
+    await page.waitForTimeout(200);
+    const all = await page.locator('.page-current .ck-card').count();
+    if (all !== 1) throw new Error(`Dinner + Quick (all tags) shows ${all} recipes, expected 1`);
+    await page.locator('.view-main .navbar a[aria-label="Sort recipes"]').tap();
+    await page.waitForTimeout(400);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Any of the tags' }).tap();
+    await page.waitForTimeout(500);
+    const any = await page.locator('.page-current .ck-card').count();
+    if (any !== 4) throw new Error(`Dinner or Quick (any tag) shows ${any} recipes, expected 4`);
+  });
+  await step('02c-filter-remembered', async () => {
+    await page.reload();
+    await page.waitForTimeout(1200);
+    const on = await page.locator('.ck-chip.ck-chip-on').allTextContents();
+    if (on.join(',') !== 'Dinner,Quick') throw new Error(`after reopening, the picked chips are ${on.join(',') || 'none'}`);
+    const note = await page.locator('.page-current .ck-count').textContent();
+    if (!note.includes('any tag')) throw new Error(`count line doesn't say "any tag": ${note}`);
+  });
   await step('03-sort-sheet', async () => {
     await page.locator('.ck-chip', { hasText: 'All' }).first().tap();
     await page.locator('.view-main .navbar a[aria-label="Sort recipes"]').tap();
@@ -625,6 +646,22 @@ async function swipeLeft(ctx, page, locator) {
     if (Math.abs(cta.mid - cta.above / 2) > 2) problems.push(`Start cooking not centred above the home-indicator strip (${cta.mid}px of ${cta.above})`);
     await safe.evaluate((el) => el.remove());
     if (problems.length) throw new Error(problems.join('; '));
+  });
+
+  // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)
+  await step('19-sign-in', async () => {
+    await page.goto(`${BASE}?signin`);
+    await page.waitForTimeout(1200);
+    if (!(await page.locator('.login-screen.modal-in .ck-signin-button').isVisible())) throw new Error('sign-in screen not shown');
+    // one grey page, not a white band behind the content (Framework7 paints login screen content white)
+    const bgs = await page.evaluate(() => [...new Set([...document.querySelectorAll('.login-screen, .login-screen .page, .login-screen .page-content')].map((e) => getComputedStyle(e).backgroundColor).filter((c) => c !== 'rgba(0, 0, 0, 0)'))]);
+    if (bgs.length !== 1) throw new Error(`sign-in screen has ${bgs.length} background colours: ${bgs.join(', ')}`);
+  });
+  await step('19b-signed-in', async () => {
+    await page.locator('.ck-signin-button').tap();
+    await page.waitForTimeout(900);
+    if (await page.locator('.login-screen.modal-in').count()) throw new Error('sign-in screen still open after signing in');
+    if (!(await page.locator('.page-current .ck-card').count())) throw new Error('no recipes after signing in');
   });
 
   if (errors.length) {

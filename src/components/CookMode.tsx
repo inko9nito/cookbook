@@ -7,13 +7,20 @@ import {
 import { X, GripHorizontal, ChevronDown, Timer as TimerIcon } from 'lucide-react';
 import type { Ingredient, Recipe } from '../lib/recipe';
 import { friendly } from '../lib/ingredients';
-import { amountText, footerText } from './ui/ingredientLine';
+import { amountText, footerText, type UnitPicks } from './ui/ingredientLine';
 import { stepTimers, stepIngredients, clock } from '../lib/cook';
 import { navIcon, inlineIcon } from './ui/icons';
 import { useStore } from '../data/store';
 import ScaleSheet from './ScaleSheet';
 
-type Props = { recipe: Recipe; factor: number; onFactor: (f: number) => void; onClose: () => void };
+type Props = {
+  recipe: Recipe;
+  factor: number;
+  /** units picked on the recipe page (issue #6) */
+  picks?: UnitPicks;
+  onFactor: (f: number) => void;
+  onClose: () => void;
+};
 type RunningTimer = { id: number; label: string; step: number; endsAt: number };
 type WakeLock = { release: () => Promise<void> };
 
@@ -40,7 +47,7 @@ const readSplit = () => {
  * - Timers keep running; the soonest counts down in the top bar.
  * - The screen stays on. Closing after ticking every step offers "Mark as made".
  */
-export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
+export default function CookMode({ recipe, factor, picks, onFactor, onClose }: Props) {
   const { saveRecipe } = useStore();
   const [split, setSplit] = useState(readSplit);
   const [doneIng, setDoneIng] = useState<Set<string>>(new Set());
@@ -271,7 +278,7 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
                     {g.items.map((i) => (
                       <ListItem key={i.id} checkbox checked={doneIng.has(i.id)} onChange={() => toggle(setDoneIng, i.id)} className={doneIng.has(i.id) ? 'ck-done' : ''}>
                         <span slot="title">
-                          <span className="ck-amount">{amountText(i, factor)}</span> {i.name}
+                          <span className="ck-amount">{amountText(i, factor, picks)}</span> {i.name}
                         </span>
                         {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
                       </ListItem>
@@ -311,7 +318,7 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
                             <div className="accordion-item-content">
                               <div className="ck-step-extra-inner">
                                 {uses.length > 0 && (
-                                  <span className="ck-cook-uses">{uses.map((i) => `${amountText(i, factor)} ${i.name}`.trim()).join(' · ')}</span>
+                                  <span className="ck-cook-uses">{uses.map((i) => `${amountText(i, factor, picks)} ${i.name}`.trim()).join(' · ')}</span>
                                 )}
                                 {stepTimerList.map((t) => {
                                   const running = timers.find((x) => x.step === s.n && x.label === t.label);

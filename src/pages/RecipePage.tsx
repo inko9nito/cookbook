@@ -10,8 +10,8 @@ import RecipePhotos from '../components/RecipePhotos';
 import { useStore } from '../data/store';
 import { titleCase, type Ingredient } from '../lib/recipe';
 import { scaleAmount, friendly } from '../lib/ingredients';
-import { conversions, formatConverted } from '../lib/units';
-import { amountText, footerText } from '../components/ui/ingredientLine';
+import { conversions, formatConverted, neaterAmount } from '../lib/units';
+import { amountText, canConvert, footerText, originalAmount, type UnitPicks } from '../components/ui/ingredientLine';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
@@ -47,8 +47,17 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [cooking, setCooking] = useState(false);
   const [converting, setConverting] = useState<{ ing: Ingredient; el: Element } | null>(null);
+  // issue #6: units picked for some ingredients, until the recipe is closed (cook mode shows them too)
+  const [picks, setPicks] = useState<UnitPicks>({});
   const convertPopover = useRef(null) as unknown as PopoverRef;
-  // issue #6: once the tapped row's conversions are rendered, point the popover at it
+  // pick a unit for the ingredient being converted (null: back to the recipe's own), then close the popover
+  const pickUnit = (unit: string | null) => {
+    if (!converting) return;
+    const id = converting.ing.id;
+    setPicks(({ [id]: _old, ...rest }) => (unit ? { ...rest, [id]: unit } : rest));
+    convertPopover.current?.f7Popover().close();
+  };
+  // issue #6: once the tapped amount's options are rendered, point the popover at it
   useEffect(() => {
     if (converting) convertPopover.current?.f7Popover().open(converting.el as HTMLElement);
   }, [converting]);
@@ -129,18 +138,25 @@ export default function RecipePage({ f7route, f7router }: Props) {
           {g.label && <div className="ck-group-label">{g.label}</div>}
           <List dividers className="ck-plain-list ck-ing-list">
             {g.items.map((i) => (
-              <ListItem
-                key={i.id}
-                // issue #6: an amount in a measuring unit opens a popover with it in the other units
-                {...(conversions(scaleAmount(i.amount, factor), i.unit).length
-                  ? { link: '#', noChevron: true, onClick: (e: { target: Element }) => setConverting({ ing: i, el: e.target.closest('li') ?? e.target }) }
-                  : {})}
-              >
+              <ListItem key={i.id}>
                 <span slot="media" className="ck-bullet" aria-hidden="true" />
                 <span slot="title">
-                  <span className="ck-amount">{amountText(i, factor)}</span> {i.name}
+                  {/* issue #6: an amount in a measuring unit is underlined; tap it to pick another unit */}
+                  {canConvert(i, factor) ? (
+                    <button
+                      type="button"
+                      className={`ck-amount ck-convertible ${picks[i.id] ? 'ck-converted' : ''}`}
+                      aria-label={`${amountText(i, factor, picks)}, show in other units`}
+                      onClick={(e) => setConverting({ ing: i, el: e.currentTarget })}
+                    >
+                      {amountText(i, factor, picks)}
+                    </button>
+                  ) : (
+                    <span className="ck-amount">{amountText(i, factor, picks)}</span>
+                  )}{' '}
+                  {i.name}
                 </span>
-                {/* the neater unit ("= ¾ cup"), the note, and "not scaled" for an amount that isn't a number (R5) */}
+                {/* the note, and "not scaled" for an amount that isn't a number (R5) */}
                 {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
               </ListItem>
             ))}
@@ -182,20 +198,38 @@ export default function RecipePage({ f7route, f7router }: Props) {
         )}
       </div>
 
-      {cooking && <CookMode recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setCooking(false)} />}
+      {cooking && <CookMode recipe={recipe} factor={factor} picks={picks} onFactor={setFactor} onClose={() => setCooking(false)} />}
 
-      {/* issue #6: the tapped amount in other units, pointing at its row */}
-      {/* opened from code with the tapped row as its target (see the effect above); slot="fixed" keeps it outside the
-          scrolling content, where Framework7 positions it */}
+      {/* issue #6: pick the unit an amount is shown in. Opened from code, pointing at the tapped amount (see the effect
+          above); slot="fixed" keeps it outside the scrolling content, where Framework7 positions it */}
       <Popover slot="fixed" ref={convertPopover} className="ck-convert" onPopoverClosed={() => setConverting(null)}>
         {converting && (
           <>
-            <p className="ck-convert-head">
-              <b>{amountText(converting.ing, factor)}</b> {converting.ing.name} is
-            </p>
-            <List dividersIos className="ck-convert-list">
+            <div className="ck-convert-head">
+              <span className="ck-convert-name">{titleCase(converting.ing.name)}</span>
+              <span className="ck-convert-sub">Show the amount in</span>
+            </div>
+            <List className="ck-convert-list" dividersIos>
+              <ListItem
+                radio
+                radioIcon="start"
+                name="ck-unit"
+                checked={!picks[converting.ing.id]}
+                onChange={() => pickUnit(null)}
+                title={originalAmount(converting.ing, factor)}
+                after="Original"
+              />
               {conversions(scaleAmount(converting.ing.amount, factor), converting.ing.unit).map((c) => (
-                <ListItem key={c.unit} title={formatConverted(c)} />
+                <ListItem
+                  key={c.id}
+                  radio
+                  radioIcon="start"
+                  name="ck-unit"
+                  checked={picks[converting.ing.id] === c.id}
+                  onChange={() => pickUnit(c.id)}
+                  title={formatConverted(c)}
+                  after={neaterAmount(scaleAmount(converting.ing.amount, factor), converting.ing.unit)?.id === c.id ? 'Simpler' : undefined}
+                />
               ))}
             </List>
           </>

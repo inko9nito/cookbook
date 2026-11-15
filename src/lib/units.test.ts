@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { conversions, formatConverted, neaterAmount, unitId } from './units';
+import { conversions, convertTo, formatConverted, neaterAmount, unitId } from './units';
 
 const neat = (amount: string, unit: string) => {
   const c = neaterAmount(amount, unit);
@@ -76,5 +76,19 @@ describe('conversions', () => {
   test('nothing for amounts and units that do not convert', () => {
     expect(all('pinch', 'tsp')).toEqual([]);
     expect(all('2', 'cloves')).toEqual([]);
+  });
+});
+
+describe('convertTo (a picked unit replaces the recipe\'s)', () => {
+  test('converts, ranges too', () => {
+    expect(formatConverted(convertTo('4', 'tbsp', 'cup')!)).toBe('¼ cup');
+    expect(formatConverted(convertTo('8-12', 'tbsp', 'cup')!)).toBe('½–¾ cup');
+    expect(convertTo('4', 'tbsp', 'cup')!.id).toBe('cup');
+  });
+  test('nothing for the same unit, the other kind, or an amount that is not a number', () => {
+    expect(convertTo('4', 'tbsp', 'tablespoon')).toBeNull();
+    expect(convertTo('4', 'tbsp', 'gram')).toBeNull();
+    expect(convertTo('a pinch', 'tsp', 'tablespoon')).toBeNull();
+    expect(convertTo('2', 'cans', 'cup')).toBeNull();
   });
 });

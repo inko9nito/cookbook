@@ -82,16 +82,24 @@ function formatPlain(n: number): string {
   return String(Math.round(n * 10) / 10);
 }
 
-export type Converted = { amount: string; unit: string; approx: boolean; /** how far off the shown number is (0.05 = 5%) */ off: number };
+export type Converted = {
+  /** the unit's id (cup, tablespoon…), for remembering a choice */
+  id: string;
+  amount: string;
+  unit: string;
+  approx: boolean;
+  /** how far off the shown number is (0.05 = 5%) */
+  off: number;
+};
 
 function express(ml: number, id: string): Converted {
   const u = UNITS[id];
   const n = ml / u.size;
   if (u.fractions) {
     const k = kitchenNumber(n);
-    return { amount: k.text, unit: k.value > 1 ? u.many : u.one, approx: !k.exact, off: k.off };
+    return { id, amount: k.text, unit: k.value > 1 ? u.many : u.one, approx: !k.exact, off: k.off };
   }
-  return { amount: formatPlain(n), unit: u.one, approx: false, off: 0 };
+  return { id, amount: formatPlain(n), unit: u.one, approx: false, off: 0 };
 }
 
 /** An amount ("1-2", "¾") in base units (ml or g): the high end of a range, so "1–2 cups" is judged at 2 cups. */
@@ -102,7 +110,7 @@ function baseOf(amount: string, id: string): { low: number; high: number | null 
 }
 
 const join = (lo: Converted, hi: Converted | null): Converted =>
-  hi ? { amount: `${lo.amount}–${hi.amount}`, unit: hi.unit, approx: lo.approx || hi.approx, off: Math.max(lo.off, hi.off) } : lo;
+  hi ? { id: lo.id, amount: `${lo.amount}–${hi.amount}`, unit: hi.unit, approx: lo.approx || hi.approx, off: Math.max(lo.off, hi.off) } : lo;
 
 /**
  * The same amount in the other units of its kind, sensible ones only: "12 tbsp" → ¾ cup, 36 tsp, 6 fl oz, 175 ml.
@@ -175,3 +183,17 @@ export function neaterAmount(amount: string, unit: string): Converted | null {
 }
 
 export const formatConverted = (c: Converted) => `${c.approx ? 'about ' : ''}${c.amount} ${c.unit}`;
+
+/**
+ * The amount in a unit picked from its conversions (the recipe page remembers the pick while it's open): "4 tbsp" in
+ * cup → "¼ cup". Null when it can't be shown that way (the amount stopped being a number, or the pick is from the other
+ * kind of unit), so the row falls back to the recipe's own unit.
+ */
+export function convertTo(amount: string, unit: string, targetId: string): Converted | null {
+  const id = unitId(unit);
+  if (!id || !UNITS[targetId] || UNITS[targetId].kind !== UNITS[id].kind) return null;
+  if (id === targetId) return null;
+  const base = baseOf(amount, id);
+  if (!base) return null;
+  return join(express(base.low, targetId), base.high === null ? null : express(base.high, targetId));
+}

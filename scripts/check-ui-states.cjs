@@ -673,31 +673,62 @@ async function swipeLeft(ctx, page, locator) {
     if (t.bg !== 'none') throw new Error('the top bar still has a background');
     if (!t.backInPhoto) throw new Error('back button is not over the photo');
   });
-  // issue #6: scaled ×2, 2 tbsp lemon juice is 4 tbsp, shown also as ¼ cup; tapping it lists other units
-  await step('22-unit-hint', async () => {
+  // issue #6: amounts that convert are underlined (a fitted grey line; notes look different); tapping one opens a
+  // popover pointing at it, with a distinct header and radio options; picking one replaces the amount, and the
+  // Original option puts it back
+  await step('22-unit-underline', async () => {
     await page.locator('.page-current .ck-scale-button').tap(); await page.waitForTimeout(700);
     await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(300);
-    await page.locator('.sheet-modal.modal-in .sheet-close, .sheet-modal.modal-in a', { hasText: 'Done' }).first().tap(); await page.waitForTimeout(700);
+    await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).first().tap(); await page.waitForTimeout(700);
     const row = page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' });
     await row.scrollIntoViewIfNeeded();
-    const text = (await row.textContent()).replace(/\s+/g, ' ');
-    if (!text.includes('4 tbsp') || !text.includes('= ¼ cup')) throw new Error(`lemon juice row reads "${text.trim()}"`);
+    const t = await page.evaluate(() => {
+      const li = [...document.querySelectorAll('.page-current .ck-ing-list li')];
+      const juice = li.find((l) => l.textContent.includes('lemon juice')).querySelector('.ck-convertible');
+      const garlic = li.find((l) => l.textContent.includes('garlic'));
+      const b = juice.getBoundingClientRect(); const title = juice.closest('.item-title').getBoundingClientRect();
+      return { text: juice.textContent, line: getComputedStyle(juice).textDecorationLine, fitted: b.width < title.width / 2, garlicPlain: !garlic.querySelector('.ck-convertible'), footer: !!juice.closest('li').querySelector('.item-footer')?.textContent.includes('=') };
+    });
+    if (t.text !== '4 tbsp') throw new Error(`lemon juice amount reads "${t.text}"`);
+    if (!t.line.includes('underline') || !t.fitted) throw new Error('convertible amount is not a fitted underline');
+    if (!t.garlicPlain) throw new Error('"cloves" should not be underlined: it does not convert');
+    if (t.footer) throw new Error('a conversion still shows in the note line');
   });
   await step('22b-unit-popover', async () => {
-    await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('a').tap(); await page.waitForTimeout(600);
-    const items = await page.locator('.popover.modal-in .ck-convert-list .item-title').allTextContents();
-    if (items.join(', ') !== '12 tsp, ¼ cup, 2 fl oz, 59 ml') throw new Error(`popover lists ${items.join(', ')}`);
-  });
-  // the popover points at its row, and a tap outside closes it
-  await step('22c-unit-popover-closed', async () => {
-    const pos = await page.evaluate(() => {
-      const po = document.querySelector('.popover.modal-in').getBoundingClientRect();
-      const row = [...document.querySelectorAll('.page-current .ck-ing-list li')].find((l) => l.textContent.includes('lemon juice')).getBoundingClientRect();
-      return { gap: Math.round(Math.min(Math.abs(po.top - row.bottom), Math.abs(row.top - po.bottom))) };
+    await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(700);
+    const t = await page.evaluate(() => {
+      const po = document.querySelector('.popover.modal-in');
+      const amount = [...document.querySelectorAll('.page-current .ck-ing-list li')].find((l) => l.textContent.includes('lemon juice')).querySelector('.ck-convertible').getBoundingClientRect();
+      const r = po.getBoundingClientRect();
+      return {
+        head: po.querySelector('.ck-convert-name')?.textContent, headBg: getComputedStyle(po.querySelector('.ck-convert-head')).backgroundColor,
+        listBg: getComputedStyle(po.querySelector('.ck-convert-list ul')).backgroundColor,
+        items: [...po.querySelectorAll('.ck-convert-list .item-title')].map((e) => e.textContent),
+        radios: po.querySelectorAll('.ck-convert-list input[type=radio]').length, checked: po.querySelector('input[type=radio]:checked')?.closest('li').textContent,
+        ring: getComputedStyle(po.querySelector('.icon-radio')).borderTopWidth,
+        gap: Math.round(Math.min(Math.abs(r.top - amount.bottom), Math.abs(amount.top - r.bottom))),
+      };
     });
-    if (pos.gap > 4) throw new Error(`popover sits ${pos.gap}px away from the tapped row`);
-    await page.touchscreen.tap(360, 640); await page.waitForTimeout(600);
-    if (await page.locator('.popover.modal-in').count()) throw new Error('popover did not close on a tap outside');
+    if (t.head !== 'Lemon juice') throw new Error(`popover header reads "${t.head}"`);
+    if (t.headBg === t.listBg) throw new Error('popover header looks the same as the options');
+    if (t.items.join(', ') !== '4 tbsp, 12 tsp, ¼ cup, 2 fl oz, 59 ml') throw new Error(`popover lists ${t.items.join(', ')}`);
+    if (t.radios !== 5 || !t.checked?.includes('Original')) throw new Error('options are not radios with Original picked');
+    if (t.ring === '0px') throw new Error('radio options have no visible circle');
+    if (t.gap > 24) throw new Error(`popover sits ${t.gap}px away from the tapped amount`);
+  });
+  await step('22c-unit-picked', async () => {
+    await page.locator('.popover.modal-in li', { hasText: '¼ cup' }).tap(); await page.waitForTimeout(700);
+    if (await page.locator('.popover.modal-in').count()) throw new Error('popover stayed open after picking');
+    const text = await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').textContent();
+    if (text !== '¼ cup') throw new Error(`after picking ¼ cup the amount reads "${text}"`);
+  });
+  await step('22d-unit-reverted', async () => {
+    await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(700);
+    const checked = await page.locator('.popover.modal-in input[type=radio]:checked').evaluate((e) => e.closest('li').textContent);
+    if (!checked.includes('¼ cup')) throw new Error(`reopened popover has "${checked}" picked, not ¼ cup`);
+    await page.locator('.popover.modal-in li', { hasText: 'Original' }).tap(); await page.waitForTimeout(700);
+    const text = await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').textContent();
+    if (text !== '4 tbsp') throw new Error(`after Original the amount reads "${text}"`);
   });
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)

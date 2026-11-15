@@ -328,8 +328,15 @@ html.ios {
 }
 .chip.ck-chip { border: 0; }
 /* "Add tag" at the end of the tag chips: dashed, like "Separate into groups" */
-.chip.ck-chip.ck-chip-add { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ck-strong); color: var(--ck-fg2); }
-.chip.ck-chip-add .chip-media { background: transparent; color: var(--ck-fg2); width: 18px; height: 18px; margin-right: 2px; }
+/* "+ Add tag" at the end of the tag chips: a dashed chip you type into; Return adds the tag */
+.ck-tag-add {
+  display: inline-flex; align-items: center; gap: 4px; height: var(--f7-chip-height); padding: 0 12px;
+  border-radius: 9999px; box-shadow: inset 0 0 0 1.5px var(--ck-strong); color: var(--ck-fg2);
+}
+.ck-tag-add input { width: 92px; padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--f7-chip-font-size); font-weight: var(--f7-chip-font-weight); color: var(--ck-fg); }
+.ck-tag-add input::placeholder { color: var(--ck-fg2); }
+.ck-tag-add input:focus { outline: none; }
+.ck-tag-add:focus-within { box-shadow: inset 0 0 0 1.5px var(--ck-accent); }
 
 /* ── Recipe page (Airbnb) ── */
 /* The top bar is solid (back and ••• only, like Prepear). A see-through bar that fades in while scrolling looked glitchy on the phone. */
@@ -573,8 +580,24 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 .list.ck-edit-list .ck-group-input { height: 22px; line-height: 22px; }
 /* the handle's 20px icon centred on that first line: row padding + half a line - half the icon */
 .list.ck-edit-list .sortable-handler { align-items: flex-start; padding-top: calc(var(--f7-list-item-padding-vertical) + 10px - 10px); box-sizing: border-box; }
-.list.ck-edit-list li.ck-group-row .sortable-handler { padding-top: calc(var(--f7-list-item-padding-vertical) + 13px + 11px - 10px); }
-.list.ck-edit-list li.ck-group-row:not(:first-child) .sortable-handler { padding-top: calc(14px + var(--f7-list-item-padding-vertical) + 13px + 11px - 10px); }
+/* group rows: handle and ↑ ↓ centred on the two-line label (13px "Group" + 22px name) */
+.list.ck-edit-list li.ck-group-row .sortable-handler { padding-top: calc(var(--f7-list-item-padding-vertical) + 17.5px - 10px); }
+.list.ck-edit-list li.ck-group-row:not(:first-child) .sortable-handler { padding-top: calc(14px + var(--f7-list-item-padding-vertical) + 17.5px - 10px); }
+/* drag handles are on the right (Framework7's default side), so a thumb on one doesn't cover the row's text.
+   The row's tap area ends where the handle starts, and a row swiped open hides its handle (Framework7's own opacity
+   transition) so it can't sit over Delete. */
+.list.ck-edit-list li .item-link { margin-right: var(--f7-sortable-handler-width); }
+.list.ck-edit-list li.swipeout-opened .sortable-handler,
+.list.ck-edit-list li.swipeout-active .sortable-handler { opacity: 0; pointer-events: none; }
+/* ↑ ↓ on group rows: move the whole group past its neighbour */
+.ck-group-move { display: flex; gap: 6px; align-self: center; }
+/* group row: a small "Group" kicker over the name, both in the title so ↑ ↓ sit beside them */
+.ck-group-title { display: grid; }
+.ck-group-kicker { font-size: 11px; line-height: 13px; font-weight: 400; color: var(--ck-fg2); }
+/* the list ends close to its paste box, not Framework7's 35px list margin */
+.list.ck-edit-list { margin-bottom: 8px; }
+.button.ck-move-btn { --f7-button-bg-color: var(--ck-soft); --f7-button-text-color: var(--ck-fg); width: 34px; height: 34px; padding: 0; border-radius: 9999px; }
+.button.ck-move-btn.disabled { opacity: 0.35; }
 .list.ck-edit-list li.ck-group-row .item-inner::after,
 .list.ck-edit-list li:has(+ li.ck-group-row) .item-inner::after { display: none; }
 /* group name typed right in the row: looks like the bold title until tapped */

@@ -404,6 +404,32 @@ async function swipeLeft(ctx, page, locator) {
     await page.keyboard.press('Enter');
     await page.waitForTimeout(300);
   });
+  await step('11c-group-moved-down', async () => {
+    // ↑ ↓ on a group row move the whole group (its rows too) past the next group, and keep it under the finger
+    const names = () => page.evaluate(() => [...document.querySelectorAll('.page-current .ck-edit-list')[0].querySelectorAll('.ck-group-input')].map((i) => i.value));
+    const rowsUnder = (name) => page.evaluate((name) => {
+      const lis = [...document.querySelectorAll('.page-current .ck-edit-list')[0].children[0].children];
+      const k = lis.findIndex((li) => li.querySelector('.ck-group-input')?.value === name);
+      const out = []; for (let j = k + 1; j < lis.length && !lis[j].classList.contains('ck-group-row'); j++) out.push(lis[j].textContent.trim().slice(0, 20));
+      return out.join('|');
+    }, name);
+    const before = await names();
+    const first = before[0];
+    const under = await rowsUnder(first);
+    const row = page.locator('.page-current .ck-edit-list').first().locator('li.ck-group-row').first();
+    await row.locator('.ck-move-btn').nth(1).scrollIntoViewIfNeeded();
+    const y0 = (await row.locator('.ck-move-btn').nth(1).boundingBox()).y;
+    await row.locator('.ck-move-btn').nth(1).tap(); await page.waitForTimeout(400);
+    const after = await names();
+    if (after[1] !== first) throw new Error(`group "${first}" didn't move down (${after.join(', ')})`);
+    if ((await rowsUnder(first)) !== under) throw new Error('the group\'s rows didn\'t move with it');
+    const moved = page.locator('.page-current .ck-edit-list').first().locator('li.ck-group-row').nth(1).locator('.ck-move-btn').nth(1);
+    const y1 = (await moved.boundingBox()).y;
+    if (Math.abs(y1 - y0) > 4) throw new Error(`moved group jumped ${Math.round(y1 - y0)}px on screen`);
+    // drag handles are on the right, so a thumb on them doesn't cover the row's text
+    const side = await page.evaluate(() => { const li = document.querySelector('.page-current .ck-edit-list li:not(.ck-group-row)'); return li.querySelector('.sortable-handler').getBoundingClientRect().left - li.getBoundingClientRect().left > li.getBoundingClientRect().width / 2; });
+    if (!side) throw new Error('drag handles are on the left');
+  });
   await step('12-edit-paste', async () => {
     await page.locator('.page-current textarea[placeholder^="Add one ingredient"]').fill('For the topping:\n\n1/2 cup brown sugar\n2 tbsp butter, melted');
     await page.waitForTimeout(300);
@@ -424,9 +450,10 @@ async function swipeLeft(ctx, page, locator) {
       const out = [];
       // each row's reorder handle (20px icon) is centred on its first line: step number, ingredient, or group name
       for (const li of document.querySelectorAll('.page-current .ck-edit-list li')) {
-        const target = li.querySelector('.ck-group-input') || li.querySelector('.ck-step-no') || li.querySelector('.item-title');
+        // group rows: centred on the "Group" + name label, level with the ↑ ↓ buttons
+        const target = li.querySelector('.ck-group-title') || li.querySelector('.ck-step-no') || li.querySelector('.item-title');
         let line = target.getBoundingClientRect();
-        if (target.tagName !== 'INPUT') {
+        if (!target.classList.contains('ck-group-title')) {
           const w = document.createTreeWalker(target, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode()) && !n.textContent.trim());
           const r = document.createRange(); r.selectNodeContents(n); line = r.getClientRects()[0];
         }
@@ -434,6 +461,8 @@ async function swipeLeft(ctx, page, locator) {
         const icon = hr.top + parseFloat(getComputedStyle(h).paddingTop) + 10;
         const off = Math.abs(icon - (line.top + line.height / 2));
         if (off > 2) out.push(`reorder handle ${Math.round(off)}px off the first line of "${li.textContent.trim().slice(0, 24)}"`);
+        const move = li.querySelector('.ck-group-move');
+        if (move) { const m = move.getBoundingClientRect(); if (Math.abs(m.top + m.height / 2 - icon) > 3) out.push(`↑ ↓ not level with the handle on group "${li.querySelector('input').value}"`); }
       }
       // groups are separate cards: a group row sits on the page colour, not the card fill
       for (const g of document.querySelectorAll('.page-current .ck-edit-list li.ck-group-row')) {
@@ -448,14 +477,16 @@ async function swipeLeft(ctx, page, locator) {
     });
     if (layout.length) throw new Error(layout.join('; '));
   });
-  await step('12d2-add-tag-dialog', async () => {
-    await page.locator('.page-current .ck-chip-add').tap(); await page.waitForTimeout(500);
-    await page.locator('.dialog.modal-in input').fill('Make-ahead');
+  await step('12d2-add-tag-typing', async () => {
+    // tags are typed inline at the end of the chips, no dialog
+    await page.locator('.page-current .ck-tag-add input').fill('Make-ahead');
   });
   await step('12d3-tag-added', async () => {
-    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(500);
+    await page.locator('.page-current .ck-tag-add input').press('Enter'); await page.waitForTimeout(300);
+    if (await page.locator('.dialog.modal-in').count()) throw new Error('adding a tag opened a dialog');
     const on = await page.locator('.page-current .ck-chip.ck-chip-on', { hasText: 'Make-ahead' }).count();
     if (!on) throw new Error('new tag is not shown as a selected chip');
+    if ((await page.locator('.page-current .ck-tag-add input').inputValue()) !== '') throw new Error('tag field not cleared after adding');
     if (await page.locator('.page-current .ck-fields input[placeholder^="#"]').count()) throw new Error('the separate Tags text field is still there');
   });
   await step('12e-discard-prompt', async () => { await page.locator('.navbar a', { hasText: 'Cancel' }).filter({ visible: true }).first().tap(); });

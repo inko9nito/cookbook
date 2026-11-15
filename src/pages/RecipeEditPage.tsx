@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListInput, ListItem, BlockTitle, Block, Button, Chip, Stepper,
-  SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton, f7,
+  SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton,
 } from 'framework7-react';
-import { Camera, ImagePlus, Trash2, Plus } from 'lucide-react';
+import { Camera, ImagePlus, Trash2, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { useStore } from '../demo/store';
 import { COURSES, emptyRecipe, newId, titleCase, type DemoIngredient, type DemoRecipe, type DemoStep } from '../demo/data';
 import { quickParse, isHeaderLine, headerText, pastedLines } from '../demo/quickParse';
@@ -21,6 +21,36 @@ const move = <T,>(list: T[], from: number, to: number) => {
   copy.splice(to, 0, item);
   return copy;
 };
+
+/**
+ * Move a whole group (its header row and the rows under it, up to the next header) past the group above or below.
+ * Rows before the first header aren't in a group and stay at the top.
+ */
+const moveGroup = <T extends { kind?: string }>(rows: T[], headerIndex: number, dir: -1 | 1): T[] => {
+  const starts = rows.flatMap((r, i) => (r.kind === 'header' ? [i] : []));
+  const k = starts.indexOf(headerIndex);
+  const end = (j: number) => (j + 1 < starts.length ? starts[j + 1] : rows.length);
+  const first = dir === -1 ? k - 1 : k; // the upper of the two groups that swap
+  if (k < 0 || first < 0 || first + 1 >= starts.length) return rows;
+  const a = starts[first], b = starts[first + 1], e = end(first + 1);
+  return [...rows.slice(0, a), ...rows.slice(b, e), ...rows.slice(a, b), ...rows.slice(e)];
+};
+
+/** ↑ ↓ on a group row: move the whole group (with its rows) past the neighbouring group, without dragging */
+// `slot` is read by Framework7's ListItem from this element's props (it places it in the row's "after" area)
+function GroupMove({ name, isFirst, isLast, onMove }: { slot: 'after'; name: string; isFirst: boolean; isLast: boolean; onMove: (dir: -1 | 1, el: Element) => void }) {
+  const label = name.trim() || 'this group';
+  return (
+    <span className="ck-group-move">
+      <Button round className="ck-move-btn" disabled={isFirst} onClick={(e: { currentTarget: Element }) => onMove(-1, e.currentTarget)} aria-label={`Move ${label} up`}>
+        <ArrowUp {...inlineIcon} />
+      </Button>
+      <Button round className="ck-move-btn" disabled={isLast} onClick={(e: { currentTarget: Element }) => onMove(1, e.currentTarget)} aria-label={`Move ${label} down`}>
+        <ArrowDown {...inlineIcon} />
+      </Button>
+    </span>
+  );
+}
 
 /**
  * Edit Recipe: a stacked page (pushed, with swipe-back) with Prepear's editing features:
@@ -47,6 +77,25 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
     setFocusGroupId(null);
   }, [focusGroupId]);
   const fileRef = useRef<HTMLInputElement>(null);
+  // after ↑/↓ moves a group, scroll so that group stays under the finger
+  const keepInView = useRef<{ id: string; dir: -1 | 1; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const k = keepInView.current;
+    if (!k) return;
+    keepInView.current = null;
+    // the same arrow the finger is on, in the group's new place
+    const row = document.querySelector<HTMLElement>(`.page-current input[data-group-id="${k.id}"]`)?.closest('li');
+    const arrow = row?.querySelectorAll('.ck-move-btn')[k.dir === -1 ? 0 : 1];
+    const scroller = row?.closest('.page-content');
+    if (arrow && scroller) scroller.scrollTop += arrow.getBoundingClientRect().top - k.top;
+  });
+  const shiftGroup = (field: 'ingredients' | 'steps', id: string, dir: -1 | 1, el: Element) => {
+    keepInView.current = { id, dir, top: el.getBoundingClientRect().top };
+    setDraft((d) => {
+      const rows = d[field] as { id: string; kind?: string }[];
+      return { ...d, [field]: moveGroup(rows, rows.findIndex((r) => r.id === id), dir) };
+    });
+  };
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(original);
   const isNew = !id;
@@ -93,12 +142,12 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
     return [...COURSES, ...[...used].filter((t) => !COURSES.includes(t)).sort()];
   }, [recipes, draft.tags]);
   const toggleTag = (t: string) => set({ tags: draft.tags.includes(t) ? draft.tags.filter((x) => x !== t) : [...draft.tags, t] });
+  // a new tag is typed right at the end of the chips: Return (or leaving the field) adds it, selected
+  const [newTag, setNewTag] = useState('');
   const addTag = () => {
-    const dialog = f7.dialog.prompt('Name it, e.g. holiday or make-ahead.', 'New tag', (value: string) => {
-      const t = value.trim().replace(/^#+/, '').toLowerCase();
-      if (t && !draft.tags.includes(t)) set({ tags: [...draft.tags, t] });
-    });
-    dialog.$el.find('input').attr('autocapitalize', 'off');
+    const t = newTag.trim().replace(/^#+/, '').toLowerCase();
+    if (t && !draft.tags.includes(t)) set({ tags: [...draft.tags, t] });
+    setNewTag('');
   };
 
   // ── photo (kept on this phone only until photo upload in Phase 1) ──
@@ -116,6 +165,8 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
   const cancel = () => (dirty ? setDiscardOpen(true) : f7router?.back());
 
   let stepNo = 0;
+  const ingHeaders = draft.ingredients.filter((i) => i.kind === 'header').map((i) => i.id);
+  const stepHeaders = draft.steps.filter((x) => x.kind === 'header').map((x) => x.id);
 
   return (
     <Page name="recipe-edit" className="ck-edit" noSwipeback={dirty} onPageBeforeIn={hideTabbar}>
@@ -169,24 +220,32 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
           sortable
           sortableEnabled
           sortableTapHold
-          sortableOpposite
           onSortableSort={(data: { from: number; to: number }) => set({ ingredients: move(draft.ingredients, data.from, data.to) })}
         >
           {draft.ingredients.map((i) =>
             i.kind === 'header' ? (
-              <ListItem key={i.id} swipeout className="ck-group-row" onSwipeoutDeleted={() => removeIngredient(i.id)} header="Group">
+              <ListItem key={i.id} swipeout className="ck-group-row" onSwipeoutDeleted={() => removeIngredient(i.id)}>
                 {/* the group name is edited right here, no sheet */}
-                <input
-                  slot="title"
-                  className="ck-group-input"
-                  data-group-id={i.id}
-                  type="text"
-                  value={i.name}
-                  placeholder="Group name, e.g. Sauce"
-                  aria-label="Ingredient group name"
-                  enterKeyHint="done"
-                  onChange={(e) => updateIngredient({ ...i, name: e.target.value })}
-                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                <span slot="title" className="ck-group-title">
+                  <span className="ck-group-kicker">Group</span>
+                  <input
+                    className="ck-group-input"
+                    data-group-id={i.id}
+                    type="text"
+                    value={i.name}
+                    placeholder="Group name, e.g. Sauce"
+                    aria-label="Ingredient group name"
+                    enterKeyHint="done"
+                    onChange={(e) => updateIngredient({ ...i, name: e.target.value })}
+                    onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                  />
+                </span>
+                <GroupMove
+                  slot="after"
+                  name={i.name}
+                  isFirst={ingHeaders[0] === i.id}
+                  isLast={ingHeaders[ingHeaders.length - 1] === i.id}
+                  onMove={(dir, el) => shiftGroup('ingredients', i.id, dir, el)}
                 />
                 <SwipeoutActions right>
                   <SwipeoutButton delete>Delete</SwipeoutButton>
@@ -236,25 +295,33 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
           sortable
           sortableEnabled
           sortableTapHold
-          sortableOpposite
           onSortableSort={(data: { from: number; to: number }) => set({ steps: move(draft.steps, data.from, data.to) })}
         >
           {draft.steps.map((s) => {
             if (s.kind === 'header') stepNo = 0;
             else stepNo += 1;
             return s.kind === 'header' ? (
-              <ListItem key={s.id} swipeout className="ck-group-row" onSwipeoutDeleted={() => removeStep(s.id)} header="Group">
-                <input
-                  slot="title"
-                  className="ck-group-input"
-                  data-group-id={s.id}
-                  type="text"
-                  value={s.text}
-                  placeholder="Group name, e.g. Prep"
-                  aria-label="Directions group name"
-                  enterKeyHint="done"
-                  onChange={(e) => set({ steps: draft.steps.map((x) => (x.id === s.id ? { ...x, text: e.target.value } : x)) })}
-                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              <ListItem key={s.id} swipeout className="ck-group-row" onSwipeoutDeleted={() => removeStep(s.id)}>
+                <span slot="title" className="ck-group-title">
+                  <span className="ck-group-kicker">Group</span>
+                  <input
+                    className="ck-group-input"
+                    data-group-id={s.id}
+                    type="text"
+                    value={s.text}
+                    placeholder="Group name, e.g. Prep"
+                    aria-label="Directions group name"
+                    enterKeyHint="done"
+                    onChange={(e) => set({ steps: draft.steps.map((x) => (x.id === s.id ? { ...x, text: e.target.value } : x)) })}
+                    onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                  />
+                </span>
+                <GroupMove
+                  slot="after"
+                  name={s.text}
+                  isFirst={stepHeaders[0] === s.id}
+                  isLast={stepHeaders[stepHeaders.length - 1] === s.id}
+                  onMove={(dir, el) => shiftGroup('steps', s.id, dir, el)}
                 />
                 <SwipeoutActions right>
                   <SwipeoutButton delete>Delete</SwipeoutButton>
@@ -302,9 +369,25 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
           {allTags.map((t) => (
             <Chip key={t} text={titleCase(t)} className={`ck-chip ${draft.tags.includes(t) ? 'ck-chip-on' : ''}`} onClick={() => toggleTag(t)} />
           ))}
-          <Chip text="Add tag" className="ck-chip ck-chip-add" onClick={addTag}>
-            <Plus slot="media" {...inlineIcon} />
-          </Chip>
+          <label className="ck-tag-add">
+            <Plus {...inlineIcon} />
+            <input
+              type="text"
+              value={newTag}
+              placeholder="Add tag"
+              aria-label="Add a tag"
+              autoCapitalize="off"
+              enterKeyHint="done"
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addTag();
+                }
+              }}
+              onBlur={addTag}
+            />
+          </label>
         </div>
       </Block>
       <Block>
@@ -341,7 +424,6 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
       <List className="ck-fields">
         <ListInput label="Source" type="text" placeholder="Website or person" value={draft.source} onInput={(e) => set({ source: e.target.value })} clearButton />
       </List>
-      <Block className="ck-note">Swipe a row left to delete it · drag ☰ on the left (or long-press) to reorder · tap an ingredient or step to edit it, or a group name to rename it</Block>
 
       <IngredientSheet
         ingredient={editingIngredient && editingIngredient.kind !== 'header' ? editingIngredient : null}

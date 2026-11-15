@@ -177,7 +177,7 @@ async function swipeLeft(ctx, page, locator) {
   await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap().catch(() => {});
   await page.waitForTimeout(500);
 
-  await step('04-recipe-page', async () => { await page.locator('.ck-recipes a', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(900); });
+  await step('04-recipe-page', async () => { await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(900); });
   // scroll through the page: sticky or overlapping content only shows up mid-scroll
   for (const y of [300, 450, 600, 800, 1000]) {
     await step(`04-recipe-scroll-${y}`, async () => { await page.evaluate((top) => document.querySelector('.page-current .page-content').scrollTo(0, top), y); });
@@ -185,11 +185,21 @@ async function swipeLeft(ctx, page, locator) {
   await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 0));
   await step('05-scale-sheet', async () => { await page.locator('.page-current .ck-scale-button').tap(); await page.waitForTimeout(800); });
   await step('05b-scale-x2', async () => { await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(400); });
-  await step('05c-scale-by-ingredient', async () => {
-    await page.locator('.sheet-modal.modal-in .ck-pick-list li', { hasText: 'chicken thighs' }).locator('label').tap();
+  await step('05c-scale-what-i-have', async () => {
+    await page.locator('.sheet-modal.modal-in .segmented .button', { hasText: 'What I have' }).tap();
     await page.waitForTimeout(400);
-    await page.locator('.sheet-modal.modal-in .ck-fields input').fill('1.5');
-    await page.waitForTimeout(400);
+  });
+  await step('05c2-scale-have-dialog', async () => {
+    await page.locator('.sheet-modal.modal-in .ck-pick-list li', { hasText: 'chicken thighs' }).locator('a').tap();
+    await page.waitForTimeout(600);
+  });
+  await step('05c3-scale-matched', async () => {
+    await page.locator('.dialog.modal-in input').fill('3');
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap();
+    await page.waitForTimeout(600);
+    await page.evaluate(() => document.querySelector('.sheet-modal.modal-in .page-content').scrollTo(0, 0));
+    const note = await page.locator('.sheet-modal.modal-in .ck-note').textContent();
+    if (!/Matched to 3 lb .*×1\.5/.test(note)) throw new Error(`scaling by what I have gave "${note}"`);
   });
   await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
   await page.waitForTimeout(700);

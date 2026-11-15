@@ -177,11 +177,22 @@ html.ios .toolbar.tabbar::before,
 html.ios .toolbar.tabbar::after {
   display: none;
 }
+/* Framework7 v9's iOS 26 tab highlight grows to 1.4× with a glass shadow when a tab is pressed (the "bouncy zoom").
+   The colors above only hid its fill, so the element itself is switched off. */
+html.ios .toolbar.tabbar .tab-link-highlight { display: none; }
 html.ios .toolbar.tabbar .toolbar-inner {
   padding: 0 0 var(--f7-safe-area-bottom);
   background-color: var(--ck-surface);
   border-top: 1px solid var(--ck-line);
 }
+/* Dialogs (alert, confirm, prompt): Framework7's pill buttons stay. The secondary (tonal) one is our soft grey button
+   with dark text: Tomato ink on a pale Tomato fill was 4.1:1, below WCAG AA. */
+html.ios .dialog {
+  --f7-button-tonal-bg-color: var(--ck-soft);
+  --f7-button-tonal-pressed-bg-color: var(--ck-strong);
+  --f7-button-tonal-text-color: var(--ck-fg);
+}
+
 /* Sheet header (ingredient sheet, paste sheet): plain bold title, Tomato text button, no glass bubbles */
 html.ios .sheet-modal .toolbar .left,
 html.ios .sheet-modal .toolbar .right {
@@ -250,26 +261,29 @@ html.ios .searchbar {
 .chip.ck-chip { border: 1px solid var(--ck-strong); }
 .chip.ck-chip.ck-chip-on { background: var(--ck-fg); border-color: var(--ck-fg); color: var(--ck-surface); }
 .ck-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+/* filter chips on the Recipes screen: one line that scrolls sideways (native overflow scrolling, no custom gesture) */
+.block.ck-chips.ck-chips-scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: 0; margin-right: 0; }
+.block.ck-chips.ck-chips-scroll::-webkit-scrollbar { display: none; }
+.block.ck-chips.ck-chips-scroll .chip { flex: none; }
 
 /* ── Photos ── */
 .ck-photo { background-color: var(--ck-soft); background-size: cover; background-position: center; }
 
-/* ── Featured recipe card (Headspace shape) ── */
-.ck-feature {
-  position: relative; display: flex; align-items: flex-end; min-height: 200px; border-radius: 24px; overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); color: #ffffff; text-decoration: none;
+/* ── Recipe cards (Prepear grid): two per row, white card, photo on top, no shadow ── */
+.ck-card-grid { --f7-grid-gap: 12px; }
+.link.ck-card, .ck-card {
+  display: flex; flex-direction: column; min-width: 0;
+  border-radius: 18px; overflow: hidden;
+  background-color: var(--ck-surface); color: var(--ck-fg); text-decoration: none;
 }
-.ck-feature-scrim { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.58), rgba(0, 0, 0, 0) 62%); }
-.ck-feature-text { position: relative; display: grid; gap: 6px; justify-items: start; padding: 16px; }
-.ck-feature-title { font-size: 22px; font-weight: 700; line-height: 1.2; }
-.ck-feature-meta { font-size: 13px; opacity: 0.85; }
-.ck-tag { display: inline-flex; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; background: rgba(0, 0, 0, 0.45); color: #ffffff; }
+.ck-card-photo { display: block; width: 100%; aspect-ratio: 4 / 3; }
+.ck-card-body { display: grid; gap: 3px; align-content: start; padding: 10px 12px 12px; }
+.ck-card-title {
+  font-size: 15px; font-weight: 600; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ck-card-meta { font-size: 13px; color: var(--ck-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ck-badge { display: inline-flex; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: var(--ck-accent-tint); color: var(--ck-accent-ink); }
-
-/* ── Recipe list (Pinterest): no dividers, rounded thumbnails, on the page background ── */
-.list.ck-recipes { --f7-list-bg-color: transparent; --f7-list-strong-bg-color: transparent; --f7-list-item-border-color: transparent; }
-.ck-thumb { width: 64px; height: 64px; border-radius: 16px; flex: none; }
-.list.ck-recipes .item-title { font-weight: 600; }
 
 /* ── Segmented control: the selected segment always has white text.
    iPhone Safari keeps a tapped button in its hover/pressed state, which showed grey text on the dark segment. ── */
@@ -310,16 +324,10 @@ html.ios {
   --f7-block-title-medium-font-weight: 800;
 }
 .chip.ck-chip { border: 0; }
-.list.ck-recipes { --f7-list-item-border-color: var(--ck-line); }
-.ck-thumb { border-radius: 18px; }
 
 /* ── Recipe page (Airbnb) ── */
-.page.ck-recipe-page .page-content { --f7-page-navbar-offset: 0px; } /* the photo starts under the see-through top bar */
-html.ios .navbar-transparent:not(.navbar-transparent-visible) .left .link,
-html.ios .navbar-transparent:not(.navbar-transparent-visible) .right .link {
-  background-color: rgba(255, 255, 255, 0.94);
-}
-.ck-hero { width: 100%; aspect-ratio: 1 / 1; max-height: 62vh; }
+/* The top bar is solid (back and ••• only, like Prepear). A see-through bar that fades in while scrolling looked glitchy on the phone. */
+.ck-hero { width: 100%; aspect-ratio: 4 / 3; }
 .ck-panel {
   position: relative;
   margin-top: -28px;
@@ -373,23 +381,30 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
   --f7-list-bg-color: transparent;
   --f7-list-strong-bg-color: transparent;
   --f7-list-item-title-white-space: normal;
+  --f7-list-item-title-font-size: 15px;
+  --f7-list-item-footer-font-size: 13px;
   margin: 0;
 }
 /* Group labels (ingredients and directions): plain uppercase text that scrolls with the content.
    Spacing (DESIGN.md "Group labels"), measured text to text: --ck-group-gap above a label, --ck-group-label-gap below it.
-   The offsets subtract what rows already carry: ingredient rows have ~12px padding above and below their text,
+   The offsets subtract what rows already carry: ingredient rows have ~12-15px padding above and below their text,
    and the steps grid has a 14px gap plus ~2px line-height slack. */
 .ck-group-label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; line-height: 16px; text-transform: uppercase; color: var(--ck-muted); }
 .ck-ing-group { padding-top: 18px; } /* first group: clear of the servings pill, like Directions under its heading */
-.ck-ing-group + .ck-ing-group { padding-top: calc(var(--ck-group-gap) - 12px); }
+.ck-ing-group + .ck-ing-group { padding-top: calc(var(--ck-group-gap) - 15px); }
 .ck-ing-group > .ck-group-label { padding: 0 16px; margin-bottom: calc(var(--ck-group-label-gap) - 16px); }
 .ck-steps { display: grid; gap: 14px; }
 .ck-steps > .ck-group-label { margin-bottom: calc(var(--ck-group-label-gap) - 16px); }
 .ck-steps > .ck-step + .ck-group-label { margin-top: calc(var(--ck-group-gap) - 16px); }
-.ck-step { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start; }
-.ck-step-no { width: 26px; height: 26px; border-radius: 9999px; display: grid; place-items: center; font-size: 13px; font-weight: 700; background-color: var(--ck-accent-tint); color: var(--ck-accent-ink); }
+.ck-step { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+/* step numbers are plain bold text, the same size as the step: no circles */
+.ck-step-no { font-size: 15px; line-height: 1.45; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ck-fg); }
 .ck-step-text { font-size: 15px; line-height: 1.45; white-space: normal; }
 .ck-notes { background-color: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 16px; padding: 12px 14px; font-size: 14px; line-height: 1.45; color: var(--ck-fg2); }
+/* Adjust amounts: the result line with a Reset link, under the mode toggle */
+.ck-scale-result { flex-wrap: nowrap; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ck-scale-result .ck-note { flex: 1; min-width: 0; }
+.ck-scale-result .link { flex: none; font-weight: 600; }
 /* bottom bar with servings and "Start cooking" (the tab bar is hidden on this page) */
 html.ios .toolbar.ck-cta::before,
 html.ios .toolbar.ck-cta::after { display: none; }
@@ -462,7 +477,7 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 /* small text inside the soft cards uses the darker secondary grey (muted grey on soft fill is only 4.3:1) */
 .list.ck-edit-list { --f7-list-item-footer-text-color: var(--ck-fg2); --f7-list-item-header-text-color: var(--ck-fg2); }
 .list.ck-edit-list .ck-step-text { font-size: 14px; }
-.list.ck-edit-list .ck-step-no { width: 22px; height: 22px; font-size: 12px; }
+.list.ck-edit-list .ck-step-no { font-size: 14px; }
 .list.ck-edit-list .ck-step { grid-template-columns: 22px minmax(0, 1fr); }
 .button.ck-dashed {
   --f7-button-text-color: var(--ck-muted);

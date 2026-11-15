@@ -79,9 +79,8 @@ rounded:
   field: "18px"
   search: "20px"
   list-inset: "16px"
-  thumb: "18px"
+  card: "18px"
   button: "16px"
-  feature-card: "24px"
   main-button: "28px"
   pill: "9999px"
 spacing:
@@ -118,12 +117,11 @@ components:
   field:
     backgroundColor: "{colors.surface-white}"
     rounded: "{rounded.field}"
-  feature-card:
-    rounded: "{rounded.feature-card}"
-    textColor: "{colors.surface-white}"
-  recipe-thumb:
-    rounded: "{rounded.thumb}"
-    size: "64px"
+  recipe-card:
+    backgroundColor: "{colors.surface-white}"
+    rounded: "{rounded.card}"
+    photoAspect: "4 / 3"
+    columns: 2
 ---
 
 # Design System: Cookbook
@@ -166,24 +164,25 @@ Where each component's shape comes from:
 |---|---|---|
 | Background, titles | RED (Xiaohongshu) | Grey page, white content, soft near-black text, no shadows. **No iOS 26 elements:** no liquid glass, no floating bars. The top bar is solid grey with the title on the left (24px bold on tab screens, 17px semibold on pushed screens) in the same row as separate 40px soft grey round buttons |
 | Search bar | Headspace | Soft grey pill (20px corners), no outline, leading magnifier. It sits in the page content and scrolls away |
-| Filter chips | Headspace | Full pill, soft grey fill, no border, 600 weight. Active = filled `--ck-fg` with white text |
-| Featured recipe card | Headspace | Photo card, 24px corners, ~200px tall, dark gradient from the bottom, small dark see-through tag pill, 22px bold white title, soft shadow |
-| Recipe list | Headspace | Thin hairlines between rows, 64px photo thumbnails with 18px corners, 600-weight title, muted meta line. Section titles 19px extra-bold |
+| Filter chips | Headspace | Full pill, soft grey fill, no border, 600 weight. Active = filled `--ck-fg` with white text. On the Recipes screen they stay on **one line that scrolls sideways** (no wrapping) |
+| Recipe cards | Prepear | **Two per row**, 12px apart. White card, 18px corners, no shadow; 4:3 photo on top; 15px semibold title (two lines max), muted source, small stars once rated |
 | Servings stepper and ×½–×3 | Pinterest | Soft-filled round buttons; segmented control with a dark active segment |
-| Ingredients | Instacart | Light hairline rows, round check that fills Tomato, bold amount + regular name, muted note |
+| Ingredients | Instacart | 15px hairline rows: bold amount + regular name, 13px muted note. **No checkboxes** on the recipe page; checking off belongs to Start cooking (cook mode) |
+| Direction steps | (plain) | 15px text, 1.45 line height. Step numbers are plain bold text in the text color, no circles or fills |
+| Dialogs | Framework7 | Framework7's alert/prompt with pill buttons: main button filled Tomato ink, the other soft grey with dark text |
 | Main button | DoorDash | Pill, 52px tall (48px in the recipe footer), 19px bold white label, Tomato fill |
 | Other buttons | Pinterest | Soft grey fill, pill, 46px tall, 600 weight, dark text. **Every button in the app is a pill** (text buttons, dashed "Separate into groups", nav buttons, footer buttons); icon-only buttons are circles |
 | Sheet headers | (RED) | Plain bold title on the left, Tomato ink text button ("Done") on the right, no glass bubbles |
 | Form fields | Headspace | Soft grey filled box, 18px corners, no border, 12px semibold label above. Focus = 1.5px Tomato ring, error = red ring + red helper text. Edit screens use compact 14px text (like Prepear) |
 | Vertical rhythm | (shared) | Three levels, measured text to text, so the outline reads at a glance: **44px above a section heading** (Ingredients, Directions, Notes; `section-gap`), **24px above a group label** (`group-gap`), **8px from a group label to its first line** (`group-label-gap`). A section break must always be clearly bigger than a group break |
 | Group labels | (shared) | Ingredient and direction groups ("MARINADE", "PREP"): 12px bold uppercase, 0.06em tracking, muted grey. **Plain text that scrolls with the content**, not Framework7's list group title (that is a list row with hairlines and no space above it, and inside a list group it pins while scrolling). Spacing, measured text to text so Ingredients and Directions look the same: **24px above a label** (`group-gap`, from the last line of the group before it), **8px from a label to its first line** (`group-label-gap`). The first ingredient label sits about 22px below the servings pill, matching Directions under its heading. Labels line up with the page's 16px gutter. No hairline above a label |
-| Tab bar | DoorDash | Docked across the full bottom edge (not floating), 56px plus the safe area, flat white with a hairline on top, no bubble behind the active tab. Four tabs: Recipes, Cookbooks, Plan, Groceries. Tomato ink active, muted inactive, 600-weight labels |
+| Tab bar | DoorDash | Docked across the full bottom edge (not floating), 56px plus the safe area, flat white with a hairline on top, no bubble behind the active tab, and **no press highlight** (Framework7 v9's tab highlight grows and bounces on tap; it is switched off). Four tabs: Recipes, Cookbooks, Plan, Groceries. Tomato ink active, muted inactive, 600-weight labels |
 
 ### Screens (picked in Side by side, Nov 2026)
 
-- **Recipes list (Headspace):** large soft search pill, soft chips, photo card with title over a dark gradient, hairline list with rounded thumbnails.
-- **Recipe page (Airbnb), reads like a plain recipe:** full-bleed square photo under a see-through top bar with only back and •••; a panel with 28px top corners overlaps the photo; centered 26px title and meta; stats row (rating · made it · total time) with hairline dividers; plain ingredient rows with hairlines, split into groups under plain uppercase group labels (see Group labels); numbered directions (Tomato-tint number circles) in groups; notes card. **App controls stay out of the content:** ••• holds Edit, Add to Cookbook / Plan / Grocery List, Share, Duplicate, Delete; a plain "N servings ▾" pill (text and chevron, no icon) next to the Ingredients heading is the only place servings show (it opens **Adjust amounts**, and reads "×1.5 · 6 servings" when scaled); the footer holds a full-width "Start cooking". The tab bar hides on this page.
-- **Adjust amounts (sheet):** servings −/+, quick ×½ ×1 ×2 ×3 chips, and "Or match what you have": pick an ingredient, type the amount you have, and everything scales to match (issue #3). "Back to original amounts" resets. Scaling resets when the recipe is reopened; ranges scale from their low end.
+- **Recipes list (Prepear cards):** large soft search pill, one sideways-scrolling row of chips, a muted "5 recipes · Newest first" line, then the two-column recipe card grid. No featured or "Recently added" card.
+- **Recipe page (Airbnb), reads like a plain recipe:** a **solid** top bar with only back and ••• (no title, like Prepear; a see-through bar that faded in on scroll looked glitchy), then a full-width 4:3 photo; a panel with 28px top corners overlaps the photo; centered 26px title and meta; stats row (rating · made it · total time) with hairline dividers; plain ingredient rows with hairlines, split into groups under plain uppercase group labels (see Group labels); numbered directions (plain bold numbers) in groups; notes card. **App controls stay out of the content:** ••• holds Edit, Add to Cookbook / Plan / Grocery List, Share, Duplicate, Delete; a plain "N servings ▾" pill (text and chevron, no icon) next to the Ingredients heading is the only place servings show (it opens **Adjust amounts**, and reads "×1.5 · 6 servings" when scaled); the footer holds a full-width "Start cooking". The tab bar hides on this page.
+- **Adjust amounts (sheet):** a **Servings | What I have** toggle at the top, then one result line ("Showing the original amounts", "Showing ×2 · 8 servings", "Matched to 3 lb chicken thighs · ×1.5 · about 6 servings") with a **Reset** link. *Servings:* −/+ and ×½ ×1 ×2 ×3 chips. *What I have* (issue #3): "Tap the ingredient you have a different amount of", the ingredient list, and tapping one asks in a dialog: "The recipe uses 2 lb. How much do you have?" Everything scales to match; the row shows "You have 3 lb" and a toast confirms. Scaling resets when the recipe is reopened; ranges scale from their low end.
 - **Edit (Headspace, stacked page, not a sheet):** Cancel · Edit Recipe · Save (filled Tomato ink pill, white text); photo with remove/replace buttons; soft fields; ingredients and directions in soft 24px cards with drag handles on the left, swipe to delete, group rows; a paste box under each list (blank lines skipped, "For the sauce:" lines become groups); dashed "Separate into groups"; notes; course chips; tags; servings; serving size; prep and cook time; source. All text 14px.
 
 ## Do's and Don'ts

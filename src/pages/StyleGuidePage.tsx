@@ -2,9 +2,8 @@ import { useState } from 'react';
 import {
   Page, Navbar, BlockTitle, Block, BlockFooter, List, ListItem, ListInput, Chip, Button, Stepper, Segmented,
 } from 'framework7-react';
-import FeaturedRecipeCard from '../components/ui/FeaturedRecipeCard';
+import RecipeCard from '../components/ui/RecipeCard';
 import { demoRecipes } from '../demo/data';
-import { photoStyle } from '../components/ui/photo';
 
 const SWATCHES: [string, string][] = [
   ['Background', '--ck-bg'], ['Surface', '--ck-surface'], ['Soft', '--ck-soft'], ['Text', '--ck-fg'],
@@ -37,25 +36,20 @@ export default function StyleGuidePage() {
       <BlockFooter>A soft grey pill. See it at the top of the Recipes screen.</BlockFooter>
 
       <BlockTitle medium>Filter chips · Headspace</BlockTitle>
-      <Block className="ck-chips">
+      <Block className="ck-chips ck-chips-scroll">
         {['All', 'Dinner', 'Soup', 'Dessert', 'Under 30 min'].map((t) => (
           <Chip key={t} text={t} className={`ck-chip ${chip === t ? 'ck-chip-on' : ''}`} onClick={() => setChip(t)} />
         ))}
       </Block>
 
-      <BlockTitle medium>Featured recipe · Headspace</BlockTitle>
+      <BlockTitle medium>Recipe cards · Prepear grid</BlockTitle>
       <Block>
-        <FeaturedRecipeCard recipe={demoRecipes[0]} />
+        <div className="grid grid-cols-2 grid-gap ck-card-grid">
+          {demoRecipes.slice(0, 2).map((r) => (
+            <RecipeCard key={r.id} recipe={r} />
+          ))}
+        </div>
       </Block>
-
-      <BlockTitle medium>Recipe list · Headspace</BlockTitle>
-      <List mediaList dividers className="ck-recipes">
-        {demoRecipes.slice(1, 4).map((r) => (
-          <ListItem key={r.id} title={r.title} text={`${r.minutes} min · Serves ${r.servings}`}>
-            <span slot="media" className="ck-thumb ck-photo" data-tone={r.tone} style={photoStyle(r.photo)} />
-          </ListItem>
-        ))}
-      </List>
 
       <BlockTitle medium>Servings and scaling · Pinterest (list) / Airbnb (recipe page)</BlockTitle>
       <Block className="ck-stack">
@@ -71,15 +65,28 @@ export default function StyleGuidePage() {
         </Segmented>
       </Block>
 
-      <BlockTitle medium>Ingredients · Instacart</BlockTitle>
-      <List strongIos insetIos dividersIos>
-        <ListItem checkbox defaultChecked>
-          <span slot="title"><span className="ck-amount">6 cups</span> fresh corn kernels</span>
-        </ListItem>
-        <ListItem checkbox>
-          <span slot="title"><span className="ck-amount">1–2 tsp</span> salt<span className="ck-note">, to taste</span></span>
-        </ListItem>
-      </List>
+      <BlockTitle medium>Ingredients and directions · recipe page</BlockTitle>
+      <BlockFooter>15px rows with hairlines, bold amount, muted note. No checkboxes: checking off comes with Start cooking. Steps use plain bold numbers.</BlockFooter>
+      <div className="ck-ing-group">
+        <div className="ck-group-label">Marinade</div>
+        <List dividers className="ck-plain-list">
+          <ListItem>
+            <span slot="title"><span className="ck-amount">1 cup</span> plain whole milk Greek yogurt</span>
+          </ListItem>
+          <ListItem>
+            <span slot="title"><span className="ck-amount">½–1 tsp</span> crushed red pepper flakes</span>
+            <span slot="footer">reduce if you don’t like heat</span>
+          </ListItem>
+        </List>
+      </div>
+      <Block>
+        <div className="ck-steps">
+          <div className="ck-step">
+            <span className="ck-step-no">1</span>
+            <span className="ck-step-text">Whisk the yogurt, oil and spices together until smooth.</span>
+          </div>
+        </div>
+      </Block>
 
       <BlockTitle medium>Buttons · main pill, soft others</BlockTitle>
       <Block className="ck-stack">

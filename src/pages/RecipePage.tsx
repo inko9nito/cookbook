@@ -8,7 +8,7 @@ import ScaleSheet from '../components/ScaleSheet';
 import { useStore } from '../demo/store';
 import { titleCase, type DemoIngredient } from '../demo/data';
 import { scaleAmount, unitFor, friendly } from '../demo/quickParse';
-import { formatMinutes } from '../components/ui/FeaturedRecipeCard';
+import { formatMinutes } from '../components/ui/RecipeCard';
 import { photoStyle } from '../components/ui/photo';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
@@ -29,7 +29,7 @@ function groupIngredients(list: DemoIngredient[]) {
 type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void; navigate: (url: string) => void } };
 
 /**
- * Recipe page (Airbnb listing layout), reading like a plain recipe: photo, title, info, ingredients,
+ * Recipe page (Airbnb listing layout, solid top bar like Prepear), reading like a plain recipe: photo, title, info, ingredients,
  * directions, notes. App controls stay out of the content: back and ••• (edit, cookbook, plan, groceries,
  * share, duplicate, delete) on top; the servings button next to Ingredients opens Adjust amounts; the footer holds Start cooking.
  * The tab bar is hidden here.
@@ -59,7 +59,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
   return (
     <Page name="recipe" className="ck-recipe-page" onPageBeforeIn={hideTabbar}>
       {/* App controls stay out of the content: back and ••• on top, Start cooking in the footer */}
-      <Navbar title={recipe.title} backLink transparent>
+      <Navbar backLink>
         <NavRight>
           <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
             <Ellipsis {...navIcon} />
@@ -116,7 +116,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
           {g.label && <div className="ck-group-label">{g.label}</div>}
           <List dividers className="ck-plain-list">
             {g.items.map((i) => (
-              <ListItem key={i.id} checkbox>
+              <ListItem key={i.id}>
                 <span slot="title">
                   <span className="ck-amount">{[scaleAmount(i.amount, factor), unitFor(i.unit, scaleAmount(i.amount, factor))].filter(Boolean).join(' ')}</span> {i.name}
                 </span>

@@ -14,7 +14,7 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 
 ## Design: the Cookbook design system
 - Spec: `DESIGN.md`. Tokens and Framework7 mapping: `src/theme/cookbook.css`. Visual check: in-app Settings → Style Guide.
-- The user picked each component's shape from a different design system (RED, Starbucks, Headspace, Pinterest, Instacart, DoorDash) and unified all colors: Cool grey neutrals, **Tomato `#e4572e`** accent, iPhone system font. Light mode only for now.
+- The user picked each component's shape from a different design system (RED, Starbucks, Headspace, Pinterest, Instacart, DoorDash; recipe cards from Prepear itself) and unified all colors: Cool grey neutrals, **Tomato `#e4572e`** accent, iPhone system font. Light mode only for now.
 - Never hard-code colors in components. Use `var(--ck-*)` tokens or Framework7 variables. Add new tokens to `cookbook.css` and `DESIGN.md` (both the YAML front matter and the prose) together.
 - Tomato for **text** is `--ck-accent-ink` `#c4421c` (also Framework7's theme color); bright Tomato `--ck-accent` is for fills only. Muted text is `#6e6e73`. These were chosen to pass WCAG AA contrast.
 - **Icons: Lucide only** (`lucide-react`, the same library as the user's other apps). Use the shared props in `src/components/ui/icons.ts` (`navIcon`, `tabIcon`, `inlineIcon`). Don't add another icon set. Framework7's built-in glyphs (back chevron, list chevrons, checkmarks, search magnifier) stay as they are.

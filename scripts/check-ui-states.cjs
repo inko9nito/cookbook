@@ -590,7 +590,9 @@ async function swipeLeft(ctx, page, locator) {
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {
     await step(`15-tab-${tab.toLowerCase()}`, async () => {
       // hold a finger on the tab first: the tab bar must not swell under it (Framework7's iOS 26 touch highlight is off)
-      const box = await page.locator('.tabbar a', { hasText: tab }).boundingBox();
+      const box = await page.locator(`.tabbar a[aria-label="${tab}"]`).boundingBox();
+      // icons only: no label text under the tab icons
+      if ((await page.locator('.tabbar').innerText()).trim()) throw new Error('tab bar shows labels');
       const cdp = await ctx.newCDPSession(page);
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }] });
       await page.waitForTimeout(250);

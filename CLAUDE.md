@@ -10,7 +10,7 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - Custom styling is limited to colors, spacing, corners and typography, preferably through Framework7 CSS variables.
 - **No iOS 26 look.** The user rejected Framework7 v9's liquid glass, floating tab bar and capsule nav buttons. The "Not iOS 26" block in `src/theme/cookbook.css` restyles them to the agreed design (flat docked tab bar, left titles, separate round buttons). Keep new screens consistent with it.
 - If Framework7 lacks something, **stop and ask the user** before building a custom version.
-- **Approved exception (Nov 2026):** cook mode's split screen (Ingredients over Directions, each half scrolling on its own) with a hand-built drag handle between them (`src/components/CookMode.tsx`), because Framework7 has no split view. The handle only sets the top half's height (pointer events, no transforms or animation). Don't reuse it elsewhere without asking.
+- **Approved exception (Nov 2026):** cook mode's split screen (Ingredients over Directions, each half scrolling on its own) with a hand-built drag handle between them (`src/components/CookMode.tsx`), because Framework7 has no split view. The handle only sets the top half's height (pointer events, no transforms, animation or z-index: it is last in the markup and each half has `isolation: isolate`, so it paints on top). Don't reuse it elsewhere without asking.
 - Check the Framework7 v9 docs for a component's props before using it. Don't guess.
 
 ## Design: the Cookbook design system

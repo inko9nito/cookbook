@@ -148,14 +148,9 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
   const onHandleMove = (e: PointerEvent<HTMLDivElement>) => {
     const el = splitBox.current;
     if (!dragging.current || !el) return;
-    // measure inside the padding (the area under the top bar and the home indicator doesn't count),
-    // and keep the middle of the handle under the finger
+    // the middle of the handle is the split line, so put it under the finger
     const box = el.getBoundingClientRect();
-    const cs = getComputedStyle(el);
-    const top = box.top + parseFloat(cs.paddingTop);
-    const height = box.height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-    const handle = e.currentTarget.offsetHeight;
-    setSplit(clampSplit((e.clientY - top - handle / 2) / height));
+    setSplit(clampSplit((e.clientY - box.top) / box.height));
   };
   const onHandleUp = () => {
     if (!dragging.current) return;
@@ -219,17 +214,19 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
               </Link>
             </NavLeft>
             <NavTitle>{recipe.title}</NavTitle>
-            <NavRight>
-              {soonest && (
+            {/* only while a timer runs: an empty right slot still draws the bar's faint button background */}
+            {soonest && (
+              <NavRight>
                 <Link className="ck-timer-pill" onClick={() => setTimersOpen(true)} aria-label={`Timers, next in ${clock((soonest.endsAt - now) / 1000)}`}>
                   <TimerIcon {...inlineIcon} />
                   <span>{clock((soonest.endsAt - now) / 1000)}</span>
                 </Link>
-              )}
-            </NavRight>
+              </NavRight>
+            )}
           </Navbar>
 
-          <div className="page-content ck-split" ref={splitBox}>
+          <div className="page-content ck-split">
+          <div className="ck-split-body" ref={splitBox}>
             {/* top half: ingredients */}
             <div className="ck-pane ck-pane-ingredients" style={{ flexBasis: `${split * 100}%` }}>
               <div className="ck-pane-head">
@@ -251,27 +248,6 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
                   </List>
                 </div>
               ))}
-            </div>
-
-            {/* the divider: drag to give either half more room */}
-            <div
-              className="ck-split-handle"
-              role="separator"
-              aria-orientation="horizontal"
-              aria-label="Resize ingredients and directions"
-              aria-valuemin={Math.round(MIN_SPLIT * 100)}
-              aria-valuemax={Math.round(MAX_SPLIT * 100)}
-              aria-valuenow={Math.round(split * 100)}
-              tabIndex={0}
-              onPointerDown={onHandleDown}
-              onPointerMove={onHandleMove}
-              onPointerUp={onHandleUp}
-              onPointerCancel={onHandleUp}
-              onKeyDown={onHandleKey}
-            >
-              <span className="ck-split-grip">
-                <GripHorizontal {...inlineIcon} />
-              </span>
             </div>
 
             {/* bottom half: directions */}
@@ -325,6 +301,30 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
                 })}
               </List>
             </div>
+
+            {/* the divider: drag to give either half more room. Last in the markup and placed on the split line, so it sits over
+                both halves (their lists are positioned too) without a z-index */}
+            <div
+              className="ck-split-handle"
+              style={{ top: `calc(${split * 100}% - 16px)` }}
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize ingredients and directions"
+              aria-valuemin={Math.round(MIN_SPLIT * 100)}
+              aria-valuemax={Math.round(MAX_SPLIT * 100)}
+              aria-valuenow={Math.round(split * 100)}
+              tabIndex={0}
+              onPointerDown={onHandleDown}
+              onPointerMove={onHandleMove}
+              onPointerUp={onHandleUp}
+              onPointerCancel={onHandleUp}
+              onKeyDown={onHandleKey}
+            >
+              <span className="ck-split-grip">
+                <GripHorizontal {...inlineIcon} />
+              </span>
+            </div>
+          </div>
           </div>
         </Page>
       </Popup>

@@ -232,7 +232,19 @@ async function swipeLeft(ctx, page, locator) {
   await page.waitForTimeout(500);
 
   // cook mode (Prepear layout: ingredients on top, directions below, drag handle between)
-  await step('16-cook-open', async () => { await page.locator('.page-current .ck-cta-button', { hasText: 'Start cooking' }).tap(); await page.waitForTimeout(900); });
+  await step('16-cook-open', async () => {
+    await page.locator('.page-current .ck-cta-button', { hasText: 'Start cooking' }).tap(); await page.waitForTimeout(900);
+    // each step's checkbox sits on the middle of its first line of text
+    const off = await page.evaluate(() => [...document.querySelectorAll('.ck-cook .ck-pane-steps li:has(label)')].map((li) => {
+      const icon = li.querySelector('.icon-checkbox').getBoundingClientRect();
+      const t = li.querySelector('.ck-cook-text'); const line = t.getClientRects()[0];
+      return Math.abs(icon.top + icon.height / 2 - (line.top + parseFloat(getComputedStyle(t).lineHeight) / 2));
+    }));
+    if (off.some((d) => d > 3)) throw new Error(`step checkbox off its first line by ${Math.max(...off).toFixed(1)}px`);
+    // the divider is see-through: no background colour over the text under it
+    const bg = await page.locator('.ck-cook .ck-split-handle').evaluate((el) => getComputedStyle(el).backgroundColor);
+    if (bg !== 'rgba(0, 0, 0, 0)') throw new Error(`divider has a solid background (${bg})`);
+  });
   await step('16b-cook-ingredient-ticked', async () => {
     await page.locator('.ck-cook .ck-pane-ingredients li').first().locator('label').tap();
     await page.waitForTimeout(300);

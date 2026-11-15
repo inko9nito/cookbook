@@ -412,19 +412,22 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
    top half's height: no transforms, no animation. Each half scrolls on its own. */
 .popup.ck-cook { --f7-page-bg-color: var(--ck-bg); }
 .page-content.ck-split { display: flex; flex-direction: column; overflow: hidden; padding-bottom: var(--f7-safe-area-bottom); }
-.ck-pane { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* the two halves and the handle, measured without the page's top-bar and home-indicator padding */
+.ck-split-body { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+/* isolation keeps Framework7's list layering (lists are z-index 1) inside each half, so the handle, last in the markup, stays on top */
+.ck-pane { min-height: 0; overflow-y: auto; overscroll-behavior: contain; isolation: isolate; }
 .ck-pane-ingredients { flex: 0 0 auto; }
 .ck-pane-steps { flex: 1 1 0; }
 .ck-pane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 16px 16px 2px; }
 .ck-pane-head h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 .ck-split-handle {
-  flex: none; height: 32px; display: grid; place-items: center;
-  /* a hairline through the middle, with the grip pill sitting on it */
-  background: linear-gradient(var(--ck-strong), var(--ck-strong)) center / 100% 1px no-repeat, var(--ck-bg);
+  /* see-through and laid over the split line (top is set inline), so text runs right up to the line instead of being cut off by a band */
+  position: absolute; left: 0; right: 0; height: 32px; display: grid; place-items: center;
+  background: linear-gradient(var(--ck-strong), var(--ck-strong)) center / 100% 1px no-repeat;
   touch-action: none; cursor: row-resize;
 }
 .ck-split-handle:focus-visible { outline: 2px solid var(--ck-accent-ink); outline-offset: -2px; }
-.ck-split-grip { display: grid; place-items: center; width: 48px; height: 22px; border-radius: 9999px; background-color: var(--ck-soft); color: var(--ck-fg2); box-shadow: inset 0 0 0 1px var(--ck-strong); }
+.ck-split-grip { display: grid; place-items: center; width: 48px; height: 22px; border-radius: 9999px; background-color: var(--ck-accent); color: var(--ck-surface); }
 /* big text so it reads from the counter */
 .list.ck-cook-list { --f7-list-item-title-font-size: 17px; --f7-list-item-footer-font-size: 14px; }
 .list.ck-cook-list li.ck-done .item-title,
@@ -432,7 +435,8 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 .list.ck-cook-steps { --f7-list-item-padding-vertical: 10px; }
 /* long steps: the checkbox lines up with the first line of text, not the middle of the row */
 .list.ck-cook-steps .item-content { align-items: flex-start; }
-.list.ck-cook-steps .item-media { padding-top: 12px; align-self: flex-start; }
+/* the checkbox (a direct child of the row, no item-media) centred on the first 26px line of step text: row padding + (26 - 22) / 2 */
+.list.ck-cook-steps .item-content > .icon-checkbox { align-self: flex-start; margin-top: calc(var(--f7-list-item-padding-vertical) + 2px); }
 .ck-cook-step-group { padding: 18px 16px 2px; list-style: none; }
 .ck-cook-step { display: grid; gap: 8px; justify-items: start; white-space: normal; }
 .ck-cook-text { font-size: 18px; line-height: 1.45; }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, KeyboardEvent, PointerEvent, SetStateAction } from 'react';
 import {
-  Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Subnavbar, Link, Button, List, ListItem,
+  Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Button, List, ListItem,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
 import { X, GripHorizontal, ChevronDown, ChevronRight, Timer as TimerIcon } from 'lucide-react';
@@ -420,14 +420,33 @@ function CookCard({
         // a linked recipe stacks over the one behind it like an iOS card, and its title bar swipes down to go back
         {...(stacked ? { push: true, swipeToClose: 'to-bottom' as const, swipeHandler: '.navbar' } : {})}
       >
-        <Page pageContent={false} withSubnavbar={tabs.length > 1}>
-          <Navbar>
+        <Page pageContent={false}>
+          <Navbar className={tabs.length > 1 ? 'ck-cook-tabbed' : ''}>
             <NavLeft>
               <Link iconOnly onClick={close} aria-label={stacked ? `Close ${recipe.title}` : 'Close cook mode'}>
                 <X {...navIcon} />
               </Link>
             </NavLeft>
-            <NavTitle>{recipe.title}</NavTitle>
+            {/* issue #11: once a linked recipe is open, the bar holds a tab for each recipe in cook mode instead of the
+                title (the shown tab is the title), and the shown tab runs into the page below */}
+            {tabs.length > 1 ? (
+              <div className="ck-tabs" role="tablist" aria-label="Recipes in cook mode">
+                {tabs.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={t.id === recipe.id}
+                    className={`ck-tab ${t.id === recipe.id ? 'ck-tab-on' : ''}`}
+                    onClick={() => t.id !== recipe.id && onShow(t.id)}
+                  >
+                    <span>{t.title}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <NavTitle>{recipe.title}</NavTitle>
+            )}
             {/* only while a timer runs: an empty right slot still draws the bar's faint button background */}
             {soonest && (
               <NavRight>
@@ -436,25 +455,6 @@ function CookCard({
                   <span>{clock((soonest.endsAt - now) / 1000)}</span>
                 </Link>
               </NavRight>
-            )}
-            {/* issue #11: once a linked recipe is open, a tab for each recipe in cook mode */}
-            {tabs.length > 1 && (
-              <Subnavbar className="ck-cook-tabs">
-                <div className="ck-tabs" role="tablist" aria-label="Recipes in cook mode">
-                  {tabs.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={t.id === recipe.id}
-                      className={`ck-tab ${t.id === recipe.id ? 'ck-tab-on' : ''}`}
-                      onClick={() => t.id !== recipe.id && onShow(t.id)}
-                    >
-                      <span>{t.title}</span>
-                    </button>
-                  ))}
-                </div>
-              </Subnavbar>
             )}
           </Navbar>
 

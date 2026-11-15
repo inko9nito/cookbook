@@ -706,8 +706,14 @@ async function swipeLeft(ctx, page, locator) {
         items: [...po.querySelectorAll('.ck-convert-list .item-title')].map((e) => e.textContent),
         radios: po.querySelectorAll('.ck-convert-list input[type=radio]').length, checked: po.querySelector('input[type=radio]:checked')?.closest('li').textContent,
         ring: getComputedStyle(po.querySelector('.icon-radio')).borderTopWidth,
-        gap: Math.round(Math.max(0, r.left - amount.right, amount.left - r.right, r.top - amount.bottom, amount.top - r.bottom)),
-        arrow: po.dataset.arrow, highlighted: !!document.querySelector('.page-current li.ck-ing-on'),
+        gutter: Math.round(innerWidth - r.right), width: Math.round(r.width), clearOfAmount: r.left > amount.right,
+        level: amount.top + amount.height / 2 > r.top && amount.top + amount.height / 2 < r.bottom,
+        sub: !!po.querySelector('.ck-convert-sub'),
+        highlight: (() => {
+          const li = document.querySelector('.page-current li.ck-ing-on'); if (!li) return null;
+          const band = getComputedStyle(li, '::before'); const lr = li.getBoundingClientRect();
+          return { bg: band.backgroundColor, left: parseFloat(band.left), right: parseFloat(band.right), radius: band.borderTopLeftRadius, li: Math.round(lr.left) };
+        })(),
       };
     });
     if (t.head !== 'Lemon juice') throw new Error(`popover header reads "${t.head}"`);
@@ -715,9 +721,13 @@ async function swipeLeft(ctx, page, locator) {
     if (t.items.join(', ') !== '4 tbsp, 12 tsp, ¼ cup, 2 fl oz, 59 ml') throw new Error(`popover lists ${t.items.join(', ')}`);
     if (t.radios !== 5 || !t.checked?.includes('Original')) throw new Error('options are not radios with Original picked');
     if (t.ring === '0px') throw new Error('radio options have no visible circle');
-    if (t.gap > 24) throw new Error(`popover sits ${t.gap}px away from the tapped amount`);
-    if (t.arrow !== 'left') throw new Error(`the default layout (beside) should point left at the amount, points ${t.arrow}`);
-    if (!t.highlighted) throw new Error('the tapped ingredient is not highlighted');
+    // against the right side of the screen (the 16px gutter), narrow, beside the amount and level with it
+    if (t.gutter !== 16 || t.width > 220 || !t.clearOfAmount || !t.level) throw new Error(`popover isn't narrow at the right, level with the amount (${JSON.stringify(t)})`);
+    if (t.sub) throw new Error('the popover still has a sub-heading');
+    // the tapped row: pale Tomato with rounded corners, set in from the screen edges (rounded corners never touch them)
+    const h = t.highlight;
+    if (!h) throw new Error('the tapped ingredient is not highlighted');
+    if (h.radius !== '0px' && (h.li + h.left < 4 || h.right < 4)) throw new Error('the highlight has rounded corners but touches the screen edges');
   });
   await step('22c-unit-picked', async () => {
     await page.locator('.popover.modal-in li', { hasText: '¼ cup' }).tap(); await page.waitForTimeout(700);
@@ -732,34 +742,6 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.popover.modal-in li', { hasText: 'Original' }).tap(); await page.waitForTimeout(700);
     const text = await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').textContent();
     if (text !== '4 tbsp') throw new Error(`after Original the amount reads "${text}"`);
-  });
-
-  // TEMPORARY (issue #6): Settings switches the popover to sit above the ingredient, pointing down at it
-  await step('22e-unit-layout-setting', async () => {
-    await page.goto(BASE); await page.waitForTimeout(1200);
-    await page.locator('.view-main .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(800);
-    await page.locator('.page-current li', { hasText: 'Above the ingredient' }).tap(); await page.waitForTimeout(300);
-  });
-  await step('22f-unit-popover-above', async () => {
-    await page.goto(BASE); await page.waitForTimeout(1200);
-    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
-    const amount = page.locator('.page-current .ck-ing-list li', { hasText: 'smoked paprika' }).locator('.ck-convertible');
-    // with room above the row (near the top of the screen it opens below instead, pointing up)
-    await page.evaluate(() => {
-      const pc = document.querySelector('.page-current .page-content');
-      const row = [...pc.querySelectorAll('.ck-ing-list li')].find((l) => l.textContent.includes('smoked paprika'));
-      pc.scrollBy(0, row.getBoundingClientRect().top - 480);
-    });
-    await page.waitForTimeout(400);
-    await amount.tap(); await page.waitForTimeout(800);
-    const t = await page.evaluate(() => {
-      const po = document.querySelector('.popover.modal-in'); const r = po.getBoundingClientRect();
-      const row = document.querySelector('.page-current li.ck-ing-on').getBoundingClientRect();
-      return { arrow: po.dataset.arrow, above: r.bottom <= row.top + 2, gap: Math.round(row.top - r.bottom) };
-    });
-    if (t.arrow !== 'down' || !t.above || t.gap > 24) throw new Error(`popover is not just above the ingredient pointing down (arrow ${t.arrow}, gap ${t.gap}px)`);
-    await page.touchscreen.tap(360, 640); await page.waitForTimeout(600);
-    await page.evaluate(() => localStorage.removeItem('cookbook.convertLayout'));
   });
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)

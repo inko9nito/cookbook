@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentProps } from 'react';
+import { useEffect, useRef, useState, type ComponentProps, type CSSProperties } from 'react';
 import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   Actions, ActionsGroup, ActionsButton, Popover, f7,
@@ -12,7 +12,6 @@ import { titleCase, type Ingredient } from '../lib/recipe';
 import { scaleAmount, friendly } from '../lib/ingredients';
 import { conversions, formatConverted, neaterAmount } from '../lib/units';
 import { amountText, canConvert, footerText, originalAmount, type UnitPicks } from '../components/ui/ingredientLine';
-import { readConvertLayout, type ConvertLayout } from '../components/ui/convertLayout';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
@@ -32,6 +31,10 @@ function groupIngredients(list: Ingredient[]) {
 
 type PopoverRef = NonNullable<ComponentProps<typeof Popover>['ref']>;
 
+// the unit popover (issue #6): narrow, against the right side of the screen with the page's 16px gutter
+const CONVERT_WIDTH = 200;
+const CONVERT_GUTTER = 16;
+
 type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void; navigate: (url: string) => void } };
 
 /**
@@ -48,8 +51,6 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [cooking, setCooking] = useState(false);
   const [converting, setConverting] = useState<{ ing: Ingredient; el: Element } | null>(null);
-  // where the unit popover sits (temporary switch in Settings while choosing): beside the amount, or above the row
-  const [layout, setLayout] = useState<ConvertLayout>(readConvertLayout);
   // issue #6: units picked for some ingredients, until the recipe is closed (cook mode shows them too)
   const [picks, setPicks] = useState<UnitPicks>({});
   const convertPopover = useRef(null) as unknown as PopoverRef;
@@ -60,30 +61,41 @@ export default function RecipePage({ f7route, f7router }: Props) {
     setPicks(({ [id]: _old, ...rest }) => (unit ? { ...rest, [id]: unit } : rest));
     convertPopover.current?.f7Popover().close();
   };
-  // the popover's arrow points at the middle of what was tapped (Framework7 v9 draws no arrow; this is a CSS triangle)
+  // the popover's arrow points at the tapped amount (Framework7 v9 draws no arrow; this is a CSS triangle), level with
+  // it, kept clear of the popover's rounded corners
   const pointArrow = () => {
     const el = convertPopover.current?.el;
     if (!el || !converting) return;
     const amount = converting.el.getBoundingClientRect();
-    const row = (converting.el.closest('li') ?? converting.el).getBoundingClientRect();
-    // where Framework7 put it (its top/left, in screen pixels): the open animation scales it, so its measured box
-    // isn't its real one yet
-    const left = parseFloat(el.style.left);
-    const top = parseFloat(el.style.top);
-    // which side the arrow goes on (Framework7's own classes for this are wiped when React re-renders)
-    el.dataset.arrow = left >= amount.right - 1 ? 'left' : top + el.offsetHeight <= row.top + 1 ? 'down' : 'up';
-    el.style.setProperty('--ck-arrow-y', `${amount.top + amount.height / 2 - top}px`);
-    el.style.setProperty('--ck-arrow-x', `${amount.left + amount.width / 2 - left}px`);
+    // where Framework7 put it: its top, in screen pixels (the open animation scales it, so its measured box isn't real
+    // yet). Placed beside a target, Framework7 keeps it only 5px inside the screen: keep it clear of the status bar and
+    // the Start cooking bar instead
+    const safeTop = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--f7-safe-area-top')) || 0;
+    const bottomBar = el.closest('.page')?.querySelector('.toolbar.ck-cta')?.getBoundingClientRect().top ?? window.innerHeight;
+    const minTop = safeTop + 8;
+    const top = Math.max(minTop, Math.min(parseFloat(el.style.top), bottomBar - 8 - el.offsetHeight));
+    el.style.top = `${top}px`;
+    const y = amount.top + amount.height / 2 - top;
+    el.style.setProperty('--ck-arrow-y', `${Math.min(Math.max(y, 22), el.offsetHeight - 22)}px`);
   };
-
-
-  // issue #6: once the tapped amount's options are rendered, point the popover at it
+  // issue #6: once the tapped amount's options are rendered, open the popover against the right side of the screen,
+  // level with the amount, so the ingredient stays visible. Framework7 places a popover beside a target ("middle"),
+  // or failing room on its left, right after it: the target given here is the stretch from the amount to where the
+  // popover should start, so it lands there and grows out from the amount's side.
   useEffect(() => {
-    if (!converting) return;
-    // beside: point at the amount; above: point at the whole row
-    const target = layout === 'above' ? (converting.el.closest('li') ?? converting.el) : converting.el;
-    convertPopover.current?.f7Popover().open(target as HTMLElement);
-  }, [converting]); // eslint-disable-line react-hooks/exhaustive-deps
+    const popover = convertPopover.current?.f7Popover();
+    if (!converting || !popover) return;
+    const amount = converting.el.getBoundingClientRect();
+    const left = Math.max(window.innerWidth - CONVERT_GUTTER - CONVERT_WIDTH, amount.right + 12);
+    Object.assign(popover.params, {
+      targetX: amount.right,
+      targetY: amount.top,
+      targetWidth: left - amount.right,
+      targetHeight: amount.height,
+      verticalPosition: 'middle',
+    });
+    popover.open();
+  }, [converting]);
 
   if (!recipe) {
     return (
@@ -170,10 +182,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
                       type="button"
                       className={`ck-amount ck-convertible ${picks[i.id] ? 'ck-converted' : ''}`}
                       aria-label={`${amountText(i, factor, picks)}, show in other units`}
-                      onClick={(e) => {
-                        setLayout(readConvertLayout());
-                        setConverting({ ing: i, el: e.currentTarget });
-                      }}
+                      onClick={(e) => setConverting({ ing: i, el: e.currentTarget })}
                     >
                       {amountText(i, factor, picks)}
                     </button>
@@ -230,10 +239,9 @@ export default function RecipePage({ f7route, f7router }: Props) {
           above); slot="fixed" keeps it outside the scrolling content, where Framework7 positions it */}
       <Popover
         slot="fixed"
-        key={layout}
         ref={convertPopover}
-        className={`ck-convert ck-convert-${layout}`}
-        verticalPosition={layout === 'beside' ? 'middle' : 'auto'}
+        className="ck-convert"
+        style={{ '--f7-popover-width': `${CONVERT_WIDTH}px` } as CSSProperties}
         // after Framework7 has placed it (its own open handler runs after this one)
         onPopoverOpen={() => requestAnimationFrame(pointArrow)}
         onPopoverClosed={() => setConverting(null)}
@@ -242,7 +250,6 @@ export default function RecipePage({ f7route, f7router }: Props) {
           <>
             <div className="ck-convert-head">
               <span className="ck-convert-name">{titleCase(converting.ing.name)}</span>
-              <span className="ck-convert-sub">Show the amount in</span>
             </div>
             <List className="ck-convert-list" dividersIos>
               <ListItem

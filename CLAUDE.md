@@ -14,6 +14,11 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - **Approved exception (Nov 2026):** photo cropping uses **Cropper.js 1.x** (`src/components/PhotoCropper.tsx`), because Framework7 has no cropper. It runs inside a Framework7 Popup, with a fixed 4:3 frame (pinch to zoom, drag to move). Swiping through photos and full-screen zoom stay Framework7 (Swiper, Photo Browser).
 - Check the Framework7 v9 docs for a component's props before using it. Don't guess.
 
+## Workflow: preview before merging
+- Every change goes to the user as a **pull request with a Netlify deploy preview**: push to the working branch, open a PR into `main` if none is open (or keep updating the open one), and give the user the preview link `https://deploy-preview-<PR number>--cookbk.netlify.app` each time it updates.
+- **Merge only when the user asks.** They look at the preview on the phone first.
+- Preview links are public, and a preview has its own copy of the production database (real recipes). Previews share the photo store with production.
+
 ## Design: the Cookbook design system
 - Spec: `DESIGN.md`. Tokens and Framework7 mapping: `src/theme/cookbook.css`. Visual check: in-app Settings → Style Guide.
 - The user picked each component's shape from a different design system (RED, Starbucks, Headspace, Pinterest, Instacart, DoorDash; recipe cards from Prepear itself) and unified all colors: Cool grey neutrals, **Tomato `#e4572e`** accent, iPhone system font. Light mode only for now.
@@ -37,10 +42,10 @@ Live site: https://cookbk.netlify.app
 
 ### Where things are (Phase 1)
 - `src/lib/recipe.ts`: the recipe shape (Zod), shared by the app and the API. `src/lib/ingredients.ts`: parsing and scaling (tests beside it; run `npm test`).
-- `src/data/`: `api.ts` (the API client, plus a **demo backend** used on `localhost` so the UI check runs without sign-in), `auth.tsx` (Netlify Identity, Google), `store.tsx` (TanStack Query, optimistic changes, IndexedDB cache; `useStore()` is what pages use).
-- `netlify/functions/*.mts`: the API (v2 functions, `export default`), each checks `refuseUnlessAdmin()` first (the Identity `admin` role, given in the Netlify UI; a role change counts from the next sign-in or token refresh). `netlify/lib/`: shared server code, tested against a local Postgres (`@netlify/database-dev`).
+- `src/data/`: `api.ts` (the API client, plus a **demo backend** used on `localhost` so the UI check runs without sign-in), `identity.ts` + `auth.tsx` (Netlify Identity with Google through **gotrue-js, the same way as the user's HPDE app**: the sign-in lives in localStorage only, never cookies, which iOS drops when it closes the home-screen app; every API call sends `Authorization: Bearer`; renewed when the app comes to the front; a renewal that fails offline doesn't sign out), `store.tsx` (TanStack Query, optimistic changes, IndexedDB cache; `useStore()` is what pages use).
+- `netlify/functions/*.mts`: the API (v2 functions, `export default`), each checks `refuseUnlessAdmin(req)` first: it asks Netlify Identity (`/.netlify/identity/user`) whose Bearer token it is and requires the `admin` role (given in the Netlify UI; counts at once). `netlify/lib/`: shared server code, tested against a local Postgres (`@netlify/database-dev`).
 - `netlify/database/migrations/`: SQL migrations applied by the deploy. **Never edit or delete one that has been deployed**; add a new one (`<timestamp>_<slug>.sql`). Never run DDL against the hosted database directly.
-- Photos: picked and cropped on the phone, uploaded to Netlify Blobs (`photos` store) on save; the recipe stores their `/api/photos/<key>` addresses. Only the production deploy deletes stored photos (deploy previews share the store).
+- Photos: picked and cropped on the phone, uploaded to Netlify Blobs (`photos` store) on save; the recipe stores their `/api/photos/<key>` addresses. Reading a photo needs no sign-in (`<img>` can't send the header; keys are random UUIDs); storing one needs the admin role. Only the production deploy deletes stored photos (deploy previews share the store).
 - Deploy previews get their own copy of the production database, with real recipes, and preview links are public: say so before sharing one.
 No reminders feature (user declined).
 

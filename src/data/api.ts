@@ -2,9 +2,9 @@
 // Running locally (the UI checks, `npm run dev`): a demo backend in memory, starting from the sample recipes, because
 // sign-in only works on a Netlify deploy.
 
-import { refreshSession } from '@netlify/identity';
 import { Settings, type Recipe } from '../lib/recipe';
 import { sampleRecipes } from '../demo/data';
+import { accessToken, SignedOutError } from './identity';
 
 export type Backend = {
   listRecipes: () => Promise<Recipe[]>;
@@ -31,12 +31,23 @@ export const isDemo =
 
 // ── the API ──
 
+/** The sign-in as a request header (identity.ts); a refused renewal reads as signed out (401). */
+async function authHeader(force = false): Promise<Record<string, string>> {
+  try {
+    const token = await accessToken(force);
+    return token ? { authorization: `Bearer ${token}` } : {};
+  } catch (e) {
+    if (e instanceof SignedOutError) throw new ApiError(401, 'Your sign-in ran out. Sign in again.');
+    throw e;
+  }
+}
+
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
-  // the sign-in token lasts an hour: renew it first when it's about to run out (a no-op otherwise)
-  await refreshSession().catch(() => null);
-  const send = () => fetch(path, { ...init, credentials: 'same-origin' });
+  const send = async (force = false) =>
+    fetch(path, { ...init, headers: { ...(init.headers as Record<string, string>), ...(await authHeader(force)) } });
   let res = await send();
-  if (res.status === 401 && (await refreshSession().catch(() => null))) res = await send();
+  // a token Identity no longer accepts: renew it once and try again
+  if (res.status === 401) res = await send(true);
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new ApiError(res.status, body?.error ?? `The server said ${res.status}.`);

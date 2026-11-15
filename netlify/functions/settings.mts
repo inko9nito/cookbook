@@ -7,7 +7,7 @@ import { getSettings, saveSettings } from '../lib/recipes';
 import { error, json, refuseUnlessAdmin } from '../lib/http';
 
 export default async (req: Request) => {
-  const refused = await refuseUnlessAdmin();
+  const refused = await refuseUnlessAdmin(req);
   if (refused) return refused;
   const { sql } = getDatabase();
   try {

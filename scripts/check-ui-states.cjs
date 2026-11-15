@@ -648,6 +648,117 @@ async function swipeLeft(ctx, page, locator) {
     if (problems.length) throw new Error(problems.join('; '));
   });
 
+  // issue #8: the Recipes grid shows square photos with the text below them on the page, no card around them
+  await step('20-square-tiles', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    const t = await page.evaluate(() => {
+      const card = document.querySelector('.page-current .ck-card'); const photo = card.querySelector('.ck-card-photo').getBoundingClientRect();
+      const title = card.querySelector('.ck-card-title').getBoundingClientRect();
+      return { ratio: photo.width / photo.height, cardBg: getComputedStyle(card).backgroundColor, titleBelow: title.top >= photo.bottom };
+    });
+    if (Math.abs(t.ratio - 1) > 0.02) throw new Error(`tile photo is ${t.ratio.toFixed(2)}:1, not square`);
+    if (t.cardBg !== 'rgba(0, 0, 0, 0)') throw new Error(`tiles still have a card background (${t.cardBg})`);
+    if (!t.titleBelow) throw new Error('tile title is not below the photo');
+  });
+  // issue #7: back and ••• float over the photo, which starts at the top of the screen, with no bar behind them
+  await step('21-buttons-over-photo', async () => {
+    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    const t = await page.evaluate(() => {
+      const hero = document.querySelector('.page-current .ck-hero, .page-current .ck-hero-wrap').getBoundingClientRect();
+      const nav = document.querySelector('.navbar-current, .page-current .navbar');
+      const back = nav.querySelector('.link.back').getBoundingClientRect();
+      return { heroTop: Math.round(hero.top), bg: getComputedStyle(nav.querySelector('.navbar-bg')).display, backInPhoto: back.top >= hero.top && back.bottom <= hero.bottom };
+    });
+    if (t.heroTop !== 0) throw new Error(`photo starts ${t.heroTop}px down, not at the top`);
+    if (t.bg !== 'none') throw new Error('the top bar still has a background');
+    if (!t.backInPhoto) throw new Error('back button is not over the photo');
+  });
+  // issue #6: amounts that convert are underlined (a fitted grey line; notes look different); tapping one opens a
+  // bottom sheet with radio options (24-*); picking one replaces the amount, and the
+  // Original option puts it back
+  await step('22-unit-underline', async () => {
+    await page.locator('.page-current .ck-scale-button').tap(); await page.waitForTimeout(700);
+    await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(300);
+    await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).first().tap(); await page.waitForTimeout(700);
+    const row = page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' });
+    await row.scrollIntoViewIfNeeded();
+    const t = await page.evaluate(() => {
+      const li = [...document.querySelectorAll('.page-current .ck-ing-list li')];
+      const juice = li.find((l) => l.textContent.includes('lemon juice')).querySelector('.ck-convertible');
+      const garlic = li.find((l) => l.textContent.includes('garlic'));
+      const b = juice.getBoundingClientRect(); const title = juice.closest('.item-title').getBoundingClientRect();
+      return { text: juice.textContent, line: getComputedStyle(juice).textDecorationLine, fitted: b.width < title.width / 2, garlicPlain: !garlic.querySelector('.ck-convertible'), footer: !!juice.closest('li').querySelector('.item-footer')?.textContent.includes('=') };
+    });
+    if (t.text !== '4 tbsp') throw new Error(`lemon juice amount reads "${t.text}"`);
+    if (!t.line.includes('underline') || !t.fitted) throw new Error('convertible amount is not a fitted underline');
+    if (!t.garlicPlain) throw new Error('"cloves" should not be underlined: it does not convert');
+    if (t.footer) throw new Error('a conversion still shows in the note line');
+  });
+  // issue #6, the unit sheet: out from under the thumb, the page not dimmed, the tapped ingredient
+  // kept in view above it; picking closes it and replaces the amount; in cook mode it opens over cook mode
+  await step('24-unit-sheet', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 700)); await page.waitForTimeout(400);
+    await page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);
+    const t = await page.evaluate(() => {
+      const sh = document.querySelector('.sheet-modal.modal-in.ck-unit-sheet'); const r = sh?.getBoundingClientRect();
+      const row = document.querySelector('.page-current li.ck-ing-on')?.getBoundingClientRect();
+      return { sheet: !!sh, title: sh?.querySelector('.toolbar b')?.textContent, rowAbove: row && r && row.bottom <= r.top, dimmed: !!document.querySelector('.sheet-backdrop.backdrop-in'), popover: !!document.querySelector('.popover.modal-in'), radios: sh?.querySelectorAll('input[type=radio]').length };
+    });
+    if (!t.sheet || t.popover) throw new Error('tapping an amount did not open the bottom sheet');
+    if (t.title !== 'Kosher salt') throw new Error(`sheet title reads "${t.title}"`);
+    if (!t.rowAbove) throw new Error('the tapped ingredient is hidden behind the sheet');
+    if (t.dimmed) throw new Error('the page is dimmed behind the sheet');
+    if (t.radios !== 3) throw new Error(`the sheet has ${t.radios} options, expected 3 (1½ tsp, ½ tbsp, 7.4 ml)`);
+  });
+  await step('24b-unit-sheet-picked', async () => {
+    await page.locator('.sheet-modal.modal-in li', { hasText: 'tbsp' }).tap(); await page.waitForTimeout(800);
+    if (await page.locator('.sheet-modal.modal-in.ck-unit-sheet').count()) throw new Error('the sheet stayed open after picking');
+    const text = await page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible').textContent();
+    if (text !== '½ tbsp') throw new Error(`after picking ½ tbsp the amount reads "${text}"`);
+  });
+  // tapping another amount switches the sheet to it; tapping the highlighted one again closes it (toggles it off)
+  await step('24b2-unit-sheet-toggle', async () => {
+    const salt = page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible');
+    const pepper = page.locator('.page-current .ck-ing-list li', { hasText: 'black pepper' }).locator('.ck-convertible');
+    await salt.tap(); await page.waitForTimeout(900);
+    const picked = await page.locator('.sheet-modal.modal-in input[type=radio]:checked').evaluate((e) => e.closest('li').textContent);
+    if (!picked.includes('½ tbsp')) throw new Error(`reopened sheet has "${picked}" picked, not ½ tbsp`);
+    await pepper.tap(); await page.waitForTimeout(700);
+    const title = await page.locator('.sheet-modal.modal-in.ck-unit-sheet .toolbar b').textContent().catch(() => null);
+    if (title !== 'Black pepper') throw new Error(`tapping another amount should switch the sheet to it (title "${title}")`);
+    await pepper.tap(); await page.waitForTimeout(800);
+    if (await page.locator('.sheet-modal.modal-in.ck-unit-sheet').count()) throw new Error('tapping the highlighted amount again did not close the sheet');
+    if (await page.locator('.page-current li.ck-ing-on').count()) throw new Error('the ingredient stayed highlighted after closing');
+  });
+  await step('24b3-unit-sheet-original', async () => {
+    const salt = page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible');
+    await salt.tap(); await page.waitForTimeout(900);
+    await page.locator('.sheet-modal.modal-in li', { hasText: 'Original' }).tap(); await page.waitForTimeout(800);
+    const text = await salt.textContent();
+    if (text !== '1 1/2 tsp') throw new Error(`after Original the amount reads "${text}"`);
+  });
+  await step('24c-cook-unit-sheet', async () => {
+    await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    // opening the sheet must not move cook mode's divider (it once padded the split screen and squeezed the halves)
+    const divider = () => page.evaluate(() => Math.round(document.querySelector('.ck-split-handle').getBoundingClientRect().top));
+    const before = await divider();
+    await page.locator('.ck-cook .ck-cook-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);
+    const after = await divider();
+    if (after !== before) throw new Error(`opening the unit sheet moved the divider from ${before}px to ${after}px`);
+    const t = await page.evaluate(() => {
+      const sh = document.querySelector('.sheet-modal.modal-in.ck-unit-sheet'); const r = sh?.getBoundingClientRect();
+      const hit = sh && document.elementFromPoint(r.left + r.width / 2, r.top + 30);
+      const li = [...document.querySelectorAll('.ck-cook .ck-cook-list li')].find((l) => l.textContent.includes('lemon juice'));
+      return { onTop: !!hit?.closest('.sheet-modal'), ticked: li.querySelector('input').checked };
+    });
+    if (!t.onTop) throw new Error('the unit sheet is not shown over cook mode');
+    if (t.ticked) throw new Error('tapping the amount ticked the ingredient');
+    await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(700);
+    await page.locator('.ck-cook .navbar a').first().tap(); await page.waitForTimeout(1000);
+  });
+
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)
   await step('19-sign-in', async () => {
     await page.goto(`${BASE}?signin`);

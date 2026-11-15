@@ -9,7 +9,10 @@ import CookMode from '../components/CookMode';
 import RecipePhotos from '../components/RecipePhotos';
 import { useStore } from '../data/store';
 import { titleCase, type Ingredient } from '../lib/recipe';
-import { readAmount, scaleAmount, unitFor, friendly } from '../lib/ingredients';
+import { friendly } from '../lib/ingredients';
+import { footerText, type UnitPicks } from '../components/ui/ingredientLine';
+import { ConvertibleAmount, toggleTarget, withPick, type ConvertTarget } from '../components/UnitChoices';
+import UnitSheet from '../components/UnitSheet';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
@@ -27,6 +30,7 @@ function groupIngredients(list: Ingredient[]) {
   return groups.filter((g) => g.items.length || g.label);
 }
 
+
 type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void; navigate: (url: string) => void } };
 
 /**
@@ -42,6 +46,11 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const [scaleOpen, setScaleOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [cooking, setCooking] = useState(false);
+  // issue #6: the tapped amount (its popover is open), and units picked for some ingredients until the recipe is
+  // closed; cook mode shows and changes the same picks
+  const [converting, setConverting] = useState<ConvertTarget | null>(null);
+  const [picks, setPicks] = useState<UnitPicks>({});
+  const pickUnit = (id: string, unit: string | null) => setPicks((p) => withPick(p, id, unit));
 
   if (!recipe) {
     return (
@@ -60,8 +69,9 @@ export default function RecipePage({ f7route, f7router }: Props) {
 
   return (
     <Page name="recipe" className="ck-recipe-page" hideNavbarOnScroll onPageBeforeIn={hideTabbar}>
-      {/* App controls stay out of the content: back and ••• on top (hides while scrolling down, back on scroll up, like Prepear), Start cooking in the footer */}
-      <Navbar backLink>
+      {/* App controls stay out of the content: back and ••• float over the photo with no bar behind them (issue #7; they
+          slide away while scrolling down and come back on scroll up, like Prepear), Start cooking in the footer */}
+      <Navbar backLink className="ck-float-bar">
         <NavRight>
           <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
             <Ellipsis {...navIcon} />
@@ -118,15 +128,15 @@ export default function RecipePage({ f7route, f7router }: Props) {
           {g.label && <div className="ck-group-label">{g.label}</div>}
           <List dividers className="ck-plain-list ck-ing-list">
             {g.items.map((i) => (
-              <ListItem key={i.id}>
+              <ListItem key={i.id} className={converting?.ing.id === i.id ? 'ck-ing-on' : ''}>
                 <span slot="media" className="ck-bullet" aria-hidden="true" />
                 <span slot="title">
-                  <span className="ck-amount">{[scaleAmount(i.amount, factor), unitFor(i.unit, scaleAmount(i.amount, factor))].filter(Boolean).join(' ')}</span> {i.name}
+                  {/* issue #6: an amount in a measuring unit is underlined; tap it to pick another unit */}
+                  <ConvertibleAmount ing={i} factor={factor} picks={picks} onOpen={(t) => setConverting((cur) => toggleTarget(cur, t))} />{' '}
+                  {i.name}
                 </span>
-                {/* R5: an amount that isn't a number ("a pinch") is shown as written, and says so when scaled */}
-                {(i.note || (scaled && i.amount && !readAmount(i.amount))) && (
-                  <span slot="footer">{[i.note, scaled && i.amount && !readAmount(i.amount) ? 'not scaled' : ''].filter(Boolean).join(' · ')}</span>
-                )}
+                {/* the note, and "not scaled" for an amount that isn't a number (R5) */}
+                {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
               </ListItem>
             ))}
           </List>
@@ -167,8 +177,9 @@ export default function RecipePage({ f7route, f7router }: Props) {
         )}
       </div>
 
-      {cooking && <CookMode recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setCooking(false)} />}
+      {cooking && <CookMode recipe={recipe} factor={factor} picks={picks} onPick={pickUnit} onFactor={setFactor} onClose={() => setCooking(false)} />}
 
+      <UnitSheet slot="fixed" target={converting} factor={factor} picks={picks} onPick={pickUnit} onClosed={() => setConverting(null)} />
       <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setScaleOpen(false)} />
 
       <Actions opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>

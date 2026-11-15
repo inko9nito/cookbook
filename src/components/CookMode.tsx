@@ -6,13 +6,24 @@ import {
 } from 'framework7-react';
 import { X, GripHorizontal, ChevronDown, Timer as TimerIcon } from 'lucide-react';
 import type { Ingredient, Recipe } from '../lib/recipe';
-import { scaleAmount, unitFor, friendly } from '../lib/ingredients';
+import { friendly } from '../lib/ingredients';
+import { amountText, footerText, type UnitPicks } from './ui/ingredientLine';
 import { stepTimers, stepIngredients, clock } from '../lib/cook';
 import { navIcon, inlineIcon } from './ui/icons';
 import { useStore } from '../data/store';
 import ScaleSheet from './ScaleSheet';
+import { ConvertibleAmount, toggleTarget, type ConvertTarget } from './UnitChoices';
+import UnitSheet from './UnitSheet';
 
-type Props = { recipe: Recipe; factor: number; onFactor: (f: number) => void; onClose: () => void };
+type Props = {
+  recipe: Recipe;
+  factor: number;
+  /** units picked for some ingredients (issue #6), shared with the recipe page */
+  picks: UnitPicks;
+  onPick: (ingredientId: string, unit: string | null) => void;
+  onFactor: (f: number) => void;
+  onClose: () => void;
+};
 type RunningTimer = { id: number; label: string; step: number; endsAt: number };
 type WakeLock = { release: () => Promise<void> };
 
@@ -21,10 +32,6 @@ const MIN_SPLIT = 0.18;
 const MAX_SPLIT = 0.82;
 const clampSplit = (n: number) => Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, n));
 
-const amountText = (i: Ingredient, factor: number) => {
-  const a = scaleAmount(i.amount, factor);
-  return [a, unitFor(i.unit, a)].filter(Boolean).join(' ');
-};
 
 const readSplit = () => {
   try {
@@ -43,7 +50,9 @@ const readSplit = () => {
  * - Timers keep running; the soonest counts down in the top bar.
  * - The screen stays on. Closing after ticking every step offers "Mark as made".
  */
-export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
+export default function CookMode({ recipe, factor, picks, onPick, onFactor, onClose }: Props) {
+  // issue #6: the tapped amount, while its unit popover is open
+  const [converting, setConverting] = useState<ConvertTarget | null>(null);
   const { saveRecipe } = useStore();
   const [split, setSplit] = useState(readSplit);
   const [doneIng, setDoneIng] = useState<Set<string>>(new Set());
@@ -272,11 +281,18 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
                   {g.label && <div className="ck-group-label">{g.label}</div>}
                   <List dividers className="ck-plain-list ck-cook-list">
                     {g.items.map((i) => (
-                      <ListItem key={i.id} checkbox checked={doneIng.has(i.id)} onChange={() => toggle(setDoneIng, i.id)} className={doneIng.has(i.id) ? 'ck-done' : ''}>
+                      <ListItem
+                        key={i.id}
+                        checkbox
+                        checked={doneIng.has(i.id)}
+                        onChange={() => toggle(setDoneIng, i.id)}
+                        className={[doneIng.has(i.id) ? 'ck-done' : '', converting?.ing.id === i.id ? 'ck-ing-on' : ''].join(' ')}
+                      >
                         <span slot="title">
-                          <span className="ck-amount">{amountText(i, factor)}</span> {i.name}
+                          {/* issue #6: tap an underlined amount to see it in other units (the rest of the row ticks it) */}
+                          <ConvertibleAmount ing={i} factor={factor} picks={picks} onOpen={(t) => setConverting((cur) => toggleTarget(cur, t))} /> {i.name}
                         </span>
-                        {i.note && <span slot="footer">{i.note}</span>}
+                        {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
                       </ListItem>
                     ))}
                   </List>
@@ -314,7 +330,7 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
                             <div className="accordion-item-content">
                               <div className="ck-step-extra-inner">
                                 {uses.length > 0 && (
-                                  <span className="ck-cook-uses">{uses.map((i) => `${amountText(i, factor)} ${i.name}`.trim()).join(' · ')}</span>
+                                  <span className="ck-cook-uses">{uses.map((i) => `${amountText(i, factor, picks)} ${i.name}`.trim()).join(' · ')}</span>
                                 )}
                                 {stepTimerList.map((t) => {
                                   const running = timers.find((x) => x.step === s.n && x.label === t.label);
@@ -371,6 +387,7 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
             </div>
           </div>
           </div>
+          <UnitSheet slot="fixed" containerEl=".popup.ck-cook" target={converting} factor={factor} picks={picks} onPick={onPick} onClosed={() => setConverting(null)} />
         </Page>
         {/* the Adjust amounts sheet's backdrop, inside the popup so it dims cook mode */}
         <div className="sheet-backdrop ck-cook-backdrop" />

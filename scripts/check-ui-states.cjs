@@ -108,11 +108,17 @@ async function swipeLeft(ctx, page, locator) {
   await page.waitForTimeout(500);
 
   await step('04-recipe-page', async () => { await page.locator('.ck-recipes a', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(900); });
-  for (const label of ['×½', '×2', '×3']) {
-    await step(`05-recipe-scale-${label.replace('×', 'x').replace('½', 'half')}`, async () => {
-      await page.locator('.page-current .segmented .button', { hasText: label }).tap();
-    });
-  }
+  await step('05-scale-sheet', async () => { await page.locator('.page-current .ck-scale-button').tap(); await page.waitForTimeout(800); });
+  await step('05b-scale-x2', async () => { await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(400); });
+  await step('05c-scale-by-ingredient', async () => {
+    await page.locator('.sheet-modal.modal-in .ck-pick-list li', { hasText: 'chicken thighs' }).locator('label').tap();
+    await page.waitForTimeout(400);
+    await page.locator('.sheet-modal.modal-in .ck-fields input').fill('1.5');
+    await page.waitForTimeout(400);
+  });
+  await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
+  await page.waitForTimeout(700);
+  await step('05d-recipe-scaled', async () => { await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 420)); });
   await step('06-recipe-bottom', async () => { await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 99999)); });
   await step('07-more-actions', async () => { await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); });
   await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap().catch(() => {});

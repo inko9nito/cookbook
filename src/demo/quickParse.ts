@@ -87,3 +87,14 @@ export function unitFor(unit: string, scaledAmount: string): string {
   if (n <= 1 && SINGULARS[lower]) return SINGULARS[lower];
   return unit;
 }
+
+/** The number an amount starts with ("1-2" → 1, "1 1/2" → 1.5, "pinch" → null). Used to scale by an ingredient (issue #3). */
+export function amountValue(amount: string): number | null {
+  if (!amount) return null;
+  const first = amount.split(/[–-]/)[0];
+  const n = toNumber(first);
+  return n && n > 0 ? n : null;
+}
+
+/** Friendly number for servings and multipliers: 6, 4.5, 1.33 → "1⅓"-style is overkill here, so up to 2 decimals. */
+export const friendly = (n: number) => String(Math.round(n * 100) / 100);

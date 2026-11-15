@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import {
-  Page, Navbar, NavRight, Link, Block, List, ListItem, Stepper, Segmented, Button, Toolbar,
+  Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   Actions, ActionsGroup, ActionsButton, f7,
 } from 'framework7-react';
-import { Ellipsis, BookOpen, CalendarDays, ShoppingCart, Share, Heart, Star } from 'lucide-react';
+import { Ellipsis, Star, Scale, ChevronDown } from 'lucide-react';
+import ScaleSheet from '../components/ScaleSheet';
 import { useStore } from '../demo/store';
 import { titleCase } from '../demo/data';
-import { scaleAmount, unitFor } from '../demo/quickParse';
+import { scaleAmount, unitFor, friendly } from '../demo/quickParse';
 import { formatMinutes } from '../components/ui/FeaturedRecipeCard';
 import { photoStyle } from '../components/ui/photo';
 import { navIcon, inlineIcon } from '../components/ui/icons';
@@ -15,14 +16,16 @@ import { hideTabbar } from '../components/ui/tabbar';
 type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void; navigate: (url: string) => void } };
 
 /**
- * Recipe page (Airbnb listing layout): full-bleed photo under a transparent top bar, a rounded panel with
- * a centered title, a stats row, an action row, then servings, ingredients, directions and notes,
- * with a bottom bar for "Start cooking". The tab bar is hidden here.
+ * Recipe page (Airbnb listing layout), reading like a plain recipe: photo, title, info, ingredients,
+ * directions, notes. App controls stay out of the content: back and ••• (edit, cookbook, plan, groceries,
+ * share, duplicate, delete) on top; the footer holds the servings/scale button and Start cooking.
+ * The tab bar is hidden here.
  */
 export default function RecipePage({ f7route, f7router }: Props) {
   const { recipes, deleteRecipe } = useStore();
   const recipe = recipes.find((r) => r.id === f7route?.params.id);
-  const [servings, setServings] = useState(recipe?.servings ?? 1);
+  const [factor, setFactor] = useState(1);
+  const [scaleOpen, setScaleOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
   if (!recipe) {
@@ -34,21 +37,17 @@ export default function RecipePage({ f7route, f7router }: Props) {
     );
   }
 
-  const factor = servings / recipe.servings;
   const soon = (what: string) => f7.toast.show({ text: `${what} comes in a later phase`, closeTimeout: 1500 });
   const courses = recipe.tags.map(titleCase).join(' · ');
+  const scaled = Math.abs(factor - 1) > 0.001;
+  const servingsLabel = `${friendly(recipe.servings * factor)} servings`;
   let stepNo = 0;
 
   return (
     <Page name="recipe" className="ck-recipe-page" onPageBeforeIn={hideTabbar}>
+      {/* App controls stay in the bars: back and ••• on top, scaling and Start cooking in the footer */}
       <Navbar title={recipe.title} backLink transparent>
         <NavRight>
-          <Link iconOnly onClick={() => soon('Sharing')} aria-label="Share">
-            <Share {...navIcon} />
-          </Link>
-          <Link iconOnly onClick={() => soon('Favorites')} aria-label="Favorite">
-            <Heart {...navIcon} />
-          </Link>
           <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
             <Ellipsis {...navIcon} />
           </Link>
@@ -56,10 +55,11 @@ export default function RecipePage({ f7route, f7router }: Props) {
       </Navbar>
 
       <Toolbar bottom className="ck-cta">
-        <div className="ck-cta-text">
-          <b>{servings} servings</b>
-          <span className="ck-note">{formatMinutes(recipe.minutes)}</span>
-        </div>
+        <Link className="ck-scale-button" onClick={() => setScaleOpen(true)} aria-label="Adjust amounts">
+          <Scale {...inlineIcon} />
+          <span>{servingsLabel}</span>
+          <ChevronDown {...inlineIcon} />
+        </Link>
         <Button fill large className="ck-cta-button" onClick={() => soon('Cook mode')}>
           Start cooking
         </Button>
@@ -92,39 +92,13 @@ export default function RecipePage({ f7route, f7router }: Props) {
           </div>
         </div>
 
-        <div className="ck-actions4">
-          {(
-            [
-              [BookOpen, 'Cookbook', 'Cookbooks'],
-              [CalendarDays, 'Plan', 'Meal planning'],
-              [ShoppingCart, 'Groceries', 'The grocery list'],
-              [Share, 'Share', 'Sharing'],
-            ] as const
-          ).map(([Icon, label, what]) => (
-            <Link key={label} noLinkClass className="ck-action" onClick={() => soon(what)}>
-              <span className="ck-action-icon">
-                <Icon {...inlineIcon} />
-              </span>
-              {label}
-            </Link>
-          ))}
-        </div>
-
-        <div className="ck-row" style={{ justifyContent: 'space-between' }}>
-          <b>Servings</b>
-          <Stepper round className="ck-stepper ck-stepper-outline" value={servings} min={1} max={99} onStepperChange={setServings} />
-        </div>
-        <Segmented strong className="ck-underline-tabs">
-          {[0.5, 1, 2, 3].map((m) => (
-            <Button key={m} active={Math.abs(factor - m) < 0.001} onClick={() => setServings(recipe.servings * m)}>
-              ×{m === 0.5 ? '½' : m}
-            </Button>
-          ))}
-        </Segmented>
-
         <div className="ck-sec">
           <h2>Ingredients</h2>
-          <Link onClick={() => soon('The grocery list')}>Add to list</Link>
+          {scaled ? (
+            <Link onClick={() => setScaleOpen(true)}>×{friendly(factor)} · {servingsLabel}</Link>
+          ) : (
+            <span className="ck-note">{servingsLabel}</span>
+          )}
         </div>
       </div>
 
@@ -175,16 +149,20 @@ export default function RecipePage({ f7route, f7router }: Props) {
             <div className="ck-notes">{recipe.notes}</div>
           </>
         )}
-
-        <Button large className="ck-soft" onClick={() => f7router?.navigate(`/recipe/${recipe.id}/edit/`)}>
-          Edit recipe
-        </Button>
       </div>
+
+      <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setScaleOpen(false)} />
 
       <Actions opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>
         <ActionsGroup>
           <ActionsButton onClick={() => f7router?.navigate(`/recipe/${recipe.id}/edit/`)}>Edit Recipe</ActionsButton>
+          <ActionsButton onClick={() => soon('Cookbooks')}>Add to Cookbook</ActionsButton>
+          <ActionsButton onClick={() => soon('Meal planning')}>Add to Plan</ActionsButton>
+          <ActionsButton onClick={() => soon('The grocery list')}>Add to Grocery List</ActionsButton>
+          <ActionsButton onClick={() => soon('Sharing')}>Share</ActionsButton>
           <ActionsButton onClick={() => soon('Duplicating')}>Duplicate</ActionsButton>
+        </ActionsGroup>
+        <ActionsGroup>
           <ActionsButton
             color="red"
             onClick={() =>

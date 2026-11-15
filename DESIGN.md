@@ -80,7 +80,6 @@ rounded:
   search: "20px"
   list-inset: "16px"
   thumb: "18px"
-  cta-button: "10px"
   button: "16px"
   feature-card: "24px"
   main-button: "28px"
@@ -169,8 +168,8 @@ Where each component's shape comes from:
 | Recipe list | Headspace | Thin hairlines between rows, 64px photo thumbnails with 18px corners, 600-weight title, muted meta line. Section titles 19px extra-bold |
 | Servings stepper and ×½–×3 | Pinterest | Soft-filled round buttons; segmented control with a dark active segment |
 | Ingredients | Instacart | Light hairline rows, round check that fills Tomato, bold amount + regular name, muted note |
-| Main button | DoorDash | Full-width pill, 52px tall, 28px corners, 19px bold white label, Tomato fill |
-| Other buttons | Pinterest | Soft grey fill, 16px corners, 46px tall, 600 weight, dark text |
+| Main button | DoorDash | Pill, 52px tall (48px in the recipe footer), 19px bold white label, Tomato fill |
+| Other buttons | Pinterest | Soft grey fill, pill, 46px tall, 600 weight, dark text. **Every button in the app is a pill** (text buttons, dashed "Separate into groups", nav buttons, footer buttons); icon-only buttons are circles |
 | Sheet headers | (RED) | Plain bold title on the left, Tomato ink text button ("Done") on the right, no glass bubbles |
 | Form fields | Headspace | Soft grey filled box, 18px corners, no border, 12px semibold label above. Focus = 1.5px Tomato ring, error = red ring + red helper text. Edit screens use compact 14px text (like Prepear) |
 | Tab bar | DoorDash | Docked across the full bottom edge (not floating), 56px plus the safe area, flat white with a hairline on top, no bubble behind the active tab. Four tabs: Recipes, Cookbooks, Plan, Groceries. Tomato ink active, muted inactive, 600-weight labels |
@@ -178,7 +177,8 @@ Where each component's shape comes from:
 ### Screens (picked in Side by side, Nov 2026)
 
 - **Recipes list (Headspace):** large soft search pill, soft chips, photo card with title over a dark gradient, hairline list with rounded thumbnails.
-- **Recipe page (Airbnb):** full-bleed square photo under a see-through top bar (round white buttons: back, share, favorite, more); a panel with 28px top corners overlaps the photo; centered 26px title and meta; stats row (rating · made it · total time) with hairline dividers; action row (Cookbook · Plan · Groceries · Share) of 44px soft circles with labels; outlined round servings buttons; ×½–×3 as underlined tabs; plain ingredient rows with hairlines and uppercase group labels; numbered directions (Tomato-tint number circles) in groups; notes card; bottom bar with servings + "Start cooking" (10px corners). The tab bar hides on this page.
+- **Recipe page (Airbnb), reads like a plain recipe:** full-bleed square photo under a see-through top bar with only back and •••; a panel with 28px top corners overlaps the photo; centered 26px title and meta; stats row (rating · made it · total time) with hairline dividers; plain ingredient rows with hairlines and uppercase group labels; numbered directions (Tomato-tint number circles) in groups; notes card. **App controls stay out of the content:** ••• holds Edit, Add to Cookbook / Plan / Grocery List, Share, Duplicate, Delete; the footer holds a "N servings ▾" pill (opens **Adjust amounts**) and "Start cooking". The tab bar hides on this page.
+- **Adjust amounts (sheet):** servings −/+, quick ×½ ×1 ×2 ×3 chips, and "Or match what you have": pick an ingredient, type the amount you have, and everything scales to match (issue #3). When scaled, the Ingredients header shows "×1.5 · 6 servings"; "Back to original amounts" resets.
 - **Edit (Headspace, stacked page, not a sheet):** Cancel · Edit Recipe · Save (filled Tomato ink pill, white text); photo with remove/replace buttons; soft fields; ingredients and directions in soft 24px cards with drag handles on the left, swipe to delete, group rows; a paste box under each list (blank lines skipped, "For the sauce:" lines become groups); dashed "Separate into groups"; notes; course chips; tags; servings; serving size; prep and cook time; source. All text 14px.
 
 ## Do's and Don'ts

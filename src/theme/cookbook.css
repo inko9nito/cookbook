@@ -813,11 +813,26 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
    bar doesn't apply inside it */
 .sheet-modal.ck-edit-sheet { --f7-page-toolbar-bottom-offset: 0px; }
 
-/* Cook mode with a linked recipe open (issue #11): a tab for each recipe in cook mode, under the title (a Framework7
-   subnavbar), scrolling sideways when they don't fit. The one shown is the dark chip, like a picked filter */
-/* not iOS 26: no glass capsule around the row, which runs the full width on the bar colour */
-html.ios .subnavbar.ck-cook-tabs { --f7-subnavbar-offset-left: 0px; --f7-subnavbar-offset-right: 0px; border-radius: 0; box-shadow: none; }
-.subnavbar.ck-cook-tabs .subnavbar-inner { padding: 0; }
-.subnavbar.ck-cook-tabs .ck-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; padding: 0 16px; box-sizing: border-box; }
-.subnavbar.ck-cook-tabs .ck-chips::-webkit-scrollbar { display: none; }
-.subnavbar.ck-cook-tabs .chip { flex: none; max-width: 240px; }
+/* Cook mode with a linked recipe open (issue #11): recipe tabs under the title (a Framework7 subnavbar), like a
+   browser's tabs but rounder. The row is a soft grey strip; the recipe shown is a tab in the page colour with 14px
+   top corners, joined to the page below it, the others are plain grey text on the strip. Tabs share the width (up to
+   240px each), long titles end in … */
+html.ios .subnavbar.ck-cook-tabs {
+  --f7-subnavbar-offset-left: 0px; --f7-subnavbar-offset-right: 0px;
+  border-radius: 0; box-shadow: none; background-color: var(--ck-soft);
+}
+.subnavbar.ck-cook-tabs::after { display: none; }
+.subnavbar.ck-cook-tabs .subnavbar-inner { padding: 0; align-self: stretch; }
+.ck-tabs { display: flex; align-items: stretch; gap: 4px; width: 100%; height: 100%; padding: 6px 8px 0; box-sizing: border-box; }
+.ck-tab {
+  flex: 1 1 0; min-width: 0; max-width: 240px; margin: 0; padding: 0 14px; border: 0;
+  border-radius: 14px 14px 0 0; background: none;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--ck-fg2); cursor: pointer;
+}
+.ck-tab span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ck-tab.ck-tab-on { position: relative; background-color: var(--ck-bg); color: var(--ck-fg); }
+/* the shown tab flares into the page with small inward curves at its feet, so it reads as one piece with it */
+.ck-tab.ck-tab-on::before,
+.ck-tab.ck-tab-on::after { content: ''; position: absolute; bottom: 0; width: 14px; height: 14px; pointer-events: none; }
+.ck-tab.ck-tab-on::before { left: -14px; background: radial-gradient(circle at 0 0, transparent 13.5px, var(--ck-bg) 14px); }
+.ck-tab.ck-tab-on::after { right: -14px; background: radial-gradient(circle at 100% 0, transparent 13.5px, var(--ck-bg) 14px); }

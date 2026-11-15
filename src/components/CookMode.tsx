@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, KeyboardEvent, PointerEvent, SetStateAction } from 'react';
 import {
-  Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Subnavbar, Link, Button, List, ListItem, Chip,
+  Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Subnavbar, Link, Button, List, ListItem,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
 import { X, GripHorizontal, ChevronDown, ChevronRight, Timer as TimerIcon } from 'lucide-react';
@@ -440,14 +440,18 @@ function CookCard({
             {/* issue #11: once a linked recipe is open, a tab for each recipe in cook mode */}
             {tabs.length > 1 && (
               <Subnavbar className="ck-cook-tabs">
-                <div className="ck-chips ck-chips-scroll" role="group" aria-label="Recipes in cook mode">
+                <div className="ck-tabs" role="tablist" aria-label="Recipes in cook mode">
                   {tabs.map((t) => (
-                    <Chip
+                    <button
                       key={t.id}
-                      text={t.title}
-                      className={`ck-chip ${t.id === recipe.id ? 'ck-chip-on' : ''}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={t.id === recipe.id}
+                      className={`ck-tab ${t.id === recipe.id ? 'ck-tab-on' : ''}`}
                       onClick={() => t.id !== recipe.id && onShow(t.id)}
-                    />
+                    >
+                      <span>{t.title}</span>
+                    </button>
                   ))}
                 </div>
               </Subnavbar>

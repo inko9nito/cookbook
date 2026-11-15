@@ -155,6 +155,11 @@ html.ios .navbar .right {
   --f7-glass-shadow: none;
   gap: 8px;
 }
+/* Framework7 adds 16px between bar buttons on top of the gap; 8px apart is enough */
+html.ios .navbar .left a + a,
+html.ios .navbar .right a + a { margin-left: 0; }
+/* a shorter bar than iOS 26's 56px: the 40px buttons still fit, and the page starts closer to the title */
+html.ios { --f7-navbar-height: 48px; }
 html.ios .navbar .left .link,
 html.ios .navbar .right .link {
   min-width: 40px;
@@ -173,7 +178,8 @@ html.ios .navbar .link.back {
 
 /* Tab bar (DoorDash): docked full width, flat white, hairline on top, no active bubble */
 html.ios {
-  --f7-tabbar-icons-height: 56px;
+  /* icons only, no labels */
+  --f7-tabbar-icons-height: 50px;
   --f7-tabbar-link-highlight-bg-color: transparent;
   --f7-tabbar-link-highlight-active-bg-color: transparent;
 }
@@ -266,6 +272,8 @@ html.ios .searchbar {
 .chip.ck-chip.ck-chip-on { background: var(--ck-fg); border-color: var(--ck-fg); color: var(--ck-surface); }
 .ck-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 /* filter chips on the Recipes screen: one line that scrolls sideways (native overflow scrolling, no custom gesture) */
+.ck-home-search { --f7-searchbar-in-page-content-margin: 4px 16px 0; }
+.block.ck-chips.ck-chips-scroll { margin-top: 12px; }
 .block.ck-chips.ck-chips-scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: 0; margin-right: 0; }
 .block.ck-chips.ck-chips-scroll::-webkit-scrollbar { display: none; }
 .block.ck-chips.ck-chips-scroll .chip { flex: none; }

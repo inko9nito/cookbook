@@ -36,11 +36,11 @@ export default function RecipesPage({ f7router }: Props) {
       <Navbar className="ck-navbar-root">
         <NavTitle>Recipes</NavTitle>
         <NavRight>
-          <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
-            <ArrowUpDown {...navIcon} />
-          </Link>
           <Link iconOnly onClick={() => f7router?.navigate('/recipe/new/')} aria-label="New recipe">
             <Plus {...navIcon} />
+          </Link>
+          <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
+            <ArrowUpDown {...navIcon} />
           </Link>
           <Link iconOnly href="/settings/" aria-label="Settings">
             <Settings {...navIcon} />
@@ -49,7 +49,7 @@ export default function RecipesPage({ f7router }: Props) {
       </Navbar>
 
       {/* RED: the search bar is part of the page and scrolls with it (wrapped, so Framework7 keeps it in the page content instead of pinning it) */}
-      <div>
+      <div className="ck-home-search">
         <Searchbar searchContainer=".ck-card-grid" searchItem=".ck-card" searchIn=".ck-card-title" placeholder="Search recipes" disableButton={false} />
       </div>
 

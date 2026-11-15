@@ -28,21 +28,17 @@ export default function CookbookApp() {
         <Views tabs className="safe-areas">
           <Toolbar tabbar icons bottom>
             <ToolbarPane>
-              <Link tabLink="#view-recipes" tabLinkActive>
+              <Link tabLink="#view-recipes" aria-label="Recipes" tabLinkActive>
                 <ChefHat {...tabIcon} />
-                <span className="tabbar-label">Recipes</span>
               </Link>
-              <Link tabLink="#view-cookbooks">
+              <Link tabLink="#view-cookbooks" aria-label="Cookbooks">
                 <BookOpen {...tabIcon} />
-                <span className="tabbar-label">Cookbooks</span>
               </Link>
-              <Link tabLink="#view-plan">
+              <Link tabLink="#view-plan" aria-label="Plan">
                 <CalendarDays {...tabIcon} />
-                <span className="tabbar-label">Plan</span>
               </Link>
-              <Link tabLink="#view-groceries">
+              <Link tabLink="#view-groceries" aria-label="Groceries">
                 <ShoppingCart {...tabIcon} />
-                <span className="tabbar-label">Groceries</span>
               </Link>
             </ToolbarPane>
           </Toolbar>

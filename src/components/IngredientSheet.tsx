@@ -38,6 +38,8 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
       <PageContent>
         {ingredient && (
           <>
+            {/* the whole line as it will read, at the top where it's seen while typing */}
+            <Block className="ck-note ck-ing-preview">{formatIngredient(ingredient) || 'Preview'}</Block>
             <List className="ck-fields">
               <ListInput
                 label="Amount"
@@ -74,7 +76,6 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
                 clearButton
               />
             </List>
-            <Block className="ck-note">{formatIngredient(ingredient) || 'Preview'}</Block>
             <Block>
               <Button large color="red" onClick={() => onDelete(ingredient.id)}>
                 Delete Ingredient

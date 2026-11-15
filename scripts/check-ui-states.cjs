@@ -418,7 +418,46 @@ async function swipeLeft(ctx, page, locator) {
   });
   await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
   await page.waitForTimeout(600);
-  await step('12d-edit-recipe-info', async () => { await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 99999)); });
+  await step('12d-edit-recipe-info', async () => {
+    await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 99999));
+    const layout = await page.evaluate(() => {
+      const out = [];
+      // each row's reorder handle (20px icon) is centred on its first line: step number, ingredient, or group name
+      for (const li of document.querySelectorAll('.page-current .ck-edit-list li')) {
+        const target = li.querySelector('.ck-group-input') || li.querySelector('.ck-step-no') || li.querySelector('.item-title');
+        let line = target.getBoundingClientRect();
+        if (target.tagName !== 'INPUT') {
+          const w = document.createTreeWalker(target, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode()) && !n.textContent.trim());
+          const r = document.createRange(); r.selectNodeContents(n); line = r.getClientRects()[0];
+        }
+        const h = li.querySelector('.sortable-handler'); const hr = h.getBoundingClientRect();
+        const icon = hr.top + parseFloat(getComputedStyle(h).paddingTop) + 10;
+        const off = Math.abs(icon - (line.top + line.height / 2));
+        if (off > 2) out.push(`reorder handle ${Math.round(off)}px off the first line of "${li.textContent.trim().slice(0, 24)}"`);
+      }
+      // groups are separate cards: a group row sits on the page colour, not the card fill
+      for (const g of document.querySelectorAll('.page-current .ck-edit-list li.ck-group-row')) {
+        const next = g.nextElementSibling; if (next && !next.classList.contains('ck-group-row') && getComputedStyle(g).backgroundColor === getComputedStyle(next).backgroundColor) out.push(`group row "${g.textContent.trim()}" has the same fill as its card (${getComputedStyle(g).backgroundColor})`);
+      }
+      // clear buttons inside their field
+      for (const b of document.querySelectorAll('.page-current .ck-fields .input-clear-button')) {
+        const wrap = b.closest('.item-input-wrap').getBoundingClientRect(); const r = b.getBoundingClientRect();
+        if (r.width && wrap.right - r.right < 8) out.push(`clear button ${Math.round(wrap.right - r.right)}px from the field edge`);
+      }
+      return out;
+    });
+    if (layout.length) throw new Error(layout.join('; '));
+  });
+  await step('12d2-add-tag-dialog', async () => {
+    await page.locator('.page-current .ck-chip-add').tap(); await page.waitForTimeout(500);
+    await page.locator('.dialog.modal-in input').fill('Make-ahead');
+  });
+  await step('12d3-tag-added', async () => {
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(500);
+    const on = await page.locator('.page-current .ck-chip.ck-chip-on', { hasText: 'Make-ahead' }).count();
+    if (!on) throw new Error('new tag is not shown as a selected chip');
+    if (await page.locator('.page-current .ck-fields input[placeholder^="#"]').count()) throw new Error('the separate Tags text field is still there');
+  });
   await step('12e-discard-prompt', async () => { await page.locator('.navbar a', { hasText: 'Cancel' }).filter({ visible: true }).first().tap(); });
   await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Discard Changes' }).tap().catch(() => {});
   await page.waitForTimeout(900);

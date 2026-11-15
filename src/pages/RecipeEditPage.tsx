@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListInput, ListItem, BlockTitle, Block, Button, Chip, Stepper,
-  SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton,
+  SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton, f7,
 } from 'framework7-react';
 import { Camera, ImagePlus, Trash2, Plus } from 'lucide-react';
 import { useStore } from '../demo/store';
@@ -24,7 +24,7 @@ const move = <T,>(list: T[], from: number, to: number) => {
 
 /**
  * Edit Recipe: a stacked page (pushed, with swipe-back) with Prepear's editing features:
- * photo, name, grouped ingredients and directions with paste boxes, notes, course, tags,
+ * photo, name, grouped ingredients and directions with paste boxes, notes, tags (courses included),
  * servings, serving size, prep and cook time, source. Style: Headspace edit screen, compact 14px text.
  */
 export default function RecipeEditPage({ f7route, f7router }: Props) {
@@ -38,7 +38,6 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [ingredientPaste, setIngredientPaste] = useState('');
   const [stepPaste, setStepPaste] = useState('');
-  const [tagText, setTagText] = useState(original.tags.filter((t) => !COURSES.includes(t)).map((t) => `#${t}`).join(' '));
   const [discardOpen, setDiscardOpen] = useState(false);
   // a group just added with "Separate into groups": put the cursor in its name field
   const [focusGroupId, setFocusGroupId] = useState<string | null>(null);
@@ -88,12 +87,18 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
     setFocusGroupId(header.id);
   };
 
-  // ── course and tags ──
-  const toggleCourse = (c: string) => set({ tags: draft.tags.includes(c) ? draft.tags.filter((t) => t !== c) : [...draft.tags, c] });
-  const applyTags = (text: string) => {
-    setTagText(text);
-    const own = text.split(/[\s,]+/).map((t) => t.replace(/^#/, '').toLowerCase()).filter(Boolean);
-    set({ tags: [...draft.tags.filter((t) => COURSES.includes(t)), ...own] });
+  // ── tags: one set of chips (the course types plus every tag already used), tap to toggle, "Add tag" for a new one ──
+  const allTags = useMemo(() => {
+    const used = new Set([...recipes.flatMap((r) => r.tags), ...draft.tags]);
+    return [...COURSES, ...[...used].filter((t) => !COURSES.includes(t)).sort()];
+  }, [recipes, draft.tags]);
+  const toggleTag = (t: string) => set({ tags: draft.tags.includes(t) ? draft.tags.filter((x) => x !== t) : [...draft.tags, t] });
+  const addTag = () => {
+    const dialog = f7.dialog.prompt('Name it, e.g. holiday or make-ahead.', 'New tag', (value: string) => {
+      const t = value.trim().replace(/^#+/, '').toLowerCase();
+      if (t && !draft.tags.includes(t)) set({ tags: [...draft.tags, t] });
+    });
+    dialog.$el.find('input').attr('autocapitalize', 'off');
   };
 
   // ── photo (kept on this phone only until photo upload in Phase 1) ──
@@ -292,16 +297,16 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
       {/* Recipe info */}
       <BlockTitle medium>Recipe info</BlockTitle>
       <Block className="ck-stack">
-        <span className="ck-label">Course</span>
+        <span className="ck-label">Tags</span>
         <div className="ck-chips">
-          {COURSES.map((c) => (
-            <Chip key={c} text={titleCase(c)} className={`ck-chip ${draft.tags.includes(c) ? 'ck-chip-on' : ''}`} onClick={() => toggleCourse(c)} />
+          {allTags.map((t) => (
+            <Chip key={t} text={titleCase(t)} className={`ck-chip ${draft.tags.includes(t) ? 'ck-chip-on' : ''}`} onClick={() => toggleTag(t)} />
           ))}
+          <Chip text="Add tag" className="ck-chip ck-chip-add" onClick={addTag}>
+            <Plus slot="media" {...inlineIcon} />
+          </Chip>
         </div>
       </Block>
-      <List className="ck-fields">
-        <ListInput label="Tags" type="text" placeholder="#holiday #make-ahead" autocapitalize="off" value={tagText} onInput={(e) => applyTags(e.target.value)} />
-      </List>
       <Block>
         <div className="ck-row" style={{ justifyContent: 'space-between' }}>
           <b>Servings</b>

@@ -747,6 +747,34 @@ async function swipeLeft(ctx, page, locator) {
     if (text !== '4 tbsp') throw new Error(`after Original the amount reads "${text}"`);
   });
 
+  // issue #6 in cook mode: tapping an underlined amount opens the unit popover over cook mode (not ticking the row);
+  // a pick replaces the amount there and on the recipe page. The popover opens small at its pointer, like iOS's edit
+  // menu, with no sideways slide of its content
+  await step('23-cook-unit-popover', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    await page.locator('.ck-cook .ck-cook-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(800);
+    const t = await page.evaluate(() => {
+      const li = [...document.querySelectorAll('.ck-cook .ck-cook-list li')].find((l) => l.textContent.includes('lemon juice'));
+      const po = document.querySelector('.popover.modal-in'); const r = po?.getBoundingClientRect();
+      const hit = po && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { ticked: li.querySelector('input').checked, inCook: !!po?.closest('.ck-cook'), onTop: !!hit?.closest('.popover'), origin: po?.style.transformOrigin, inner: po && getComputedStyle(po.querySelector('.popover-inner')).transform };
+    });
+    if (!t.inCook || !t.onTop) throw new Error('the unit popover is not shown over cook mode');
+    if (t.ticked) throw new Error('tapping the amount ticked the ingredient');
+    if (!t.origin?.startsWith('-14px')) throw new Error(`popover doesn't grow from its pointer (origin ${t.origin})`);
+    if (t.inner !== 'none' && t.inner !== 'matrix(1, 0, 0, 1, 0, 0)') throw new Error(`popover content is offset (${t.inner})`);
+  });
+  await step('23b-cook-unit-picked', async () => {
+    await page.locator('.ck-cook .popover.modal-in li', { hasText: '⅛ cup' }).tap(); await page.waitForTimeout(800);
+    const cook = await page.locator('.ck-cook .ck-cook-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').textContent();
+    if (cook !== '⅛ cup') throw new Error(`in cook mode the amount reads "${cook}" after picking ⅛ cup`);
+    await page.locator('.ck-cook .navbar a').first().tap(); await page.waitForTimeout(1200);
+    const recipe = await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').textContent();
+    if (recipe !== '⅛ cup') throw new Error(`the recipe page reads "${recipe}" after picking ⅛ cup in cook mode`);
+  });
+
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)
   await step('19-sign-in', async () => {
     await page.goto(`${BASE}?signin`);

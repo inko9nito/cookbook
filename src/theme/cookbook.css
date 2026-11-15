@@ -767,11 +767,33 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 /* the tapped ingredient stands out while its popover is open: pale Tomato, the design's selection tint (as for a row
    held in the editor), with rounded corners set 8px in from the screen edges. Drawn behind the row's content, which
    Framework7 positions, so it paints over this */
-.list.ck-ing-list li { position: relative; }
-.list.ck-ing-list li.ck-ing-on::before {
+.list.ck-ing-list li,
+.list.ck-cook-list li { position: relative; }
+.list.ck-ing-list li.ck-ing-on::before,
+.list.ck-cook-list li.ck-ing-on::before {
   content: ''; position: absolute; top: 0; bottom: 0; left: 8px; right: 8px; border-radius: 12px;
   background-color: var(--ck-accent-tint);
 }
+/* APPROVED EXCEPTION (Nov 2026, see CLAUDE.md): the unit popover opens like iOS's edit menu (Cut / Copy / Paste):
+   it starts small at the pointer, fades in while it grows, and settles in about 0.2s; closing is a quick fade.
+   This tunes Framework7's own popover transition (it grows from nothing with a 0.4s spring while the content slides in
+   from the side for 0.6s); RecipePage sets the transform origin to the pointer's tip */
+html.ios .popover.ck-convert {
+  --f7-popover-inner-offset: translate3d(0, 0, 0);
+  opacity: 0;
+  transform: translateZ(0) scale(0.6);
+  transition-property: opacity, transform;
+  transition-duration: 0.14s;
+  transition-timing-function: ease-in;
+}
+html.ios .popover.ck-convert.modal-in {
+  opacity: 1;
+  transform: translateZ(0) scale(1);
+  transition-duration: 0.22s;
+  transition-timing-function: cubic-bezier(0.2, 1.1, 0.4, 1);
+}
+html.ios .popover.ck-convert .popover-inner { transition-duration: 0s; }
+
 /* the iOS callout pointer from the popover's left side to the tapped amount, level with it (Framework7 v9 draws none):
    a rounded tip whose sides curve into the bubble, drawn as a mask filled with the surface colour, 1px into the bubble
    so there's no seam. RecipePage sets --ck-arrow-y */

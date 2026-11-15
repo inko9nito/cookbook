@@ -12,12 +12,14 @@ import { stepTimers, stepIngredients, clock } from '../lib/cook';
 import { navIcon, inlineIcon } from './ui/icons';
 import { useStore } from '../data/store';
 import ScaleSheet from './ScaleSheet';
+import UnitPopover, { ConvertibleAmount, type ConvertTarget } from './UnitPopover';
 
 type Props = {
   recipe: Recipe;
   factor: number;
-  /** units picked on the recipe page (issue #6) */
-  picks?: UnitPicks;
+  /** units picked for some ingredients (issue #6), shared with the recipe page */
+  picks: UnitPicks;
+  onPick: (ingredientId: string, unit: string | null) => void;
   onFactor: (f: number) => void;
   onClose: () => void;
 };
@@ -47,7 +49,9 @@ const readSplit = () => {
  * - Timers keep running; the soonest counts down in the top bar.
  * - The screen stays on. Closing after ticking every step offers "Mark as made".
  */
-export default function CookMode({ recipe, factor, picks, onFactor, onClose }: Props) {
+export default function CookMode({ recipe, factor, picks, onPick, onFactor, onClose }: Props) {
+  // issue #6: the tapped amount, while its unit popover is open
+  const [converting, setConverting] = useState<ConvertTarget | null>(null);
   const { saveRecipe } = useStore();
   const [split, setSplit] = useState(readSplit);
   const [doneIng, setDoneIng] = useState<Set<string>>(new Set());
@@ -276,9 +280,16 @@ export default function CookMode({ recipe, factor, picks, onFactor, onClose }: P
                   {g.label && <div className="ck-group-label">{g.label}</div>}
                   <List dividers className="ck-plain-list ck-cook-list">
                     {g.items.map((i) => (
-                      <ListItem key={i.id} checkbox checked={doneIng.has(i.id)} onChange={() => toggle(setDoneIng, i.id)} className={doneIng.has(i.id) ? 'ck-done' : ''}>
+                      <ListItem
+                        key={i.id}
+                        checkbox
+                        checked={doneIng.has(i.id)}
+                        onChange={() => toggle(setDoneIng, i.id)}
+                        className={[doneIng.has(i.id) ? 'ck-done' : '', converting?.ing.id === i.id ? 'ck-ing-on' : ''].join(' ')}
+                      >
                         <span slot="title">
-                          <span className="ck-amount">{amountText(i, factor, picks)}</span> {i.name}
+                          {/* issue #6: tap an underlined amount to see it in other units (the rest of the row ticks it) */}
+                          <ConvertibleAmount ing={i} factor={factor} picks={picks} onOpen={setConverting} /> {i.name}
                         </span>
                         {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
                       </ListItem>
@@ -375,6 +386,7 @@ export default function CookMode({ recipe, factor, picks, onFactor, onClose }: P
             </div>
           </div>
           </div>
+          <UnitPopover slot="fixed" containerEl=".popup.ck-cook" target={converting} factor={factor} picks={picks} onPick={onPick} onClosed={() => setConverting(null)} />
         </Page>
         {/* the Adjust amounts sheet's backdrop, inside the popup so it dims cook mode */}
         <div className="sheet-backdrop ck-cook-backdrop" />

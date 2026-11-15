@@ -11,6 +11,7 @@
     "check:ui": "node scripts/check-ui-states.cjs"
   },
   "dependencies": {
+    "cropperjs": "^1.6.2",
     "framework7": "^9.3.0",
     "framework7-react": "^9.3.0",
     "lucide-react": "^1.65.0",

@@ -3,14 +3,15 @@ import {
   Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListInput, ListItem, BlockTitle, Block, Button, Chip, Stepper,
   SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton,
 } from 'framework7-react';
-import { Camera, ImagePlus, Trash2, Plus, ArrowUp, ArrowDown } from 'lucide-react';
+import { Camera, ImagePlus, Trash2, Plus, ArrowUp, ArrowDown, Crop, Star } from 'lucide-react';
 import { useStore } from '../demo/store';
-import { COURSES, emptyRecipe, newId, titleCase, type DemoIngredient, type DemoRecipe, type DemoStep } from '../demo/data';
+import { COURSES, emptyRecipe, newId, titleCase, type DemoIngredient, type DemoPhoto, type DemoRecipe, type DemoStep } from '../demo/data';
 import { quickParse, isHeaderLine, headerText, pastedLines } from '../demo/quickParse';
 import IngredientSheet from '../components/IngredientSheet';
 import StepSheet from '../components/StepSheet';
 import { inlineIcon } from '../components/ui/icons';
-import { photoStyle } from '../components/ui/photo';
+import { photoStyle, photoFromFile, recrop } from '../components/ui/photo';
+import PhotoCropper from '../components/PhotoCropper';
 import { hideTabbar } from '../components/ui/tabbar';
 
 type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void } };
@@ -150,12 +151,32 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
     setNewTag('');
   };
 
-  // ── photo (kept on this phone only until photo upload in Phase 1) ──
-  const pickPhoto = (file?: File) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => set({ photo: String(reader.result) });
-    reader.readAsDataURL(file);
+  // ── photos (kept on this phone only until photo upload in Phase 1). The first is the cover. ──
+  const [photoIdx, setPhotoIdx] = useState(0);
+  const [cropping, setCropping] = useState<DemoPhoto | null>(null);
+  const shown = draft.photos[Math.min(photoIdx, draft.photos.length - 1)];
+  const addPhotos = async (files: FileList | null) => {
+    const picked = [...(files ?? [])];
+    if (!picked.length) return;
+    const added = await Promise.all(picked.map((f) => photoFromFile(f, newId())));
+    setDraft((d) => ({ ...d, photos: [...d.photos, ...added] }));
+    setPhotoIdx(draft.photos.length); // the first new one
+    // one photo: straight to cropping it; several: each is centre-cropped, crop any of them after
+    if (added.length === 1) setCropping(added[0]);
+  };
+  const applyCrop = async (box: NonNullable<DemoPhoto['crop']>) => {
+    if (!cropping) return;
+    const next = await recrop(cropping, box);
+    setDraft((d) => ({ ...d, photos: d.photos.map((p) => (p.id === next.id ? next : p)) }));
+    setCropping(null);
+  };
+  const removePhoto = (id: string) => {
+    setDraft((d) => ({ ...d, photos: d.photos.filter((p) => p.id !== id) }));
+    setPhotoIdx((i) => Math.max(0, i - 1));
+  };
+  const makeCover = (id: string) => {
+    setDraft((d) => ({ ...d, photos: [...d.photos.filter((p) => p.id === id), ...d.photos.filter((p) => p.id !== id)] }));
+    setPhotoIdx(0);
   };
 
   const save = () => {
@@ -182,16 +203,21 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
         </NavRight>
       </Navbar>
 
-      {/* Photo */}
+      {/* Photos: the selected one large (crop, make cover, remove), then a strip of all of them with + to add more */}
       <Block>
-        {draft.photo ? (
-          <div className="ck-edit-photo ck-photo" style={photoStyle(draft.photo)} role="img" aria-label="Recipe photo">
+        {shown ? (
+          <div className="ck-edit-photo ck-photo" style={photoStyle(shown.src)} role="img" aria-label={photoIdx === 0 ? 'Cover photo' : `Photo ${photoIdx + 1}`}>
             <span className="ck-edit-photo-actions">
-              <Button round className="ck-photo-btn" onClick={() => set({ photo: undefined })} aria-label="Remove photo">
+              <Button round className="ck-photo-btn" onClick={() => removePhoto(shown.id)} aria-label="Remove photo">
                 <Trash2 {...inlineIcon} />
               </Button>
-              <Button round className="ck-photo-btn" onClick={() => fileRef.current?.click()} aria-label="Replace photo">
-                <ImagePlus {...inlineIcon} />
+              {draft.photos[0]?.id !== shown.id && (
+                <Button round className="ck-photo-btn" onClick={() => makeCover(shown.id)} aria-label="Make cover photo">
+                  <Star {...inlineIcon} />
+                </Button>
+              )}
+              <Button round className="ck-photo-btn" onClick={() => setCropping(shown)} aria-label="Crop photo">
+                <Crop {...inlineIcon} />
               </Button>
             </span>
           </div>
@@ -199,10 +225,39 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
           // no photo yet: one plain tappable box (dashed, like "Separate into groups"), no colored placeholder
           <Link noLinkClass className="ck-edit-photo ck-edit-photo-empty" onClick={() => fileRef.current?.click()}>
             <Camera {...inlineIcon} />
-            Add a photo
+            Add photos
           </Link>
         )}
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => pickPhoto(e.target.files?.[0])} />
+        {draft.photos.length > 0 && (
+          <div className="ck-thumbs">
+            {draft.photos.map((p, i) => (
+              <Link
+                key={p.id}
+                noLinkClass
+                className={`ck-thumb ck-photo ${p.id === shown?.id ? 'ck-thumb-on' : ''}`}
+                style={photoStyle(p.src)}
+                onClick={() => setPhotoIdx(i)}
+                aria-label={i === 0 ? 'Cover photo' : `Photo ${i + 1}`}
+              >
+                {i === 0 && <span className="ck-thumb-badge">Cover</span>}
+              </Link>
+            ))}
+            <Link noLinkClass className="ck-thumb ck-thumb-add" onClick={() => fileRef.current?.click()} aria-label="Add photos">
+              <ImagePlus {...inlineIcon} />
+            </Link>
+          </div>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => {
+            void addPhotos(e.target.files);
+            e.target.value = ''; // picking the same file again still fires
+          }}
+        />
       </Block>
 
       <List className="ck-fields">
@@ -429,6 +484,7 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
         <ListInput label="Source" type="text" placeholder="Website or person" value={draft.source} onInput={(e) => set({ source: e.target.value })} clearButton />
       </List>
 
+      <PhotoCropper photo={cropping} onDone={(box) => void applyCrop(box)} onClose={() => setCropping(null)} />
       <IngredientSheet
         ingredient={editingIngredient && editingIngredient.kind !== 'header' ? editingIngredient : null}
         onChange={updateIngredient}

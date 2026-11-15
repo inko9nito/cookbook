@@ -18,6 +18,19 @@ export type DemoStep = {
   text: string;
 };
 
+/** A recipe photo: the 4:3 crop that's shown, plus the full photo and the crop box so the crop can be redone. */
+export type DemoPhoto = {
+  id: string;
+  /** what shows: a sample photo (public/photos) or the 4:3 crop of a photo picked on the phone (data URL) */
+  src: string;
+  /** the full photo as picked (downscaled), when it was cropped on the phone */
+  original?: string;
+  /** the crop box on the original, in its pixels */
+  crop?: { x: number; y: number; width: number; height: number };
+};
+
+export const coverPhoto = (r: DemoRecipe): string | undefined => r.photos[0]?.src;
+
 export type DemoRecipe = {
   id: string;
   title: string;
@@ -29,8 +42,8 @@ export type DemoRecipe = {
   /** total time, kept in sync with prep + cook by the editor */
   minutes: number;
   createdAt: string;
-  /** Sample photo (public/photos) or a photo picked on the phone (data URL). Without one, a warm color placeholder shows. */
-  photo?: string;
+  /** Photos, the first is the cover (cards, the top of the recipe page). Empty: a plain grey chef-hat placeholder shows. */
+  photos: DemoPhoto[];
   /** Placeholder color used when there is no photo */
   tone: 'corn' | 'grill' | 'soup' | 'drink' | 'green';
   /** Course types (from COURSES) and the user's own tags, all lowercase */
@@ -57,7 +70,7 @@ export const demoRecipes: DemoRecipe[] = [
     id: '1',
     title: 'Corn pudding',
     tone: 'corn',
-    photo: '/photos/corn.jpg',
+    photos: [{ id: newId(), src: '/photos/corn.jpg' }],
     source: 'My recipe',
     servings: 8,
     servingSize: '1 square',
@@ -102,7 +115,7 @@ export const demoRecipes: DemoRecipe[] = [
     id: '2',
     title: 'Middle Eastern Chicken Kebabs',
     tone: 'grill',
-    photo: '/photos/kebabs.jpg',
+    photos: [{ id: newId(), src: '/photos/kebabs.jpg' }],
     source: 'onceuponachef.com',
     servings: 4,
     servingSize: '2 skewers',
@@ -154,7 +167,7 @@ export const demoRecipes: DemoRecipe[] = [
     id: '3',
     title: 'Italian Turkey Zucchini Meatballs',
     tone: 'soup',
-    photo: '/photos/meatballs.jpg',
+    photos: [{ id: newId(), src: '/photos/meatballs.jpg' }],
     source: 'My recipe',
     servings: 6,
     servingSize: '4 meatballs',
@@ -196,7 +209,7 @@ export const demoRecipes: DemoRecipe[] = [
     id: '4',
     title: 'Pulled Beef with Parsnip Purée',
     tone: 'grill',
-    photo: '/photos/pulled-beef.jpg',
+    photos: [{ id: newId(), src: '/photos/pulled-beef.jpg' }],
     source: 'My recipe',
     servings: 6,
     servingSize: '',
@@ -242,7 +255,7 @@ export const demoRecipes: DemoRecipe[] = [
     id: '5',
     title: 'Mustard Dill Chicken Thighs',
     tone: 'green',
-    photo: '/photos/mustard-chicken.jpg',
+    photos: [{ id: newId(), src: '/photos/mustard-chicken.jpg' }],
     source: 'sepcooks.com',
     servings: 4,
     servingSize: '',
@@ -287,6 +300,7 @@ export const emptyRecipe = (): DemoRecipe => ({
   minutes: 0,
   createdAt: new Date().toISOString().slice(0, 10),
   tone: 'green',
+  photos: [],
   tags: [],
   ingredients: [],
   steps: [],

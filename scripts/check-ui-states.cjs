@@ -371,6 +371,53 @@ async function swipeLeft(ctx, page, locator) {
   await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Not now' }).tap().catch(() => {});
   await page.waitForTimeout(900);
 
+  // ── photos: add one (opens Crop Photo), pan it, add two more at once, save; then swipe them and open the viewer ──
+  const photoFile = (n) => path.resolve(__dirname, '..', 'public', 'photos', n);
+  await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(500);
+  await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(900);
+  await step('17-crop-photo', async () => {
+    await page.locator('.page-current input[type=file]').setInputFiles(photoFile('seafood-salad.jpg'));
+    await page.waitForTimeout(1500);
+    if (!(await page.locator('.ck-crop.modal-in .cropper-container').count())) throw new Error('picking one photo did not open Crop Photo');
+    const f = await page.locator('.ck-crop .cropper-container').boundingBox();
+    if (Math.abs(f.width / f.height - 4 / 3) > 0.02) throw new Error(`crop frame is not 4:3 (${Math.round(f.width)}×${Math.round(f.height)})`);
+    await page.mouse.move(f.x + f.width / 2, f.y + f.height / 2); await page.mouse.down();
+    await page.mouse.move(f.x + f.width / 2 + 60, f.y + f.height / 2, { steps: 5 }); await page.mouse.up();
+  });
+  await step('17b-photos-added', async () => {
+    await page.locator('.ck-crop a', { hasText: 'Done' }).tap(); await page.waitForTimeout(1200);
+    await page.locator('.page-current input[type=file]').setInputFiles([photoFile('corn.jpg'), photoFile('meatballs.jpg')]);
+    await page.waitForTimeout(1500);
+    if (await page.locator('.ck-crop.modal-in').count()) throw new Error('picking several photos opened Crop Photo');
+    const n = await page.locator('.page-current .ck-thumb:not(.ck-thumb-add)').count();
+    if (n !== 4) throw new Error(`expected 4 photos, found ${n}`);
+  });
+  await page.locator('.page-current .navbar a', { hasText: 'Save' }).tap(); await page.waitForTimeout(1000);
+  await step('17c-recipe-photos-swiped', async () => {
+    await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 0)); await page.waitForTimeout(400);
+    const hero = await page.locator('.page-current swiper-container').boundingBox();
+    const cdp = await ctx.newCDPSession(page);
+    const at = (x) => [{ x: hero.x + x, y: hero.y + hero.height / 2 }];
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(300) });
+    for (let x = 280; x >= 60; x -= 20) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: at(x) }); await page.waitForTimeout(16); }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
+    await page.waitForTimeout(700);
+    const idx = await page.evaluate(() => document.querySelector('.page-current swiper-container').swiper.activeIndex);
+    if (idx !== 1) throw new Error(`swipe did not move to the second photo (at ${idx})`);
+    if (await page.locator('.photo-browser-popup.modal-in').count()) throw new Error('swiping opened the photo viewer');
+    // the panel's rounded top still sits over the photos
+    const top = await page.evaluate(() => { const r = document.querySelector('.page-current .ck-panel').getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + 10).closest('.ck-panel') !== null; });
+    if (!top) throw new Error('the photos cover the panel');
+  });
+  await step('17d-photo-viewer', async () => {
+    await page.locator('.page-current swiper-slide.swiper-slide-active button').tap(); await page.waitForTimeout(900);
+    const title = await page.locator('.photo-browser-popup.modal-in .navbar .title').textContent().catch(() => '');
+    if (!/2\s*of\s*4/.test(title)) throw new Error(`photo viewer doesn't show "2 of 4" (${title})`);
+  });
+  await page.locator('.photo-browser-popup.modal-in .navbar a', { hasText: 'Close' }).tap().catch(() => {});
+  await page.waitForTimeout(800);
+
   await step('08-edit-page', async () => {
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap();
     await page.waitForTimeout(500);

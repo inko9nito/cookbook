@@ -1,6 +1,6 @@
 import { Link } from 'framework7-react';
 import { Star, ChefHat } from 'lucide-react';
-import type { DemoRecipe } from '../../demo/data';
+import { coverPhoto, type DemoRecipe } from '../../demo/data';
 import { photoStyle } from './photo';
 
 /**
@@ -10,8 +10,8 @@ import { photoStyle } from './photo';
 export default function RecipeCard({ recipe }: { recipe: DemoRecipe }) {
   return (
     <Link href={`/recipe/${recipe.id}/`} noLinkClass className="ck-card">
-      {recipe.photo ? (
-        <span className="ck-card-photo ck-photo" style={photoStyle(recipe.photo)} aria-hidden="true" />
+      {coverPhoto(recipe) ? (
+        <span className="ck-card-photo ck-photo" style={photoStyle(coverPhoto(recipe))} aria-hidden="true" />
       ) : (
         <span className="ck-card-photo ck-photo ck-photo-empty" aria-hidden="true">
           <ChefHat size={28} strokeWidth={1.5} />

@@ -10,6 +10,9 @@
   --ck-fg: #262628;
   --ck-fg2: #55555a;
   --ck-muted: #6e6e73;
+  --ck-photo-dark: #000000; /* behind a photo being cropped */
+  --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
+  --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
   --ck-done-ink: #a5a5aa; /* ticked rows in cook mode: deliberately below 4.5:1 (about 2.3:1), finished items fade back */
   --ck-line: #e6e6e9;
   --ck-strong: #c9c9ce;
@@ -343,6 +346,21 @@ html.ios {
 /* ── Recipe page (Airbnb) ── */
 /* The top bar is solid (back and ••• only, like Prepear). A see-through bar that fades in while scrolling looked glitchy on the phone. */
 .ck-hero { width: 100%; aspect-ratio: 4 / 3; }
+/* the photo is a button (tap to open it full screen): no button look */
+button.ck-hero { display: block; padding: 0; border: 0; border-radius: 0; cursor: zoom-in; }
+/* several photos swipe sideways (Framework7's Swiper); the dots sit above the panel's rounded top */
+/* Swiper gives its container a stacking level (z-index 1), which would paint the photos over the panel's rounded top.
+   Isolating a wrapper keeps that inside it, so the panel, later in the page, paints on top. */
+.ck-hero-wrap { isolation: isolate; }
+swiper-container.ck-hero-swiper {
+  display: block;
+  --swiper-pagination-color: var(--ck-surface);
+  --swiper-pagination-bullet-inactive-color: var(--ck-surface);
+  --swiper-pagination-bullet-inactive-opacity: 0.55;
+  --swiper-pagination-bullet-size: 7px;
+  --swiper-pagination-bullet-horizontal-gap: 3px;
+  --swiper-pagination-bottom: 38px;
+}
 .ck-panel {
   position: relative;
   margin-top: -28px;
@@ -627,6 +645,41 @@ html.ios .toolbar.ck-cta .toolbar-inner {
   border: 1.5px dashed var(--ck-strong); background-color: var(--ck-soft); color: var(--ck-fg2); font-size: 15px; font-weight: 600;
 }
 .ck-edit-photo-actions { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 8px; }
+/* all the photos under the large one: tap to show it large; the first is the cover; + adds more */
+.ck-thumbs { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
+.ck-thumbs::-webkit-scrollbar { display: none; }
+.ck-thumb { position: relative; flex: none; width: 64px; aspect-ratio: 4 / 3; border-radius: 10px; display: grid; place-items: center; }
+.ck-thumb.ck-thumb-on { box-shadow: 0 0 0 2px var(--ck-bg), 0 0 0 4px var(--ck-accent); }
+.ck-thumb-add { border: 1.5px dashed var(--ck-strong); background-color: var(--ck-soft); color: var(--ck-fg2); box-sizing: border-box; }
+.ck-thumb-badge {
+  position: absolute; left: 4px; bottom: 4px; padding: 1px 5px; border-radius: 9999px;
+  background-color: var(--ck-scrim); color: var(--ck-surface); font-size: 10px; font-weight: 600; line-height: 14px;
+}
+.ck-thumbs { padding: 4px; margin-left: -4px; margin-right: -4px; }
+/* Full-screen photos (Framework7 Photo Browser): black, with a black top bar and light text. The app is light-only,
+   so Framework7's dark theme variables don't reach it; set them here. */
+.photo-browser-page {
+  --f7-photobrowser-bg-color: var(--ck-photo-dark);
+  --f7-navbar-bg-color: var(--ck-photo-dark);
+  --f7-bars-bg-color: var(--ck-photo-dark);
+  --f7-navbar-text-color: var(--ck-surface);
+  --f7-navbar-link-color: var(--ck-surface);
+  --f7-theme-color: var(--ck-surface);
+}
+.photo-browser-page .navbar .title { color: var(--ck-surface); }
+/* Framework7 leaves the page and its bar see-through (the photo area starts under the bar), so the light app showed there */
+.photo-browser-popup .photo-browser-page { background-color: var(--ck-photo-dark); }
+/* the "Not iOS 26" bars are painted the light page colour; the photo viewer's bar is black */
+html.ios .photo-browser-page .navbar-bg::after { background-color: var(--ck-photo-dark); }
+/* Crop Photo: the 4:3 frame is the whole cropper, edge to edge, on black */
+.popup.ck-crop { --f7-page-bg-color: var(--ck-photo-dark); }
+.ck-crop-frame { width: 100%; aspect-ratio: 4 / 3; margin-top: 24px; background-color: var(--ck-photo-dark); }
+.ck-crop-frame img { display: block; max-width: 100%; }
+/* the frame is the whole cropper: no Cropper.js outline, lines or corner handles */
+.ck-crop .cropper-view-box { outline: 0; }
+.ck-crop .cropper-line,
+.ck-crop .cropper-point { display: none; }
+.block.ck-crop-hint { color: var(--ck-on-dark-muted); text-align: center; }
 .button.ck-photo-btn {
   --f7-button-bg-color: rgba(255, 255, 255, 0.94);
   --f7-button-text-color: var(--ck-fg);

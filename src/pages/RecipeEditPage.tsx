@@ -5,9 +5,10 @@ import {
 } from 'framework7-react';
 import { Camera, ImagePlus, Trash2, Plus, ArrowUp, ArrowDown, Crop, Star } from 'lucide-react';
 import { useStore } from '../data/store';
-import { COURSES, emptyRecipe, newId, titleCase, withRaw, type Ingredient, type Photo, type Recipe, type Step } from '../lib/recipe';
+import { COURSES, emptyRecipe, newId, titleCase, withRaw, linkedRecipe, recipeNamed, type Ingredient, type Photo, type Recipe, type Step } from '../lib/recipe';
 import { parseLine, isHeaderLine, headerText, pastedLines, isStepLabel, stepText } from '../lib/ingredients';
 import IngredientSheet from '../components/IngredientSheet';
+import RecipeLinkPopup from '../components/RecipeLinkPopup';
 import StepSheet from '../components/StepSheet';
 import { inlineIcon } from '../components/ui/icons';
 import { photoStyle, photoFromFile, recrop } from '../components/ui/photo';
@@ -105,12 +106,35 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
   const editingIngredient = draft.ingredients.find((i) => i.id === editingIngredientId) ?? null;
   const updateIngredient = (next: Ingredient) => set({ ingredients: draft.ingredients.map((i) => (i.id === next.id ? withRaw(next) : i)) });
   const removeIngredient = (rid: string) => setDraft((d) => ({ ...d, ingredients: d.ingredients.filter((i) => i.id !== rid) }));
+  // issue #11: the recipes an ingredient can link to (not this one), A–Z. Picking one closes the ingredient sheet
+  // (Framework7 stacks sheets above popups), opens the list, then brings the sheet back for the same ingredient.
+  const others = useMemo(() => recipes.filter((r) => r.id !== draft.id).sort((a, b) => a.title.localeCompare(b.title)), [recipes, draft.id]);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const linking = draft.ingredients.find((i) => i.id === linkingId);
+  const startLinking = () => {
+    setLinkingId(editingIngredientId);
+    setEditingIngredientId(null);
+    setLinkOpen(true);
+  };
+  const linkRecipe = (recipeId: string | undefined) => {
+    const r = others.find((x) => x.id === recipeId);
+    if (linking) updateIngredient({ ...linking, recipeId: r?.id, ...(r && !linking.name.trim() ? { name: r.title.toLowerCase() } : {}) });
+    setLinkOpen(false);
+  };
+  const doneLinking = () => {
+    setLinkOpen(false); // Cancel or a swipe down closes it without a pick
+    setEditingIngredientId(linkingId);
+    setLinkingId(null);
+  };
   const addPastedIngredients = () => {
-    const rows: Ingredient[] = pastedLines(ingredientPaste).map((line) =>
-      isHeaderLine(line)
-        ? { id: newId(), kind: 'header', amount: '', unit: '', name: headerText(line), note: '' }
-        : { id: newId(), ...parseLine(line), raw: line },
-    );
+    const rows: Ingredient[] = pastedLines(ingredientPaste).map((line) => {
+      if (isHeaderLine(line)) return { id: newId(), kind: 'header', amount: '', unit: '', name: headerText(line), note: '' };
+      const parsed = parseLine(line);
+      // a line named exactly like one of the recipes ("1/2 cup tahini sauce") links to it
+      const r = recipeNamed(parsed.name, others);
+      return { id: newId(), ...parsed, raw: line, ...(r ? { recipeId: r.id } : {}) };
+    });
     set({ ingredients: [...draft.ingredients, ...rows] });
     setIngredientPaste('');
   };
@@ -306,9 +330,18 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
                 </SwipeoutActions>
               </ListItem>
             ) : (
-              <ListItem key={i.id} swipeout link="#" noChevron onClick={() => setEditingIngredientId(i.id)} onSwipeoutDeleted={() => removeIngredient(i.id)} footer={i.note || undefined}>
+              <ListItem
+                key={i.id}
+                swipeout
+                link="#"
+                noChevron
+                onClick={() => setEditingIngredientId(i.id)}
+                onSwipeoutDeleted={() => removeIngredient(i.id)}
+                footer={[i.note, linkedRecipe(i, recipes) && `Recipe: ${linkedRecipe(i, recipes)?.title}`].filter(Boolean).join(' · ') || undefined}
+              >
                 <span slot="title">
-                  <span className="ck-amount">{[i.amount.replace('-', '–'), i.unit].filter(Boolean).join(' ')}</span> {i.name || <span className="ck-note">Tap to edit</span>}
+                  <span className="ck-amount">{[i.amount.replace('-', '–'), i.unit].filter(Boolean).join(' ')}</span>{' '}
+{i.name || <span className="ck-note">Tap to edit</span>}
                 </span>
                 <SwipeoutActions right>
                   <SwipeoutButton delete>Delete</SwipeoutButton>
@@ -486,6 +519,8 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
       <PhotoCropper photo={cropping} onDone={(box) => void applyCrop(box)} onClose={() => setCropping(null)} />
       <IngredientSheet
         ingredient={editingIngredient && editingIngredient.kind !== 'header' ? editingIngredient : null}
+        linkedTitle={editingIngredient ? linkedRecipe(editingIngredient, recipes)?.title : undefined}
+        onLink={startLinking}
         onChange={updateIngredient}
         onDelete={(rid) => {
           setEditingIngredientId(null);
@@ -493,6 +528,7 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
         }}
         onClose={() => setEditingIngredientId(null)}
       />
+      <RecipeLinkPopup opened={linkOpen} recipes={others} current={linking?.recipeId} onPick={linkRecipe} onClosed={doneLinking} />
       <StepSheet
         noun="Step"
         value={editingStep && editingStep.kind !== 'header' ? editingStep : null}

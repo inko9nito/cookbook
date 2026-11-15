@@ -1,9 +1,12 @@
-import { Sheet, Toolbar, Link, PageContent, List, ListInput, Block, Button } from 'framework7-react';
+import { Sheet, Toolbar, Link, PageContent, List, ListInput, ListItem, Block, Button } from 'framework7-react';
 import type { Ingredient } from '../lib/recipe';
 import { formatIngredient } from '../lib/ingredients';
 
 type Props = {
   ingredient: Ingredient | null;
+  /** issue #11: the name of the recipe it's made from, and opening the list to pick one */
+  linkedTitle?: string;
+  onLink: () => void;
   onChange: (i: Ingredient) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
@@ -12,10 +15,11 @@ type Props = {
 /**
  * R4: edit one ingredient. Exactly four fields, changes apply live (no save step),
  * one Done button; swipe down or tap outside also keeps the changes.
+ * Issue #11: under them, "Recipe" links the ingredient to another recipe (a sauce, a pie crust): it opens the
+ * recipe list (RecipeLinkPopup), closing this sheet meanwhile, since Framework7 stacks sheets above popups.
  */
-export default function IngredientSheet({ ingredient, onChange, onDelete, onClose }: Props) {
+export default function IngredientSheet({ ingredient, linkedTitle, onLink, onChange, onDelete, onClose }: Props) {
   const set = (patch: Partial<Ingredient>) => ingredient && onChange({ ...ingredient, ...patch });
-
   return (
     <Sheet
       className="ck-edit-sheet"
@@ -76,6 +80,10 @@ export default function IngredientSheet({ ingredient, onChange, onDelete, onClos
                 onInput={(e) => set({ note: e.target.value })}
                 clearButton
               />
+            </List>
+            {/* issue #11: the recipe it's made from; opens the recipe list (RecipeLinkPopup) */}
+            <List strongIos insetIos dividersIos className="ck-link-field">
+              <ListItem link="#" title="Recipe" after={linkedTitle ?? 'None'} onClick={onLink} />
             </List>
             <Block>
               <Button large color="red" onClick={() => onDelete(ingredient.id)}>

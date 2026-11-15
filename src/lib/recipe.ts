@@ -15,6 +15,11 @@ export const Ingredient = z.object({
   note: z.string().max(300),
   /** the line exactly as typed or pasted; rebuilt from the fields when they're edited */
   raw: z.string().max(600).optional(),
+  /**
+   * Issue #11: another recipe this ingredient is made from ("1 pie crust" → the Pie Crust recipe), by id, never a copy.
+   * The row keeps its own words, so it still reads right if that recipe is deleted.
+   */
+  recipeId: id.optional(),
 });
 export type Ingredient = z.infer<typeof Ingredient>;
 
@@ -110,3 +115,14 @@ export const emptyRecipe = (): Recipe => ({
 export const withRaw = (i: Ingredient): Ingredient => (i.kind === 'header' ? i : { ...i, raw: formatIngredient(i) });
 
 export const titleCase = (t: string) => (t ? t[0].toUpperCase() + t.slice(1) : t);
+
+/** Issue #11: the recipe an ingredient links to, if it still exists. */
+export const linkedRecipe = (i: Ingredient, recipes: Recipe[]) => (i.recipeId ? recipes.find((r) => r.id === i.recipeId) : undefined);
+
+const plain = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+/** A recipe whose title is this ingredient's name ("tahini sauce" → "Tahini Sauce"), to link pasted lines to. */
+export const recipeNamed = (name: string, recipes: Recipe[]) => (plain(name) ? recipes.find((r) => plain(r.title) === plain(name)) : undefined);
+
+/** Recipes that use this one as an ingredient. */
+export const usedIn = (id: string, recipes: Recipe[]) => recipes.filter((r) => r.id !== id && r.ingredients.some((i) => i.recipeId === id));

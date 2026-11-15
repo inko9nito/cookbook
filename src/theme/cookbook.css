@@ -793,3 +793,19 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 .sheet-modal.ck-unit-sheet .list.ck-unit-sheet-list ul { border-radius: 16px; overflow: hidden; background-color: var(--ck-surface); }
 /* the sheet's rows start below its title bar (Framework7 does this for a .page-content, which this sheet doesn't use) */
 .sheet-modal.ck-unit-sheet .ck-unit-sheet-body { padding-top: var(--f7-toolbar-height); }
+
+/* An ingredient made from another recipe (issue #11): its name is a Tomato link with a small chevron, opening that
+   recipe (on the recipe page) or its cook mode (in cook mode). In the editor it stays dark (Tomato ink is under 4.5:1 on the soft cards) with "Recipe: …" under it */
+.ck-ing-linked,
+.list .ck-ing-linked {
+  display: inline; width: auto; height: auto; text-align: inherit; line-height: inherit;
+  appearance: none; margin: 0; padding: 0; border: 0; background: none;
+  font: inherit; font-weight: 600; color: var(--ck-accent-ink); cursor: pointer;
+}
+.ck-ing-linked .ck-icon { display: inline-block; width: 14px; height: 14px; margin-left: 2px; vertical-align: -2px; }
+/* the Recipe row under the ingredient sheet's fields: a soft box with 18px corners like the fields above it */
+.sheet-modal .list.ck-link-field { margin-top: 14px; margin-bottom: 0; --f7-list-inset-side-margin: 16px; --f7-list-inset-border-radius: 18px; --f7-list-item-after-text-color: var(--ck-fg2); }
+.sheet-modal .list.ck-link-field ul { background-color: var(--ck-soft); }
+/* the recipe list it opens (a popup): search, then None and the recipes as two separate cards */
+.ck-link-search { --f7-searchbar-in-page-content-margin: 8px 16px 0; }
+.popup.ck-link-popup .list.ck-convert-list { margin: 16px var(--f7-list-inset-side-margin); }

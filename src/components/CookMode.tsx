@@ -4,15 +4,15 @@ import {
   Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Button, List, ListItem,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
-import { X, GripHorizontal, ChevronDown, Timer as TimerIcon } from 'lucide-react';
-import type { Ingredient, Recipe } from '../lib/recipe';
+import { X, GripHorizontal, ChevronDown, ChevronRight, Timer as TimerIcon } from 'lucide-react';
+import { linkedRecipe, type Ingredient, type Recipe } from '../lib/recipe';
 import { friendly } from '../lib/ingredients';
 import { amountText, footerText, type UnitPicks } from './ui/ingredientLine';
 import { stepTimers, stepIngredients, clock } from '../lib/cook';
 import { navIcon, inlineIcon } from './ui/icons';
 import { useStore } from '../data/store';
 import ScaleSheet from './ScaleSheet';
-import { ConvertibleAmount, toggleTarget, type ConvertTarget } from './UnitChoices';
+import { ConvertibleAmount, toggleTarget, withPick, type ConvertTarget } from './UnitChoices';
 import UnitSheet from './UnitSheet';
 
 type Props = {
@@ -24,6 +24,29 @@ type Props = {
   onFactor: (f: number) => void;
   onClose: () => void;
 };
+/**
+ * An ingredient's name in cook mode. One made from another recipe (issue #11) opens that recipe's cook mode; like
+ * the underlined amount, tapping it doesn't tick the row.
+ */
+function CookName({ ing, linked, onOpen }: { ing: Ingredient; linked?: Recipe; onOpen: (r: Recipe) => void }) {
+  if (!linked) return <>{ing.name}</>;
+  return (
+    <button
+      type="button"
+      className="ck-ing-linked"
+      aria-label={`${ing.name}, cook the ${linked.title} recipe`}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onOpen(linked);
+      }}
+    >
+      {ing.name}
+      <ChevronRight {...inlineIcon} aria-hidden="true" />
+    </button>
+  );
+}
+
 type RunningTimer = { id: number; label: string; step: number; endsAt: number };
 type WakeLock = { release: () => Promise<void> };
 
@@ -31,6 +54,8 @@ const SPLIT_KEY = 'cookbook.cookSplit';
 const MIN_SPLIT = 0.18;
 const MAX_SPLIT = 0.82;
 const clampSplit = (n: number) => Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, n));
+// each cook mode gets its own class, so one opened over another (issue #11) closes and holds its sheets by itself
+let cookCount = 0;
 
 
 const readSplit = () => {
@@ -53,7 +78,18 @@ const readSplit = () => {
 export default function CookMode({ recipe, factor, picks, onPick, onFactor, onClose }: Props) {
   // issue #6: the tapped amount, while its unit popover is open
   const [converting, setConverting] = useState<ConvertTarget | null>(null);
-  const { saveRecipe } = useStore();
+  const { saveRecipe, recipes } = useStore();
+  const [me] = useState(() => `ck-cook-${(cookCount += 1)}`);
+  // issue #11: an ingredient made from another recipe opens that recipe's own cook mode over this one; closing it
+  // comes back here with everything as it was (ticks, timers). It starts at the recipe's own amounts.
+  const [sub, setSub] = useState<Recipe | null>(null);
+  const [subFactor, setSubFactor] = useState(1);
+  const [subPicks, setSubPicks] = useState<UnitPicks>({});
+  const openSub = (r: Recipe) => {
+    setSubFactor(1);
+    setSubPicks({});
+    setSub(r);
+  };
   const [split, setSplit] = useState(readSplit);
   const [doneIng, setDoneIng] = useState<Set<string>>(new Set());
   const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set());
@@ -216,15 +252,15 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
               onClick: () => {
                 saveRecipe({ ...recipe, timesMade: recipe.timesMade + 1, lastMadeAt: new Date().toISOString() });
                 f7.toast.show({ text: `Marked as made · ${recipe.timesMade + 1}×`, closeTimeout: 1800 });
-                f7.popup.close('.ck-cook');
+                f7.popup.close(`.${me}`);
               },
             },
-            { text: 'Not now', onClick: () => f7.popup.close('.ck-cook') },
+            { text: 'Not now', onClick: () => f7.popup.close(`.${me}`) },
           ],
         })
         .open();
     } else {
-      f7.popup.close('.ck-cook');
+      f7.popup.close(`.${me}`);
     }
   };
 
@@ -244,7 +280,7 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
 
   return (
     <>
-      <Popup className="ck-cook" opened onPopupClosed={onClose}>
+      <Popup className={`ck-cook ${me}`} opened onPopupClosed={onClose}>
         <Page pageContent={false}>
           <Navbar>
             <NavLeft>
@@ -290,7 +326,8 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
                       >
                         <span slot="title">
                           {/* issue #6: tap an underlined amount to see it in other units (the rest of the row ticks it) */}
-                          <ConvertibleAmount ing={i} factor={factor} picks={picks} onOpen={(t) => setConverting((cur) => toggleTarget(cur, t))} /> {i.name}
+                          <ConvertibleAmount ing={i} factor={factor} picks={picks} onOpen={(t) => setConverting((cur) => toggleTarget(cur, t))} />{' '}
+                          <CookName ing={i} linked={linkedRecipe(i, recipes)} onOpen={openSub} />
                         </span>
                         {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
                       </ListItem>
@@ -387,12 +424,23 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
             </div>
           </div>
           </div>
-          <UnitSheet slot="fixed" containerEl=".popup.ck-cook" target={converting} factor={factor} picks={picks} onPick={onPick} onClosed={() => setConverting(null)} />
+          <UnitSheet slot="fixed" containerEl={`.popup.${me}`} target={converting} factor={factor} picks={picks} onPick={onPick} onClosed={() => setConverting(null)} />
         </Page>
         {/* the Adjust amounts sheet's backdrop, inside the popup so it dims cook mode */}
-        <div className="sheet-backdrop ck-cook-backdrop" />
+        <div className={`sheet-backdrop ck-cook-backdrop ${me}-backdrop`} />
       </Popup>
-      <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={onFactor} onClose={() => setScaleOpen(false)} backdropEl=".ck-cook-backdrop" />
+      <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={onFactor} onClose={() => setScaleOpen(false)} backdropEl={`.${me}-backdrop`} />
+
+      {sub && (
+        <CookMode
+          recipe={recipes.find((r) => r.id === sub.id) ?? sub}
+          factor={subFactor}
+          picks={subPicks}
+          onPick={(id, unit) => setSubPicks((p) => withPick(p, id, unit))}
+          onFactor={setSubFactor}
+          onClose={() => setSub(null)}
+        />
+      )}
 
       <Actions opened={timersOpen} onActionsClosed={() => setTimersOpen(false)}>
         <ActionsGroup>

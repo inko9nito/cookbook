@@ -3,7 +3,7 @@
 // sign-in only works on a Netlify deploy.
 
 import { Settings, type Recipe } from '../lib/recipe';
-import { sampleRecipes } from '../demo/data';
+import { demoRecipes as demoRecipesSeed } from '../demo/data';
 import { accessToken, SignedOutError } from './identity';
 
 export type Backend = {
@@ -85,7 +85,7 @@ const readDemoSettings = (): Settings => {
   }
 };
 
-let demoRecipes: Recipe[] = structuredClone(sampleRecipes);
+let demoRecipes: Recipe[] = demoRecipesSeed();
 
 const demo: Backend = {
   listRecipes: async () => structuredClone(demoRecipes),

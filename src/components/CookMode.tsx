@@ -6,7 +6,8 @@ import {
 } from 'framework7-react';
 import { X, GripHorizontal, ChevronDown, Timer as TimerIcon } from 'lucide-react';
 import type { Ingredient, Recipe } from '../lib/recipe';
-import { scaleAmount, unitFor, friendly } from '../lib/ingredients';
+import { friendly } from '../lib/ingredients';
+import { amountText, footerText } from './ui/ingredientLine';
 import { stepTimers, stepIngredients, clock } from '../lib/cook';
 import { navIcon, inlineIcon } from './ui/icons';
 import { useStore } from '../data/store';
@@ -21,10 +22,6 @@ const MIN_SPLIT = 0.18;
 const MAX_SPLIT = 0.82;
 const clampSplit = (n: number) => Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, n));
 
-const amountText = (i: Ingredient, factor: number) => {
-  const a = scaleAmount(i.amount, factor);
-  return [a, unitFor(i.unit, a)].filter(Boolean).join(' ');
-};
 
 const readSplit = () => {
   try {
@@ -276,7 +273,7 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
                         <span slot="title">
                           <span className="ck-amount">{amountText(i, factor)}</span> {i.name}
                         </span>
-                        {i.note && <span slot="footer">{i.note}</span>}
+                        {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
                       </ListItem>
                     ))}
                   </List>

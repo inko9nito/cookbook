@@ -176,6 +176,13 @@ html.ios .navbar .link.back {
   justify-content: center;
 }
 
+/* Recipe page (issue #7): back and ••• float over the photo as white round buttons; there's no bar behind them, and
+   the photo starts at the top of the screen (under the status bar) instead of below a bar */
+html.ios .navbar.ck-float-bar .navbar-bg { display: none; }
+html.ios .navbar.ck-float-bar .left .link,
+html.ios .navbar.ck-float-bar .right .link { background-color: var(--ck-surface); }
+.page.ck-recipe-page > .page-content { padding-top: 0; }
+
 /* Tab bar (DoorDash): docked full width, flat white, hairline on top, no active bubble */
 html.ios {
   /* icons only, no labels */
@@ -286,17 +293,18 @@ html.ios .searchbar {
 /* a recipe without a photo: plain soft grey with a muted chef hat, no colored placeholder */
 .ck-photo-empty { display: grid; place-items: center; color: var(--ck-muted); }
 
-/* ── Recipe cards (Prepear grid): two per row, white card, photo on top, no shadow ── */
+/* ── Recipe tiles (issue #8): two per row, a square photo with rounded corners and the text below it on the page,
+   no card around them, so the photos are bigger and the grid is calmer ── */
 .ck-card-grid { --f7-grid-gap: 12px; }
+.ck-card-grid .grid, .grid.ck-card-grid { row-gap: 20px; }
 .link.ck-card, .ck-card {
   display: flex; flex-direction: column; min-width: 0;
-  border-radius: 18px; overflow: hidden;
-  background-color: var(--ck-surface); color: var(--ck-fg); text-decoration: none;
+  color: var(--ck-fg); text-decoration: none;
 }
-.ck-card-photo { display: block; width: 100%; aspect-ratio: 4 / 3; }
-.ck-card-body { display: grid; gap: 2px; align-content: start; padding: 8px 10px 10px; }
+.ck-card-photo { display: block; width: 100%; aspect-ratio: 1 / 1; border-radius: 16px; overflow: hidden; }
+.ck-card-body { display: grid; gap: 2px; align-content: start; padding: 8px 2px 0; }
 .ck-card-title {
-  font-size: 13px; font-weight: 600; line-height: 1.3;
+  font-size: 14px; font-weight: 600; line-height: 1.3;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .ck-card-meta { font-size: 12px; color: var(--ck-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -738,3 +746,9 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 .block.ck-list-state { display: grid; justify-items: center; gap: 12px; margin-top: 48px; text-align: center; }
 .block.ck-list-state p { margin: 0; }
 .button.ck-inline-button { width: auto; padding: 0 20px; }
+
+/* Unit conversions (issue #6): a Framework7 popover pointing at the tapped ingredient, listing it in other units */
+.popover.ck-convert { --f7-popover-width: 240px; }
+.ck-convert-head { margin: 14px 16px 6px; font-size: 14px; line-height: 1.35; color: var(--ck-muted); }
+.ck-convert-head b { color: var(--ck-fg); }
+.list.ck-convert-list { margin: 0; --f7-list-item-min-height: 40px; --f7-list-item-title-font-size: 16px; --f7-list-item-title-font-weight: 600; }

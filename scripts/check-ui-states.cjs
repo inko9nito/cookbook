@@ -648,6 +648,58 @@ async function swipeLeft(ctx, page, locator) {
     if (problems.length) throw new Error(problems.join('; '));
   });
 
+  // issue #8: the Recipes grid shows square photos with the text below them on the page, no card around them
+  await step('20-square-tiles', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    const t = await page.evaluate(() => {
+      const card = document.querySelector('.page-current .ck-card'); const photo = card.querySelector('.ck-card-photo').getBoundingClientRect();
+      const title = card.querySelector('.ck-card-title').getBoundingClientRect();
+      return { ratio: photo.width / photo.height, cardBg: getComputedStyle(card).backgroundColor, titleBelow: title.top >= photo.bottom };
+    });
+    if (Math.abs(t.ratio - 1) > 0.02) throw new Error(`tile photo is ${t.ratio.toFixed(2)}:1, not square`);
+    if (t.cardBg !== 'rgba(0, 0, 0, 0)') throw new Error(`tiles still have a card background (${t.cardBg})`);
+    if (!t.titleBelow) throw new Error('tile title is not below the photo');
+  });
+  // issue #7: back and ••• float over the photo, which starts at the top of the screen, with no bar behind them
+  await step('21-buttons-over-photo', async () => {
+    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    const t = await page.evaluate(() => {
+      const hero = document.querySelector('.page-current .ck-hero, .page-current .ck-hero-wrap').getBoundingClientRect();
+      const nav = document.querySelector('.navbar-current, .page-current .navbar');
+      const back = nav.querySelector('.link.back').getBoundingClientRect();
+      return { heroTop: Math.round(hero.top), bg: getComputedStyle(nav.querySelector('.navbar-bg')).display, backInPhoto: back.top >= hero.top && back.bottom <= hero.bottom };
+    });
+    if (t.heroTop !== 0) throw new Error(`photo starts ${t.heroTop}px down, not at the top`);
+    if (t.bg !== 'none') throw new Error('the top bar still has a background');
+    if (!t.backInPhoto) throw new Error('back button is not over the photo');
+  });
+  // issue #6: scaled ×2, 2 tbsp lemon juice is 4 tbsp, shown also as ¼ cup; tapping it lists other units
+  await step('22-unit-hint', async () => {
+    await page.locator('.page-current .ck-scale-button').tap(); await page.waitForTimeout(700);
+    await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(300);
+    await page.locator('.sheet-modal.modal-in .sheet-close, .sheet-modal.modal-in a', { hasText: 'Done' }).first().tap(); await page.waitForTimeout(700);
+    const row = page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' });
+    await row.scrollIntoViewIfNeeded();
+    const text = (await row.textContent()).replace(/\s+/g, ' ');
+    if (!text.includes('4 tbsp') || !text.includes('= ¼ cup')) throw new Error(`lemon juice row reads "${text.trim()}"`);
+  });
+  await step('22b-unit-popover', async () => {
+    await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('a').tap(); await page.waitForTimeout(600);
+    const items = await page.locator('.popover.modal-in .ck-convert-list .item-title').allTextContents();
+    if (items.join(', ') !== '12 tsp, ¼ cup, 2 fl oz, 59 ml') throw new Error(`popover lists ${items.join(', ')}`);
+  });
+  // the popover points at its row, and a tap outside closes it
+  await step('22c-unit-popover-closed', async () => {
+    const pos = await page.evaluate(() => {
+      const po = document.querySelector('.popover.modal-in').getBoundingClientRect();
+      const row = [...document.querySelectorAll('.page-current .ck-ing-list li')].find((l) => l.textContent.includes('lemon juice')).getBoundingClientRect();
+      return { gap: Math.round(Math.min(Math.abs(po.top - row.bottom), Math.abs(row.top - po.bottom))) };
+    });
+    if (pos.gap > 4) throw new Error(`popover sits ${pos.gap}px away from the tapped row`);
+    await page.touchscreen.tap(360, 640); await page.waitForTimeout(600);
+    if (await page.locator('.popover.modal-in').count()) throw new Error('popover did not close on a tap outside');
+  });
+
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)
   await step('19-sign-in', async () => {
     await page.goto(`${BASE}?signin`);

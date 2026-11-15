@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
-  Actions, ActionsGroup, ActionsButton, f7,
+  Actions, ActionsGroup, ActionsButton, Popover, f7,
 } from 'framework7-react';
 import { Ellipsis, Star, ChevronDown } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
@@ -9,7 +9,9 @@ import CookMode from '../components/CookMode';
 import RecipePhotos from '../components/RecipePhotos';
 import { useStore } from '../data/store';
 import { titleCase, type Ingredient } from '../lib/recipe';
-import { readAmount, scaleAmount, unitFor, friendly } from '../lib/ingredients';
+import { scaleAmount, friendly } from '../lib/ingredients';
+import { conversions, formatConverted } from '../lib/units';
+import { amountText, footerText } from '../components/ui/ingredientLine';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
@@ -27,6 +29,8 @@ function groupIngredients(list: Ingredient[]) {
   return groups.filter((g) => g.items.length || g.label);
 }
 
+type PopoverRef = NonNullable<ComponentProps<typeof Popover>['ref']>;
+
 type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void; navigate: (url: string) => void } };
 
 /**
@@ -42,6 +46,12 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const [scaleOpen, setScaleOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [cooking, setCooking] = useState(false);
+  const [converting, setConverting] = useState<{ ing: Ingredient; el: Element } | null>(null);
+  const convertPopover = useRef(null) as unknown as PopoverRef;
+  // issue #6: once the tapped row's conversions are rendered, point the popover at it
+  useEffect(() => {
+    if (converting) convertPopover.current?.f7Popover().open(converting.el as HTMLElement);
+  }, [converting]);
 
   if (!recipe) {
     return (
@@ -60,8 +70,9 @@ export default function RecipePage({ f7route, f7router }: Props) {
 
   return (
     <Page name="recipe" className="ck-recipe-page" hideNavbarOnScroll onPageBeforeIn={hideTabbar}>
-      {/* App controls stay out of the content: back and ••• on top (hides while scrolling down, back on scroll up, like Prepear), Start cooking in the footer */}
-      <Navbar backLink>
+      {/* App controls stay out of the content: back and ••• float over the photo with no bar behind them (issue #7; they
+          slide away while scrolling down and come back on scroll up, like Prepear), Start cooking in the footer */}
+      <Navbar backLink className="ck-float-bar">
         <NavRight>
           <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
             <Ellipsis {...navIcon} />
@@ -118,15 +129,19 @@ export default function RecipePage({ f7route, f7router }: Props) {
           {g.label && <div className="ck-group-label">{g.label}</div>}
           <List dividers className="ck-plain-list ck-ing-list">
             {g.items.map((i) => (
-              <ListItem key={i.id}>
+              <ListItem
+                key={i.id}
+                // issue #6: an amount in a measuring unit opens a popover with it in the other units
+                {...(conversions(scaleAmount(i.amount, factor), i.unit).length
+                  ? { link: '#', noChevron: true, onClick: (e: { target: Element }) => setConverting({ ing: i, el: e.target.closest('li') ?? e.target }) }
+                  : {})}
+              >
                 <span slot="media" className="ck-bullet" aria-hidden="true" />
                 <span slot="title">
-                  <span className="ck-amount">{[scaleAmount(i.amount, factor), unitFor(i.unit, scaleAmount(i.amount, factor))].filter(Boolean).join(' ')}</span> {i.name}
+                  <span className="ck-amount">{amountText(i, factor)}</span> {i.name}
                 </span>
-                {/* R5: an amount that isn't a number ("a pinch") is shown as written, and says so when scaled */}
-                {(i.note || (scaled && i.amount && !readAmount(i.amount))) && (
-                  <span slot="footer">{[i.note, scaled && i.amount && !readAmount(i.amount) ? 'not scaled' : ''].filter(Boolean).join(' · ')}</span>
-                )}
+                {/* the neater unit ("= ¾ cup"), the note, and "not scaled" for an amount that isn't a number (R5) */}
+                {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
               </ListItem>
             ))}
           </List>
@@ -169,6 +184,23 @@ export default function RecipePage({ f7route, f7router }: Props) {
 
       {cooking && <CookMode recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setCooking(false)} />}
 
+      {/* issue #6: the tapped amount in other units, pointing at its row */}
+      {/* opened from code with the tapped row as its target (see the effect above); slot="fixed" keeps it outside the
+          scrolling content, where Framework7 positions it */}
+      <Popover slot="fixed" ref={convertPopover} className="ck-convert" onPopoverClosed={() => setConverting(null)}>
+        {converting && (
+          <>
+            <p className="ck-convert-head">
+              <b>{amountText(converting.ing, factor)}</b> {converting.ing.name} is
+            </p>
+            <List dividersIos className="ck-convert-list">
+              {conversions(scaleAmount(converting.ing.amount, factor), converting.ing.unit).map((c) => (
+                <ListItem key={c.unit} title={formatConverted(c)} />
+              ))}
+            </List>
+          </>
+        )}
+      </Popover>
       <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setScaleOpen(false)} />
 
       <Actions opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>

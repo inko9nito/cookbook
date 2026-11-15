@@ -57,8 +57,8 @@ export default function RecipePage({ f7route, f7router }: Props) {
   let stepNo = 0;
 
   return (
-    <Page name="recipe" className="ck-recipe-page" onPageBeforeIn={hideTabbar}>
-      {/* App controls stay out of the content: back and ••• on top, Start cooking in the footer */}
+    <Page name="recipe" className="ck-recipe-page" hideNavbarOnScroll onPageBeforeIn={hideTabbar}>
+      {/* App controls stay out of the content: back and ••• on top (hides while scrolling down, back on scroll up, like Prepear), Start cooking in the footer */}
       <Navbar backLink>
         <NavRight>
           <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">

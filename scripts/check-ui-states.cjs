@@ -182,6 +182,18 @@ async function swipeLeft(ctx, page, locator) {
   for (const y of [300, 450, 600, 800, 1000]) {
     await step(`04-recipe-scroll-${y}`, async () => { await page.evaluate((top) => document.querySelector('.page-current .page-content').scrollTo(0, top), y); });
   }
+  // the top bar hides while scrolling down and comes back on scroll up (Framework7 hideNavbarOnScroll)
+  await step('04-recipe-bar-hidden', async () => {
+    await page.mouse.move(200, 400);
+    for (let i = 0; i < 4; i++) { await page.mouse.wheel(0, 150); await page.waitForTimeout(120); }
+    await page.waitForTimeout(500);
+    if (!(await page.locator('.page-current .navbar, .navbar-current').first().evaluate((n) => n.classList.contains('navbar-hidden')))) throw new Error('top bar did not hide on scroll down');
+  });
+  await step('04-recipe-bar-back', async () => {
+    for (let i = 0; i < 2; i++) { await page.mouse.wheel(0, -120); await page.waitForTimeout(120); }
+    await page.waitForTimeout(500);
+    if (await page.locator('.page-current .navbar, .navbar-current').first().evaluate((n) => n.classList.contains('navbar-hidden'))) throw new Error('top bar did not come back on scroll up');
+  });
   await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 0));
   await step('05-scale-sheet', async () => { await page.locator('.page-current .ck-scale-button').tap(); await page.waitForTimeout(800); });
   await step('05b-scale-x2', async () => { await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(400); });

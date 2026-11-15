@@ -604,6 +604,29 @@ async function swipeLeft(ctx, page, locator) {
     });
   }
 
+  // installed on the home screen, an iPhone adds a 34pt strip under the bottom bars (Safari has none). The bars must
+  // run to the bottom edge with their content centred above the strip, not float with the page showing beneath.
+  await step('18-home-indicator-bars', async () => {
+    await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(600);
+    const safe = await page.addStyleTag({ content: ':root { --f7-safe-area-bottom: 34px !important; }' });
+    await page.waitForTimeout(300);
+    const bar = (sel, content) => page.evaluate(([sel, content]) => {
+      const t = document.querySelector(sel); const r = t.getBoundingClientRect(); const inner = t.querySelector('.toolbar-inner').getBoundingClientRect();
+      const c = t.querySelector(content).getBoundingClientRect();
+      return { bottom: Math.round(r.bottom), innerBottom: Math.round(inner.bottom), screen: innerHeight, mid: Math.round(c.top + c.height / 2 - r.top), above: Math.round(r.height - 34) };
+    }, [sel, content]);
+    const tab = await bar('.toolbar.tabbar', '.tab-link svg');
+    const problems = [];
+    if (tab.innerBottom !== tab.screen) problems.push(`tab bar stops ${tab.screen - tab.innerBottom}px above the screen's bottom`);
+    if (Math.abs(tab.mid - tab.above / 2) > 2) problems.push(`tab icons not centred above the home-indicator strip (${tab.mid}px of ${tab.above})`);
+    await page.locator('.page-current .ck-card').first().tap(); await page.waitForTimeout(900);
+    const cta = await bar('.page-current .toolbar.ck-cta', '.ck-cta-button');
+    if (cta.innerBottom !== cta.screen) problems.push(`Start cooking bar stops ${cta.screen - cta.innerBottom}px above the screen's bottom`);
+    if (Math.abs(cta.mid - cta.above / 2) > 2) problems.push(`Start cooking not centred above the home-indicator strip (${cta.mid}px of ${cta.above})`);
+    await safe.evaluate((el) => el.remove());
+    if (problems.length) throw new Error(problems.join('; '));
+  });
+
   if (errors.length) {
     console.log(`✗ page errors:\n    ${errors.join('\n    ')}`);
     total += errors.length;

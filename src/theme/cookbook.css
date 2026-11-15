@@ -191,6 +191,9 @@ html.ios .toolbar.tabbar::after {
    The colors above only hid its fill, so the element itself is switched off. */
 html.ios .toolbar.tabbar .tab-link-highlight { display: none; }
 html.ios .toolbar.tabbar .toolbar-inner {
+  /* iOS 26 floats the bar above the home-indicator strip (bottom: safe area); the docked bar runs to the screen's
+     bottom edge instead, with the strip as padding, so the icons sit in the 60px above it */
+  bottom: 0;
   padding: 0 0 var(--f7-safe-area-bottom);
   background-color: var(--ck-surface);
   border-top: 1px solid var(--ck-line);
@@ -519,6 +522,7 @@ html.ios .toolbar.ck-cta {
   --f7-toolbar-height: 64px;
 }
 html.ios .toolbar.ck-cta .toolbar-inner {
+  bottom: 0; /* runs to the screen's bottom edge; the home-indicator strip is padding (see the tab bar) */
   justify-content: space-between;
   padding: 0 16px var(--f7-safe-area-bottom);
   background-color: var(--ck-surface);

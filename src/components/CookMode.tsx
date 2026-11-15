@@ -12,8 +12,8 @@ import { stepTimers, stepIngredients, clock } from '../lib/cook';
 import { navIcon, inlineIcon } from './ui/icons';
 import { useStore } from '../data/store';
 import ScaleSheet from './ScaleSheet';
-import { ConvertibleAmount, type ConvertTarget } from './UnitPopover';
-import UnitPicker from './UnitPicker';
+import { ConvertibleAmount, toggleTarget, type ConvertTarget } from './UnitChoices';
+import UnitSheet from './UnitSheet';
 
 type Props = {
   recipe: Recipe;
@@ -290,7 +290,7 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
                       >
                         <span slot="title">
                           {/* issue #6: tap an underlined amount to see it in other units (the rest of the row ticks it) */}
-                          <ConvertibleAmount ing={i} factor={factor} picks={picks} onOpen={setConverting} /> {i.name}
+                          <ConvertibleAmount ing={i} factor={factor} picks={picks} onOpen={(t) => setConverting((cur) => toggleTarget(cur, t))} /> {i.name}
                         </span>
                         {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
                       </ListItem>
@@ -387,7 +387,7 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
             </div>
           </div>
           </div>
-          <UnitPicker slot="fixed" containerEl=".popup.ck-cook" target={converting} factor={factor} picks={picks} onPick={onPick} onClosed={() => setConverting(null)} />
+          <UnitSheet slot="fixed" containerEl=".popup.ck-cook" target={converting} factor={factor} picks={picks} onPick={onPick} onClosed={() => setConverting(null)} />
         </Page>
         {/* the Adjust amounts sheet's backdrop, inside the popup so it dims cook mode */}
         <div className="sheet-backdrop ck-cook-backdrop" />

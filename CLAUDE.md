@@ -12,7 +12,6 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - If Framework7 lacks something, **stop and ask the user** before building a custom version.
 - **Approved exception (Nov 2026):** cook mode's split screen (Ingredients over Directions, each half scrolling on its own) with a hand-built drag handle between them (`src/components/CookMode.tsx`), because Framework7 has no split view. The handle only sets the top half's height (pointer events, no transforms, animation or z-index: it is last in the markup and each half has `isolation: isolate`, so it paints on top). Don't reuse it elsewhere without asking.
 - **Approved exception (Nov 2026):** photo cropping uses **Cropper.js 1.x** (`src/components/PhotoCropper.tsx`), because Framework7 has no cropper. It runs inside a Framework7 Popup, with a fixed 4:3 frame (pinch to zoom, drag to move). Swiping through photos and full-screen zoom stay Framework7 (Swiper, Photo Browser).
-- **Approved exception (Nov 2026):** the unit-conversion popover (`src/components/UnitPopover.tsx`, issue #6) opens like iOS's edit menu (Cut / Copy / Paste): it starts small at its pointer, fades in while it grows and settles in about 0.2s. This tunes Framework7's own popover transition in `cookbook.css` (duration, start scale, fade, and no sideways content slide); Framework7 v9 also draws no popover arrow, so its iOS callout pointer is a CSS mask. Only for this popover.
 - Check the Framework7 v9 docs for a component's props before using it. Don't guess.
 
 ## Workflow: preview before merging

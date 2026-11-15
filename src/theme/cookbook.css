@@ -13,7 +13,6 @@
   --ck-photo-dark: #000000; /* behind a photo being cropped */
   --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
   --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
-  --ck-popover-shadow: rgba(0, 0, 0, 0.18); /* the unit popover's soft shadow, like iOS's edit menu */
   --ck-done-ink: #a5a5aa; /* ticked rows in cook mode: deliberately below 4.5:1 (about 2.3:1), finished items fade back */
   --ck-line: #e6e6e9;
   --ck-strong: #c9c9ce;
@@ -748,9 +747,9 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 .block.ck-list-state p { margin: 0; }
 .button.ck-inline-button { width: auto; padding: 0 20px; }
 
-/* Unit conversions (issue #6): an amount that converts has a fitted grey underline; tapping it opens a Framework7
-   popover at the amount: a soft grey header (the ingredient, "Show the amount in") over radio rows, the recipe's own
-   amount first ("Original"). A picked unit replaces the amount, and its underline turns Tomato to show it's converted */
+/* Unit conversions (issue #6): an amount that converts has a fitted grey underline; tapping it opens the unit sheet
+   (radio rows, the recipe's own amount first, "Original"). A picked unit replaces the amount, and its underline turns
+   Tomato to show it's converted */
 .ck-convertible,
 .list .ck-convertible {
   display: inline; width: auto; height: auto; text-align: inherit; line-height: inherit;
@@ -761,10 +760,7 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
   text-decoration-thickness: 1.5px; text-underline-offset: 3px;
 }
 .ck-convertible.ck-converted { text-decoration-color: var(--ck-accent); }
-.popover.ck-convert { --f7-popover-bg-color: var(--ck-surface); }
-/* the header's grey runs into the popover's rounded top corners */
-.ck-convert-head { border-radius: var(--f7-popover-border-radius) var(--f7-popover-border-radius) 0 0; }
-/* the tapped ingredient stands out while its popover is open: pale Tomato, the design's selection tint (as for a row
+/* the tapped ingredient stands out while its sheet is open: pale Tomato, the design's selection tint (as for a row
    held in the editor), with rounded corners set 8px in from the screen edges. Drawn behind the row's content, which
    Framework7 positions, so it paints over this */
 .list.ck-ing-list li,
@@ -774,42 +770,6 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
   content: ''; position: absolute; top: 0; bottom: 0; left: 8px; right: 8px; border-radius: 12px;
   background-color: var(--ck-accent-tint);
 }
-/* APPROVED EXCEPTION (Nov 2026, see CLAUDE.md): the unit popover opens like iOS's edit menu (Cut / Copy / Paste):
-   it starts small at the pointer, fades in while it grows, and settles in about 0.2s; closing is a quick fade.
-   This tunes Framework7's own popover transition (it grows from nothing with a 0.4s spring while the content slides in
-   from the side for 0.6s); RecipePage sets the transform origin to the pointer's tip */
-html.ios .popover.ck-convert {
-  --f7-popover-inner-offset: translate3d(0, 0, 0);
-  opacity: 0;
-  transform: translateZ(0) scale(0.6);
-  transition-property: opacity, transform;
-  transition-duration: 0.14s;
-  transition-timing-function: ease-in;
-}
-html.ios .popover.ck-convert.modal-in {
-  opacity: 1;
-  transform: translateZ(0) scale(1);
-  transition-duration: 0.22s;
-  transition-timing-function: cubic-bezier(0.2, 1.1, 0.4, 1);
-}
-html.ios .popover.ck-convert .popover-inner { transition-duration: 0s; }
-
-/* the iOS callout pointer from the popover's left side to the tapped amount, level with it (Framework7 v9 draws none):
-   a rounded tip whose sides curve into the bubble, drawn as a mask filled with the surface colour, 1px into the bubble
-   so there's no seam. RecipePage sets --ck-arrow-y */
-.popover.ck-convert::before {
-  content: ''; position: absolute; right: calc(100% - 1px); top: calc(var(--ck-arrow-y, 50%) - 18px);
-  width: 14px; height: 36px; background-color: var(--ck-surface);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 36'%3E%3Cpath d='M14 0C14 8 10.5 12 4.5 15.6Q1 18 4.5 20.4C10.5 24 14 28 14 36Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 36'%3E%3Cpath d='M14 0C14 8 10.5 12 4.5 15.6Q1 18 4.5 20.4C10.5 24 14 28 14 36Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
-}
-/* no iOS 26 glass: Framework7 rings the popover's inside with a light glass edge, which showed as a seam by the pointer */
-.popover.ck-convert { --f7-glass-shadow: none; --f7-glass-bg-color: var(--ck-surface); }
-/* corners and shadow like iOS's edit menu (Cut / Copy / Paste): 10px corners and a soft shadow, a little heavier
-   below. A drop shadow, so it follows the pointer too; the page isn't dimmed behind it, as with iOS's menus */
-.popover.ck-convert { --f7-popover-border-radius: 10px; filter: drop-shadow(0 4px 16px var(--ck-popover-shadow)); }
-.ck-convert-head { display: grid; padding: 12px 16px; background-color: var(--ck-soft); }
-.ck-convert-name { font-size: 15px; font-weight: 700; line-height: 1.3; color: var(--ck-fg); }
 .list.ck-convert-list {
   margin: 0;
   --f7-list-item-min-height: 44px;
@@ -828,8 +788,7 @@ html.ios .popover.ck-convert .popover-inner { transition-duration: 0s; }
   background-color: var(--ck-surface);
 }
 
-/* Unit choices in a bottom sheet (issue #6): the same radio rows as the popover, on the sheet's grey, in a white
-   inset card like the other sheets' lists */
+/* Unit choices in a bottom sheet (issue #6): the radio rows inset 16px, clear of the home indicator */
 .sheet-modal.ck-unit-sheet .list.ck-unit-sheet-list { margin: 4px 16px calc(16px + var(--f7-safe-area-bottom)); }
 .sheet-modal.ck-unit-sheet .list.ck-unit-sheet-list ul { border-radius: 16px; overflow: hidden; background-color: var(--ck-surface); }
 /* the sheet's rows start below its title bar (Framework7 does this for a .page-content, which this sheet doesn't use) */

@@ -2,11 +2,12 @@ import { useEffect, useRef, type ComponentProps } from 'react';
 import { Sheet, Toolbar, Link } from 'framework7-react';
 import { titleCase } from '../lib/recipe';
 import type { UnitPicks } from './ui/ingredientLine';
-import { UnitOptions, type ConvertTarget } from './UnitPopover';
+import { UnitOptions, type ConvertTarget } from './UnitChoices';
 
 type SheetRef = NonNullable<ComponentProps<typeof Sheet>['ref']>;
 
 type Props = {
+  /** the ingredient whose units are shown; null closes the sheet */
   target: ConvertTarget | null;
   factor: number;
   picks: UnitPicks;
@@ -14,22 +15,41 @@ type Props = {
   onClosed: () => void;
   /** where Framework7 puts it while open; by default the app, which a popup (cook mode) would cover */
   containerEl?: string;
+  /** "fixed": the Page keeps it outside its scrolling content (Framework7 only reads this on the Page's own children) */
+  slot?: string;
 };
 
 /**
  * The unit choices in a Framework7 bottom sheet (issue #6), out from under the thumb that tapped the amount: the
  * ingredient as the sheet's title with Done, then the radio rows. The page isn't dimmed, and Framework7 scrolls it so
- * the tapped ingredient stays above the sheet. Picking a unit closes it; so does swiping it down or tapping elsewhere.
+ * the tapped ingredient stays above the sheet. Picking a unit closes it; so do Done, swiping it down, tapping
+ * elsewhere, and tapping the same amount again. Tapping another amount switches the sheet to that ingredient.
  */
 export default function UnitSheet({ target, factor, picks, onPick, onClosed, containerEl }: Props) {
   const ref = useRef(null) as unknown as SheetRef;
 
+  // open for a tapped amount, stay open and switch for another one, close when the target is cleared
   useEffect(() => {
     const sheet = ref.current?.f7Sheet();
-    if (!target || !sheet) return;
+    if (!sheet) return;
+    if (!target) {
+      if (sheet.opened) sheet.close();
+      return;
+    }
     // keep the tapped ingredient in view above the sheet (on the recipe page; cook mode's halves scroll on their own)
     sheet.params.scrollToEl = (target.el.closest('li') ?? target.el) as HTMLElement;
-    sheet.open();
+    if (!sheet.opened) sheet.open();
+  }, [target]);
+
+  // a tap anywhere but the sheet or an underlined amount closes it (amounts open, switch or close it themselves)
+  useEffect(() => {
+    if (!target) return;
+    const close = (e: Event) => {
+      const el = e.target as Element;
+      if (!el.closest('.ck-unit-sheet, .ck-convertible')) ref.current?.f7Sheet().close();
+    };
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
   }, [target]);
 
   const pick = (unit: string | null) => {
@@ -44,7 +64,6 @@ export default function UnitSheet({ target, factor, picks, onPick, onClosed, con
       style={{ height: 'auto' }}
       swipeToClose
       backdrop={false}
-      closeByOutsideClick
       {...(containerEl ? { containerEl } : {})}
       onSheetClosed={onClosed}
     >

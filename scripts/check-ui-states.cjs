@@ -674,11 +674,9 @@ async function swipeLeft(ctx, page, locator) {
     if (!t.backInPhoto) throw new Error('back button is not over the photo');
   });
   // issue #6: amounts that convert are underlined (a fitted grey line; notes look different); tapping one opens a
-  // popover pointing at it, with a distinct header and radio options; picking one replaces the amount, and the
+  // bottom sheet with radio options (24-*); picking one replaces the amount, and the
   // Original option puts it back
   await step('22-unit-underline', async () => {
-    // TEMPORARY (issue #6): these states check the popover; the bottom sheet (the default) is checked in 24-*
-    await page.evaluate(() => localStorage.setItem('cookbook.unitPicker', 'popover'));
     await page.locator('.page-current .ck-scale-button').tap(); await page.waitForTimeout(700);
     await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(300);
     await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).first().tap(); await page.waitForTimeout(700);
@@ -696,91 +694,9 @@ async function swipeLeft(ctx, page, locator) {
     if (!t.garlicPlain) throw new Error('"cloves" should not be underlined: it does not convert');
     if (t.footer) throw new Error('a conversion still shows in the note line');
   });
-  await step('22b-unit-popover', async () => {
-    await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(700);
-    const t = await page.evaluate(() => {
-      const po = document.querySelector('.popover.modal-in');
-      const amount = [...document.querySelectorAll('.page-current .ck-ing-list li')].find((l) => l.textContent.includes('lemon juice')).querySelector('.ck-convertible').getBoundingClientRect();
-      const r = po.getBoundingClientRect();
-      return {
-        head: po.querySelector('.ck-convert-name')?.textContent, headBg: getComputedStyle(po.querySelector('.ck-convert-head')).backgroundColor,
-        listBg: getComputedStyle(po.querySelector('.ck-convert-list ul')).backgroundColor,
-        items: [...po.querySelectorAll('.ck-convert-list .item-title')].map((e) => e.textContent),
-        radios: po.querySelectorAll('.ck-convert-list input[type=radio]').length, checked: po.querySelector('input[type=radio]:checked')?.closest('li').textContent,
-        ring: getComputedStyle(po.querySelector('.icon-radio')).borderTopWidth,
-        gutter: Math.round(innerWidth - r.right), width: Math.round(r.width), clearOfAmount: r.left > amount.right,
-        level: amount.top + amount.height / 2 > r.top && amount.top + amount.height / 2 < r.bottom,
-        sub: !!po.querySelector('.ck-convert-sub'),
-        highlight: (() => {
-          const li = document.querySelector('.page-current li.ck-ing-on'); if (!li) return null;
-          const band = getComputedStyle(li, '::before'); const lr = li.getBoundingClientRect();
-          return { bg: band.backgroundColor, left: parseFloat(band.left), right: parseFloat(band.right), radius: band.borderTopLeftRadius, li: Math.round(lr.left) };
-        })(),
-      };
-    });
-    if (t.head !== 'Lemon juice') throw new Error(`popover header reads "${t.head}"`);
-    if (t.headBg === t.listBg) throw new Error('popover header looks the same as the options');
-    if (t.items.join(', ') !== '4 tbsp, 12 tsp, ¼ cup, 2 fl oz, 59 ml') throw new Error(`popover lists ${t.items.join(', ')}`);
-    if (t.radios !== 5 || !t.checked?.includes('Original')) throw new Error('options are not radios with Original picked');
-    if (t.ring === '0px') throw new Error('radio options have no visible circle');
-    // against the right side of the screen (the 16px gutter), narrow, beside the amount and level with it
-    if (t.gutter !== 16 || t.width > 220 || !t.clearOfAmount || !t.level) throw new Error(`popover isn't narrow at the right, level with the amount (${JSON.stringify(t)})`);
-    if (t.sub) throw new Error('the popover still has a sub-heading');
-    // like iOS's edit menu: 10px corners, a soft shadow, and no dimmed page behind it
-    const look = await page.evaluate(() => { const po = document.querySelector('.popover.modal-in'); const cs = getComputedStyle(po); return { radius: cs.borderTopLeftRadius, filter: cs.filter, dimmed: !!document.querySelector('.popover-backdrop.backdrop-in') }; });
-    if (look.radius !== '10px' || !look.filter.includes('drop-shadow') || look.dimmed) throw new Error(`popover doesn't look like iOS's edit menu: ${JSON.stringify(look)}`);
-    // the tapped row: pale Tomato with rounded corners, set in from the screen edges (rounded corners never touch them)
-    const h = t.highlight;
-    if (!h) throw new Error('the tapped ingredient is not highlighted');
-    if (h.radius !== '0px' && (h.li + h.left < 4 || h.right < 4)) throw new Error('the highlight has rounded corners but touches the screen edges');
-  });
-  await step('22c-unit-picked', async () => {
-    await page.locator('.popover.modal-in li', { hasText: '¼ cup' }).tap(); await page.waitForTimeout(700);
-    if (await page.locator('.popover.modal-in').count()) throw new Error('popover stayed open after picking');
-    const text = await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').textContent();
-    if (text !== '¼ cup') throw new Error(`after picking ¼ cup the amount reads "${text}"`);
-  });
-  await step('22d-unit-reverted', async () => {
-    await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(700);
-    const checked = await page.locator('.popover.modal-in input[type=radio]:checked').evaluate((e) => e.closest('li').textContent);
-    if (!checked.includes('¼ cup')) throw new Error(`reopened popover has "${checked}" picked, not ¼ cup`);
-    await page.locator('.popover.modal-in li', { hasText: 'Original' }).tap(); await page.waitForTimeout(700);
-    const text = await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').textContent();
-    if (text !== '4 tbsp') throw new Error(`after Original the amount reads "${text}"`);
-  });
-
-  // issue #6 in cook mode: tapping an underlined amount opens the unit popover over cook mode (not ticking the row);
-  // a pick replaces the amount there and on the recipe page. The popover opens small at its pointer, like iOS's edit
-  // menu, with no sideways slide of its content
-  await step('23-cook-unit-popover', async () => {
-    await page.goto(BASE); await page.waitForTimeout(1200);
-    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
-    await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
-    await page.locator('.ck-cook .ck-cook-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(800);
-    const t = await page.evaluate(() => {
-      const li = [...document.querySelectorAll('.ck-cook .ck-cook-list li')].find((l) => l.textContent.includes('lemon juice'));
-      const po = document.querySelector('.popover.modal-in'); const r = po?.getBoundingClientRect();
-      const hit = po && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      return { ticked: li.querySelector('input').checked, inCook: !!po?.closest('.ck-cook'), onTop: !!hit?.closest('.popover'), origin: po?.style.transformOrigin, inner: po && getComputedStyle(po.querySelector('.popover-inner')).transform };
-    });
-    if (!t.inCook || !t.onTop) throw new Error('the unit popover is not shown over cook mode');
-    if (t.ticked) throw new Error('tapping the amount ticked the ingredient');
-    if (!t.origin?.startsWith('-14px')) throw new Error(`popover doesn't grow from its pointer (origin ${t.origin})`);
-    if (t.inner !== 'none' && t.inner !== 'matrix(1, 0, 0, 1, 0, 0)') throw new Error(`popover content is offset (${t.inner})`);
-  });
-  await step('23b-cook-unit-picked', async () => {
-    await page.locator('.ck-cook .popover.modal-in li', { hasText: '⅛ cup' }).tap(); await page.waitForTimeout(800);
-    const cook = await page.locator('.ck-cook .ck-cook-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').textContent();
-    if (cook !== '⅛ cup') throw new Error(`in cook mode the amount reads "${cook}" after picking ⅛ cup`);
-    await page.locator('.ck-cook .navbar a').first().tap(); await page.waitForTimeout(1200);
-    const recipe = await page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').textContent();
-    if (recipe !== '⅛ cup') throw new Error(`the recipe page reads "${recipe}" after picking ⅛ cup in cook mode`);
-  });
-
-  // issue #6, the bottom sheet (the default): out from under the thumb, the page not dimmed, the tapped ingredient
+  // issue #6, the unit sheet: out from under the thumb, the page not dimmed, the tapped ingredient
   // kept in view above it; picking closes it and replaces the amount; in cook mode it opens over cook mode
   await step('24-unit-sheet', async () => {
-    await page.evaluate(() => localStorage.removeItem('cookbook.unitPicker'));
     await page.goto(BASE); await page.waitForTimeout(1200);
     await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
     await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 700)); await page.waitForTimeout(400);
@@ -801,6 +717,27 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.locator('.sheet-modal.modal-in.ck-unit-sheet').count()) throw new Error('the sheet stayed open after picking');
     const text = await page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible').textContent();
     if (text !== '½ tbsp') throw new Error(`after picking ½ tbsp the amount reads "${text}"`);
+  });
+  // tapping another amount switches the sheet to it; tapping the highlighted one again closes it (toggles it off)
+  await step('24b2-unit-sheet-toggle', async () => {
+    const salt = page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible');
+    const pepper = page.locator('.page-current .ck-ing-list li', { hasText: 'black pepper' }).locator('.ck-convertible');
+    await salt.tap(); await page.waitForTimeout(900);
+    const picked = await page.locator('.sheet-modal.modal-in input[type=radio]:checked').evaluate((e) => e.closest('li').textContent);
+    if (!picked.includes('½ tbsp')) throw new Error(`reopened sheet has "${picked}" picked, not ½ tbsp`);
+    await pepper.tap(); await page.waitForTimeout(700);
+    const title = await page.locator('.sheet-modal.modal-in.ck-unit-sheet .toolbar b').textContent().catch(() => null);
+    if (title !== 'Black pepper') throw new Error(`tapping another amount should switch the sheet to it (title "${title}")`);
+    await pepper.tap(); await page.waitForTimeout(800);
+    if (await page.locator('.sheet-modal.modal-in.ck-unit-sheet').count()) throw new Error('tapping the highlighted amount again did not close the sheet');
+    if (await page.locator('.page-current li.ck-ing-on').count()) throw new Error('the ingredient stayed highlighted after closing');
+  });
+  await step('24b3-unit-sheet-original', async () => {
+    const salt = page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible');
+    await salt.tap(); await page.waitForTimeout(900);
+    await page.locator('.sheet-modal.modal-in li', { hasText: 'Original' }).tap(); await page.waitForTimeout(800);
+    const text = await salt.textContent();
+    if (text !== '1 1/2 tsp') throw new Error(`after Original the amount reads "${text}"`);
   });
   await step('24c-cook-unit-sheet', async () => {
     await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);

@@ -71,7 +71,7 @@ export function SessionGuard() {
   const expired = errors.some((e) => e instanceof ApiError && e.status === 401);
   useEffect(() => {
     if (refusal) clearCache().then(() => auth.refuse(refusal.message));
-    else if (expired) clearCache().then(() => auth.signOut());
+    else if (expired) clearCache().then(() => auth.refuse('Your sign-in ran out. Sign in again.'));
   }, [refusal, expired]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 }

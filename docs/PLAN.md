@@ -275,7 +275,7 @@ Edits are live. **Done**, swipe-down, and tapping outside all keep the changes. 
 - *Done (Nov 2026), decisions made while building it:*
   - Phase 0 was approved and merged; its screens (including editing, photos and cook mode) now save through the API.
   - Ingredients, directions and photos are JSON lists on the recipe row; tags are a text array on the recipe. One person's few dozen tags don't need their own tables, and filtering uses an index on the array. Each ingredient keeps its amount as typed (scaling reads the numbers from it) plus the raw line.
-  - Netlify Identity: Netlify deprecated it in 2025, then reversed that in February 2026; it's supported, with the newer `@netlify/identity` package. Besides invite-only registration, the API only answers accounts with the `admin` role (given in the Netlify UI).
+  - Netlify Identity: Netlify deprecated it in 2025, then reversed that in February 2026; it's supported. The app signs in through gotrue-js (what Netlify's Identity widget is built on), the same way as my HPDE app, because `@netlify/identity` keeps the sign-in in cookies that iOS drops when it closes the home-screen app. Besides invite-only registration, the API only answers accounts with the `admin` role (given in the Netlify UI).
   - The five sample recipes are seeded by a migration so the app isn't empty before Phase 3's import. Delete them whenever.
 
 **Phase 2: Create and edit recipes** *(the main goal)*.

@@ -15,7 +15,7 @@ async function dropPhotos(keys: string[], context: Context) {
 }
 
 export default async (req: Request, context: Context) => {
-  const refused = await refuseUnlessAdmin();
+  const refused = await refuseUnlessAdmin(req);
   if (refused) return refused;
   const { sql } = getDatabase();
   const id = context.params.id;

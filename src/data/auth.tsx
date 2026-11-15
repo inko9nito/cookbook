@@ -1,9 +1,9 @@
-// Signing in: Netlify Identity with Google, invite-only. The demo backend (running locally) needs no sign-in.
+// Signing in: Netlify Identity with Google, invite-only, the same way as the HPDE app (see identity.ts).
+// The demo backend (running locally) needs no sign-in.
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { getUser, handleAuthCallback, logout, oauthLogin, onAuthChange } from '@netlify/identity';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { isDemo } from './api';
-import { keepSavedSessionCookies, restoreAuthCookies } from './session';
+import { accessToken, currentUser, finishSignIn, readArrival, signOut as identitySignOut, SignedOutError, startGoogleSignIn } from './identity';
 
 type Auth = {
   status: 'checking' | 'signedIn' | 'signedOut';
@@ -12,69 +12,73 @@ type Auth = {
   problem?: string;
   signIn: () => void;
   signOut: () => Promise<void>;
-  /** the API refused this account (no admin role): sign out and say why */
-  refuse: (message: string) => Promise<void>;
+  /** the API refused this account (no admin role), or the sign-in lapsed: sign out and say why */
+  refuse: (message?: string) => Promise<void>;
 };
 
 const Ctx = createContext<Auth | null>(null);
 
-// iOS drops the sign-in cookies when it closes the home-screen app: put them back before anything checks (session.ts)
-if (!isDemo && typeof document !== 'undefined') restoreAuthCookies();
-
 const demoSignIn = isDemo && typeof location !== 'undefined' && new URLSearchParams(location.search).has('signin');
 
+// read before anything else touches the address: Google's answer, an invite link, or an error
+const arrival = !isDemo && typeof location !== 'undefined' ? readArrival(location.hash) : null;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<Pick<Auth, 'status' | 'email' | 'problem'>>(
+  const [state, setState] = useState<Pick<Auth, 'status' | 'email' | 'problem'>>(() => {
     // the demo is signed in, unless opened with ?signin to show the sign-in screen (the UI check does)
-    isDemo ? { status: demoSignIn ? 'signedOut' : 'signedIn', email: 'Demo' } : { status: 'checking' },
-  );
+    if (isDemo) return { status: demoSignIn ? 'signedOut' : 'signedIn', email: 'Demo' };
+    // a sign-in saved on the phone counts at once, so the app opens straight to the recipes, even offline
+    const saved = arrival?.kind === 'token' ? null : currentUser();
+    return saved ? { status: 'signedIn', email: saved.email } : { status: arrival?.kind === 'token' ? 'checking' : 'signedOut' };
+  });
+  const invite = useRef(arrival?.kind === 'invite' ? arrival.token : undefined);
 
   useEffect(() => {
     if (isDemo) return;
     let live = true;
-    (async () => {
-      let problem: string | undefined;
-      try {
-        // finishes the Google sign-in when the page loads from its redirect (the token is in the address)
-        const result = await handleAuthCallback();
-        // the invite email's link: there's no password to choose, signing in with Google (same address) accepts it
-        if (result?.type === 'invite') problem = 'You’re invited. Continue with Google, using the address the invite was sent to.';
-      } catch (e) {
-        problem = e instanceof Error ? e.message : 'Signing in didn’t work.';
-      }
-      // drop the token from the address so a reload doesn't try to use it again
-      if (/(access_token|invite_token|error)=/.test(location.hash)) history.replaceState(null, '', location.pathname);
-      const user = await getUser();
-      if (user) keepSavedSessionCookies();
-      if (live) setState(user ? { status: 'signedIn', email: user.email } : { status: 'signedOut', problem });
-    })();
-    const off = onAuthChange((_event, user) => {
-      // the library writes new cookies (that iOS would drop) on sign-in and every token renewal: make them last
-      if (user) keepSavedSessionCookies();
-      if (!live) return;
-      setState((s) => (user ? { status: 'signedIn', email: user.email } : { status: 'signedOut', problem: s.problem }));
-    });
+    // drop the token from the address so a reload doesn't try to use it again
+    if (arrival) history.replaceState(null, '', location.pathname + location.search);
+    if (arrival?.kind === 'token') {
+      finishSignIn(arrival.params)
+        .then((user) => live && setState({ status: 'signedIn', email: user.email }))
+        .catch(() => live && setState({ status: 'signedOut', problem: 'Signing in didn’t work. Try again.' }));
+    } else if (arrival?.kind === 'invite') {
+      setState({ status: 'signedOut', problem: 'You’re invited. Continue with Google, using the address the invite was sent to.' });
+    } else if (arrival?.kind === 'error') {
+      setState({ status: 'signedOut', problem: arrival.message });
+    }
+
+    // renew the sign-in in the background when the app opens or comes back to the front, so a save never waits on it
+    // (or only then finds the sign-in lapsed); it only goes to the network when the token is due
+    const renewIfVisible = () => {
+      if (document.visibilityState !== 'visible' || !currentUser()) return;
+      accessToken().catch((e) => {
+        if (e instanceof SignedOutError && live) setState({ status: 'signedOut', problem: 'Your sign-in ran out. Sign in again.' });
+      });
+    };
+    renewIfVisible();
+    document.addEventListener('visibilitychange', renewIfVisible);
+    window.addEventListener('focus', renewIfVisible);
     return () => {
       live = false;
-      off();
+      document.removeEventListener('visibilitychange', renewIfVisible);
+      window.removeEventListener('focus', renewIfVisible);
     };
   }, []);
-
-  const signOut = async () => {
-    await logout().catch(() => undefined);
-    setState({ status: 'signedOut' });
-  };
 
   const auth: Auth = {
     ...state,
     signIn: () => {
       if (isDemo) return setState({ status: 'signedIn', email: 'Demo' });
       setState((s) => ({ ...s, problem: undefined }));
-      oauthLogin('google');
+      startGoogleSignIn(invite.current);
     },
-    signOut,
+    signOut: async () => {
+      await identitySignOut();
+      setState({ status: 'signedOut' });
+    },
     refuse: async (message) => {
-      await logout().catch(() => undefined);
+      await identitySignOut();
       setState({ status: 'signedOut', problem: message });
     },
   };

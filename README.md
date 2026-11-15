@@ -22,7 +22,7 @@ Netlify builds with `npm run build`, publishes `dist/`, deploys the API in `netl
 
 1. **Plan:** Netlify Database needs a credit-based plan (the Free plan has one).
 2. **Identity:** Project configuration → Identity → Enable Identity. Registration → **Invite only**. External providers → add **Google**. Then Users → **Invite users** → your Google address. Open the invite email's link, then tap Continue with Google.
-3. **Admin role:** in Identity → Users, open your user → Edit settings → Roles → add `admin`. The API answers no account without it, even if registration is left open. A role change counts from the next sign-in: if you signed in before adding it, the app sends you back to the sign-in screen once, and signing in again picks it up.
+3. **Admin role:** in Identity → Users, open your user → Edit settings → Roles → add `admin`. The API answers no account without it, even if registration is left open. A role change counts at once.
 4. **Database and photos** need nothing: installing `@netlify/database` makes Netlify create the database on the next deploy and apply the migrations; photos go in a Netlify Blobs store called `photos`.
 
 ## Status

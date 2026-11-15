@@ -1,0 +1,322 @@
+// Sample data for the Phase 0 demo. Replaced by the real database in Phase 1.
+
+/** One row in a recipe's ingredient list: an ingredient, or a group header ("For the sauce"). */
+export type DemoIngredient = {
+  id: string;
+  /** 'header' rows are group titles; their title is in `name` */
+  kind?: 'header';
+  amount: string;
+  unit: string;
+  name: string;
+  note: string;
+};
+
+/** One row in a recipe's directions: a step, or a group header ("Prep", "Grill"). */
+export type DemoStep = {
+  id: string;
+  kind?: 'header';
+  text: string;
+};
+
+/** A recipe photo: the 4:3 crop that's shown, plus the full photo and the crop box so the crop can be redone. */
+export type DemoPhoto = {
+  id: string;
+  /** what shows: a sample photo (public/photos) or the 4:3 crop of a photo picked on the phone (data URL) */
+  src: string;
+  /** the full photo as picked (downscaled), when it was cropped on the phone */
+  original?: string;
+  /** the crop box on the original, in its pixels */
+  crop?: { x: number; y: number; width: number; height: number };
+};
+
+export const coverPhoto = (r: DemoRecipe): string | undefined => r.photos[0]?.src;
+
+export type DemoRecipe = {
+  id: string;
+  title: string;
+  source: string;
+  servings: number;
+  servingSize: string;
+  prepMinutes: number;
+  cookMinutes: number;
+  /** total time, kept in sync with prep + cook by the editor */
+  minutes: number;
+  createdAt: string;
+  /** Photos, the first is the cover (cards, the top of the recipe page). Empty: a plain grey chef-hat placeholder shows. */
+  photos: DemoPhoto[];
+  /** Placeholder color used when there is no photo */
+  tone: 'corn' | 'grill' | 'soup' | 'drink' | 'green';
+  /** Course types (from COURSES) and the user's own tags, all lowercase */
+  tags: string[];
+  ingredients: DemoIngredient[];
+  steps: DemoStep[];
+  notes: string;
+  rating: number;
+  timesMade: number;
+};
+
+export const COURSES = ['breakfast', 'lunch', 'dinner', 'snack', 'appetizer', 'soup', 'salad', 'side', 'dessert', 'drink'];
+
+let nextId = 1000;
+export const newId = () => String(nextId++);
+
+const ing = (amount: string, unit: string, name: string, note = ''): DemoIngredient => ({ id: newId(), amount, unit, name, note });
+const group = (name: string): DemoIngredient => ({ id: newId(), kind: 'header', amount: '', unit: '', name, note: '' });
+const step = (text: string): DemoStep => ({ id: newId(), text });
+const stepGroup = (text: string): DemoStep => ({ id: newId(), kind: 'header', text });
+
+export const demoRecipes: DemoRecipe[] = [
+  {
+    id: '1',
+    title: 'Corn pudding',
+    tone: 'corn',
+    photos: [{ id: newId(), src: '/photos/corn.jpg' }],
+    source: 'My recipe',
+    servings: 8,
+    servingSize: '1 square',
+    prepMinutes: 20,
+    cookMinutes: 55,
+    minutes: 75,
+    createdAt: '2026-11-10',
+    tags: ['side', 'dessert', 'holiday'],
+    rating: 5,
+    timesMade: 3,
+    ingredients: [
+      group('For the pudding'),
+      ing('6', 'cups', 'fresh corn kernels', 'from about 8 ears, or frozen and thawed'),
+      ing('6', '', 'large eggs', 'at room temperature'),
+      ing('2', 'cups', 'heavy cream'),
+      ing('1/2', 'cup', 'whole milk'),
+      ing('1/2', 'cup', 'unsalted butter', 'melted and cooled, plus more for the dish'),
+      ing('1/4', 'cup', 'sugar'),
+      ing('3', 'tbsp', 'all-purpose flour'),
+      ing('2', 'tsp', 'baking powder'),
+      ing('1-2', 'tsp', 'kosher salt', 'to taste'),
+      ing('1/4', 'tsp', 'ground nutmeg'),
+      group('For the topping'),
+      ing('1/2', 'cup', 'sharp cheddar', 'finely grated'),
+      ing('2', 'tbsp', 'brown sugar'),
+      ing('2', '', 'green onions', 'thinly sliced'),
+    ],
+    steps: [
+      stepGroup('Prep'),
+      step('Heat the oven to 350°F with a rack in the middle. Butter a 9×13-inch baking dish generously, including the corners, so the edges release cleanly.'),
+      step('Put 2 cups of the corn in a blender with the milk and pulse until mostly smooth but still a little textured. This is what makes the pudding creamy rather than eggy.'),
+      step('In a large bowl, whisk the sugar, flour, baking powder, salt and nutmeg until there are no lumps of flour left.'),
+      stepGroup('Bake'),
+      step('Whisk the eggs into the dry mixture one at a time, then whisk in the cream, the blended corn and the melted butter until smooth.'),
+      step('Fold in the remaining whole kernels and pour everything into the dish. Tap the dish on the counter a couple of times to settle it.'),
+      step('Bake 40 minutes, until the edges are set and the center still jiggles slightly. Scatter the cheddar and brown sugar over the top and bake 10 to 15 minutes more, until golden.'),
+      step('Let it rest 10 minutes before cutting so it firms up. Sprinkle with the green onions just before serving.'),
+    ],
+    notes: 'Halve the sugar if the corn is very sweet. It can be baked a day ahead and reheated, covered, at 325°F for 20 minutes. Freezes well for a month.',
+  },
+  {
+    id: '2',
+    title: 'Middle Eastern Chicken Kebabs',
+    tone: 'grill',
+    photos: [{ id: newId(), src: '/photos/kebabs.jpg' }],
+    source: 'onceuponachef.com',
+    servings: 4,
+    servingSize: '2 skewers',
+    prepMinutes: 20,
+    cookMinutes: 15,
+    minutes: 35,
+    createdAt: '2026-10-02',
+    tags: ['dinner'],
+    rating: 5,
+    timesMade: 2,
+    ingredients: [
+      group('Marinade'),
+      ing('1', 'cup', 'plain whole milk Greek yogurt'),
+      ing('1/4', 'cup', 'olive oil'),
+      ing('2', 'tbsp', 'lemon juice', 'from about 1 lemon'),
+      ing('1', 'tsp', 'lemon zest'),
+      ing('4', 'cloves', 'garlic', 'minced'),
+      ing('2', 'tsp', 'smoked paprika'),
+      ing('1 1/2', 'tsp', 'ground cumin'),
+      ing('1', 'tsp', 'ground coriander'),
+      ing('1/2', 'tsp', 'ground cinnamon'),
+      ing('1/2-1', 'tsp', 'crushed red pepper flakes', 'reduce if you don’t like heat'),
+      ing('1 1/2', 'tsp', 'kosher salt'),
+      ing('1/2', 'tsp', 'black pepper'),
+      group('Kebabs'),
+      ing('2', 'lb', 'boneless chicken thighs', 'cut into 1½-inch pieces'),
+      ing('1', 'large', 'red onion', 'cut into wedges'),
+      ing('2', '', 'bell peppers', 'cut into 1½-inch squares'),
+      ing('8', '', 'wooden skewers', 'soaked in water for 30 minutes'),
+      group('To serve'),
+      ing('4', '', 'warm pitas'),
+      ing('1/2', 'cup', 'tahini sauce'),
+      ing('1/4', 'cup', 'fresh parsley', 'chopped'),
+      ing('1', '', 'lemon', 'cut into wedges'),
+    ],
+    steps: [
+      stepGroup('Marinate'),
+      step('In a large bowl, whisk together the yogurt, olive oil, lemon juice and zest, garlic, paprika, cumin, coriander, cinnamon, red pepper flakes, salt and pepper until smooth.'),
+      step('Add the chicken and turn it with your hands until every piece is coated. Cover the bowl and refrigerate for at least 8 hours, or overnight. The yogurt tenderizes the meat, so don’t skip the long marinade.'),
+      stepGroup('Grill'),
+      step('Take the chicken out of the fridge 30 minutes before cooking. Heat the grill to medium-high and oil the grates well with a folded paper towel dipped in oil.'),
+      step('Thread the chicken onto the skewers, alternating with the onion and pepper. Leave a little space between pieces so they cook evenly, and wipe off any thick clumps of marinade.'),
+      step('Grill 10 to 15 minutes, turning every few minutes, until the chicken is charred in spots and reaches 165°F inside. Move the skewers to a cooler part of the grill if they flare up.'),
+      step('Rest the kebabs on a platter for 5 minutes. Serve with warm pitas, tahini sauce, parsley and lemon wedges.'),
+    ],
+    notes: 'Thighs stay juicier than breasts here. In winter, broil them on a foil-lined sheet pan about 4 inches from the heat, 6 to 8 minutes per side.',
+  },
+  {
+    id: '3',
+    title: 'Italian Turkey Zucchini Meatballs',
+    tone: 'soup',
+    photos: [{ id: newId(), src: '/photos/meatballs.jpg' }],
+    source: 'My recipe',
+    servings: 6,
+    servingSize: '4 meatballs',
+    prepMinutes: 15,
+    cookMinutes: 25,
+    minutes: 40,
+    createdAt: '2026-09-14',
+    tags: ['dinner'],
+    rating: 4,
+    timesMade: 1,
+    ingredients: [
+      group('Meatballs'),
+      ing('1 1/2', 'lb', 'ground turkey', '93% lean'),
+      ing('1', 'medium', 'zucchini', 'grated and squeezed dry in a towel'),
+      ing('1/2', 'cup', 'panko breadcrumbs'),
+      ing('1/3', 'cup', 'parmesan', 'finely grated, plus more to serve'),
+      ing('1', '', 'large egg'),
+      ing('3', 'cloves', 'garlic', 'grated'),
+      ing('2', 'tbsp', 'fresh basil', 'chopped'),
+      ing('1', 'tsp', 'dried oregano'),
+      ing('1/2-1', 'tsp', 'red pepper flakes', 'optional'),
+      ing('1', 'tsp', 'kosher salt'),
+      group('Sauce'),
+      ing('1', 'jar (24 oz)', 'marinara sauce'),
+      ing('1', 'tbsp', 'olive oil'),
+      ing('', '', 'fresh basil leaves', 'to serve'),
+    ],
+    steps: [
+      step('Heat the oven to 400°F and line a sheet pan with parchment. Brush the parchment lightly with olive oil.'),
+      step('Wrap the grated zucchini in a clean kitchen towel and wring it out over the sink until no more water drips out. Wet zucchini makes the meatballs fall apart.'),
+      step('In a large bowl, combine the turkey, zucchini, panko, parmesan, egg, garlic, basil, oregano, pepper flakes and salt. Mix gently with your hands just until combined; overworking makes them tough.'),
+      step('Roll into about 24 meatballs the size of a golf ball, wetting your hands so the mixture doesn’t stick, and space them out on the pan.'),
+      step('Bake 18 to 20 minutes, until lightly browned and cooked through.'),
+      step('Warm the marinara in a wide pan, add the meatballs and simmer 5 minutes, spooning the sauce over them. Serve with extra parmesan and basil.'),
+    ],
+    notes: 'Good over polenta or spaghetti squash. The baked meatballs freeze well without the sauce.',
+  },
+  {
+    id: '4',
+    title: 'Pulled Beef with Parsnip Purée',
+    tone: 'grill',
+    photos: [{ id: newId(), src: '/photos/pulled-beef.jpg' }],
+    source: 'My recipe',
+    servings: 6,
+    servingSize: '',
+    prepMinutes: 30,
+    cookMinutes: 180,
+    minutes: 210,
+    createdAt: '2026-08-21',
+    tags: ['dinner'],
+    rating: 4,
+    timesMade: 1,
+    ingredients: [
+      group('Beef'),
+      ing('3', 'lb', 'boneless chuck roast', 'cut into 3 large pieces'),
+      ing('2', 'tsp', 'kosher salt'),
+      ing('2', 'tbsp', 'olive oil'),
+      ing('1', 'large', 'onion', 'sliced'),
+      ing('4', 'cloves', 'garlic', 'smashed'),
+      ing('2', 'tbsp', 'tomato paste'),
+      ing('1', 'cup', 'dry red wine'),
+      ing('2', 'cups', 'beef broth'),
+      ing('3', 'sprigs', 'fresh thyme'),
+      ing('2', '', 'bay leaves'),
+      group('Parsnip purée'),
+      ing('2', 'lb', 'parsnips', 'peeled and cut into chunks'),
+      ing('1', 'cup', 'whole milk'),
+      ing('3', 'tbsp', 'butter'),
+      ing('', '', 'salt and white pepper', 'to taste'),
+    ],
+    steps: [
+      stepGroup('Braise'),
+      step('Heat the oven to 300°F. Pat the beef dry and season it all over with the salt.'),
+      step('Heat the oil in a Dutch oven over medium-high heat and brown the beef well on all sides, about 10 minutes. Move it to a plate.'),
+      step('Lower the heat to medium, add the onion and cook until soft, about 6 minutes. Stir in the garlic and tomato paste and cook 1 minute more.'),
+      step('Pour in the wine and scrape up the browned bits, then add the broth, thyme and bay leaves. Return the beef, cover and braise in the oven for 3 hours, until it pulls apart easily.'),
+      stepGroup('Purée and serve'),
+      step('About 30 minutes before the beef is done, simmer the parsnips in the milk with a pinch of salt, covered, until very tender, 20 to 25 minutes.'),
+      step('Blend the parsnips with their milk and the butter until silky. Season with salt and white pepper.'),
+      step('Shred the beef with two forks and stir it into the reduced braising liquid. Spoon over the purée.'),
+    ],
+    notes: 'Even better the next day. Skim the fat off the chilled braising liquid before reheating.',
+  },
+  {
+    id: '5',
+    title: 'Mustard Dill Chicken Thighs',
+    tone: 'green',
+    photos: [{ id: newId(), src: '/photos/mustard-chicken.jpg' }],
+    source: 'sepcooks.com',
+    servings: 4,
+    servingSize: '',
+    prepMinutes: 10,
+    cookMinutes: 25,
+    minutes: 35,
+    createdAt: '2026-07-30',
+    tags: ['dinner', 'quick'],
+    rating: 0,
+    timesMade: 0,
+    ingredients: [
+      ing('2', 'lb', 'boneless chicken thighs'),
+      ing('3', 'tbsp', 'Dijon mustard'),
+      ing('1', 'tbsp', 'whole-grain mustard'),
+      ing('2', 'tbsp', 'olive oil'),
+      ing('1', 'tbsp', 'honey'),
+      ing('2', 'cloves', 'garlic', 'grated'),
+      ing('1-2', 'tbsp', 'fresh dill', 'chopped, plus more to serve'),
+      ing('1', 'tsp', 'kosher salt'),
+      ing('1/2', 'tsp', 'black pepper'),
+      ing('1', '', 'lemon', 'halved'),
+    ],
+    steps: [
+      step('Heat the oven to 425°F. Pat the chicken dry with paper towels so the glaze sticks.'),
+      step('In a large bowl, stir together both mustards, the olive oil, honey, garlic, dill, salt and pepper.'),
+      step('Toss the chicken in the mustard mixture and arrange it in a single layer in a baking dish, smooth side up. Nestle the lemon halves in the dish, cut side up.'),
+      step('Roast 22 to 25 minutes, until the edges are browned and the chicken reaches 175°F inside.'),
+      step('Squeeze the roasted lemon over the chicken, spoon the pan juices on top and scatter with more dill.'),
+    ],
+    notes: '',
+  },
+];
+
+export const emptyRecipe = (): DemoRecipe => ({
+  id: newId(),
+  title: '',
+  source: '',
+  servings: 4,
+  servingSize: '',
+  prepMinutes: 0,
+  cookMinutes: 0,
+  minutes: 0,
+  createdAt: new Date().toISOString().slice(0, 10),
+  tone: 'green',
+  photos: [],
+  tags: [],
+  ingredients: [],
+  steps: [],
+  notes: '',
+  rating: 0,
+  timesMade: 0,
+});
+
+export const demoCookbooks = [
+  { id: 'k1', name: 'Bread', count: 6 },
+  { id: 'k2', name: 'Dressings and sauces', count: 2 },
+  { id: 'k3', name: 'Everything else', count: 70 },
+  { id: 'k4', name: 'Grilling', count: 11 },
+];
+
+export const formatIngredient = (i: Pick<DemoIngredient, 'amount' | 'unit' | 'name' | 'note'>) =>
+  [i.amount, i.unit, i.name].filter(Boolean).join(' ') + (i.note ? `, ${i.note}` : '');
+
+export const titleCase = (t: string) => (t ? t[0].toUpperCase() + t.slice(1) : t);

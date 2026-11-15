@@ -1,0 +1,717 @@
+/*
+  Cookbook design system (spec: DESIGN.md).
+  Tokens, the mapping onto Framework7's own CSS variables, and a few component classes.
+  Colors, sizes, corners and typography only: Framework7 owns motion, gestures and z-index (see CLAUDE.md).
+*/
+:root {
+  --ck-bg: #f5f5f5;
+  --ck-surface: #ffffff;
+  --ck-soft: #ececee;
+  --ck-fg: #262628;
+  --ck-fg2: #55555a;
+  --ck-muted: #6e6e73;
+  --ck-photo-dark: #000000; /* behind a photo being cropped */
+  --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
+  --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
+  --ck-done-ink: #a5a5aa; /* ticked rows in cook mode: deliberately below 4.5:1 (about 2.3:1), finished items fade back */
+  --ck-line: #e6e6e9;
+  --ck-strong: #c9c9ce;
+  --ck-accent: #e4572e;
+  --ck-accent-press: #c9461f;
+  --ck-section-gap: 44px;     /* space above a section heading such as Directions (text to text) */
+  --ck-group-gap: 24px;       /* space above a group label (text to text) */
+  --ck-group-label-gap: 8px;  /* group label to its first row's text */
+  --ck-accent-ink: #c4421c; /* Tomato for text: passes 4.5:1 on white and on the grey page */
+  --ck-accent-tint: color-mix(in srgb, var(--ck-accent) 13%, var(--ck-surface));
+  --ck-error: #d1291f; /* also the destructive red (Delete, Discard): 5.2:1 on white, 4.8:1 on the grey page */
+  --ck-font: -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+}
+
+/* ── Framework7 mapping (beats Framework7's own `.ios` scope) ── */
+html.ios {
+  --f7-font-family: var(--ck-font);
+  --f7-text-color: var(--ck-fg);
+  --f7-page-bg-color: var(--ck-bg);
+
+  /* Flat instead of iOS 26 "liquid glass": navbar buttons, search bar, tab bar, action sheets.
+     The user's mix (RED / DoorDash) is flat white with a hairline and no glow. */
+  --f7-glass-bg-color: var(--ck-surface);
+  --f7-glass-shadow: 0 0 0 1px var(--ck-line);
+  --f7-glass-shadow-thumb: 0 0 0 1px var(--ck-line);
+  --f7-bars-bg-color: var(--ck-bg);
+  --f7-navbar-bg-color: var(--ck-bg);
+  --f7-subnavbar-bg-color: var(--ck-bg);
+  --f7-toolbar-bg-color: var(--ck-bg);
+
+
+  /* destructive actions and action-sheet labels */
+  --f7-swipeout-delete-button-bg-color: var(--ck-error);
+  --f7-actions-label-text-color: var(--ck-muted);
+
+  /* lists */
+  --f7-list-strong-bg-color: var(--ck-surface);
+  --f7-list-item-border-color: var(--ck-line);
+  --f7-list-inset-border-radius: 16px;
+  --f7-list-item-footer-text-color: var(--ck-muted);
+  --f7-list-item-header-text-color: var(--ck-muted);
+  --f7-list-item-text-text-color: var(--ck-fg2);
+  --f7-list-item-subtitle-text-color: var(--ck-muted);
+  --f7-list-item-after-text-color: var(--ck-muted);
+  --f7-block-footer-text-color: var(--ck-muted);
+  --f7-block-header-text-color: var(--ck-muted);
+
+  /* section titles: dark and bold (RED / Headspace) */
+  --f7-block-title-text-color: var(--ck-muted);
+  --f7-block-title-medium-text-color: var(--ck-fg);
+  --f7-block-title-medium-font-size: 20px;
+  --f7-block-title-medium-font-weight: 700;
+  --f7-block-title-large-text-color: var(--ck-fg);
+
+  /* search bar (RED): white pill on the grey page */
+  --f7-searchbar-input-bg-color: var(--ck-surface);
+  --f7-searchbar-input-border-radius: 9999px;
+  --f7-searchbar-input-text-color: var(--ck-fg);
+  --f7-searchbar-placeholder-color: var(--ck-muted);
+
+  /* filter chips (Starbucks) */
+  --f7-chip-bg-color: var(--ck-surface);
+  --f7-chip-text-color: var(--ck-fg);
+  --f7-chip-outline-border-color: var(--ck-strong);
+  --f7-chip-outline-text-color: var(--ck-fg);
+  --f7-chip-border-radius: 9999px;
+  --f7-chip-height: 34px;
+  --f7-chip-font-size: 14px;
+  --f7-chip-font-weight: 600;
+  --f7-chip-padding-horizontal: 14px;
+
+  /* buttons: "Other buttons" (Pinterest) are the default; the main button is .ck-main */
+  --f7-button-font-weight: 600;
+  --f7-button-border-radius: 9999px; /* every button is a pill (one shape everywhere) */
+  --f7-button-large-height: 46px;
+  --f7-button-large-font-size: 16px;
+  --f7-button-large-font-weight: 600;
+
+  /* servings stepper and segmented control (Pinterest) */
+  --f7-stepper-border-width: 0px;
+  --f7-stepper-small-border-width: 0px;
+  --f7-stepper-border-color: transparent;
+  --f7-stepper-border-radius: 9999px;
+  --f7-stepper-button-bg-color: var(--ck-soft);
+  --f7-stepper-button-text-color: var(--ck-fg);
+  --f7-stepper-value-text-color: var(--ck-fg);
+  --f7-stepper-value-font-weight: 700;
+  --f7-segmented-strong-bg-color: var(--ck-soft);
+  --f7-segmented-strong-button-text-color: var(--ck-fg2);
+  --f7-segmented-strong-button-active-bg-color: var(--ck-fg);
+  --f7-segmented-strong-button-active-text-color: var(--ck-surface);
+  --f7-segmented-strong-button-active-font-weight: 600;
+
+  /* ingredients (Instacart): Tomato check */
+  --f7-checkbox-active-color: var(--ck-accent);
+  --f7-checkbox-inactive-color: var(--ck-strong);
+
+  /* form fields (Instacart): boxed "outline" inputs */
+  --f7-input-outline-border-color: var(--ck-strong);
+  --f7-input-outline-focused-border-color: var(--ck-fg);
+  --f7-input-outline-invalid-border-color: var(--ck-error);
+  --f7-input-text-color: var(--ck-fg);
+  --f7-input-placeholder-color: var(--ck-muted);
+  --f7-input-error-text-color: var(--ck-error);
+  --f7-input-info-text-color: var(--ck-fg2); /* hints under fields: muted grey was 3.3:1 */
+  --f7-label-text-color: var(--ck-fg2);
+  --f7-label-focused-text-color: var(--ck-fg);
+
+  /* tab bar (DoorDash colors; the bar keeps its native iOS 26 shape) */
+  --f7-tabbar-link-active-color: var(--ck-accent-ink);
+  --f7-tabbar-link-inactive-color: var(--ck-muted);
+  --f7-tabbar-label-font-weight: 600;
+}
+
+/* ── Solid top bar (RED): Framework7's iOS 26 navbar fades to transparent over content; the mix uses an opaque bar ── */
+html.ios .navbar-bg::after {
+  background-image: none;
+  background-color: var(--ck-bg);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Not iOS 26. Framework7 v9's iOS theme draws a floating "liquid glass" tab bar
+   and groups navbar buttons into glass capsules. The agreed design (Mix & match,
+   see DESIGN.md) uses a docked flat tab bar and separate round buttons, so these
+   rules restyle Framework7's own elements: spacing, corners and colors only.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Navbar (RED): title on the left in the same row as separate soft grey round buttons */
+html.ios .navbar {
+  --f7-navbar-title-font-size: 17px;
+  --f7-navbar-title-font-weight: 600;
+}
+html.ios .navbar.ck-navbar-root {
+  --f7-navbar-title-font-size: 24px;
+  --f7-navbar-title-font-weight: 700;
+}
+html.ios .navbar .left,
+html.ios .navbar .right {
+  --f7-glass-bg-color: transparent;
+  --f7-glass-shadow: none;
+  gap: 8px;
+}
+/* Framework7 adds 16px between bar buttons on top of the gap; 8px apart is enough */
+html.ios .navbar .left a + a,
+html.ios .navbar .right a + a { margin-left: 0; }
+/* a shorter bar than iOS 26's 56px: the 40px buttons still fit, and the page starts closer to the title */
+html.ios { --f7-navbar-height: 48px; }
+html.ios .navbar .left .link,
+html.ios .navbar .right .link {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  background-color: var(--ck-soft);
+  color: var(--ck-fg);
+}
+html.ios .navbar .link.icon-only,
+html.ios .navbar .link.back {
+  width: 40px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* Tab bar (DoorDash): docked full width, flat white, hairline on top, no active bubble */
+html.ios {
+  /* icons only, no labels */
+  --f7-tabbar-icons-height: 60px; /* as tall as the user's other app's tab bar (60pt above the home indicator) */
+  --f7-tabbar-link-highlight-bg-color: transparent;
+  --f7-tabbar-link-highlight-active-bg-color: transparent;
+}
+html.ios .toolbar.tabbar::before,
+html.ios .toolbar.tabbar::after {
+  display: none;
+}
+/* Framework7 v9's iOS 26 tab highlight grows to 1.4× with a glass shadow when a tab is pressed (the "bouncy zoom").
+   The colors above only hid its fill, so the element itself is switched off. */
+html.ios .toolbar.tabbar .tab-link-highlight { display: none; }
+html.ios .toolbar.tabbar .toolbar-inner {
+  /* iOS 26 floats the bar above the home-indicator strip (bottom: safe area); the docked bar runs to the screen's
+     bottom edge instead, with the strip as padding, so the icons sit in the 60px above it */
+  bottom: 0;
+  padding: 0 0 var(--f7-safe-area-bottom);
+  background-color: var(--ck-surface);
+  border-top: 1px solid var(--ck-line);
+}
+/* Dialogs (alert, confirm, prompt): Framework7's pill buttons stay. The secondary (tonal) one is our soft grey button
+   with dark text: Tomato ink on a pale Tomato fill was 4.1:1, below WCAG AA. */
+html.ios .dialog {
+  --f7-button-tonal-bg-color: var(--ck-soft);
+  --f7-button-tonal-pressed-bg-color: var(--ck-strong);
+  --f7-button-tonal-text-color: var(--ck-fg);
+}
+
+/* Sheet header (ingredient sheet, paste sheet): plain bold title, Tomato text button, no glass bubbles */
+html.ios .sheet-modal .toolbar .left,
+html.ios .sheet-modal .toolbar .right {
+  --f7-glass-bg-color: transparent;
+  --f7-glass-shadow: none;
+}
+html.ios .sheet-modal .toolbar::before,
+html.ios .sheet-modal .toolbar::after {
+  display: none;
+}
+html.ios .sheet-modal .toolbar .link {
+  color: var(--ck-accent-ink);
+  font-weight: 600;
+}
+html.ios .toolbar.tabbar .toolbar-pane {
+  width: 100%;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+/* ── Search bar in the page: a plain white pill, no outline (RED) ── */
+html.ios {
+  --f7-searchbar-in-page-content-box-shadow: none;
+}
+html.ios .searchbar {
+  --f7-glass-shadow: none;
+  --f7-searchbar-input-border-color: transparent;
+}
+
+/* ── Icons (Lucide): sized by the size prop, colored by the link ── */
+.ck-icon { display: block; flex: none; }
+
+/* ── Sheets: white, so boxed field labels sit on white ── */
+.sheet-modal {
+  --f7-sheet-bg-color: var(--ck-surface);
+  --f7-page-bg-color: var(--ck-surface);
+}
+
+/* ── Stepper (Pinterest): two soft round buttons with the number between ── */
+.stepper.ck-stepper { gap: 10px; }
+.stepper.ck-stepper .stepper-button-minus,
+.stepper.ck-stepper .stepper-button-plus { border-radius: 9999px; width: var(--f7-stepper-height); }
+
+/* ── Main button (DoorDash): full pill, 52px, bold ── */
+.button.ck-main {
+  /* Framework7's theme color is Tomato ink (for text), so the bright Tomato fill is set here */
+  --f7-button-fill-bg-color: var(--ck-accent);
+  --f7-button-border-radius: 9999px;
+  --f7-button-large-height: 52px;
+  --f7-button-large-font-weight: 700;
+  --f7-button-large-font-size: 19px; /* large text: white on Tomato (3.7:1) meets WCAG AA for large text */
+  --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
+}
+
+/* ── Other buttons (Pinterest): soft grey fill, dark text ── */
+.button.ck-soft {
+  --f7-button-bg-color: var(--ck-soft);
+  --f7-button-text-color: var(--ck-fg);
+  --f7-button-pressed-bg-color: var(--ck-strong);
+  background-color: var(--ck-soft);
+  color: var(--ck-fg);
+}
+
+/* ── Filter chips: active state ── */
+.chip.ck-chip { border: 1px solid var(--ck-strong); }
+.chip.ck-chip.ck-chip-on { background: var(--ck-fg); border-color: var(--ck-fg); color: var(--ck-surface); }
+.ck-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+/* filter chips on the Recipes screen: one line that scrolls sideways (native overflow scrolling, no custom gesture) */
+.ck-home-search { --f7-searchbar-in-page-content-margin: 4px 16px 0; }
+.block.ck-chips.ck-chips-scroll { margin-top: 12px; }
+.block.ck-chips.ck-chips-scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: 0; margin-right: 0; }
+.block.ck-chips.ck-chips-scroll::-webkit-scrollbar { display: none; }
+.block.ck-chips.ck-chips-scroll .chip { flex: none; }
+
+/* ── Photos ── */
+.ck-photo { background-color: var(--ck-soft); background-size: cover; background-position: center; }
+/* a recipe without a photo: plain soft grey with a muted chef hat, no colored placeholder */
+.ck-photo-empty { display: grid; place-items: center; color: var(--ck-muted); }
+
+/* ── Recipe cards (Prepear grid): two per row, white card, photo on top, no shadow ── */
+.ck-card-grid { --f7-grid-gap: 12px; }
+.link.ck-card, .ck-card {
+  display: flex; flex-direction: column; min-width: 0;
+  border-radius: 18px; overflow: hidden;
+  background-color: var(--ck-surface); color: var(--ck-fg); text-decoration: none;
+}
+.ck-card-photo { display: block; width: 100%; aspect-ratio: 4 / 3; }
+.ck-card-body { display: grid; gap: 2px; align-content: start; padding: 8px 10px 10px; }
+.ck-card-title {
+  font-size: 13px; font-weight: 600; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ck-card-meta { font-size: 12px; color: var(--ck-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ck-badge { display: inline-flex; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: var(--ck-accent-tint); color: var(--ck-accent-ink); }
+
+/* ── Segmented control: the selected segment always has white text.
+   iPhone Safari keeps a tapped button in its hover/pressed state, which showed grey text on the dark segment. ── */
+html.ios .segmented-strong .button.button-active,
+html.ios .segmented-strong .button.button-active:hover,
+html.ios .segmented-strong .button.button-active.active-state {
+  --f7-button-text-color: var(--ck-surface);
+  --f7-button-pressed-text-color: var(--ck-surface);
+  color: var(--ck-surface);
+}
+
+/* ── Ingredients (Instacart) ── */
+.ck-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ck-note { color: var(--ck-muted); font-size: 13px; }
+
+/* ── Style guide swatches ── */
+.ck-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.ck-swatch { display: grid; gap: 4px; font-size: 12px; color: var(--ck-fg2); }
+.ck-swatch span { height: 44px; border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
+.ck-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ck-stack { display: grid; gap: 10px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Screens picked in Side by side (Nov 2026): Recipes list = Headspace,
+   Recipe page = Airbnb, Edit = Headspace (compact 14px text, like Prepear).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Recipes list (Headspace): soft grey search and chips, rounded thumbnails, thin row lines ── */
+html.ios {
+  --f7-searchbar-input-bg-color: var(--ck-soft);
+  /* placeholders sit on soft grey fills: the darker secondary grey keeps them readable (muted would be 4.3:1) */
+  --f7-searchbar-placeholder-color: var(--ck-fg2);
+  --f7-input-placeholder-color: var(--ck-fg2);
+  --f7-searchbar-input-border-radius: 20px;
+  --f7-chip-bg-color: var(--ck-soft);
+  --f7-chip-padding-horizontal: 15px;
+  --f7-block-title-medium-font-size: 19px;
+  --f7-block-title-medium-font-weight: 800;
+}
+.chip.ck-chip { border: 0; }
+/* "Add tag" at the end of the tag chips: dashed, like "Separate into groups" */
+/* "+ Add tag" at the end of the tag chips: a dashed chip you type into; Return adds the tag */
+.ck-tag-add {
+  display: inline-flex; align-items: center; gap: 4px; height: var(--f7-chip-height); padding: 0 var(--f7-chip-padding-horizontal) 0 12px;
+  border-radius: 9999px; box-shadow: inset 0 0 0 1.5px var(--ck-strong); color: var(--ck-fg2);
+}
+.ck-tag-sizer { display: inline-grid; max-width: 60vw; }
+.ck-tag-sizer::after { content: attr(data-value) ' '; grid-area: 1 / 1; visibility: hidden; white-space: pre; overflow: hidden; font-size: var(--f7-chip-font-size); font-weight: var(--f7-chip-font-weight); }
+.ck-tag-add input { grid-area: 1 / 1; width: 0; min-width: 100%; padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--f7-chip-font-size); font-weight: var(--f7-chip-font-weight); color: var(--ck-fg); }
+.ck-tag-add input::placeholder { color: var(--ck-fg2); }
+.ck-tag-add input:focus { outline: none; }
+.ck-tag-add:focus-within { box-shadow: inset 0 0 0 1.5px var(--ck-accent); }
+
+/* ── Recipe page (Airbnb) ── */
+/* The top bar is solid (back and ••• only, like Prepear). A see-through bar that fades in while scrolling looked glitchy on the phone. */
+.ck-hero { width: 100%; aspect-ratio: 4 / 3; }
+/* the photo is a button (tap to open it full screen): no button look */
+button.ck-hero { display: block; padding: 0; border: 0; border-radius: 0; cursor: zoom-in; }
+/* several photos swipe sideways (Framework7's Swiper); the dots sit above the panel's rounded top */
+/* Swiper gives its container a stacking level (z-index 1), which would paint the photos over the panel's rounded top.
+   Isolating a wrapper keeps that inside it, so the panel, later in the page, paints on top. */
+.ck-hero-wrap { isolation: isolate; }
+swiper-container.ck-hero-swiper {
+  display: block;
+  --swiper-pagination-color: var(--ck-surface);
+  --swiper-pagination-bullet-inactive-color: var(--ck-surface);
+  --swiper-pagination-bullet-inactive-opacity: 0.55;
+  --swiper-pagination-bullet-size: 7px;
+  --swiper-pagination-bullet-horizontal-gap: 3px;
+  --swiper-pagination-bottom: 38px;
+}
+.ck-panel {
+  position: relative;
+  margin-top: -28px;
+  border-radius: 28px 28px 0 0;
+  background-color: var(--ck-bg);
+  padding: 22px 16px 4px;
+  display: grid;
+  gap: 18px;
+}
+.ck-panel.ck-panel-rest { margin-top: 0; border-radius: 0; padding: calc(var(--ck-section-gap) - 10px) 16px 28px; }
+/* sections (Ingredients, Directions, Notes) sit --ck-section-gap below the text before them; the panel's 18px grid gap and line slack make up the rest */
+.ck-panel > .ck-sec:not(:first-child) { margin-top: calc(var(--ck-section-gap) - 22px); }
+.ck-panel-head { display: grid; gap: 4px; text-align: center; }
+.ck-recipe-title { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; }
+.ck-stats { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
+.ck-stats > div { display: grid; gap: 2px; justify-items: center; border-left: 1px solid var(--ck-line); }
+.ck-stats > div:first-child { border-left: 0; }
+.ck-stats b { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ck-stats span { font-size: 12px; color: var(--ck-muted); }
+.ck-stars { display: inline-flex; gap: 2px; }
+.ck-stars svg { fill: var(--ck-strong); }
+.ck-stars svg.on { fill: var(--ck-fg); }
+.ck-actions4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ck-action { display: grid; justify-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ck-fg2); }
+.ck-action-icon { width: 44px; height: 44px; border-radius: 9999px; display: grid; place-items: center; background-color: var(--ck-soft); color: var(--ck-fg); }
+.stepper.ck-stepper-outline {
+  --f7-stepper-button-bg-color: var(--ck-surface);
+}
+.stepper.ck-stepper-outline .stepper-button-minus,
+.stepper.ck-stepper-outline .stepper-button-plus { box-shadow: inset 0 0 0 1px var(--ck-strong); }
+/* ×½–×3 as underlined tabs (Airbnb) instead of a filled segmented control */
+.segmented.ck-underline-tabs {
+  --f7-segmented-strong-bg-color: transparent;
+  --f7-segmented-strong-padding: 0px;
+  --f7-segmented-strong-button-text-color: var(--ck-muted);
+}
+.segmented.ck-underline-tabs .segmented-highlight { display: none; }
+html.ios .segmented.ck-underline-tabs .button.button-active,
+html.ios .segmented.ck-underline-tabs .button.button-active:hover,
+html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
+  --f7-button-text-color: var(--ck-fg);
+  --f7-button-pressed-text-color: var(--ck-fg);
+  color: var(--ck-fg);
+  border-radius: 0;
+  box-shadow: inset 0 -2px 0 var(--ck-fg);
+}
+.ck-sec { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ck-sec h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.ck-sec .link { font-size: 14px; font-weight: 600; }
+.list.ck-plain-list {
+  --f7-list-bg-color: transparent;
+  --f7-list-strong-bg-color: transparent;
+  --f7-list-item-title-white-space: normal;
+  --f7-list-item-title-font-size: 15px;
+  --f7-list-item-footer-font-size: 13px;
+  /* compact rows (Framework7's iOS default is 52px tall with 12px padding) so more of the list fits on screen */
+  --f7-list-item-min-height: 36px;
+  --f7-list-item-padding-vertical: 7px;
+  margin: 0;
+}
+/* Group labels (ingredients and directions): plain uppercase text that scrolls with the content.
+   Spacing (DESIGN.md "Group labels"), measured text to text: --ck-group-gap above a label, --ck-group-label-gap below it.
+   The offsets subtract what rows already carry: ingredient rows have ~8-10px padding above and below their text,
+   and the steps grid has a 14px gap plus ~2px line-height slack. */
+/* sentence case as typed, dark and bigger than the rows, so a group stands out without shouting */
+.ck-group-label { font-size: 17px; font-weight: 700; line-height: 22px; letter-spacing: -0.01em; color: var(--ck-fg); }
+/* ingredient rows are bulleted (like Prepear), which indents them under their group label so the groups stand out */
+.list.ck-ing-list { --f7-list-item-media-margin: 12px; }
+.list.ck-ing-list .item-media { align-self: flex-start; }
+.ck-bullet { width: 5px; height: 5px; border-radius: 9999px; background-color: var(--ck-fg2); margin: 8px 0 0 6px; }
+.ck-ing-group { padding-top: 18px; } /* first group: clear of the servings pill, like Directions under its heading */
+.ck-ing-group + .ck-ing-group { padding-top: calc(var(--ck-group-gap) - 10px); }
+.ck-ing-group > .ck-group-label { padding: 0 16px; margin-bottom: calc(var(--ck-group-label-gap) - 10px); }
+.ck-steps { display: grid; gap: 14px; }
+.ck-steps > .ck-group-label { margin-bottom: calc(var(--ck-group-label-gap) - 16px); }
+.ck-steps > .ck-step + .ck-group-label { margin-top: calc(var(--ck-group-gap) - 16px); }
+.ck-step { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+/* step numbers are plain bold text, the same size as the step: no circles */
+.ck-step-no { font-size: 15px; line-height: 1.45; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ck-fg); }
+.ck-step-text { font-size: 15px; line-height: 1.45; white-space: normal; }
+.ck-notes { background-color: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 16px; padding: 12px 14px; font-size: 14px; line-height: 1.45; color: var(--ck-fg2); }
+/* ── Cook mode (Prepear layout): Ingredients on top, Directions below, a drag handle between ──
+   The handle is the one hand-built gesture in the app (approved by the user; see CLAUDE.md). It only changes the
+   top half's height: no transforms, no animation. Each half scrolls on its own. */
+.popup.ck-cook { --f7-page-bg-color: var(--ck-bg); }
+.page-content.ck-split { display: flex; flex-direction: column; overflow: hidden; padding-bottom: var(--f7-safe-area-bottom); }
+/* the two halves and the handle, measured without the page's top-bar and home-indicator padding */
+.ck-split-body { --ck-split-half: 22px; position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+/* isolation keeps Framework7's list layering (lists are z-index 1) inside each half, so the handle, last in the markup, stays on top */
+.ck-pane { min-height: 0; overflow-y: auto; overscroll-behavior: contain; isolation: isolate; }
+.ck-pane-ingredients { flex: 0 0 auto; }
+.ck-pane-steps { flex: 1 1 0; }
+/* room for the handle's fade: the last ingredient and the Directions heading can scroll clear of it */
+.ck-pane-ingredients::after,
+.ck-pane-steps::before { content: ''; display: block; height: var(--ck-split-half); }
+.ck-pane-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 16px 2px; }
+.ck-pane-head h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.ck-split-handle {
+  /* laid over the split line (top is set inline): a 2px Tomato line, with the page colour fading in towards it from both
+     sides, so text passing under it softens instead of being cut off by a band or meeting a hard edge */
+  position: absolute; left: 0; right: 0; height: calc(2 * var(--ck-split-half)); display: grid; place-items: center;
+  background:
+    linear-gradient(var(--ck-accent), var(--ck-accent)) center / 100% 2px no-repeat,
+    linear-gradient(transparent, var(--ck-bg) 40%, var(--ck-bg) 60%, transparent);
+  touch-action: none; cursor: row-resize;
+  /* holding it is a drag, never a text selection or the iOS long-press menu */
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.ck-split-body-holding { -webkit-user-select: none; user-select: none; }
+/* held: a thicker line and a bigger grip (an instant size change, no animation) */
+.ck-split-handle.ck-split-holding { background-size: 100% 4px, auto; }
+.ck-split-holding .ck-split-grip { width: 72px; height: 32px; }
+.ck-split-handle:focus-visible { outline: 2px solid var(--ck-accent-ink); outline-offset: -2px; }
+.ck-split-grip { display: grid; place-items: center; width: 48px; height: 22px; border-radius: 9999px; background-color: var(--ck-accent); color: var(--ck-surface); }
+/* big text so it reads from the counter */
+/* ticking a row only crosses it out: no grey pressed flash */
+.list.ck-cook-list { --f7-list-item-title-font-size: 17px; --f7-list-item-footer-font-size: 14px; --f7-list-link-pressed-bg-color: transparent; }
+.list.ck-cook-list li.ck-done .item-title,
+.list.ck-cook-list li.ck-done .item-footer { text-decoration: line-through; color: var(--ck-done-ink); }
+.list.ck-cook-list li.ck-done .ck-step-no { color: inherit; }
+.list.ck-cook-steps { --f7-list-item-padding-vertical: 10px; }
+/* long steps: the checkbox lines up with the first line of text, not the middle of the row */
+.list.ck-cook-steps .item-content { align-items: flex-start; }
+/* the checkbox (a direct child of the row, no item-media) centred on the first 26px line of step text: row padding + (26 - 22) / 2 */
+.list.ck-cook-steps .item-content > .icon-checkbox { align-self: flex-start; margin-top: calc(var(--f7-list-item-padding-vertical) + 2px); }
+.ck-cook-step-group { padding: 18px 16px 2px; list-style: none; }
+.ck-cook-step { display: grid; justify-items: start; white-space: normal; }
+/* a step's ingredients and timers: a Framework7 accordion item that collapses when the step is ticked */
+.ck-step-extra { justify-self: stretch; }
+.ck-step-extra-inner { display: grid; gap: 8px; justify-items: start; padding-top: 8px; }
+.ck-cook-text { font-size: 18px; line-height: 1.45; }
+.ck-cook-text .ck-step-no { font-size: 18px; margin-right: 4px; }
+.ck-cook-uses { font-size: 14px; line-height: 1.4; color: var(--ck-fg2); }
+.button.ck-timer-button { height: 36px; gap: 6px; padding: 0 14px; width: auto; font-size: 15px; }
+.button.ck-timer-running { --f7-button-text-color: var(--ck-accent-ink); font-variant-numeric: tabular-nums; }
+.link.ck-timer-pill {
+  height: 36px; padding: 0 12px; gap: 6px; border-radius: 9999px;
+  background-color: var(--ck-soft); color: var(--ck-accent-ink); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+/* Adjust amounts: the result line with a Reset link, under the mode toggle */
+.ck-scale-result { flex-wrap: nowrap; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ck-scale-result .ck-note { flex: 1; min-width: 0; }
+.ck-scale-result .link { flex: none; font-weight: 600; }
+/* bottom bar with servings and "Start cooking" (the tab bar is hidden on this page) */
+html.ios .toolbar.ck-cta::before,
+html.ios .toolbar.ck-cta::after { display: none; }
+html.ios .toolbar.ck-cta {
+  --f7-toolbar-height: 64px;
+}
+html.ios .toolbar.ck-cta .toolbar-inner {
+  bottom: 0; /* runs to the screen's bottom edge; the home-indicator strip is padding (see the tab bar) */
+  justify-content: space-between;
+  padding: 0 16px var(--f7-safe-area-bottom);
+  background-color: var(--ck-surface);
+  border-top: 1px solid var(--ck-line);
+}
+/* servings pill next to "Ingredients" (opens Adjust amounts); the footer is just Start cooking, full width */
+.button.ck-cta-button { flex: 1; }
+.ck-sec .link.ck-scale-button { font-size: 14px; }
+.link.ck-scale-button {
+  height: 36px;
+  padding: 0 12px;
+  gap: 6px;
+  border-radius: 9999px;
+  background-color: var(--ck-soft);
+  color: var(--ck-fg);
+  font-weight: 600;
+}
+.button.ck-cta-button {
+  --f7-button-fill-bg-color: var(--ck-accent);
+  --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
+  --f7-button-border-radius: 9999px;
+  --f7-button-large-height: 48px;
+  --f7-button-large-font-size: 19px; /* large text: white on Tomato meets WCAG AA for large text */
+  --f7-button-large-font-weight: 700;
+  padding: 0 22px;
+}
+
+/* ── Edit (Headspace): soft filled fields with the label above, compact 14px text like Prepear ── */
+.page.ck-edit,
+.sheet-modal.ck-edit-sheet {
+  --f7-list-font-size: 14px;
+  --f7-list-item-title-font-size: 14px;
+  --f7-list-item-footer-font-size: 12px;
+  --f7-list-item-header-font-size: 11px;
+  --f7-input-font-size: 14px;
+  --f7-label-font-size: 12px;
+  --f7-label-font-weight: 600;
+}
+.list.ck-fields {
+  --f7-list-bg-color: transparent;
+  --f7-list-strong-bg-color: transparent;
+  --f7-list-item-border-color: transparent;
+  margin: 10px 0;
+}
+.list.ck-fields .item-inner { padding-right: 16px; }
+/* the clear (×) button sits inside the field's rounded end, not on its edge */
+.list.ck-fields .input-clear-button { right: 12px; }
+.list.ck-fields .item-input-with-value input { padding-right: 30px; }
+/* Edit Ingredient: the whole line, under the sheet title */
+.block.ck-ing-preview { margin: 4px 0 0; font-size: 14px; }
+.list.ck-fields .item-input-wrap {
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 0 14px;
+  border-radius: 18px;
+  background-color: var(--ck-soft);
+}
+.list.ck-fields .item-input-focused .item-input-wrap { box-shadow: inset 0 0 0 1.5px var(--ck-accent); }
+.list.ck-fields .item-input-invalid .item-input-wrap { box-shadow: inset 0 0 0 1.5px var(--ck-error); }
+.list.ck-fields textarea { padding-top: 10px; padding-bottom: 10px; line-height: 1.4; }
+.list.ck-edit-list {
+  --f7-list-item-title-white-space: normal;
+  --f7-list-inset-border-radius: 24px;
+  --f7-list-strong-bg-color: var(--ck-soft);
+  --f7-list-item-border-color: var(--ck-line);
+}
+.list.ck-edit-list .ck-group-row .item-title { font-size: 15px; font-weight: 700; flex: 1; min-width: 0; }
+/* Groups read as separate cards. It's still one sortable list (rows can move between groups), so the list itself has
+   no fill: rows carry the soft fill, a group row sits on the page colour between cards, and the rows on either side of
+   it round off their corners. */
+.list.ck-edit-list { --f7-list-strong-bg-color: transparent; }
+.list.ck-edit-list li { background-color: var(--ck-soft); }
+.list.ck-edit-list li.ck-group-row { background-color: var(--ck-bg); }
+.list.ck-edit-list li.ck-group-row:not(:first-child) .item-content { padding-top: 14px; }
+.list.ck-edit-list li:first-child:not(.ck-group-row),
+.list.ck-edit-list li.ck-group-row + li:not(.ck-group-row) { border-top-left-radius: 24px; border-top-right-radius: 24px; }
+.list.ck-edit-list li:last-child:not(.ck-group-row),
+.list.ck-edit-list li:not(.ck-group-row):has(+ li.ck-group-row) { border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; }
+/* rows lay out from the top, so the reorder handle can line up with the first line of text (the step number, the
+   ingredient, the group name) however many lines the row has */
+.list.ck-edit-list { --f7-list-item-min-height: 44px; }
+.list.ck-edit-list .item-content,
+.list.ck-edit-list .item-inner { align-items: flex-start; }
+.list.ck-edit-list .item-title { line-height: 20px; }
+.list.ck-edit-list .ck-step-no,
+.list.ck-edit-list .ck-step-text { line-height: 20px; }
+.list.ck-edit-list .ck-group-input { height: 22px; line-height: 22px; }
+/* the handle's 20px icon centred on that first line: row padding + half a line - half the icon */
+.list.ck-edit-list .sortable-handler { align-items: flex-start; padding-top: calc(var(--f7-list-item-padding-vertical) + 10px - 10px); box-sizing: border-box; }
+/* group rows: handle and ↑ ↓ centred on the two-line label (13px "Group" + 22px name) */
+.list.ck-edit-list li.ck-group-row .sortable-handler { padding-top: calc(var(--f7-list-item-padding-vertical) + 17.5px - 10px); }
+.list.ck-edit-list li.ck-group-row:not(:first-child) .sortable-handler { padding-top: calc(14px + var(--f7-list-item-padding-vertical) + 17.5px - 10px); }
+/* drag handles are on the right (Framework7's default side), so a thumb on one doesn't cover the row's text.
+   The row's tap area ends where the handle starts, and a row swiped open hides its handle (Framework7's own opacity
+   transition) so it can't sit over Delete. */
+.list.ck-edit-list li .item-link { margin-right: var(--f7-sortable-handler-width); }
+.list.ck-edit-list li.swipeout-opened .sortable-handler,
+.list.ck-edit-list li.swipeout-active .sortable-handler { opacity: 0; pointer-events: none; }
+/* the row being held or dragged (Framework7 marks it .sorting as soon as the long press registers): a pale Tomato
+   fill and rounded corners, so it's clear which row moves */
+.list.ck-edit-list li.sorting,
+.list.ck-edit-list li.ck-group-row.sorting { background-color: var(--ck-accent-tint); border-radius: 16px; }
+/* the long press also leaves the row's pressed shade on; drop it so the tint reads clean */
+.list.ck-edit-list li.sorting .item-link.active-state { background-color: transparent; }
+/* ↑ ↓ on group rows: move the whole group past its neighbour */
+.ck-group-move { display: flex; gap: 6px; align-self: center; }
+/* group row: a small "Group" kicker over the name, both in the title so ↑ ↓ sit beside them */
+.ck-group-title { display: grid; }
+.ck-group-kicker { font-size: 11px; line-height: 13px; font-weight: 400; color: var(--ck-fg2); }
+/* the list ends close to its paste box, not Framework7's 35px list margin */
+.list.ck-edit-list { margin-bottom: 8px; }
+.button.ck-move-btn { --f7-button-bg-color: var(--ck-soft); --f7-button-text-color: var(--ck-fg); width: 34px; height: 34px; padding: 0; border-radius: 9999px; }
+.button.ck-move-btn.disabled { opacity: 0.35; }
+.list.ck-edit-list li.ck-group-row .item-inner::after,
+.list.ck-edit-list li:has(+ li.ck-group-row) .item-inner::after { display: none; }
+/* group name typed right in the row: looks like the bold title until tapped */
+.ck-group-input { width: 100%; padding: 0; border: 0; background: transparent; font: inherit; color: var(--ck-fg); }
+.ck-group-input::placeholder { color: var(--ck-fg2); font-weight: 600; }
+.ck-group-input:focus { outline: none; box-shadow: inset 0 -1.5px 0 var(--ck-accent); }
+.list.ck-edit-list .ck-group-row .item-inner { cursor: text; }
+/* small text inside the soft cards uses the darker secondary grey (muted grey on soft fill is only 4.3:1) */
+.list.ck-edit-list { --f7-list-item-footer-text-color: var(--ck-fg2); --f7-list-item-header-text-color: var(--ck-fg2); }
+.list.ck-edit-list .ck-step-text { font-size: 14px; }
+.list.ck-edit-list .ck-step-no { font-size: 14px; }
+.list.ck-edit-list .ck-step { grid-template-columns: 22px minmax(0, 1fr); }
+.button.ck-dashed {
+  --f7-button-text-color: var(--ck-muted);
+  height: 42px;
+  gap: 6px;
+  border: 1.5px dashed var(--ck-strong);
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.ck-edit-photo { position: relative; aspect-ratio: 16 / 10; border-radius: 24px; display: grid; place-items: center; }
+.ck-edit-photo.ck-edit-photo-empty {
+  aspect-ratio: auto; height: 120px; display: flex; justify-content: center; align-items: center; gap: 8px;
+  border: 1.5px dashed var(--ck-strong); background-color: var(--ck-soft); color: var(--ck-fg2); font-size: 15px; font-weight: 600;
+}
+.ck-edit-photo-actions { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 8px; }
+/* all the photos under the large one: tap to show it large; the first is the cover; + adds more */
+.ck-thumbs { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
+.ck-thumbs::-webkit-scrollbar { display: none; }
+.ck-thumb { position: relative; flex: none; width: 64px; aspect-ratio: 4 / 3; border-radius: 10px; display: grid; place-items: center; }
+.ck-thumb.ck-thumb-on { box-shadow: 0 0 0 2px var(--ck-bg), 0 0 0 4px var(--ck-accent); }
+.ck-thumb-add { border: 1.5px dashed var(--ck-strong); background-color: var(--ck-soft); color: var(--ck-fg2); box-sizing: border-box; }
+.ck-thumb-badge {
+  position: absolute; left: 4px; bottom: 4px; padding: 1px 5px; border-radius: 9999px;
+  background-color: var(--ck-scrim); color: var(--ck-surface); font-size: 10px; font-weight: 600; line-height: 14px;
+}
+.ck-thumbs { padding: 4px; margin-left: -4px; margin-right: -4px; }
+/* Full-screen photos (Framework7 Photo Browser): black, with a black top bar and light text. The app is light-only,
+   so Framework7's dark theme variables don't reach it; set them here. */
+.photo-browser-page {
+  --f7-photobrowser-bg-color: var(--ck-photo-dark);
+  --f7-navbar-bg-color: var(--ck-photo-dark);
+  --f7-bars-bg-color: var(--ck-photo-dark);
+  --f7-navbar-text-color: var(--ck-surface);
+  --f7-navbar-link-color: var(--ck-surface);
+  --f7-theme-color: var(--ck-surface);
+}
+.photo-browser-page .navbar .title { color: var(--ck-surface); }
+/* Framework7 leaves the page and its bar see-through (the photo area starts under the bar), so the light app showed there */
+.photo-browser-popup .photo-browser-page { background-color: var(--ck-photo-dark); }
+/* the "Not iOS 26" bars are painted the light page colour; the photo viewer's bar is black */
+html.ios .photo-browser-page .navbar-bg::after { background-color: var(--ck-photo-dark); }
+/* Crop Photo: the 4:3 frame is the whole cropper, edge to edge, on black */
+.popup.ck-crop { --f7-page-bg-color: var(--ck-photo-dark); }
+.ck-crop-frame { width: 100%; aspect-ratio: 4 / 3; margin-top: 24px; background-color: var(--ck-photo-dark); }
+.ck-crop-frame img { display: block; max-width: 100%; }
+/* the frame is the whole cropper: no Cropper.js outline, lines or corner handles */
+.ck-crop .cropper-view-box { outline: 0; }
+.ck-crop .cropper-line,
+.ck-crop .cropper-point { display: none; }
+.block.ck-crop-hint { color: var(--ck-on-dark-muted); text-align: center; }
+.button.ck-photo-btn {
+  --f7-button-bg-color: rgba(255, 255, 255, 0.94);
+  --f7-button-text-color: var(--ck-fg);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 9999px;
+}
+.ck-label { font-size: 12px; font-weight: 600; color: var(--ck-fg2); }
+.ck-grid2 { display: grid; grid-template-columns: 1fr 1fr; }
+/* Edit and New Recipe: title centered between Cancel and Save (iOS form-sheet pattern). Tab screens keep left titles.
+   Framework7 adds both its centered and left-title classes here; space-between lets its own centering math work. */
+html.ios .navbar-inner-centered-title.navbar-inner-left-title { justify-content: space-between; }
+html.ios .navbar-inner-centered-title.navbar-inner-left-title .right { margin-left: 0; }
+html.ios .navbar-inner-centered-title.navbar-inner-left-title .title { text-align: center; margin-left: 0; margin-right: 0; }
+/* Save: filled Tomato ink pill with white text (5:1); Tomato text on the soft grey circle was 4.3:1 */
+html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent-ink); color: var(--ck-surface); font-weight: 700; }

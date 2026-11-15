@@ -413,17 +413,20 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 .popup.ck-cook { --f7-page-bg-color: var(--ck-bg); }
 .page-content.ck-split { display: flex; flex-direction: column; overflow: hidden; padding-bottom: var(--f7-safe-area-bottom); }
 /* the two halves and the handle, measured without the page's top-bar and home-indicator padding */
-.ck-split-body { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.ck-split-body { --ck-split-half: 22px; position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 /* isolation keeps Framework7's list layering (lists are z-index 1) inside each half, so the handle, last in the markup, stays on top */
 .ck-pane { min-height: 0; overflow-y: auto; overscroll-behavior: contain; isolation: isolate; }
 .ck-pane-ingredients { flex: 0 0 auto; }
 .ck-pane-steps { flex: 1 1 0; }
+/* room for the handle's fade: the last ingredient and the Directions heading can scroll clear of it */
+.ck-pane-ingredients::after,
+.ck-pane-steps::before { content: ''; display: block; height: var(--ck-split-half); }
 .ck-pane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 16px 16px 2px; }
 .ck-pane-head h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 .ck-split-handle {
   /* laid over the split line (top is set inline): a 2px Tomato line, with the page colour fading in towards it from both
      sides, so text passing under it softens instead of being cut off by a band or meeting a hard edge */
-  position: absolute; left: 0; right: 0; height: 44px; display: grid; place-items: center;
+  position: absolute; left: 0; right: 0; height: calc(2 * var(--ck-split-half)); display: grid; place-items: center;
   background:
     linear-gradient(var(--ck-accent), var(--ck-accent)) center / 100% 2px no-repeat,
     linear-gradient(transparent, var(--ck-bg) 40%, var(--ck-bg) 60%, transparent);

@@ -308,7 +308,7 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
                 both halves (their lists are positioned too) without a z-index */}
             <div
               className="ck-split-handle"
-              style={{ top: `calc(${split * 100}% - 22px)` }}
+              style={{ top: `calc(${split * 100}% - var(--ck-split-half))` }}
               role="separator"
               aria-orientation="horizontal"
               aria-label="Resize ingredients and directions"

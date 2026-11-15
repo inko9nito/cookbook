@@ -262,6 +262,19 @@ async function swipeLeft(ctx, page, locator) {
     // the divider has no solid band over the text under it (only a hairline and a fade, drawn as gradients)
     const bg = await page.locator('.ck-cook .ck-split-handle').evaluate((el) => getComputedStyle(el).backgroundColor);
     if (bg !== 'rgba(0, 0, 0, 0)') throw new Error(`divider has a solid background (${bg})`);
+    // nothing sits under the divider's fade at the ends: the Directions heading at the top, the last ingredient at the bottom
+    const ends = await page.evaluate(() => {
+      const handle = document.querySelector('.ck-cook .ck-split-handle').getBoundingClientRect();
+      const ing = document.querySelector('.ck-cook .ck-pane-ingredients');
+      const head = document.querySelector('.ck-cook .ck-pane-steps h2').getBoundingClientRect();
+      ing.scrollTop = ing.scrollHeight;
+      const last = [...ing.querySelectorAll('li')].pop().querySelector('.item-inner').getBoundingClientRect();
+      const out = { lastBottom: last.bottom, headTop: head.top, fadeTop: handle.top, fadeBottom: handle.bottom };
+      ing.scrollTop = 0;
+      return out;
+    });
+    if (ends.lastBottom > ends.fadeTop + 1) throw new Error(`last ingredient ends ${Math.round(ends.lastBottom - ends.fadeTop)}px into the divider's fade when scrolled to the end`);
+    if (ends.headTop < ends.fadeBottom - 1) throw new Error(`Directions heading starts ${Math.round(ends.fadeBottom - ends.headTop)}px inside the divider's fade`);
   });
   await step('16b-cook-ingredient-ticked', async () => {
     await page.locator('.ck-cook .ck-pane-ingredients li').first().locator('label').tap();

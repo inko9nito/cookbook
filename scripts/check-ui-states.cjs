@@ -478,8 +478,16 @@ async function swipeLeft(ctx, page, locator) {
     if (layout.length) throw new Error(layout.join('; '));
   });
   await step('12d2-add-tag-typing', async () => {
-    // tags are typed inline at the end of the chips, no dialog
+    // tags are typed inline at the end of the chips, no dialog; the chip hugs its text like the other chips
+    const slack = () => page.evaluate(() => {
+      const chip = document.querySelector('.page-current .ck-tag-add'); const i = chip.querySelector('input');
+      const c = document.createElement('canvas').getContext('2d'); const cs = getComputedStyle(i); c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      return Math.round(chip.getBoundingClientRect().right - i.getBoundingClientRect().left - c.measureText(i.value || i.placeholder).width);
+    });
+    const empty = await slack();
     await page.locator('.page-current .ck-tag-add input').fill('Make-ahead');
+    const typed = await slack();
+    if (empty > 24 || typed > 24) throw new Error(`"Add tag" chip has ${Math.max(empty, typed)}px after its text (other chips have 15)`);
   });
   await step('12d3-tag-added', async () => {
     await page.locator('.page-current .ck-tag-add input').press('Enter'); await page.waitForTimeout(300);

@@ -330,10 +330,12 @@ html.ios {
 /* "Add tag" at the end of the tag chips: dashed, like "Separate into groups" */
 /* "+ Add tag" at the end of the tag chips: a dashed chip you type into; Return adds the tag */
 .ck-tag-add {
-  display: inline-flex; align-items: center; gap: 4px; height: var(--f7-chip-height); padding: 0 12px;
+  display: inline-flex; align-items: center; gap: 4px; height: var(--f7-chip-height); padding: 0 var(--f7-chip-padding-horizontal) 0 12px;
   border-radius: 9999px; box-shadow: inset 0 0 0 1.5px var(--ck-strong); color: var(--ck-fg2);
 }
-.ck-tag-add input { width: 92px; padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--f7-chip-font-size); font-weight: var(--f7-chip-font-weight); color: var(--ck-fg); }
+.ck-tag-sizer { display: inline-grid; max-width: 60vw; }
+.ck-tag-sizer::after { content: attr(data-value) ' '; grid-area: 1 / 1; visibility: hidden; white-space: pre; overflow: hidden; font-size: var(--f7-chip-font-size); font-weight: var(--f7-chip-font-weight); }
+.ck-tag-add input { grid-area: 1 / 1; width: 0; min-width: 100%; padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--f7-chip-font-size); font-weight: var(--f7-chip-font-weight); color: var(--ck-fg); }
 .ck-tag-add input::placeholder { color: var(--ck-fg2); }
 .ck-tag-add input:focus { outline: none; }
 .ck-tag-add:focus-within { box-shadow: inset 0 0 0 1.5px var(--ck-accent); }

@@ -371,22 +371,26 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
           ))}
           <label className="ck-tag-add">
             <Plus {...inlineIcon} />
-            <input
-              type="text"
-              value={newTag}
-              placeholder="Add tag"
-              aria-label="Add a tag"
-              autoCapitalize="off"
-              enterKeyHint="done"
-              onChange={(e) => setNewTag(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addTag();
-                }
-              }}
-              onBlur={addTag}
-            />
+            {/* the field is exactly as wide as its text (the placeholder, or what's typed so far): an invisible copy of the
+                text sizes the cell the input fills */}
+            <span className="ck-tag-sizer" data-value={newTag || 'Add tag'}>
+              <input
+                type="text"
+                value={newTag}
+                placeholder="Add tag"
+                aria-label="Add a tag"
+                autoCapitalize="off"
+                enterKeyHint="done"
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag();
+                  }
+                }}
+                onBlur={addTag}
+              />
+            </span>
           </label>
         </div>
       </Block>

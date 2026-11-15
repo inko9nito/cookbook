@@ -4,7 +4,6 @@ import Framework7React from 'framework7-react';
 
 import 'framework7/css/bundle';
 import './theme/cookbook.css';
-import './theme/placeholder-photos.css';
 import './app.css';
 
 import CookbookApp from './App';

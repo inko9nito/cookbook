@@ -268,6 +268,8 @@ html.ios .searchbar {
 
 /* ── Photos ── */
 .ck-photo { background-color: var(--ck-soft); background-size: cover; background-position: center; }
+/* a recipe without a photo: plain soft grey with a muted chef hat, no colored placeholder */
+.ck-photo-empty { display: grid; place-items: center; color: var(--ck-muted); }
 
 /* ── Recipe cards (Prepear grid): two per row, white card, photo on top, no shadow ── */
 .ck-card-grid { --f7-grid-gap: 12px; }
@@ -509,7 +511,10 @@ html.ios .toolbar.ck-cta .toolbar-inner {
   font-weight: 600;
 }
 .ck-edit-photo { position: relative; aspect-ratio: 16 / 10; border-radius: 24px; display: grid; place-items: center; }
-.ck-edit-photo-empty { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ck-fg2); }
+.ck-edit-photo.ck-edit-photo-empty {
+  aspect-ratio: auto; height: 120px; display: flex; justify-content: center; align-items: center; gap: 8px;
+  border: 1.5px dashed var(--ck-strong); background-color: var(--ck-soft); color: var(--ck-fg2); font-size: 15px; font-weight: 600;
+}
 .ck-edit-photo-actions { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 8px; }
 .button.ck-photo-btn {
   --f7-button-bg-color: rgba(255, 255, 255, 0.94);
@@ -521,5 +526,10 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 }
 .ck-label { font-size: 12px; font-weight: 600; color: var(--ck-fg2); }
 .ck-grid2 { display: grid; grid-template-columns: 1fr 1fr; }
+/* Edit and New Recipe: title centered between Cancel and Save (iOS form-sheet pattern). Tab screens keep left titles.
+   Framework7 adds both its centered and left-title classes here; space-between lets its own centering math work. */
+html.ios .navbar-inner-centered-title.navbar-inner-left-title { justify-content: space-between; }
+html.ios .navbar-inner-centered-title.navbar-inner-left-title .right { margin-left: 0; }
+html.ios .navbar-inner-centered-title.navbar-inner-left-title .title { text-align: center; margin-left: 0; margin-right: 0; }
 /* Save: filled Tomato ink pill with white text (5:1); Tomato text on the soft grey circle was 4.3:1 */
 html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent-ink); color: var(--ck-surface); font-weight: 700; }

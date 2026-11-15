@@ -301,7 +301,17 @@ async function swipeLeft(ctx, page, locator) {
 
   await page.goto(BASE);
   await page.waitForTimeout(900);
-  await step('12g-new-recipe', async () => { await page.locator('.navbar a[aria-label="New recipe"]').first().tap(); await page.waitForTimeout(900); });
+  await step('12g-new-recipe', async () => {
+    await page.locator('.navbar a[aria-label="New recipe"]').first().tap();
+    await page.waitForTimeout(900);
+    // the form title is centered on the screen (DESIGN.md "Pushed form screens")
+    const off = await page.evaluate(() => {
+      const t = document.querySelector('.page-current .navbar .title');
+      const r = t.getBoundingClientRect();
+      return Math.round(r.left + r.width / 2 - innerWidth / 2);
+    });
+    if (Math.abs(off) > 3) throw new Error(`title is ${off}px off center`);
+  });
 
   await page.goto(BASE);
   await page.waitForTimeout(900);

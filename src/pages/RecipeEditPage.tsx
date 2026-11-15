@@ -121,23 +121,24 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
 
       {/* Photo */}
       <Block>
-        <div className="ck-edit-photo ck-photo" data-tone={draft.tone} style={photoStyle(draft.photo)} role="img" aria-label="Recipe photo">
-          {!draft.photo && (
-            <span className="ck-edit-photo-empty">
-              <Camera {...inlineIcon} /> Add a photo
-            </span>
-          )}
-          <span className="ck-edit-photo-actions">
-            {draft.photo && (
+        {draft.photo ? (
+          <div className="ck-edit-photo ck-photo" style={photoStyle(draft.photo)} role="img" aria-label="Recipe photo">
+            <span className="ck-edit-photo-actions">
               <Button round className="ck-photo-btn" onClick={() => set({ photo: undefined })} aria-label="Remove photo">
                 <Trash2 {...inlineIcon} />
               </Button>
-            )}
-            <Button round className="ck-photo-btn" onClick={() => fileRef.current?.click()} aria-label="Choose photo">
-              <ImagePlus {...inlineIcon} />
-            </Button>
-          </span>
-        </div>
+              <Button round className="ck-photo-btn" onClick={() => fileRef.current?.click()} aria-label="Replace photo">
+                <ImagePlus {...inlineIcon} />
+              </Button>
+            </span>
+          </div>
+        ) : (
+          // no photo yet: one plain tappable box (dashed, like "Separate into groups"), no colored placeholder
+          <Link noLinkClass className="ck-edit-photo ck-edit-photo-empty" onClick={() => fileRef.current?.click()}>
+            <Camera {...inlineIcon} />
+            Add a photo
+          </Link>
+        )}
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => pickPhoto(e.target.files?.[0])} />
       </Block>
 

@@ -3,7 +3,7 @@ import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   Actions, ActionsGroup, ActionsButton, f7,
 } from 'framework7-react';
-import { Ellipsis, Star, ChevronDown } from 'lucide-react';
+import { Ellipsis, Star, ChevronDown, ChefHat } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
 import CookMode from '../components/CookMode';
 import { useStore } from '../demo/store';
@@ -75,7 +75,13 @@ export default function RecipePage({ f7route, f7router }: Props) {
         </Button>
       </Toolbar>
 
-      <div className="ck-hero ck-photo" data-tone={recipe.tone} style={photoStyle(recipe.photo)} role="img" aria-label={recipe.title} />
+      {recipe.photo ? (
+        <div className="ck-hero ck-photo" style={photoStyle(recipe.photo)} role="img" aria-label={recipe.title} />
+      ) : (
+        <div className="ck-hero ck-photo ck-photo-empty" aria-hidden="true">
+          <ChefHat size={40} strokeWidth={1.5} />
+        </div>
+      )}
 
       <div className="ck-panel">
         <div className="ck-panel-head">

@@ -3,7 +3,7 @@ import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   Actions, ActionsGroup, ActionsButton, f7,
 } from 'framework7-react';
-import { Ellipsis, Star, Scale, ChevronDown } from 'lucide-react';
+import { Ellipsis, Star, ChevronDown } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
 import { useStore } from '../demo/store';
 import { titleCase, type DemoIngredient } from '../demo/data';
@@ -103,8 +103,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
         <div className="ck-sec">
           <h2>Ingredients</h2>
           {/* the one place servings show: tap to adjust amounts */}
-          <Link className="ck-scale-button" onClick={() => setScaleOpen(true)} aria-label="Adjust amounts">
-            <Scale {...inlineIcon} />
+          <Link className="ck-scale-button" onClick={() => setScaleOpen(true)} aria-label={`${scaled ? `×${friendly(factor)} · ` : ''}${servingsLabel}, adjust amounts`}>
             <span>{scaled ? `×${friendly(factor)} · ${servingsLabel}` : servingsLabel}</span>
             <ChevronDown {...inlineIcon} />
           </Link>

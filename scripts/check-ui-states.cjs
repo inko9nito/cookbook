@@ -4,6 +4,7 @@
   - runs axe-core's color-contrast rule (catches unreadable text in selected/pressed states),
   - flags tappable elements that overlap each other (e.g. a drag handle on top of a Delete button),
   - flags text painted over other text in the same scrolling page or sheet,
+  - checks the vertical rhythm (DESIGN.md): a section heading must have clearly more space above it than a group label,
   - flags sticky elements inside page content (Framework7 list group titles pin while scrolling inside a list group;
     DESIGN.md says group labels scroll with the content).
 
@@ -101,10 +102,33 @@ async function audit(page, name) {
       .filter((el) => getComputedStyle(el).position === 'sticky' && !el.closest('.navbar, .toolbar, .searchbar'))
       .map((el) => `.${String(el.className).trim().split(/\s+/).join('.')} "${el.textContent.trim().slice(0, 18)}"`),
   );
+  const rhythm = await page.evaluate(() => {
+    const scope = document.querySelector('.page-current .page-content');
+    if (!scope) return [];
+    // space above an element = its text top minus the bottom of the nearest visible text above it
+    const lines = [];
+    const w = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.textContent.trim() ? 1 : 2) });
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      const r = document.createRange(); r.selectNodeContents(n);
+      for (const x of r.getClientRects()) if (x.height > 2) lines.push({ node: n, top: x.top, bottom: x.bottom });
+    }
+    const gapAbove = (el) => {
+      const r = document.createRange(); r.selectNodeContents(el); const t = r.getBoundingClientRect();
+      const above = lines.filter((l) => l.bottom <= t.top + 1 && !el.contains(l.node));
+      return above.length ? { name: el.textContent.trim().slice(0, 18), gap: Math.round(t.top - Math.max(...above.map((l) => l.bottom))) } : null;
+    };
+    const sections = [...scope.querySelectorAll('.ck-sec h2')].map(gapAbove).filter(Boolean);
+    const groups = [...scope.querySelectorAll('.ck-group-label')].map(gapAbove).filter(Boolean);
+    if (!sections.length || !groups.length) return [];
+    const biggestGroup = Math.max(...groups.map((g) => g.gap));
+    return sections.filter((sec) => sec.gap < biggestGroup + 12)
+      .map((sec) => `"${sec.name}" has ${sec.gap}px above it, not clearly more than a group label (${biggestGroup}px)`);
+  });
   const issues = [
     ...contrast.map((c) => `contrast: ${c}`),
     ...overlaps.map((o) => `overlap: ${o}`),
     ...textOverlaps.map((o) => `text overlap: ${o}`),
+    ...rhythm.map((o) => `rhythm: ${o}`),
     ...sticky.map((o) => `sticky in page content: ${o}`),
   ];
   console.log(`${issues.length ? '✗' : '✓'} ${name}${issues.length ? '' : ''}`);

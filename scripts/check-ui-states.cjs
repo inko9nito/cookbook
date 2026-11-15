@@ -741,7 +741,12 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('24c-cook-unit-sheet', async () => {
     await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    // opening the sheet must not move cook mode's divider (it once padded the split screen and squeezed the halves)
+    const divider = () => page.evaluate(() => Math.round(document.querySelector('.ck-split-handle').getBoundingClientRect().top));
+    const before = await divider();
     await page.locator('.ck-cook .ck-cook-list li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);
+    const after = await divider();
+    if (after !== before) throw new Error(`opening the unit sheet moved the divider from ${before}px to ${after}px`);
     const t = await page.evaluate(() => {
       const sh = document.querySelector('.sheet-modal.modal-in.ck-unit-sheet'); const r = sh?.getBoundingClientRect();
       const hit = sh && document.elementFromPoint(r.left + r.width / 2, r.top + 30);

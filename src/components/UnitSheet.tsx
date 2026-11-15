@@ -36,9 +36,20 @@ export default function UnitSheet({ target, factor, picks, onPick, onClosed, con
       if (sheet.opened) sheet.close();
       return;
     }
-    // keep the tapped ingredient in view above the sheet (on the recipe page; cook mode's halves scroll on their own)
-    sheet.params.scrollToEl = (target.el.closest('li') ?? target.el) as HTMLElement;
+    const row = (target.el.closest('li') ?? target.el) as HTMLElement;
+    // keep the tapped ingredient in view above the sheet. On the recipe page Framework7 does it (scrollToEl: it pads
+    // and scrolls the page). Cook mode's page is the split screen, and that padding squeezed the halves and moved
+    // the divider, so there the ingredients half itself scrolls the row up, and the split stays as it is.
+    const pane = row.closest('.ck-pane');
+    sheet.params.scrollToEl = pane ? undefined : row;
     if (!sheet.opened) sheet.open();
+    if (pane) {
+      requestAnimationFrame(() => {
+        const sheetTop = window.innerHeight - (ref.current?.el?.offsetHeight ?? 0);
+        const overlap = row.getBoundingClientRect().bottom + 8 - sheetTop;
+        if (overlap > 0) pane.scrollBy({ top: overlap, behavior: 'smooth' });
+      });
+    }
   }, [target]);
 
   // a tap anywhere but the sheet or an underlined amount closes it (amounts open, switch or close it themselves)

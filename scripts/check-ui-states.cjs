@@ -329,6 +329,22 @@ async function swipeLeft(ctx, page, locator) {
     const missed = Math.abs(after.y + after.height / 2 - (box.y + box.height / 2 - 120));
     if (h1 >= h0 || missed > 24) throw new Error(`divider did not follow the drag (ingredients ${Math.round(h0)} → ${Math.round(h1)}px, handle ${Math.round(missed)}px from the finger)`);
   });
+  await step('16e2-cook-divider-long-press', async () => {
+    // a finger held on the handle, then dragged: it moves the split and selects no text
+    const box = await page.locator('.ck-cook .ck-split-handle').boundingBox();
+    const x = box.x + box.width / 2, y = box.y + box.height / 2;
+    const cdp = await ctx.newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    await page.waitForTimeout(900);
+    for (let i = 1; i <= 6; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + 15 * i }] });
+    const selected = await page.evaluate(() => window.getSelection().toString());
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
+    await page.waitForTimeout(300);
+    const after = await page.locator('.ck-cook .ck-split-handle').boundingBox();
+    if (selected) throw new Error(`long press on the handle selected text ("${selected.slice(0, 30)}")`);
+    if (Math.abs(after.y + after.height / 2 - (y + 90)) > 24) throw new Error(`touch drag didn't move the divider (${Math.round(after.y + after.height / 2 - y)}px of 90)`);
+  });
   await step('16f-cook-all-steps-done', async () => {
     const open = page.locator('.ck-cook .ck-pane-steps li:not(.ck-done):has(label)');
     for (let i = 0; i < 12 && (await open.count()); i++) {

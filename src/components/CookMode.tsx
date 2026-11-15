@@ -55,6 +55,16 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
   const dragging = useRef(false);
   // while a finger is on the handle it shows bigger (like Prepear), so you can tell you've got it
   const [holding, setHolding] = useState(false);
+  const handleEl = useRef<HTMLDivElement>(null);
+  // a long press on the handle must not start iOS text selection (and its magnifier) in the text around it.
+  // React's touch listeners are passive, so this one is added by hand to be allowed to cancel the default.
+  useEffect(() => {
+    const el = handleEl.current;
+    if (!el) return;
+    const stop = (e: TouchEvent) => e.preventDefault();
+    el.addEventListener('touchstart', stop, { passive: false });
+    return () => el.removeEventListener('touchstart', stop);
+  }, []);
   const [scaleOpen, setScaleOpen] = useState(false);
   const audio = useRef<AudioContext | null>(null);
   const nextTimerId = useRef(1);
@@ -148,6 +158,7 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
   const onHandleDown = (e: PointerEvent<HTMLDivElement>) => {
     dragging.current = true;
     setHolding(true);
+    window.getSelection()?.removeAllRanges();
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onHandleMove = (e: PointerEvent<HTMLDivElement>) => {
@@ -235,7 +246,7 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
           </Navbar>
 
           <div className="page-content ck-split">
-          <div className="ck-split-body" ref={splitBox}>
+          <div className={`ck-split-body${holding ? ' ck-split-body-holding' : ''}`} ref={splitBox}>
             {/* top half: ingredients */}
             <div className="ck-pane ck-pane-ingredients" style={{ flexBasis: `${split * 100}%` }}>
               <div className="ck-pane-head">
@@ -318,6 +329,7 @@ export default function CookMode({ recipe, factor, onFactor, onClose }: Props) {
             {/* the divider: drag to give either half more room. Last in the markup and placed on the split line, so it sits over
                 both halves (their lists are positioned too) without a z-index */}
             <div
+              ref={handleEl}
               className={`ck-split-handle${holding ? ' ck-split-holding' : ''}`}
               style={{ top: `calc(${split * 100}% - var(--ck-split-half))` }}
               role="separator"

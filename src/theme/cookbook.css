@@ -435,7 +435,10 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
     linear-gradient(var(--ck-accent), var(--ck-accent)) center / 100% 2px no-repeat,
     linear-gradient(transparent, var(--ck-bg) 40%, var(--ck-bg) 60%, transparent);
   touch-action: none; cursor: row-resize;
+  /* holding it is a drag, never a text selection or the iOS long-press menu */
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
+.ck-split-body-holding { -webkit-user-select: none; user-select: none; }
 /* held: a thicker line and a bigger grip (an instant size change, no animation) */
 .ck-split-handle.ck-split-holding { background-size: 100% 4px, auto; }
 .ck-split-holding .ck-split-grip { width: 72px; height: 32px; }

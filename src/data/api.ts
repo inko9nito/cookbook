@@ -16,7 +16,7 @@ export type Backend = {
   uploadPhoto: (dataUrl: string) => Promise<string>;
 };
 
-/** A refusal from the API, with its status (401 signed out, 403 not the owner, 503 no owner set). */
+/** A refusal from the API, with its status (401 signed out, 403 not an admin). */
 export class ApiError extends Error {
   constructor(
     public status: number,

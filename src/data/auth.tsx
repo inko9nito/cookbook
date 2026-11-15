@@ -11,7 +11,7 @@ type Auth = {
   problem?: string;
   signIn: () => void;
   signOut: () => Promise<void>;
-  /** the API refused this account (not the owner): sign out and say why */
+  /** the API refused this account (no admin role): sign out and say why */
   refuse: (message: string) => Promise<void>;
 };
 

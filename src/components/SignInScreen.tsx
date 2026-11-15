@@ -4,7 +4,7 @@ import { useAuth } from '../data/auth';
 /**
  * The sign-in screen (Framework7 login screen), over the app until signed in: the app icon, its name and one button,
  * Continue with Google. Netlify Identity is invite-only, so only invited Google accounts get past it, and the API
- * also checks the account is the cookbook's owner.
+ * also checks the account has the admin role.
  */
 export default function SignInScreen() {
   const { status, problem, signIn } = useAuth();

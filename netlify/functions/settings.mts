@@ -4,10 +4,10 @@ import type { Config } from '@netlify/functions';
 import { getDatabase } from '@netlify/database';
 import { ZodError } from 'zod';
 import { getSettings, saveSettings } from '../lib/recipes';
-import { error, json, refuseUnlessOwner } from '../lib/http';
+import { error, json, refuseUnlessAdmin } from '../lib/http';
 
 export default async (req: Request) => {
-  const refused = await refuseUnlessOwner();
+  const refused = await refuseUnlessAdmin();
   if (refused) return refused;
   const { sql } = getDatabase();
   try {

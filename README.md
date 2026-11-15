@@ -22,7 +22,7 @@ Netlify builds with `npm run build`, publishes `dist/`, deploys the API in `netl
 
 1. **Plan:** Netlify Database needs a credit-based plan (the Free plan has one).
 2. **Identity:** Project configuration → Identity → Enable Identity. Registration → **Invite only**. External providers → add **Google**. Then Users → **Invite users** → your Google address. Open the invite email's link, then tap Continue with Google.
-3. **Owner:** Project configuration → Environment variables → add `OWNER_EMAIL` = your Google address (scope: Functions). The API answers no one else, even if registration is left open.
+3. **Admin role:** in Identity → Users, open your user → Edit settings → Roles → add `admin`. The API answers no account without it, even if registration is left open. A role change counts from the next sign-in: if you signed in before adding it, the app sends you back to the sign-in screen once, and signing in again picks it up.
 4. **Database and photos** need nothing: installing `@netlify/database` makes Netlify create the database on the next deploy and apply the migrations; photos go in a Netlify Blobs store called `photos`.
 
 ## Status
@@ -31,7 +31,7 @@ Netlify builds with `npm run build`, publishes `dist/`, deploys the API in `netl
 
 **Phase 1 (foundations):**
 - Netlify Database: recipes and settings (`netlify/database/migrations/`), seeded with the five sample recipes.
-- API (`netlify/functions/`): `/api/recipes`, `/api/settings`, `/api/photos` (Netlify Blobs), owner-only.
+- API (`netlify/functions/`): `/api/recipes`, `/api/settings`, `/api/photos` (Netlify Blobs), admin role only.
 - Google sign-in (Netlify Identity, invite-only) on a Framework7 login screen.
 - The app reads and saves through TanStack Query, shows changes at once, and keeps a copy in IndexedDB so recipes open offline. Photos are cached offline too.
 - Ingredient parser (`parse-ingredient`) and scaling engine with tests (`src/lib/ingredients.ts`): ranges, fractions, units that agree with the amount, header lines when pasting.

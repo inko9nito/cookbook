@@ -58,7 +58,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Rendered once, in the app: when the API turns this account away (not the cookbook's owner), or the sign-in has run
+ * Rendered once, in the app: when the API turns this account away (no admin role), or the sign-in has run
  * out, go back to the sign-in screen and forget the cached recipes.
  */
 export function SessionGuard() {

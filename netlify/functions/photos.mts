@@ -5,13 +5,13 @@
 import type { Config, Context } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 import { photoUrl } from '../lib/recipes';
-import { error, json, refuseUnlessOwner } from '../lib/http';
+import { error, json, refuseUnlessAdmin } from '../lib/http';
 
 const TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const MAX_BYTES = 12 * 1024 * 1024;
 
 export default async (req: Request, context: Context) => {
-  const refused = await refuseUnlessOwner();
+  const refused = await refuseUnlessAdmin();
   if (refused) return refused;
   const photos = getStore('photos');
   const key = context.params.key;

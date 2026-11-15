@@ -275,7 +275,7 @@ Edits are live. **Done**, swipe-down, and tapping outside all keep the changes. 
 - *Done (Nov 2026), decisions made while building it:*
   - Phase 0 was approved and merged; its screens (including editing, photos and cook mode) now save through the API.
   - Ingredients, directions and photos are JSON lists on the recipe row; tags are a text array on the recipe. One person's few dozen tags don't need their own tables, and filtering uses an index on the array. Each ingredient keeps its amount as typed (scaling reads the numbers from it) plus the raw line.
-  - Netlify Identity: Netlify deprecated it in 2025, then reversed that in February 2026; it's supported, with the newer `@netlify/identity` package. Besides invite-only registration, the API only answers the address in the `OWNER_EMAIL` environment variable.
+  - Netlify Identity: Netlify deprecated it in 2025, then reversed that in February 2026; it's supported, with the newer `@netlify/identity` package. Besides invite-only registration, the API only answers accounts with the `admin` role (given in the Netlify UI).
   - The five sample recipes are seeded by a migration so the app isn't empty before Phase 3's import. Delete them whenever.
 
 **Phase 2: Create and edit recipes** *(the main goal)*.
@@ -295,4 +295,4 @@ Reminders: **not wanted**, dropped.
 ## 9. Still open
 
 1. **Netlify site:** `cookbk.netlify.app` exists. Confirm it's linked to this GitHub repo so pushes auto-deploy, and that the team is on a credit-based plan (needed for Netlify Database).
-2. **Google sign-in:** enable Netlify Identity on the site, add the Google provider, set registration to invite-only, invite my Google address, and set `OWNER_EMAIL` (see the README's Netlify setup).
+2. **Google sign-in:** enable Netlify Identity on the site, add the Google provider, set registration to invite-only, invite my Google address, and give my user the `admin` role (see the README's Netlify setup).

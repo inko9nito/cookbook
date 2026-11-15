@@ -5,7 +5,7 @@ import { getDatabase } from '@netlify/database';
 import { getStore } from '@netlify/blobs';
 import { ZodError } from 'zod';
 import { deleteRecipe, listRecipes, photoKeys, saveRecipe } from '../lib/recipes';
-import { error, isProduction, json, refuseUnlessOwner } from '../lib/http';
+import { error, isProduction, json, refuseUnlessAdmin } from '../lib/http';
 
 /** Delete stored photos the recipe no longer uses (only on the production deploy; see isProduction). */
 async function dropPhotos(keys: string[], context: Context) {
@@ -15,7 +15,7 @@ async function dropPhotos(keys: string[], context: Context) {
 }
 
 export default async (req: Request, context: Context) => {
-  const refused = await refuseUnlessOwner();
+  const refused = await refuseUnlessAdmin();
   if (refused) return refused;
   const { sql } = getDatabase();
   const id = context.params.id;

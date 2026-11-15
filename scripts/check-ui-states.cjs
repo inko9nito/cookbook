@@ -133,8 +133,26 @@ async function audit(page, name) {
     return sections.filter((sec) => sec.gap < biggestGroup + 12)
       .map((sec) => `"${sec.name}" has ${sec.gap}px above it, not clearly more than a group label (${biggestGroup}px)`);
   });
+  // button labels that run into the button's edges (e.g. "Mark as made" in a half-width dialog button): 8px clear each side
+  const cramped = await page.evaluate(() =>
+    [...document.querySelectorAll('.dialog.modal-in .dialog-button, .actions-modal.modal-in .actions-button, .page-current .button')]
+      .filter((b) => b.offsetParent && b.textContent.trim())
+      .filter((b) => {
+        // measure the glyphs (text nodes), not the label's block wrappers, which span the whole button
+        const box = b.getBoundingClientRect(); let left = Infinity, right = -Infinity;
+        const w = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+        for (let n = w.nextNode(); n; n = w.nextNode()) {
+          if (!n.textContent.trim()) continue;
+          const r = document.createRange(); r.selectNodeContents(n);
+          for (const x of r.getClientRects()) { left = Math.min(left, x.left); right = Math.max(right, x.right); }
+        }
+        return left < box.left + 8 || right > box.right - 8;
+      })
+      .map((b) => `"${b.textContent.trim()}"`),
+  );
   const issues = [
     ...contrast.map((c) => `contrast: ${c}`),
+    ...cramped.map((c) => `label doesn't fit its button: ${c}`),
     ...overlaps.map((o) => `overlap: ${o}`),
     ...textOverlaps.map((o) => `text overlap: ${o}`),
     ...rhythm.map((o) => `rhythm: ${o}`),
@@ -241,7 +259,7 @@ async function swipeLeft(ctx, page, locator) {
       return Math.abs(icon.top + icon.height / 2 - (line.top + parseFloat(getComputedStyle(t).lineHeight) / 2));
     }));
     if (off.some((d) => d > 3)) throw new Error(`step checkbox off its first line by ${Math.max(...off).toFixed(1)}px`);
-    // the divider is see-through: no background colour over the text under it
+    // the divider has no solid band over the text under it (only a hairline and a fade, drawn as gradients)
     const bg = await page.locator('.ck-cook .ck-split-handle').evaluate((el) => getComputedStyle(el).backgroundColor);
     if (bg !== 'rgba(0, 0, 0, 0)') throw new Error(`divider has a solid background (${bg})`);
   });

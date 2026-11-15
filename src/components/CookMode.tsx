@@ -171,8 +171,9 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
         .create({
           title: 'Done cooking?',
           text: `Mark ${recipe.title} as made? You’ve made it ${recipe.timesMade}× so far.`,
+          // "Mark as made" doesn't fit a half-width button, so they stack (as iOS alerts do with long labels): the action on top, Not now under it
+          verticalButtons: true,
           buttons: [
-            { text: 'Not now', onClick: () => f7.popup.close('.ck-cook') },
             {
               text: 'Mark as made',
               strong: true,
@@ -182,6 +183,7 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
                 f7.popup.close('.ck-cook');
               },
             },
+            { text: 'Not now', onClick: () => f7.popup.close('.ck-cook') },
           ],
         })
         .open();
@@ -306,7 +308,7 @@ export default function CookMode({ recipe, factor, onClose }: Props) {
                 both halves (their lists are positioned too) without a z-index */}
             <div
               className="ck-split-handle"
-              style={{ top: `calc(${split * 100}% - 16px)` }}
+              style={{ top: `calc(${split * 100}% - 22px)` }}
               role="separator"
               aria-orientation="horizontal"
               aria-label="Resize ingredients and directions"

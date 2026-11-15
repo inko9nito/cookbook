@@ -421,9 +421,12 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 .ck-pane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 16px 16px 2px; }
 .ck-pane-head h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 .ck-split-handle {
-  /* see-through and laid over the split line (top is set inline), so text runs right up to the line instead of being cut off by a band */
-  position: absolute; left: 0; right: 0; height: 32px; display: grid; place-items: center;
-  background: linear-gradient(var(--ck-strong), var(--ck-strong)) center / 100% 1px no-repeat;
+  /* laid over the split line (top is set inline): a 2px Tomato line, with the page colour fading in towards it from both
+     sides, so text passing under it softens instead of being cut off by a band or meeting a hard edge */
+  position: absolute; left: 0; right: 0; height: 44px; display: grid; place-items: center;
+  background:
+    linear-gradient(var(--ck-accent), var(--ck-accent)) center / 100% 2px no-repeat,
+    linear-gradient(transparent, var(--ck-bg) 40%, var(--ck-bg) 60%, transparent);
   touch-action: none; cursor: row-resize;
 }
 .ck-split-handle:focus-visible { outline: 2px solid var(--ck-accent-ink); outline-offset: -2px; }

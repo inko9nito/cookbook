@@ -495,7 +495,12 @@ html.ios .toolbar.ck-cta .toolbar-inner {
   --f7-list-strong-bg-color: var(--ck-soft);
   --f7-list-item-border-color: var(--ck-line);
 }
-.list.ck-edit-list .ck-group-row .item-title { font-size: 15px; font-weight: 700; }
+.list.ck-edit-list .ck-group-row .item-title { font-size: 15px; font-weight: 700; flex: 1; min-width: 0; }
+/* group name typed right in the row: looks like the bold title until tapped */
+.ck-group-input { width: 100%; padding: 0; border: 0; background: transparent; font: inherit; color: var(--ck-fg); }
+.ck-group-input::placeholder { color: var(--ck-fg2); font-weight: 600; }
+.ck-group-input:focus { outline: none; box-shadow: inset 0 -1.5px 0 var(--ck-accent); }
+.list.ck-edit-list .ck-group-row .item-inner { cursor: text; }
 /* small text inside the soft cards uses the darker secondary grey (muted grey on soft fill is only 4.3:1) */
 .list.ck-edit-list { --f7-list-item-footer-text-color: var(--ck-fg2); --f7-list-item-header-text-color: var(--ck-fg2); }
 .list.ck-edit-list .ck-step-text { font-size: 14px; }

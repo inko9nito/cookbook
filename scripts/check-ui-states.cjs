@@ -273,12 +273,23 @@ async function swipeLeft(ctx, page, locator) {
   });
   await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
   await page.waitForTimeout(600);
-  await step('11-group-sheet', async () => {
-    await page.locator('.page-current .ck-edit-list li.ck-group-row').first().locator('.item-content').first().tap();
-    await page.waitForTimeout(800);
+  await step('11-group-renamed-inline', async () => {
+    const input = page.locator('.page-current .ck-edit-list li.ck-group-row input.ck-group-input').first();
+    await input.tap();
+    await input.fill('Yogurt marinade');
+    await page.waitForTimeout(300);
+    if ((await input.inputValue()) !== 'Yogurt marinade') throw new Error('group name did not change inline');
+    if (await page.locator('.sheet-modal.modal-in').count()) throw new Error('a sheet opened for the group name');
   });
-  await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
-  await page.waitForTimeout(600);
+  await step('11b-group-added-inline', async () => {
+    await page.locator('.page-current .button.ck-dashed').first().tap();
+    await page.waitForTimeout(500);
+    const focused = await page.evaluate(() => document.activeElement?.classList.contains('ck-group-input') && document.activeElement.value === '');
+    if (!focused) throw new Error('new group name field is not focused');
+    await page.keyboard.type('Garnish');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+  });
   await step('12-edit-paste', async () => {
     await page.locator('.page-current textarea[placeholder^="Add one ingredient"]').fill('For the topping:\n\n1/2 cup brown sugar\n2 tbsp butter, melted');
     await page.waitForTimeout(300);

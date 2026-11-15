@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListInput, ListItem, BlockTitle, Block, Button, Chip, Stepper,
   SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton,
@@ -40,6 +40,13 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
   const [stepPaste, setStepPaste] = useState('');
   const [tagText, setTagText] = useState(original.tags.filter((t) => !COURSES.includes(t)).map((t) => `#${t}`).join(' '));
   const [discardOpen, setDiscardOpen] = useState(false);
+  // a group just added with "Separate into groups": put the cursor in its name field
+  const [focusGroupId, setFocusGroupId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focusGroupId) return;
+    document.querySelector<HTMLInputElement>(`.page-current input[data-group-id="${focusGroupId}"]`)?.focus();
+    setFocusGroupId(null);
+  }, [focusGroupId]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(original);
@@ -59,9 +66,9 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
     setIngredientPaste('');
   };
   const addIngredientGroup = () => {
-    const header: DemoIngredient = { id: newId(), kind: 'header', amount: '', unit: '', name: 'New group', note: '' };
+    const header: DemoIngredient = { id: newId(), kind: 'header', amount: '', unit: '', name: '', note: '' };
     set({ ingredients: [...draft.ingredients, header] });
-    setEditingIngredientId(header.id);
+    setFocusGroupId(header.id);
   };
 
   // ── directions ──
@@ -76,9 +83,9 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
     setStepPaste('');
   };
   const addStepGroup = () => {
-    const header: DemoStep = { id: newId(), kind: 'header', text: 'New group' };
+    const header: DemoStep = { id: newId(), kind: 'header', text: '' };
     set({ steps: [...draft.steps, header] });
-    setEditingStepId(header.id);
+    setFocusGroupId(header.id);
   };
 
   // ── course and tags ──
@@ -162,7 +169,20 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
         >
           {draft.ingredients.map((i) =>
             i.kind === 'header' ? (
-              <ListItem key={i.id} swipeout link="#" noChevron className="ck-group-row" onClick={() => setEditingIngredientId(i.id)} onSwipeoutDeleted={() => removeIngredient(i.id)} header="Group" title={i.name}>
+              <ListItem key={i.id} swipeout className="ck-group-row" onSwipeoutDeleted={() => removeIngredient(i.id)} header="Group">
+                {/* the group name is edited right here, no sheet */}
+                <input
+                  slot="title"
+                  className="ck-group-input"
+                  data-group-id={i.id}
+                  type="text"
+                  value={i.name}
+                  placeholder="Group name, e.g. Sauce"
+                  aria-label="Ingredient group name"
+                  enterKeyHint="done"
+                  onChange={(e) => updateIngredient({ ...i, name: e.target.value })}
+                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                />
                 <SwipeoutActions right>
                   <SwipeoutButton delete>Delete</SwipeoutButton>
                 </SwipeoutActions>
@@ -218,7 +238,19 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
             if (s.kind === 'header') stepNo = 0;
             else stepNo += 1;
             return s.kind === 'header' ? (
-              <ListItem key={s.id} swipeout link="#" noChevron className="ck-group-row" onClick={() => setEditingStepId(s.id)} onSwipeoutDeleted={() => removeStep(s.id)} header="Group" title={s.text}>
+              <ListItem key={s.id} swipeout className="ck-group-row" onSwipeoutDeleted={() => removeStep(s.id)} header="Group">
+                <input
+                  slot="title"
+                  className="ck-group-input"
+                  data-group-id={s.id}
+                  type="text"
+                  value={s.text}
+                  placeholder="Group name, e.g. Prep"
+                  aria-label="Directions group name"
+                  enterKeyHint="done"
+                  onChange={(e) => set({ steps: draft.steps.map((x) => (x.id === s.id ? { ...x, text: e.target.value } : x)) })}
+                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                />
                 <SwipeoutActions right>
                   <SwipeoutButton delete>Delete</SwipeoutButton>
                 </SwipeoutActions>
@@ -304,7 +336,7 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
       <List className="ck-fields">
         <ListInput label="Source" type="text" placeholder="Website or person" value={draft.source} onInput={(e) => set({ source: e.target.value })} clearButton />
       </List>
-      <Block className="ck-note">Swipe a row left to delete it · drag ☰ on the left (or long-press) to reorder · tap a row to edit it</Block>
+      <Block className="ck-note">Swipe a row left to delete it · drag ☰ on the left (or long-press) to reorder · tap an ingredient or step to edit it, or a group name to rename it</Block>
 
       <IngredientSheet
         ingredient={editingIngredient && editingIngredient.kind !== 'header' ? editingIngredient : null}
@@ -316,20 +348,8 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
         onClose={() => setEditingIngredientId(null)}
       />
       <StepSheet
-        noun="Group"
-        multiline={false}
-        value={editingIngredient && editingIngredient.kind === 'header' ? { id: editingIngredient.id, text: editingIngredient.name } : null}
-        onChange={(text) => editingIngredient && updateIngredient({ ...editingIngredient, name: text })}
-        onDelete={(rid) => {
-          setEditingIngredientId(null);
-          removeIngredient(rid);
-        }}
-        onClose={() => setEditingIngredientId(null)}
-      />
-      <StepSheet
-        noun={editingStep?.kind === 'header' ? 'Group' : 'Step'}
-        multiline={editingStep?.kind !== 'header'}
-        value={editingStep}
+        noun="Step"
+        value={editingStep && editingStep.kind !== 'header' ? editingStep : null}
         onChange={updateStep}
         onDelete={(sid) => {
           setEditingStepId(null);

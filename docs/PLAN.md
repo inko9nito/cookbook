@@ -269,7 +269,7 @@ Edits are live. **Done**, swipe-down, and tapping outside all keep the changes. 
 - I add it to my home screen and **confirm it feels native** before real work starts.
 
 **Phase 1: Foundations and the recipe list.**
-- Netlify Database, schema and migrations, Functions API, passcode login, photo storage in Blobs.
+- Netlify Database, schema and migrations, Functions API, Google sign-in (Netlify Identity, invite-only), photo storage in Blobs.
 - Ingredient parser and **scaling engine with tests (R5)**.
 - Recipe list with **remembered sort (R1)** and **tag filters (R2)**, plus recipe detail with scaling, all on seed data.
 
@@ -282,7 +282,7 @@ Edits are live. **Done**, swipe-down, and tapping outside all keep the changes. 
 - The Prepear migration investigation, then a bulk import of my 353 recipes.
 - Export all (R8).
 
-**Phase 4: Cookbooks.** **Phase 5: Meal plans.** **Phase 6: Grocery list** (if I use it). **Cook mode and "I made this"** are small and can ship with Phase 2 or 3.
+**Phase 4: Cookbooks.** **Phase 5: Meal plans.** **Phase 6: Grocery list** (if I use it). **Cook mode and "I made this"** were pulled forward into Phase 0 (I use cook mode all the time): screen stays on, one step per swipe, step timers, the step's ingredients, and a checklist.
 Reminders: **not wanted**, dropped.
 
 ---

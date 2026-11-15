@@ -17,7 +17,7 @@ export default function RecipeCard({ recipe }: { recipe: DemoRecipe }) {
         {recipe.rating > 0 && (
           <span className="ck-stars" aria-label={`${recipe.rating} of 5 stars`}>
             {[1, 2, 3, 4, 5].map((n) => (
-              <Star key={n} size={11} strokeWidth={0} className={n <= recipe.rating ? 'on' : ''} />
+              <Star key={n} size={10} strokeWidth={0} className={n <= recipe.rating ? 'on' : ''} />
             ))}
           </span>
         )}

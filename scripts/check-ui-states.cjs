@@ -66,7 +66,7 @@ async function audit(page, name) {
   });
   const textOverlaps = await page.evaluate(() => {
     // every visible run of text in the current page's content and in open sheets/popups, one rect per line
-    const scopes = [...document.querySelectorAll('.page-current .page-content, .sheet-modal.modal-in, .popup.modal-in, .actions-modal.modal-in')];
+    const scopes = [...document.querySelectorAll('.page-current .page-content, .sheet-modal.modal-in, .popup.modal-in .page-content, .actions-modal.modal-in')];
     const runs = [];
     for (const scope of scopes) {
       const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT) });
@@ -215,11 +215,47 @@ async function swipeLeft(ctx, page, locator) {
   });
   await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
   await page.waitForTimeout(700);
+  await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
   await step('05d-recipe-scaled', async () => { await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 420)); });
   await step('06-recipe-bottom', async () => { await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 99999)); });
   await step('07-more-actions', async () => { await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); });
   await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap().catch(() => {});
   await page.waitForTimeout(500);
+
+  // cook mode
+  await step('16-cook-get-ready', async () => { await page.locator('.page-current .ck-cta-button', { hasText: 'Start cooking' }).tap(); await page.waitForTimeout(900); });
+  await step('16b-cook-ticked', async () => { await page.locator('.ck-cook .swiper-slide-active li').first().locator('label').tap(); await page.waitForTimeout(300); });
+  await step('16c-cook-step-1', async () => { await page.locator('.ck-cook .ck-cook-bar .button', { hasText: 'Start' }).tap(); await page.waitForTimeout(700); });
+  await step('16d-cook-timer-running', async () => {
+    await page.locator('.ck-cook .ck-cook-bar .button', { hasText: 'Next step' }).tap();
+    await page.waitForTimeout(700);
+    await page.locator('.ck-cook .swiper-slide-active .ck-timer-button').first().tap();
+    await page.waitForTimeout(1300);
+    if (!(await page.locator('.ck-cook .ck-timer-pill').count())) throw new Error('no running timer in the top bar');
+  });
+  await step('16e-cook-swiped', async () => {
+    // a full-width swipe, like a thumb across the screen
+    const cdp = await ctx.newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 330, y: 400 }] });
+    for (let i = 1; i <= 20; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 330 - 13 * i, y: 400 }] }); await page.waitForTimeout(16); }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await page.waitForTimeout(700);
+    const title = await page.locator('.ck-cook .navbar .title').textContent();
+    if (!/Step 3 of/.test(title)) throw new Error(`swipe did not move to step 3 (title "${title}")`);
+  });
+  await step('16f-cook-checklist-sheet', async () => { await page.locator('.ck-cook a[aria-label="Ingredients checklist"]').tap(); await page.waitForTimeout(800); });
+  await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
+  await page.waitForTimeout(600);
+  await step('16g-cook-finish', async () => {
+    for (let i = 0; i < 12 && !(await page.locator('.ck-cook .ck-cook-bar .button', { hasText: 'Finish' }).count()); i++) {
+      await page.locator('.ck-cook .ck-cook-bar .button', { hasText: 'Next step' }).tap();
+      await page.waitForTimeout(500);
+    }
+    await page.locator('.ck-cook .ck-cook-bar .button', { hasText: 'Finish' }).tap();
+    await page.waitForTimeout(600);
+  });
+  await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Not now' }).tap().catch(() => {});
+  await page.waitForTimeout(900);
 
   await step('08-edit-page', async () => {
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap();

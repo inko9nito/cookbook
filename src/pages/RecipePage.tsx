@@ -5,6 +5,7 @@ import {
 } from 'framework7-react';
 import { Ellipsis, Star, ChevronDown } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
+import CookMode from '../components/CookMode';
 import { useStore } from '../demo/store';
 import { titleCase, type DemoIngredient } from '../demo/data';
 import { scaleAmount, unitFor, friendly } from '../demo/quickParse';
@@ -40,6 +41,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const [factor, setFactor] = useState(1);
   const [scaleOpen, setScaleOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [cooking, setCooking] = useState(false);
 
   if (!recipe) {
     return (
@@ -68,7 +70,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
       </Navbar>
 
       <Toolbar bottom className="ck-cta">
-        <Button fill large className="ck-cta-button" onClick={() => soon('Cook mode')}>
+        <Button fill large className="ck-cta-button" onClick={() => setCooking(true)}>
           Start cooking
         </Button>
       </Toolbar>
@@ -160,6 +162,8 @@ export default function RecipePage({ f7route, f7router }: Props) {
           </>
         )}
       </div>
+
+      {cooking && <CookMode recipe={recipe} factor={factor} onClose={() => setCooking(false)} />}
 
       <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setScaleOpen(false)} />
 

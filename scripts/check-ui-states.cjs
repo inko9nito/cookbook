@@ -210,6 +210,19 @@ async function swipeLeft(ctx, page, locator) {
   await page.goto(BASE);
   await page.waitForTimeout(1000);
   await step('01-recipes', async () => {});
+  // the search bar must filter the grid on screen (it once kept filtering a copy React had replaced when loading ended)
+  await step('01b-recipes-search', async () => {
+    const input = page.locator('.page-current .ck-home-search input');
+    await input.fill('chick'); await page.waitForTimeout(600);
+    const shown = await page.locator('.page-current .ck-card-grid .ck-card:visible .ck-card-title').allTextContents();
+    if (!shown.length || shown.some((t) => !/chick/i.test(t))) throw new Error(`searching "chick" shows ${JSON.stringify(shown)}`);
+    await input.fill('zzzz'); await page.waitForTimeout(600);
+    if (!(await page.locator('.page-current .searchbar-not-found:visible').count())) throw new Error('no "No recipes found" for a search with no match');
+    await input.fill(''); await page.waitForTimeout(400);
+    await page.locator('.page-current .searchbar-backdrop-in').tap(); await page.waitForTimeout(600); // closes the search, as on the phone
+    const all = await page.locator('.page-current .ck-card-grid .ck-card:visible').count();
+    if (all <= shown.length) throw new Error('clearing the search didn\'t bring every recipe back');
+  });
   await step('02-recipes-chip-selected', async () => { await page.locator('.ck-chip', { hasText: 'Dinner' }).first().tap(); });
   // R2: chips come from the tags in use; two picked offer "all" or "any" in the sort sheet; the filter is remembered
   await step('02b-recipes-two-tags-any', async () => {

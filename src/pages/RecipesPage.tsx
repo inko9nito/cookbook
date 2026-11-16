@@ -39,7 +39,7 @@ export default function RecipesPage({ f7router }: Props) {
 
   return (
     <Page name="recipes" onPageAfterIn={showTabbar}>
-      <Navbar className="ck-navbar-root">
+      <Navbar key="navbar" className="ck-navbar-root">
         <NavTitle>Recipes</NavTitle>
         <NavRight>
           <Link iconOnly onClick={() => f7router?.navigate('/recipe/new/')} aria-label="New recipe">
@@ -54,40 +54,43 @@ export default function RecipesPage({ f7router }: Props) {
         </NavRight>
       </Navbar>
 
-      {/* RED: the search bar is part of the page and scrolls with it (wrapped, so Framework7 keeps it in the page content instead of pinning it) */}
-      <div className="ck-home-search">
+      {/* RED: the search bar is part of the page and scrolls with it (wrapped, so Framework7 keeps it in the page content instead of pinning it).
+          Every block here has a key: Page drops the ones that aren't shown (loading, error) and lists the rest by
+          position, so without keys the grid below is rebuilt when loading ends, and the search bar, which found the
+          grid when it started, goes on filtering the old one: typing hid nothing. */}
+      <div key="search" className="ck-home-search">
         <Searchbar searchContainer=".ck-card-grid" searchItem=".ck-card" searchIn=".ck-card-title" placeholder="Search recipes" disableButton={false} />
       </div>
 
-      <Block className="ck-chips ck-chips-scroll">
+      <Block key="chips" className="ck-chips ck-chips-scroll">
         <Chip text="All" className={`ck-chip ${tags.length === 0 ? 'ck-chip-on' : ''}`} onClick={() => setFilter([])} />
         {allTags.map((t) => (
           <Chip key={t} text={label(t)} className={`ck-chip ${tags.includes(t) ? 'ck-chip-on' : ''}`} onClick={() => toggleTag(t)} />
         ))}
       </Block>
 
-      <Block className="ck-count">
+      <Block key="count" className="ck-count">
         <span className="ck-note">
           {shown.length} {shown.length === 1 ? 'recipe' : 'recipes'} · {SORT_LABELS[sort]}
           {tags.length > 1 && (matchAny ? ' · any tag' : ' · all tags')}
         </span>
       </Block>
       {loading && (
-        <Block className="ck-list-state">
+        <Block key="loading" className="ck-list-state">
           <Preloader />
         </Block>
       )}
       {loadError && (
-        <Block className="ck-list-state">
+        <Block key="error" className="ck-list-state">
           <p className="ck-note">Couldn’t load your recipes. {loadError}</p>
           <Button round className="ck-soft ck-inline-button" onClick={() => reload()}>
             Try again
           </Button>
         </Block>
       )}
-      <BlockFooter className="searchbar-not-found">No recipes found</BlockFooter>
+      <BlockFooter key="not-found" className="searchbar-not-found">No recipes found</BlockFooter>
       {/* Prepear's grid: two cards per row */}
-      <Block className="ck-card-grid searchbar-found">
+      <Block key="grid" className="ck-card-grid searchbar-found">
         <div className="grid grid-cols-2 grid-gap">
           {shown.map((r) => (
             <RecipeCard key={r.id} recipe={r} />
@@ -95,7 +98,7 @@ export default function RecipesPage({ f7router }: Props) {
         </div>
       </Block>
 
-      <Actions opened={sortOpen} onActionsClosed={() => setSortOpen(false)}>
+      <Actions key="sort" opened={sortOpen} onActionsClosed={() => setSortOpen(false)}>
         <ActionsGroup>
           <ActionsLabel>Sort recipes</ActionsLabel>
           {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (

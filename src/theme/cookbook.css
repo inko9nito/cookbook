@@ -14,7 +14,6 @@
   --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
   --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
   --ck-plate-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); /* a cookbook's plates (round recipe photos) on its card */
-  --ck-toast-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); /* the dark toast floating over the page */
   /* a cookbook card's soft colours (issue #25): pale and muted, one per cookbook */
   --ck-book-blush: #f6e4dd;
   --ck-book-sage: #e3ebdf;
@@ -232,34 +231,10 @@ html.ios .searchbar input[type='search'],
 html.ios .searchbar input[type='text'],
 html.ios .searchbar-disable-button,
 html.ios .fab > a,
-html.ios .fab-buttons a,
-html.ios .toast {
+html.ios .fab-buttons a {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
-
-/* Toast (from the user's surgery app): a small dark pill, as wide as its words, centred and floating just above the tab
-   bar, with a Tomato check for something done (say() in src/components/ui/toast.ts). Framework7's toast is otherwise a
-   full-width glass bar along the bottom; its own slide-in stays. Spacing, corners and colours only. */
-html.ios .toast {
-  --f7-toast-bg-color: var(--ck-fg);
-  --f7-toast-text-color: var(--ck-surface);
-  --f7-toast-font-size: 15px;
-  --f7-toast-border-radius: 16px;
-  --f7-toast-padding-horizontal: 16px;
-  --f7-toast-padding-vertical: 12px;
-  left: 16px;
-  right: 16px;
-  width: fit-content;
-  max-width: 420px;
-  margin: 0 auto calc(var(--f7-tabbar-icons-height) + var(--f7-safe-area-bottom) + 12px);
-  border-radius: var(--f7-toast-border-radius);
-  box-shadow: var(--ck-toast-shadow);
-  font-weight: 600;
-}
-html.ios .toast.toast-bottom .toast-content { padding-bottom: var(--f7-toast-padding-vertical); }
-.ck-toast { display: flex; align-items: center; gap: 8px; }
-.ck-toast svg { flex: none; stroke: var(--ck-accent); }
 
 /* Navbar (RED): title on the left in the same row as separate soft grey round buttons */
 html.ios .navbar {

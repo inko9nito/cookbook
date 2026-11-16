@@ -7,12 +7,12 @@ import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { del, get, set } from 'idb-keyval';
+import { f7 } from 'framework7-react';
 import { ApiError, backend, demoSlow, isDemo } from './api';
 import { useAuth } from './auth';
 import { Settings, type Recipe, type SortKey } from '../lib/recipe';
 import type { Cookbook } from '../lib/cookbook';
 import { pendingChanges, upsert } from './pending';
-import { tell } from '../components/ui/toast';
 
 const RECIPES = ['recipes'] as const;
 const SETTINGS = ['settings'] as const;
@@ -36,7 +36,7 @@ export async function clearCache() {
   await persister.removeClient();
 }
 
-const toast = (text: string) => tell(text);
+const toast = (text: string) => f7.toast?.show({ text, closeTimeout: 3000 });
 
 // Saves and deletes on their way to the server (pending.ts): every list read from the server has them laid over it, so
 // a reload that comes back first can't drop a recipe or cookbook just made, or undo a change. Saves go to the server

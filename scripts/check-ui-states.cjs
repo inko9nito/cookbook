@@ -855,9 +855,19 @@ async function swipeLeft(ctx, page, locator) {
     const ing = await tab.locator('.ck-pane-ingredients li.ck-done').allTextContents();
     const steps = await tab.locator('.ck-pane-steps li.ck-done').count();
     if (ing.length !== 1 || !ing[0].includes('ice water') || steps !== 1) throw new Error(`back on the sauce, ${ing.length} ingredients and ${steps} steps are ticked, expected the ice water and step 1`);
-    // X leaves cook mode, every tab with it, and Safari's strip goes back to the page colour
+    // X closes only the shown recipe's tab: back to the kebabs alone, with the usual title bar
+    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(800);
+    if (!(await page.locator('.popup.ck-cook.modal-in').count())) throw new Error('X closed cook mode instead of the sauce’s tab');
+    const title = await page.locator('.ck-cook .navbar .title').textContent().catch(() => '');
+    if (!title.includes('Kebabs') || (await page.locator('.ck-cook .ck-tab').count())) throw new Error(`after closing the sauce's tab the bar shows "${title}" and ${await page.locator('.ck-cook .ck-tab').count()} tabs`);
+    // opening the sauce again picks up where it was
+    await page.locator('.ck-cook .tab-active .ck-pane-ingredients .ck-ing-linked', { hasText: 'tahini sauce' }).tap(); await page.waitForTimeout(700);
+    const again = await page.locator('.ck-cook .tab-active .ck-pane-ingredients li.ck-done').count();
+    if (again !== 1) throw new Error(`the reopened sauce has ${again} ingredients ticked, expected the ice water`);
+    // closing every tab leaves cook mode, and Safari's strip goes back to the page colour
+    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(800);
     await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(1200);
-    if (await page.locator('.popup.ck-cook.modal-in').count()) throw new Error('X did not close cook mode');
+    if (await page.locator('.popup.ck-cook.modal-in').count()) throw new Error('closing the last tab did not leave cook mode');
     const theme = await page.evaluate(() => document.querySelector('meta[name="theme-color"][media*="light"]').content);
     if (theme !== '#f7f7f8') throw new Error(`the theme colour stayed ${theme} after cook mode closed`);
   });
@@ -958,7 +968,11 @@ async function swipeLeft(ctx, page, locator) {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await page.waitForTimeout(800);
     const after = await row.evaluate((e) => e.scrollLeft);
     if (!(after < before - 50)) throw new Error(`swiping the tabs moved them from ${before}px to ${after}px`);
-    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(1200);
+    // X closes just the shown tab (Pulled Beef), showing the one before it
+    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(800);
+    const left = await page.locator('.ck-cook .ck-tab').allTextContents();
+    const on = await page.locator('.ck-cook .ck-tab-on').textContent();
+    if (left.length !== 4 || left.some((x) => x.includes('Pulled')) || !on.includes('Mustard')) throw new Error(`after X the tabs are ${JSON.stringify(left)}, showing "${on}"`);
   });
   await step('25h-delete-used-recipe', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);

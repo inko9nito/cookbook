@@ -54,7 +54,6 @@ const saveSplit = (n: number) => {
 };
 const noTicks = (): Ticks => ({ ing: new Set(), steps: new Set() });
 const stepCount = (r: Recipe) => r.steps.filter((s) => s.kind !== 'header').length;
-const names = (rs: Recipe[]) => rs.map((r) => r.title).join(rs.length > 2 ? ', ' : ' and ');
 
 /**
  * While the recipe tabs show, Safari's status bar strip takes the tab strip's grey (it follows the page's theme
@@ -83,9 +82,9 @@ function useStripThemeColor(on: boolean) {
  *
  * Issue #11, cooking several recipes at once: an ingredient made from another recipe (the sauce, the pie crust) opens
  * that recipe in a new tab: the top bar becomes a strip of recipe tabs (in place of the title), and tapping one
- * switches to it at once (Framework7 Tabs; nothing slides over anything). Every recipe stays as it was until cook
- * mode closes: what's ticked, where it's scrolled, its amounts, and the timers, which run and ring whichever recipe
- * is shown.
+ * switches to it at once (Framework7 Tabs; nothing slides over anything). X closes the shown recipe's tab (the
+ * last one leaves cook mode). Every recipe keeps what's ticked and its amounts until cook mode closes, even when its
+ * tab is closed and opened again, and the timers run and ring whichever recipe is shown.
  */
 export default function CookMode({ recipe, factor, picks, onPick, onFactor, onClose }: Props) {
   const { recipes, saveRecipe } = useStore();
@@ -103,23 +102,22 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
       return { ...all, [recipeId]: { ...cur, [kind]: next } };
     });
 
-  // the linked recipes opened so far (a tab each, after the main recipe's), and the recipe shown
-  const [visited, setVisited] = useState<string[]>([]);
+  // the recipes open in cook mode, a tab each in the order they were opened (the main recipe first), and the one shown.
+  // X closes the shown one; a closed recipe keeps its ticks and amounts, so opening it again picks up where it was.
+  const [open, setOpen] = useState<string[]>([recipe.id]);
   const [shown, setShown] = useState(recipe.id);
   const show = (id: string) => {
-    if (id !== recipe.id) {
-      setVisited((v) => (v.includes(id) ? v : [...v, id]));
-      setAmounts((a) => (a[id] ? a : { ...a, [id]: { factor: 1, picks: {} } }));
-    }
+    if (id !== recipe.id) setAmounts((a) => (a[id] ? a : { ...a, [id]: { factor: 1, picks: {} } }));
+    setOpen((o) => (o.includes(id) ? o : [...o, id]));
     setShown(id);
   };
-  const tabs = [recipe, ...visited.map(latest).filter((r): r is Recipe => !!r)];
+  const tabs = open.map(latest).filter((r): r is Recipe => !!r);
   const tabbed = tabs.length > 1;
   useStripThemeColor(tabbed);
   // the shown recipe's tab scrolls into view in the tab row (a new recipe's tab is added at the end)
   useEffect(() => {
     document.querySelector('.popup.ck-cook .ck-tab-on')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-  }, [shown, visited.length]);
+  }, [shown, open.length]);
 
   // ── timers, for every recipe in cook mode ──
   const [timers, setTimers] = useState<RunningTimer[]>([]);
@@ -197,18 +195,26 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
 
   const [split, setSplit] = useState(readSplit);
 
-  // closing: every recipe whose steps are all ticked is offered "Mark as made" (all of them at once)
   const shut = () => f7.popup.close('.popup.ck-cook');
+  const shownRecipe = tabs.find((r) => r.id === shown) ?? tabs[0] ?? recipe;
+  // X closes the shown recipe's tab, showing the one before it (or the next, for the first); closing the last tab
+  // leaves cook mode
+  const closeTab = (id: string) => {
+    const left = open.filter((x) => x !== id);
+    if (!left.length) return shut();
+    const at = open.indexOf(id);
+    setShown(left[Math.max(0, at - 1)]);
+    setOpen(left);
+  };
+  // closing a recipe with all its steps ticked offers "Mark as made" first; after marking, it starts fresh if reopened
   const close = () => {
-    const done = tabs.filter((r) => stepCount(r) > 0 && (ticks[r.id]?.steps.size ?? 0) >= stepCount(r));
-    if (!done.length) return shut();
+    const r = shownRecipe;
+    const done = stepCount(r) > 0 && (ticks[r.id]?.steps.size ?? 0) >= stepCount(r);
+    if (!done) return closeTab(r.id);
     f7.dialog
       .create({
         title: 'Done cooking?',
-        text:
-          done.length === 1
-            ? `Mark ${done[0].title} as made? You’ve made it ${done[0].timesMade}× so far.`
-            : `Mark ${names(done)} as made?`,
+        text: `Mark ${r.title} as made? You’ve made it ${r.timesMade}× so far.`,
         // "Mark as made" doesn't fit a half-width button, so they stack (as iOS alerts do with long labels): the action on top, Not now under it
         verticalButtons: true,
         buttons: [
@@ -216,19 +222,17 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
             text: 'Mark as made',
             strong: true,
             onClick: () => {
-              const at = new Date().toISOString();
-              done.forEach((r) => saveRecipe({ ...r, timesMade: r.timesMade + 1, lastMadeAt: at }));
-              f7.toast.show({ text: done.length === 1 ? `Marked as made · ${done[0].timesMade + 1}×` : `Marked ${done.length} recipes as made`, closeTimeout: 1800 });
-              shut();
+              saveRecipe({ ...r, timesMade: r.timesMade + 1, lastMadeAt: new Date().toISOString() });
+              f7.toast.show({ text: `Marked as made · ${r.timesMade + 1}×`, closeTimeout: 1800 });
+              setTicks((all) => ({ ...all, [r.id]: noTicks() }));
+              closeTab(r.id);
             },
           },
-          { text: 'Not now', onClick: shut },
+          { text: 'Not now', onClick: () => closeTab(r.id) },
         ],
       })
       .open();
   };
-
-  const shownRecipe = tabs.find((r) => r.id === shown) ?? recipe;
 
   return (
     <>
@@ -236,7 +240,7 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
         <Page pageContent={false}>
           <Navbar className={tabbed ? 'ck-cook-tabbed' : ''}>
             <NavLeft>
-              <Link iconOnly onClick={close} aria-label="Close cook mode">
+              <Link iconOnly onClick={close} aria-label={tabbed ? `Close ${shownRecipe.title}` : 'Close cook mode'}>
                 <X {...navIcon} />
               </Link>
             </NavLeft>
@@ -262,7 +266,7 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
                 ))}
               </div>
             ) : (
-              <NavTitle>{recipe.title}</NavTitle>
+              <NavTitle>{shownRecipe.title}</NavTitle>
             )}
             {/* only while a timer runs: an empty right slot still draws the bar's faint button background */}
             {soonest && (
@@ -277,8 +281,9 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
 
           {/* one tab per recipe, all kept (ticks, scroll); only the shown one is displayed */}
           <Tabs className="ck-cook-tabs">
-            {tabs.map((r, i) => {
-              const own = i === 0 ? { factor, picks } : (amounts[r.id] ?? { factor: 1, picks: {} });
+            {tabs.map((r) => {
+              const main = r.id === recipe.id;
+              const own = main ? { factor, picks } : (amounts[r.id] ?? { factor: 1, picks: {} });
               const t = ticks[r.id] ?? noTicks();
               return (
                 <RecipeTab
@@ -288,11 +293,11 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
                   factor={own.factor}
                   picks={own.picks}
                   onPick={
-                    i === 0
+                    main
                       ? onPick
                       : (ingId, unit) => setAmounts((a) => ({ ...a, [r.id]: { factor: a[r.id]?.factor ?? 1, picks: withPick(a[r.id]?.picks ?? {}, ingId, unit) } }))
                   }
-                  onFactor={i === 0 ? onFactor : (f) => setAmounts((a) => ({ ...a, [r.id]: { factor: f, picks: a[r.id]?.picks ?? {} } }))}
+                  onFactor={main ? onFactor : (f) => setAmounts((a) => ({ ...a, [r.id]: { factor: f, picks: a[r.id]?.picks ?? {} } }))}
                   doneIng={t.ing}
                   doneSteps={t.steps}
                   onTick={(kind, id) => toggleTick(r.id, kind, id)}

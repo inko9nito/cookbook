@@ -35,12 +35,17 @@ const recipe = (over: Partial<Recipe> = {}): Recipe => ({
 });
 
 describe('recipes in the database', () => {
-  test('the sample recipes are seeded', async () => {
-    const all = await listRecipes(db.sql);
-    expect(all.map((r) => r.title)).toContain('Corn pudding');
-    const corn = all.find((r) => r.id === '1')!;
-    expect(corn.ingredients[1]).toMatchObject({ amount: '6', unit: 'cups', raw: '6 cups fresh corn kernels, from about 8 ears, or frozen and thawed' });
-    expect(corn.servings).toBe(8);
+  test('the sample recipes are seeded, then deleted once the Prepear import exists (#14)', async () => {
+    expect(await listRecipes(db.sql)).toEqual([]);
+  });
+
+  test('a recipe keeps its Prepear ids, and one without them has none (#14)', async () => {
+    const { saved } = await saveRecipe(db.sql, recipe({ id: 'from-prepear', prepearIds: ['p-adapted', 'p-original'] }));
+    expect(saved.prepearIds).toEqual(['p-adapted', 'p-original']);
+    const { saved: again } = await saveRecipe(db.sql, { ...saved, title: 'Edited here' });
+    expect(again.prepearIds).toEqual(['p-adapted', 'p-original']);
+    const { saved: plain } = await saveRecipe(db.sql, recipe({ id: 'typed-in' }));
+    expect(plain.prepearIds).toBeUndefined();
   });
 
   test('saving keeps every field and tidies tags', async () => {

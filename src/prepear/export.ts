@@ -136,16 +136,22 @@ export function prepearExport(): void {
     const cookbookList: Json[] = profile?.cookbooks?.results ?? [];
     const planList: Json[] = profile?.library?.results ?? [];
 
-    // the recipe list, a page at a time
+    // the recipe list, a page at a time. A page can hold fewer than 35: Prepear leaves out originals of recipes I
+    // edited and lists their ids in filteredOriginals instead (30 + 5 on a page), so the total says when it's done.
     const list: Json[] = [];
+    const filtered: string[] = [];
     let total = profile?.recipes?.total ?? 0;
     for (let skip = 0; ; skip += PAGE) {
-      say(`Listing recipes… ${list.length}${total ? ` of ${total}` : ''}`);
+      say(`Listing recipes… ${list.length + filtered.length}${total ? ` of ${total}` : ''}`);
       const page = await once(`list:${skip}`, `/v3/profiles/${userId}/recipes?q=&sort=&skip=${skip}&limit=${PAGE}`);
       const results: Json[] = page?.results ?? [];
+      const left: string[] = page?.filteredOriginals ?? [];
       total = page?.total ?? total;
       list.push(...results);
-      if (results.length < PAGE || (total && skip + PAGE >= total)) break;
+      filtered.push(...left);
+      if (!results.length && !left.length) break;
+      if (total && skip + PAGE >= total) break;
+      if (skip > 20000) break;
     }
 
     // cookbooks and meal plans
@@ -162,7 +168,7 @@ export function prepearExport(): void {
 
     // every recipe: the list's, plus any a cookbook or plan names (a recipe can go by its own id or by the id of the
     // recipe it was adapted from, so an answer covers both)
-    const wanted = new Set<string>(list.map((r) => r.id));
+    const wanted = new Set<string>([...list.map((r) => r.id), ...filtered]);
     for (const c of Object.values(cookbooks)) {
       const book = c?.cookbook;
       if (!book) continue;
@@ -210,6 +216,7 @@ export function prepearExport(): void {
       exportedAt: new Date().toISOString(),
       profile: { id: userId, slug, recipeTotal: total },
       recipeList: list,
+      filteredOriginals: filtered,
       recipes,
       cookbookList,
       cookbooks,

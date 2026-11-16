@@ -23,6 +23,7 @@ type Row = {
   notes: string;
   rating: number;
   times_made: number;
+  prepear_ids: string[] | null;
   last_made_at: Date | string | null;
   created_at: Date | string;
   updated_at: Date | string;
@@ -47,6 +48,7 @@ export const fromRow = (r: Row): Recipe => ({
   notes: r.notes,
   rating: r.rating,
   timesMade: r.times_made,
+  ...(r.prepear_ids?.length ? { prepearIds: r.prepear_ids } : {}),
   lastMadeAt: r.last_made_at ? iso(r.last_made_at) : null,
   createdAt: iso(r.created_at),
   updatedAt: iso(r.updated_at),
@@ -77,18 +79,18 @@ export async function saveRecipe(sql: Sql, input: Recipe): Promise<{ saved: Reci
   const [row] = await sql<Row>`
     INSERT INTO recipes (
       id, title, source, source_url, servings, serving_size, prep_minutes, cook_minutes, total_minutes,
-      photos, tags, ingredients, steps, notes, rating, times_made, last_made_at, created_at, updated_at
+      photos, tags, ingredients, steps, notes, rating, times_made, prepear_ids, last_made_at, created_at, updated_at
     ) VALUES (
       ${r.id}, ${r.title}, ${r.source}, ${r.sourceUrl ?? null}, ${r.servings}, ${r.servingSize}, ${r.prepMinutes},
       ${r.cookMinutes}, ${r.minutes}, ${JSON.stringify(r.photos)}::jsonb, ${tags}::text[], ${JSON.stringify(r.ingredients)}::jsonb,
-      ${JSON.stringify(r.steps)}::jsonb, ${r.notes}, ${r.rating}, ${r.timesMade}, ${r.lastMadeAt ?? null}, ${r.createdAt}, now()
+      ${JSON.stringify(r.steps)}::jsonb, ${r.notes}, ${r.rating}, ${r.timesMade}, ${r.prepearIds ?? []}::text[], ${r.lastMadeAt ?? null}, ${r.createdAt}, now()
     )
     ON CONFLICT (id) DO UPDATE SET
       title = EXCLUDED.title, source = EXCLUDED.source, source_url = EXCLUDED.source_url, servings = EXCLUDED.servings,
       serving_size = EXCLUDED.serving_size, prep_minutes = EXCLUDED.prep_minutes, cook_minutes = EXCLUDED.cook_minutes,
       total_minutes = EXCLUDED.total_minutes, photos = EXCLUDED.photos, tags = EXCLUDED.tags,
       ingredients = EXCLUDED.ingredients, steps = EXCLUDED.steps, notes = EXCLUDED.notes, rating = EXCLUDED.rating,
-      times_made = EXCLUDED.times_made, last_made_at = EXCLUDED.last_made_at, updated_at = now()
+      times_made = EXCLUDED.times_made, prepear_ids = EXCLUDED.prepear_ids, last_made_at = EXCLUDED.last_made_at, updated_at = now()
     RETURNING *`;
   return { saved: fromRow(row), previous };
 }

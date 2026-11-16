@@ -679,6 +679,22 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.evaluate(() => !!window.__cookbookPeek)) throw new Error('tapping the drag link ran the peek inside the app');
   });
   await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
+  // Step 2: a (made-up) export file is chosen: what's in it, then the import (the demo backend has no photo store)
+  await step('13f-prepear-file-chosen', async () => {
+    await page.locator('.page-current input[type=file]').setInputFiles(path.join(__dirname, 'fixtures', 'prepear-export-sample.json'));
+    await page.waitForTimeout(500);
+    const text = await page.evaluate(() =>
+      [...document.querySelectorAll('.page-current .ck-import-summary li')].map((li) => `${li.querySelector('.item-title').childNodes[0].textContent.trim()} ${li.querySelector('.item-after').textContent.trim()}`).join(' | '),
+    );
+    if (text !== 'Recipes to import 2 | With a photo 1 | Can’t import 1') throw new Error(`the summary reads "${text}"`);
+    await page.locator('.page-current .ck-import-button').scrollIntoViewIfNeeded();
+  });
+  await step('13g-prepear-imported', async () => {
+    await page.locator('.page-current .ck-import-button').tap();
+    await page.waitForSelector('.page-current .ck-import-done', { timeout: 10000 });
+    const done = (await page.locator('.page-current .ck-import-done').textContent()).trim();
+    if (!/^Imported 2 recipes\.$/.test(done)) throw new Error(`after importing it says "${done}"`);
+  });
   await page.locator('.page-current .navbar .back').tap(); await page.waitForTimeout(800);
   await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {

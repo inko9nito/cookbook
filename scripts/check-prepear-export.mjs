@@ -1,7 +1,7 @@
 /*
   Checks the Prepear export bookmarklet (src/prepear/export.ts, issue #14) against a fake Prepear in Chromium.
   The fake answers in the shapes the peek showed (docs/PLAN.md §6), with made-up recipes:
-  - 40 recipes over two pages of 35; a cookbook and a meal plan that also name recipes missing from the list,
+  - 40 recipes over two pages of 35, some listed only as filteredOriginals (so a page holds fewer than 35); a cookbook and a meal plan that also name recipes missing from the list,
   - an edited copy (Prepear's "adapted") that a cookbook names by its own id: one answer covers both ids,
   - a recipe that fails twice before answering (tried again) and one that's gone (listed as failed).
   Then the page reloads and the bookmarklet runs again: it carries on from what it kept, asking Prepear for nothing new.
@@ -39,7 +39,9 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/api/v3/profiles/cook') return json({ profile: { id: 'u1', slug: 'cook' }, recipes: { total: 40, results: [] }, library: { total: 1, results: [{ id: 'p1', title: 'Plan' }] }, cookbooks: { total: 1, results: [{ id: 'c1', title: 'Soups' }] } });
   if (url.pathname === '/api/v3/profiles/u1/recipes') {
     const skip = Number(url.searchParams.get('skip')), limit = Number(url.searchParams.get('limit'));
-    return json({ total: 40, results: ids.slice(skip, skip + limit).map((id) => ({ id, title: `Recipe ${id}` })) });
+    // like Prepear: some ids on a page come as filteredOriginals instead of results (so a page has fewer than 35)
+    const page = ids.slice(skip, skip + limit);
+    return json({ total: 40, filteredOriginals: page.filter((id) => /[05]$/.test(id)), results: page.filter((id) => !/[05]$/.test(id)).map((id) => ({ id, title: `Recipe ${id}` })) });
   }
   if (url.pathname === '/api/v3/cookbooks/c1') return json({ cookbook: { id: 'c1', title: 'Soups', sections: [{ title: 'Hot', recipes: ['r1', 'a5', 'extra1'] }], uncategorizedRecipes: ['r3'] }, recipes: {} });
   if (url.pathname === '/api/v2/plans/p1') return json({ plan: { id: 'p1', title: 'Plan', weeks: [{ days: [{ meals: [] }, { meals: [{ mealTime: 0, recipeId: 'r2' }, { mealTime: 6, recipeId: 'extra2' }] }] }] } });
@@ -74,7 +76,7 @@ try {
   const d = first.data;
   if (!/^prepear-export-\d{4}-\d\d-\d\d\.json$/.test(first.name)) problems.push(`saved as ${first.name}`);
   if (d.format !== 'prepear-export' || d.profile.id !== 'u1') problems.push('wrong format or profile');
-  if (d.recipeList.length !== 40) problems.push(`the list has ${d.recipeList.length} recipes, expected 40 (two pages)`);
+  if (d.recipeList.length + d.filteredOriginals.length !== 40) problems.push(`the list has ${d.recipeList.length} + ${d.filteredOriginals.length} recipes, expected 40 (two pages, some as filteredOriginals)`);
   const got = Object.keys(d.recipes).sort();
   // 40 listed, minus r9 (gone), plus extra1 and extra2; a5 is r5's own copy, so it isn't asked for separately
   const expected = [...ids.filter((id) => id !== 'r9'), 'extra1', 'extra2'].sort();

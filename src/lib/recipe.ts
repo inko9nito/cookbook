@@ -69,6 +69,11 @@ export const Recipe = z.object({
   notes: z.string().max(20000),
   rating: z.number().int().min(0).max(5),
   timesMade: z.number().int().min(0),
+  /**
+   * Issue #14: Prepear's ids for a recipe imported from it (my edited copy's and the original's). Importing again skips
+   * it, and Prepear's cookbooks and meal plan (kept from the export) find it by these.
+   */
+  prepearIds: z.array(id).max(10).optional(),
 });
 export type Recipe = z.infer<typeof Recipe>;
 

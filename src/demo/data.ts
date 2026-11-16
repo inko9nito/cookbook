@@ -54,7 +54,7 @@ export const sampleRecipes: Recipe[] = [
       step('Bake 40 minutes, until the edges are set and the center still jiggles slightly. Scatter the cheddar and brown sugar over the top and bake 10 to 15 minutes more, until golden.'),
       step('Let it rest 10 minutes before cutting so it firms up. Sprinkle with the green onions just before serving.'),
     ],
-    notes: 'Halve the sugar if the corn is very sweet. It can be baked a day ahead and reheated, covered, at 325°F for 20 minutes. Freezes well for a month.',
+    notes: 'Halve the sugar if the corn is very sweet.\n\nIt can be baked a day ahead and reheated, covered, at 325°F for 20 minutes.\nFreezes well for a month.',
   },
   {
     id: '2',

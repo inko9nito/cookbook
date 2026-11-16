@@ -28,7 +28,7 @@ export default function RecipeLinkPopup({ opened, recipes, current, onPick, onCl
           </NavRight>
         </Navbar>
         <div className="ck-link-search">
-          <Searchbar searchContainer=".ck-link-list" searchIn=".item-title" placeholder="Search recipes" disableButton={false} />
+          <Searchbar searchContainer=".ck-link-list" searchIn=".item-title" placeholder="Search recipes" disableButton={false} backdrop={false} />
         </div>
         <List strongIos insetIos dividersIos className="ck-convert-list searchbar-hide-on-search">
           <ListItem radio radioIcon="start" name="ck-link" title="None" checked={!current} onChange={() => onPick(undefined)} />

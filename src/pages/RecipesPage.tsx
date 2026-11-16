@@ -12,12 +12,15 @@ import RecipeCard from '../components/ui/RecipeCard';
 
 const SORT_LABELS: Record<SortKey, string> = { newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
 const label = (t: string) => t[0].toUpperCase() + t.slice(1);
+// for search: lowercase, without accents ("puree" finds "Purée")
+const fold = (t: string) => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
 type Props = { f7router?: { navigate: (url: string) => void } };
 
 export default function RecipesPage({ f7router }: Props) {
   const { recipes, loading, loadError, reload, sort, setSort, settings, setFilter } = useStore();
   const [sortOpen, setSortOpen] = useState(false);
+  const [query, setQuery] = useState('');
 
   // R2: a chip for every tag in use, the course types first (in meal order), then the rest A–Z
   const used = new Set(recipes.flatMap((r) => r.tags));
@@ -35,11 +38,14 @@ export default function RecipesPage({ f7router }: Props) {
           ? b.createdAt.localeCompare(a.createdAt)
           : a.createdAt.localeCompare(b.createdAt),
     );
+  // search: titles with every word typed, among the recipes the chips show
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  const found = words.length ? shown.filter((r) => words.every((w) => fold(r.title).includes(w))) : shown;
   const toggleTag = (t: string) => setFilter(tags.includes(t) ? tags.filter((x) => x !== t) : [...tags, t]);
 
   return (
     <Page name="recipes" onPageAfterIn={showTabbar}>
-      <Navbar className="ck-navbar-root">
+      <Navbar key="navbar" className="ck-navbar-root">
         <NavTitle>Recipes</NavTitle>
         <NavRight>
           <Link iconOnly onClick={() => f7router?.navigate('/recipe/new/')} aria-label="New recipe">
@@ -54,48 +60,63 @@ export default function RecipesPage({ f7router }: Props) {
         </NavRight>
       </Navbar>
 
-      {/* RED: the search bar is part of the page and scrolls with it (wrapped, so Framework7 keeps it in the page content instead of pinning it) */}
-      <div className="ck-home-search">
-        <Searchbar searchContainer=".ck-card-grid" searchItem=".ck-card" searchIn=".ck-card-title" placeholder="Search recipes" disableButton={false} />
+      {/* RED: the search bar is part of the page and scrolls with it (wrapped, so Framework7 keeps it in the page content instead of pinning it).
+          customSearch: it only says what's typed, and the page filters (so the count can say "6 of 240", and chips
+          tapped mid-search filter too). No backdrop: the user wants no overlay while searching.
+          Every block here has a key: Page drops the ones that aren't shown (loading, error) and lists the rest by
+          position, so without keys React rebuilds the blocks below whenever loading ends. */}
+      <div key="search" className="ck-home-search">
+        <Searchbar
+          customSearch
+          backdrop={false}
+          disableButton={false}
+          placeholder="Search recipes"
+          onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
+          onSearchbarClear={() => setQuery('')}
+        />
       </div>
 
-      <Block className="ck-chips ck-chips-scroll">
+      <Block key="chips" className="ck-chips ck-chips-scroll">
         <Chip text="All" className={`ck-chip ${tags.length === 0 ? 'ck-chip-on' : ''}`} onClick={() => setFilter([])} />
         {allTags.map((t) => (
           <Chip key={t} text={label(t)} className={`ck-chip ${tags.includes(t) ? 'ck-chip-on' : ''}`} onClick={() => toggleTag(t)} />
         ))}
       </Block>
 
-      <Block className="ck-count">
+      <Block key="count" className="ck-count">
         <span className="ck-note">
-          {shown.length} {shown.length === 1 ? 'recipe' : 'recipes'} · {SORT_LABELS[sort]}
+          {words.length ? `${found.length} of ${shown.length}` : shown.length} {shown.length === 1 ? 'recipe' : 'recipes'} · {SORT_LABELS[sort]}
           {tags.length > 1 && (matchAny ? ' · any tag' : ' · all tags')}
         </span>
       </Block>
       {loading && (
-        <Block className="ck-list-state">
+        <Block key="loading" className="ck-list-state">
           <Preloader />
         </Block>
       )}
       {loadError && (
-        <Block className="ck-list-state">
+        <Block key="error" className="ck-list-state">
           <p className="ck-note">Couldn’t load your recipes. {loadError}</p>
           <Button round className="ck-soft ck-inline-button" onClick={() => reload()}>
             Try again
           </Button>
         </Block>
       )}
-      <BlockFooter className="searchbar-not-found">No recipes found</BlockFooter>
+      {words.length > 0 && !found.length && (
+        <BlockFooter key="not-found" className="ck-not-found">
+          No recipes found
+        </BlockFooter>
+      )}
       {/* Prepear's grid: two cards per row */}
-      <Block className="ck-card-grid searchbar-found">
+      <Block key="grid" className="ck-card-grid">
         <div className="grid grid-cols-2 grid-gap">
-          {shown.map((r) => (
+          {found.map((r) => (
             <RecipeCard key={r.id} recipe={r} />
           ))}
         </div>
       </Block>
 
-      <Actions opened={sortOpen} onActionsClosed={() => setSortOpen(false)}>
+      <Actions key="sort" opened={sortOpen} onActionsClosed={() => setSortOpen(false)}>
         <ActionsGroup>
           <ActionsLabel>Sort recipes</ActionsLabel>
           {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (

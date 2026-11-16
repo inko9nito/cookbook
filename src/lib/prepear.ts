@@ -230,6 +230,9 @@ export type PrepearPlan = {
 /** Everything in the export that isn't here yet, as recipes. */
 export function planPrepearImport(exp: PrepearExport, existing: Recipe[]): PrepearPlan {
   const known = new Set(existing.flatMap((r) => r.prepearIds ?? []));
+  // a recipe can be in the file twice (asked for by the original's id and by my copy's): the second one is skipped
+  // quietly, it isn't "already imported"
+  const inFile = new Set<string>();
   const items: PrepearItem[] = [];
   const skipped: PrepearPlan['skipped'] = (exp.failed ?? []).map((f) => ({ id: f.id, reason: `Prepear didn’t send it (${f.error})` }));
   let alreadyHere = 0;
@@ -244,7 +247,8 @@ export function planPrepearImport(exp: PrepearExport, existing: Recipe[]): Prepe
       alreadyHere++;
       continue;
     }
-    ids.forEach((id) => known.add(id));
+    if (ids.some((id) => inFile.has(id))) continue;
+    ids.forEach((id) => inFile.add(id));
     items.push(item);
   }
   return { items, alreadyHere, skipped };

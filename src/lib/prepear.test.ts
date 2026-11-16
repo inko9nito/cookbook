@@ -205,6 +205,8 @@ describe('the import plan', () => {
 
   test('two answers for the same recipe are imported once', () => {
     const twice = exp({ a: { adapted: adapted(), original: original() }, b: { adapted: adapted(), original: original() } });
-    expect(planPrepearImport(twice, []).items).toHaveLength(1);
+    const plan = planPrepearImport(twice, []);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.alreadyHere).toBe(0); // nothing is here yet: the second is a duplicate in the file, not "already imported"
   });
 });

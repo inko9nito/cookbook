@@ -23,6 +23,19 @@ const f7params = {
   sortable: { moveElements: false },
 };
 
+// Each page the app opens is a step in the browser history (Framework7's browserHistory), so iOS's own back gesture
+// from the left edge (Safari and the home-screen app both have one) goes back a page inside the app. Without it the
+// gesture left the app for whatever came before it, such as Google's sign-in page. That gesture is the swipe-back:
+// Framework7's own (iosSwipeBack) is off, or one swipe would go back twice. Opening the app starts on the first page of
+// each tab, as before (browserHistoryOnLoad off), and the page under iOS's swipe doesn't animate a second time.
+const viewHistory = {
+  browserHistory: true,
+  browserHistoryOnLoad: false,
+  browserHistoryStoreHistory: false,
+  browserHistoryAnimate: false,
+  iosSwipeBack: false,
+};
+
 export default function CookbookApp() {
   return (
     <AuthProvider>
@@ -45,10 +58,10 @@ export default function CookbookApp() {
               </Link>
             </ToolbarPane>
           </Toolbar>
-          <View id="view-recipes" main tab tabActive url="/" iosSwipeBack />
-          <View id="view-cookbooks" name="cookbooks" tab url="/cookbooks/" iosSwipeBack />
-          <View id="view-plan" name="plan" tab url="/plan/" iosSwipeBack />
-          <View id="view-groceries" name="groceries" tab url="/groceries/" iosSwipeBack />
+          <View id="view-recipes" main tab tabActive url="/" {...viewHistory} />
+          <View id="view-cookbooks" name="cookbooks" tab url="/cookbooks/" {...viewHistory} />
+          <View id="view-plan" name="plan" tab url="/plan/" {...viewHistory} />
+          <View id="view-groceries" name="groceries" tab url="/groceries/" {...viewHistory} />
         </Views>
         <SignInScreen />
         <SessionGuard />

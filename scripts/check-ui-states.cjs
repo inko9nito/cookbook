@@ -239,6 +239,18 @@ async function swipeLeft(ctx, page, locator) {
   await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap().catch(() => {});
   await page.waitForTimeout(500);
 
+  // iOS's own back gesture (Safari and the home-screen app) is a browser back: it goes back a page inside the app
+  // (Framework7 browserHistory), never out of the app to whatever came before it, such as Google's sign-in page
+  await step('03b-browser-back-from-recipe', async () => {
+    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap();
+    await page.waitForTimeout(900);
+    await page.goBack();
+    await page.waitForTimeout(900);
+    if (!page.url().startsWith(BASE)) throw new Error(`back left the app for ${page.url()}`);
+    const pages = await page.locator('#view-recipes .page').count();
+    if (pages !== 1 || !(await page.locator('#view-recipes .page-current .ck-card').count())) throw new Error('back did not return to Recipes');
+  });
+
   await step('04-recipe-page', async () => { await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(900); });
   // scroll through the page: sticky or overlapping content only shows up mid-scroll
   for (const y of [300, 450, 600, 800, 1000]) {

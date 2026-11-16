@@ -6,6 +6,7 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - UI library is **Framework7 v9 + framework7-react**, theme locked to `ios`.
 - Use Framework7 components for every sheet, popup, drawer, page transition, swipe gesture, action sheet, picker, stepper, sortable list, swipeout, toast, searchbar, and tab bar.
 - Use the **Framework7 router** (not React Router) so iOS push transitions and swipe-back work.
+- Swipe-back is **iOS's own back gesture** (Safari and the home-screen app both have one): the views use Framework7's `browserHistory`, so each page is a history entry and the gesture goes back a page inside the app. Framework7's `iosSwipeBack` is off, or one swipe goes back twice and leaves the app (it went to Google's sign-in page). Keep it that way in `src/App.tsx`.
 - Do **not** write custom CSS or JS for animations, transforms, gestures, or z-index. Do not wrap `Page` content in custom scroll containers.
 - Custom styling is limited to colors, spacing, corners and typography, preferably through Framework7 CSS variables.
 - **No iOS 26 look.** The user rejected Framework7 v9's liquid glass, floating tab bar and capsule nav buttons. The "Not iOS 26" block in `src/theme/cookbook.css` restyles them to the agreed design (flat docked tab bar, left titles, separate round buttons). Keep new screens consistent with it.

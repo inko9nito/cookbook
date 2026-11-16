@@ -302,6 +302,8 @@ html.ios .searchbar {
   color: var(--ck-fg); text-decoration: none;
 }
 .ck-card-photo { display: block; width: 100%; aspect-ratio: 1 / 1; border-radius: 16px; overflow: hidden; }
+/* a card without a photo: the chef hat centred (the card's display: block above would otherwise undo the grid) */
+.ck-card-photo.ck-photo-empty { display: grid; place-items: center; }
 .ck-card-body { display: grid; gap: 2px; align-content: start; padding: 8px 2px 0; }
 .ck-card-title {
   font-size: 14px; font-weight: 600; line-height: 1.3;

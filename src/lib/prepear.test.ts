@@ -165,6 +165,12 @@ describe('a recipe', () => {
     expect(prepearRecipe({ original: original({ title: '  ' }) }, 'x', exp({}))).toBeNull();
   });
 
+  test('a title typed in lower case gets a capital; others stay as they are', () => {
+    expect(prepearRecipe({ original: original({ title: 'mustard dill chicken thighs' }) }, 'x', exp({}))?.recipe.title).toBe('Mustard dill chicken thighs');
+    expect(prepearRecipe({ original: original({ title: 'iPhone-friendly Instant Pot Chili' }) }, 'x', exp({}))?.recipe.title).toBe('iPhone-friendly Instant Pot Chili');
+    expect(prepearRecipe({ original: original({ title: 'рулет со шпинатом' }) }, 'x', exp({}))?.recipe.title).toBe('Рулет со шпинатом');
+  });
+
   test('a recipe without a photo has none to copy', () => {
     expect(prepearRecipe({ original: original({ image_urls: null }) }, 'x', exp({}))?.photo).toBeUndefined();
   });

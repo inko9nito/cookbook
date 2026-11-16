@@ -151,6 +151,12 @@ const sourceName = (url: string) => {
   }
 };
 
+/**
+ * "mustard dill chicken thighs" → "Mustard dill chicken thighs": a title starting with a lower-case word gets a capital.
+ * A first word with capitals inside ("iPhone") is left alone.
+ */
+export const sentenceCase = (t: string) => (/^\p{Ll}[\p{Ll}\d'’-]*(?=[\s,:]|$)/u.test(t) ? t.charAt(0).toLocaleUpperCase() + t.slice(1) : t);
+
 const textList = (v: unknown): string[] => (Array.isArray(v) ? v : typeof v === 'string' ? [v] : []).map(plainText).filter(Boolean);
 
 /** One recipe to import, and the photo to copy for it (its path in Prepear's storage). */
@@ -166,7 +172,7 @@ export function prepearRecipe(answer: Json, askedId: string, exp: Pick<PrepearEx
   const main = sides[0];
   if (!main) return null;
   const r = main.recipe;
-  const title = plainText(r.title);
+  const title = sentenceCase(plainText(r.title));
   if (!title) return null;
 
   const metas = [answer?.adapted?.meta, answer?.original?.meta].filter(Boolean);

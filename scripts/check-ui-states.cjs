@@ -696,6 +696,34 @@ async function swipeLeft(ctx, page, locator) {
     if (!/^Imported 2 recipes\.$/.test(done)) throw new Error(`after importing it says "${done}"`);
   });
   await page.locator('.page-current .navbar .back').tap(); await page.waitForTimeout(800);
+  // #14 feedback, on the imported recipes (the demo backend keeps them until the page reloads): a lower-case title got
+  // a capital; a card shows its time but not its source, and nothing when no time is set; a card without a photo has
+  // its chef hat centred; the recipe page shows a dash for no time
+  await page.locator('.page-current .navbar .back').tap(); await page.waitForTimeout(800);
+  await step('13h-imported-cards', async () => {
+    const salad = page.locator('.page-current .ck-card', { hasText: 'Sample green salad' });
+    await salad.scrollIntoViewIfNeeded();
+    const t = await page.evaluate(() => {
+      const card = (title) => [...document.querySelectorAll('.page-current .ck-card')].find((c) => c.querySelector('.ck-card-title').textContent === title);
+      const salad = card('Sample green salad'), soup = card('Sample Lentil Soup');
+      const box = salad.querySelector('.ck-card-photo').getBoundingClientRect(), hat = salad.querySelector('.ck-card-photo svg').getBoundingClientRect();
+      return {
+        off: Math.max(Math.abs(box.left + box.width / 2 - (hat.left + hat.width / 2)), Math.abs(box.top + box.height / 2 - (hat.top + hat.height / 2))),
+        saladMeta: salad.querySelector('.ck-card-meta')?.textContent ?? null,
+        soupMeta: soup.querySelector('.ck-card-meta')?.textContent ?? null,
+      };
+    });
+    if (t.off > 2) throw new Error(`the chef hat is ${t.off.toFixed(0)}px off the middle of the empty photo`);
+    if (t.saladMeta !== null) throw new Error(`a card with no time set shows "${t.saladMeta}"`);
+    if (t.soupMeta !== '45 min') throw new Error(`a card with a source and a time shows "${t.soupMeta}", expected just the time`);
+  });
+  await step('13i-recipe-no-time', async () => {
+    await page.locator('.page-current .ck-card', { hasText: 'Sample green salad' }).tap(); await page.waitForTimeout(1000);
+    const time = (await page.locator('.page-current .ck-stats > div').nth(2).locator('b').textContent()).trim();
+    if (time !== '–') throw new Error(`no time set reads "${time}" on the recipe page, expected a dash`);
+  });
+  await page.locator('.navbar-current .link.back, .page-current .navbar .link.back').first().tap(); await page.waitForTimeout(900);
+  await page.locator('.view-main .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
   await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {
     await step(`15-tab-${tab.toLowerCase()}`, async () => {

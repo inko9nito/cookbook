@@ -95,7 +95,7 @@
    "original": {
     "recipe": {
      "id": "r2",
-     "title": "Sample Green Salad",
+     "title": "sample green salad",
      "attr_url": null,
      "deleted": null,
      "imported_user_id": "u-me",
@@ -134,8 +134,8 @@
      ],
      "servings": 4,
      "serving_size": null,
-     "time_prep": "15",
-     "time_cook": "30",
+     "time_prep": "",
+     "time_cook": null,
      "tags": [
       "salad"
      ],

@@ -4,8 +4,9 @@ import {
   Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Button, List, ListItem, Tabs, Tab,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
-import { X, GripHorizontal, ChevronDown, ChevronRight, Timer as TimerIcon } from 'lucide-react';
-import { linkedRecipe, type Ingredient, type Recipe } from '../lib/recipe';
+import { X, GripHorizontal, ChevronDown, ChevronRight, ChefHat, Timer as TimerIcon } from 'lucide-react';
+import { coverPhoto, linkedRecipe, type Ingredient, type Recipe } from '../lib/recipe';
+import { photoStyle } from './ui/photo';
 import { friendly } from '../lib/ingredients';
 import { amountText, footerText, type UnitPicks } from './ui/ingredientLine';
 import { stepTimers, stepIngredients, clock } from '../lib/cook';
@@ -248,7 +249,11 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
                     className={`ck-tab ${t.id === shownRecipe.id ? 'ck-tab-on' : ''}`}
                     onClick={() => show(t.id)}
                   >
-                    <span>{t.title}</span>
+                    {/* a little cover photo, so a recipe is found by sight (a recipe without one shows the chef hat) */}
+                    <span className={`ck-tab-thumb ck-photo ${coverPhoto(t) ? '' : 'ck-photo-empty'}`} style={photoStyle(coverPhoto(t))} aria-hidden="true">
+                      {!coverPhoto(t) && <ChefHat size={14} strokeWidth={1.75} />}
+                    </span>
+                    <span className="ck-tab-name">{t.title}</span>
                   </button>
                 ))}
               </div>

@@ -800,6 +800,8 @@ async function swipeLeft(ctx, page, locator) {
         joined: !!on && getComputedStyle(on).backgroundColor === getComputedStyle(cook.querySelector('.page')).backgroundColor && Math.abs(onBox.bottom - bar.bottom) < 1,
         clear: !!first && first.top >= bar.bottom, ticked: li.querySelector('input').checked,
         theme: document.querySelector('meta[name="theme-color"][media*="light"]').content === soft,
+        thumbs: [...nav.querySelectorAll('.ck-tab')].map((c) => { const th = c.querySelector('.ck-tab-thumb'); return !!th && (getComputedStyle(th).backgroundImage !== 'none' || !!th.querySelector('svg')); }),
+        fade: getComputedStyle(shown[0].querySelector('.ck-pane-ingredients')).webkitMaskImage || getComputedStyle(shown[0].querySelector('.ck-pane-ingredients')).maskImage,
       };
     });
     if (t.popups !== 1 || t.behind) throw new Error(`the sauce opened as a layer (${t.popups} popups open)`);
@@ -808,6 +810,8 @@ async function swipeLeft(ctx, page, locator) {
     if (t.repeated) throw new Error('the recipe title still shows above its tab');
     if (t.barTop !== 0 || t.barBg !== 'rgb(236, 236, 238)') throw new Error(`the tab bar starts at ${t.barTop}px in ${t.barBg}, not grey from the top`);
     if (!t.theme) throw new Error('the status bar strip (theme colour) is not the tab strip grey');
+    if (t.thumbs.length !== 2 || !t.thumbs.every(Boolean)) throw new Error('every recipe tab should show its photo (or the chef hat)');
+    if (!String(t.fade).includes('gradient')) throw new Error('ingredients scrolling under the top bar do not fade');
     if (!t.joined) throw new Error("the shown tab isn't joined to the page in the page colour");
     if (!t.clear) throw new Error('the tabs cover the Ingredients heading');
     if (t.ticked) throw new Error('tapping the linked name ticked the ingredient');

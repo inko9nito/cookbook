@@ -474,6 +474,9 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 /* isolation keeps Framework7's list layering (lists are z-index 1) inside each half, so the handle, last in the markup, stays on top */
 .ck-pane { min-height: 0; overflow-y: auto; overscroll-behavior: contain; isolation: isolate; }
 .ck-pane-ingredients { flex: 0 0 auto; }
+/* text scrolling up under the top bar fades into the page colour over its last 16px, as it does at the divider,
+   instead of meeting the bar (or the shown tab) at a hard edge */
+.ck-pane-ingredients { -webkit-mask-image: linear-gradient(transparent, #000 16px); mask-image: linear-gradient(transparent, #000 16px); }
 .ck-pane-steps { flex: 1 1 0; }
 /* room for the handle's fade: the last ingredient and the Directions heading can scroll clear of it */
 .ck-pane-ingredients::after,
@@ -834,7 +837,10 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
   border-radius: 14px 14px 0 0; background: none;
   font: inherit; font-size: 14px; font-weight: 600; color: var(--ck-fg2); cursor: pointer;
 }
-.ck-tab span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ck-tab { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.ck-tab .ck-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the recipe's cover photo, 24px with 7px corners, before its name */
+.ck-tab .ck-tab-thumb { flex: none; width: 24px; height: 24px; border-radius: 7px; }
 .ck-tab.ck-tab-on { position: relative; background-color: var(--ck-bg); color: var(--ck-fg); }
 /* when room is short (a timer's pill in the bar, three recipes) the shown tab keeps more of its name */
 .ck-tab.ck-tab-on { flex-grow: 1.6; }

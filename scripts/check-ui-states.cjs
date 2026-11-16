@@ -672,7 +672,7 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('13e-prepear-copied', async () => {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
-    await page.locator('.page-current .ck-copy-row a').tap(); await page.waitForTimeout(400);
+    await page.locator('.page-current .ck-copy-export a').tap(); await page.waitForTimeout(400);
     if (!(await page.locator('.toast.modal-in', { hasText: 'copied' }).count())) throw new Error('copying the bookmarklet shows no "copied" toast');
     // tapping the Mac drag link in the app does nothing (it's for Prepear's page)
     await page.locator('.page-current a.ck-bookmarklet').tap(); await page.waitForTimeout(300);

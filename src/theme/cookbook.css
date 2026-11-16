@@ -855,3 +855,10 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-tab.ck-tab-on::after { content: ''; position: absolute; bottom: 0; width: 14px; height: 14px; pointer-events: none; }
 .ck-tab.ck-tab-on::before { left: -14px; background: radial-gradient(circle at 0 0, transparent 13.5px, var(--ck-bg) 14px); }
 .ck-tab.ck-tab-on::after { right: -14px; background: radial-gradient(circle at 100% 0, transparent 13.5px, var(--ck-bg) 14px); }
+
+/* Settings → Version: the build, then a Tomato refresh icon. Tapping the row checks for a new version; the icon
+   spins while it checks (approved exception: the user asked for a spinning refresh icon instead of a dialog) */
+.ck-version { display: inline-flex; align-items: center; gap: 10px; }
+.ck-version .ck-refresh { color: var(--ck-accent-ink); }
+.ck-refresh.ck-spinning { animation: ck-spin 0.9s linear infinite; }
+@keyframes ck-spin { to { transform: rotate(360deg); } }

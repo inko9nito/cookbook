@@ -620,14 +620,21 @@ async function swipeLeft(ctx, page, locator) {
   await page.goto(BASE);
   await page.waitForTimeout(900);
   await step('13-settings', async () => { await page.locator('.view-main .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700); });
-  // the App group: which version is running, and Check for Updates (the service worker finds no newer one here)
+  // the App group: which version is running; tapping it checks for updates, its refresh icon spinning meanwhile, with
+  // no dialog or toast (the service worker finds no newer version here, so the icon just stops)
   await step('13b-settings-check-updates', async () => {
-    const version = await page.locator('.page-current li', { hasText: 'Version' }).locator('.item-after').textContent();
-    if (!/^\w{5,7} · /.test(version)) throw new Error(`the version reads "${version}"`);
-    await page.locator('.page-current .list-button', { hasText: 'Check for Updates' }).scrollIntoViewIfNeeded();
-    await page.locator('.page-current .list-button', { hasText: 'Check for Updates' }).tap();
-    const found = await page.locator('.toast.modal-in', { hasText: 'latest version' }).waitFor({ timeout: 6000 }).then(() => true, () => false);
-    if (!found) throw new Error('checking for updates did not say "You have the latest version"');
+    const row = page.locator('.page-current li.ck-version-row');
+    const version = await row.locator('.item-after').textContent();
+    if (!/^\w{5,7} · /.test(version.trim())) throw new Error(`the version reads "${version}"`);
+    await row.scrollIntoViewIfNeeded();
+    await row.locator('.item-link').tap(); await page.waitForTimeout(200);
+    const spinning = await row.locator('.ck-refresh.ck-spinning').count();
+    const popups = await page.locator('.dialog.modal-in, .toast.modal-in').count();
+    if (!spinning) throw new Error('the refresh icon does not spin while checking');
+    if (popups) throw new Error('checking for updates still shows a dialog or toast');
+    await page.waitForTimeout(2000);
+    if (await row.locator('.ck-refresh.ck-spinning').count()) throw new Error('the refresh icon kept spinning after the check');
+    if (await page.locator('.dialog.modal-in, .toast.modal-in').count()) throw new Error('the check ended in a dialog or toast');
   });
   await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Style Guide' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {

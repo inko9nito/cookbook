@@ -1,8 +1,11 @@
+import { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { Page, Navbar, List, ListItem, ListButton, BlockTitle, BlockFooter, f7 } from 'framework7-react';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAuth } from '../data/auth';
 import { clearCache } from '../data/store';
 import { isDemo } from '../data/api';
+import { inlineIcon } from '../components/ui/icons';
 import { appVersion, updateApp } from '../lib/appUpdate';
 
 export default function SettingsPage() {
@@ -26,19 +29,23 @@ export default function SettingsPage() {
       })
       .open();
 
-  // the home-screen app keeps running the version it has until it's reloaded with a new one: check and update here
+  // the home-screen app keeps running the version it has until it's reloaded with a new one. Tapping Version checks:
+  // its refresh icon spins meanwhile; a new version reloads the app, otherwise the icon just stops. No dialogs.
+  const [checking, setChecking] = useState(false);
   const checkForUpdates = async () => {
-    const checking = f7.dialog.preloader('Checking for updates…');
+    if (checking) return;
+    setChecking(true);
+    // spin for at least a moment, so a quick answer still reads as "checked"
+    const shortest = new Promise((r) => setTimeout(r, 700));
     try {
       const result = await updateApp();
-      checking.close();
-      if (result === 'latest') f7.toast.show({ text: 'You have the latest version', closeTimeout: 2000 });
       // no service worker here (a plain browser tab, or local): a reload is the update
-      else window.location.reload();
+      if (result === 'unsupported') window.location.reload();
     } catch {
-      checking.close();
-      f7.toast.show({ text: 'Couldn’t check for updates. Are you online?', closeTimeout: 2500 });
+      /* offline, or the check failed: the icon stops, nothing changes */
     }
+    await shortest;
+    setChecking(false);
   };
 
   return (
@@ -59,10 +66,14 @@ export default function SettingsPage() {
       </List>
       <BlockTitle>App</BlockTitle>
       <List strongIos insetIos dividersIos>
-        <ListItem title="Version" after={appVersion()} />
-        <ListButton onClick={checkForUpdates}>Check for Updates</ListButton>
+        <ListItem link="#" noChevron title="Version" onClick={checkForUpdates} className="ck-version-row" aria-label={`Version ${appVersion()}, check for updates`}>
+          <span slot="after" className="ck-version">
+            {appVersion()}
+            <RefreshCw {...inlineIcon} className={`ck-icon ck-refresh ${checking ? 'ck-spinning' : ''}`} aria-hidden="true" />
+          </span>
+        </ListItem>
       </List>
-      <BlockFooter>After a change goes live, this loads it into the app on your home screen.</BlockFooter>
+      <BlockFooter>Tap Version after a change goes live to load it into the app on your home screen.</BlockFooter>
       <List strongIos insetIos dividersIos>
         <ListItem link="/settings/style-guide/" title="Style Guide" />
       </List>

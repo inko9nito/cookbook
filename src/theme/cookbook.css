@@ -1059,10 +1059,10 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-plates .ck-plate-left { order: 1; width: 66px; height: 66px; margin-right: -22px; }
 .ck-plates .ck-plate-middle { order: 2; width: 92px; height: 92px; }
 .ck-plates .ck-plate-right { order: 3; width: 66px; height: 66px; margin-left: -22px; }
-/* the card: its colour, the plates, then the name (title font, two lines at most) and the counts, centred under the big
-   plate */
+/* the card: its colour, the plates, then the name (title font, two lines at most) and the counts on the left (the user
+   tried them centred under the big plate; left reads better) */
 .link.ck-book-tile, .ck-book-tile {
-  display: flex; flex-direction: column; align-items: stretch; gap: 2px; overflow: hidden; text-align: center;
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px; overflow: hidden; text-align: left;
   border-radius: 20px; padding: 14px 12px 14px;
 }
 /* a cookbook's name: the title font, so a cookbook doesn't read as a recipe */

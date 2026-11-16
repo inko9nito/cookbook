@@ -37,7 +37,7 @@ export function CookbookThumb({ color, photo }: { color: BookColor; photo?: stri
 
 /**
  * A cookbook as a card on the Cookbooks tab: its soft colour, the plates, then the name and how many recipes (and
- * sections), centred under the big plate.
+ * sections), on the left.
  */
 export default function CookbookTile({ href, name, meta, color, photos }: { href: string; name: string; meta: string; color: BookColor; photos: string[] }) {
   return (

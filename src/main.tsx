@@ -10,4 +10,15 @@ import CookbookApp from './App';
 
 Framework7.use(Framework7React);
 
+// The app always opens on the first page of each tab: forget the page a reload was on (Framework7 keeps it in the
+// address after "#!" and in the history entry), so going back from there doesn't reopen it.
+if (location.hash.startsWith('#!') || history.state) history.replaceState(null, '', location.pathname + location.search);
+
+// iOS's own back gesture from the first page of a tab can leave this page for an older copy of the app kept in memory,
+// such as the sign-in screen from before you signed in. Reload that copy, so it opens fresh with the sign-in saved on
+// the phone.
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) location.reload();
+});
+
 createRoot(document.getElementById('app')!).render(<CookbookApp />);

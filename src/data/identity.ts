@@ -73,9 +73,12 @@ export async function accessToken(force = false): Promise<string | null> {
   }
 }
 
-/** Off to Google (through Netlify Identity); it comes back to this page with the sign-in in the address. */
+/**
+ * Off to Google (through Netlify Identity); it comes back to this page with the sign-in in the address. The trip
+ * replaces this page in the history rather than adding to it, so iOS's back gesture can't return to the signed-out page.
+ */
 export function startGoogleSignIn(inviteToken?: string) {
-  location.assign(inviteToken ? auth().acceptInviteExternalUrl('google', inviteToken) : auth().loginExternalUrl('google'));
+  location.replace(inviteToken ? auth().acceptInviteExternalUrl('google', inviteToken) : auth().loginExternalUrl('google'));
 }
 
 /** What the address says when the page loads from a sign-in link: Google's answer, an invite, or an error. */
@@ -87,6 +90,29 @@ export function readArrival(hash: string): Arrival {
   if (params.get('invite_token')) return { kind: 'invite', token: params.get('invite_token')! };
   if (params.get('error')) return { kind: 'error', message: params.get('error_description')?.replace(/\+/g, ' ') ?? 'Signing in didn’t work.' };
   return null;
+}
+
+/** When an access token runs out (ms since 1970), read from the token itself; 0 when it can't be read. */
+export function tokenExpiry(accessToken: string): number {
+  try {
+    const part = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const exp = Number(JSON.parse(atob(part)).exp);
+    return Number.isFinite(exp) ? exp * 1000 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Whether the sign-in in the address is new enough to use. iOS's back gesture can reopen the address Google sent you
+ * back to, long after: its token has run out and its refresh token was spent at the first renewal, so using it would
+ * fail and clear the sign-in saved on the phone (gotrue-js does that when a renewal is refused). Only a token that
+ * hasn't run out, and is newer than the saved one, counts.
+ */
+export function isFreshArrival(params: URLSearchParams, saved: Pick<User, 'token'> | null, now = Date.now()): boolean {
+  const expires = tokenExpiry(params.get('access_token') ?? '');
+  const margin = 60_000; // gotrue-js renews a token this close to running out, which a spent refresh token can't do
+  return expires - margin > now && expires > (saved?.token?.expires_at ?? 0);
 }
 
 /** Back from Google: trade the token in the address for the user and keep the sign-in on the phone. */

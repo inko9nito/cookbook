@@ -658,6 +658,11 @@ async function swipeLeft(ctx, page, locator) {
     });
     if (acct.rows !== 1 || acct.title !== 'demo@example.com') throw new Error(`the Account card has ${acct.rows} rows, titled "${acct.title}"`);
     if (acct.out !== 'Sign Out' || acct.color !== 'rgb(209, 41, 31)' || acct.right > 40) throw new Error('Sign Out is not red at the end of the account row');
+    // every card's row is the same height, and Sign Out is still a 44px tap target
+    const heights = await page.evaluate(() => [...document.querySelectorAll('.page-current .list li')].map((li) => Math.round(li.getBoundingClientRect().height)).filter(Boolean));
+    if (new Set(heights).size !== 1) throw new Error(`Settings rows are ${heights.join(', ')}px tall, not all the same`);
+    const tap = await page.locator('.page-current .ck-sign-out').evaluate((e) => e.getBoundingClientRect().height);
+    if (tap < 44) throw new Error(`Sign Out's tap target is ${tap}px tall`);
   });
   await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {

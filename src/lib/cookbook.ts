@@ -62,6 +62,20 @@ export function coverOf(coverRecipeId: string | null | undefined, ids: string[],
   return undefined;
 }
 
+/**
+ * Up to `n` different photos for a collage cover: the chosen cover recipe's first, then the other recipes' in order.
+ * Fewer when fewer recipes have one.
+ */
+export function coverPhotos(coverRecipeId: string | null | undefined, ids: string[], byId: Map<string, Recipe>, n = 3): string[] {
+  const out: string[] = [];
+  for (const id of [...(coverRecipeId ? [coverRecipeId] : []), ...ids]) {
+    const src = byId.get(id) && coverPhoto(byId.get(id)!);
+    if (src && !out.includes(src)) out.push(src);
+    if (out.length === n) break;
+  }
+  return out;
+}
+
 export const recipeIdsOf = (c: Cookbook, sectionId: string | null): string[] =>
   sectionId === null ? c.recipeIds : (c.sections.find((s) => s.id === sectionId)?.recipeIds ?? []);
 

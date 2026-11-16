@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { cookbookRecipeIds, coverOf, fromOrganizeRows, organizeRows, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
+import { cookbookRecipeIds, coverOf, coverPhotos, fromOrganizeRows, organizeRows, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
 import { emptyRecipe, type Recipe } from './recipe';
 
 const book: Cookbook = {
@@ -26,6 +26,13 @@ describe('cookbooks', () => {
     expect(coverOf('c', ['a', 'b', 'c'], byId)).toBe('/c.jpg');
     expect(coverOf('a', ['a', 'b', 'c'], byId)).toBe('/b.jpg');
     expect(coverOf(null, ['gone', 'a'], byId)).toBeUndefined();
+  });
+
+  test('a collage takes up to three different photos, the cover recipe’s first', () => {
+    const byId = new Map([recipe('a'), recipe('b', '/b.jpg'), recipe('c', '/c.jpg'), recipe('d', '/b.jpg'), recipe('e', '/e.jpg'), recipe('f', '/f.jpg')].map((r) => [r.id, r]));
+    expect(coverPhotos('e', ['a', 'b', 'c', 'd', 'e', 'f'], byId)).toEqual(['/e.jpg', '/b.jpg', '/c.jpg']);
+    expect(coverPhotos(null, ['a', 'b', 'd'], byId)).toEqual(['/b.jpg']);
+    expect(coverPhotos(null, [], byId)).toEqual([]);
   });
 
   test('toggling adds at the end, or takes out', () => {

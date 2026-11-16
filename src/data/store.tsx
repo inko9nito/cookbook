@@ -159,6 +159,7 @@ export function useStore() {
     sort: settings.sort,
     setSort: (sort: SortKey) => changeSettings.mutate({ sort }),
     setFilter: (filterTags: string[], filterMode = settings.filterMode) => changeSettings.mutate({ filterTags, filterMode }),
+    setCookbookView: (cookbookView: Settings['cookbookView']) => changeSettings.mutate({ cookbookView }),
   };
 }
 

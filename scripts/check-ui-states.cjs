@@ -1155,7 +1155,7 @@ async function swipeLeft(ctx, page, locator) {
 
   // ── Cookbooks (issue #25), from a fresh start (the demo's three cookbooks) ──
   const CUR = '.view.tab-active .page-current';
-  const cards = () => page.locator(`${CUR} .ck-card-grid:not(.ck-section-grid) .ck-card .ck-card-title`).allTextContents();
+  const cards = () => page.locator(`${CUR} .ck-card-grid .ck-card .ck-card-title`).allTextContents();
   const prompt = async (text) => {
     await page.waitForSelector('.dialog.modal-in input');
     await page.locator('.dialog.modal-in input').fill(text);
@@ -1164,15 +1164,33 @@ async function swipeLeft(ctx, page, locator) {
   await step('26-cookbooks-tab', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(900);
-    const tiles = await page.locator(`${CUR} .ck-book-tile .ck-card-title`).allTextContents();
+    const tiles = await page.locator(`${CUR} .ck-book-tile .ck-book-name`).allTextContents();
     if (tiles.join(',') !== 'Dressings and sauces,Everything else,Grilling') throw new Error(`the cookbooks are ${JSON.stringify(tiles)}, not A–Z`);
     const counts = await page.locator(`${CUR} .ck-book-tile .ck-card-meta`).allTextContents();
-    if (counts.join(',') !== '0 recipes,6 recipes,2 recipes') throw new Error(`the counts read ${JSON.stringify(counts)}`);
+    if (counts.join(',') !== '0 recipes,6 recipes · 2 sections,2 recipes') throw new Error(`the counts read ${JSON.stringify(counts)}`);
+    // covers are collages: Everything else has three photos (one across the top, two below)
+    const cells = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).locator('.ck-collage > .ck-photo').count();
+    if (cells !== 3) throw new Error(`Everything else's cover has ${cells} photos, not a collage of 3`);
     if (!(await page.locator(`${CUR} .ck-book-tile`).first().locator('.ck-photo-empty svg').count())) throw new Error('an empty cookbook has no book icon');
+  });
+  // the switch next to + shows the cookbooks as a list (remembered), and back as tiles
+  await step('26a-cookbooks-list', async () => {
+    await page.locator(`${CUR} > .navbar .ck-view-switch`).tap(); await page.waitForTimeout(700);
+    const rows = await page.evaluate((CUR) => [...document.querySelectorAll(`${CUR} .ck-book-list li .item-title`)].map((e) => e.childNodes[0].textContent.trim()), CUR);
+    if (rows.join(',') !== 'Dressings and sauces,Everything else,Grilling') throw new Error(`the list shows ${JSON.stringify(rows)}`);
+    if (!(await page.locator(`${CUR} .ck-book-list .ck-collage-small`).count())) throw new Error('the list has no collage thumbnails');
+    if (await page.locator(`${CUR} .ck-book-tile`).count()) throw new Error('tiles still show in the list view');
+  });
+  await step('26a2-cookbooks-tiles-again', async () => {
+    await page.locator(`${CUR} > .navbar .ck-view-switch`).tap(); await page.waitForTimeout(700);
+    if ((await page.locator(`${CUR} .ck-book-tile`).count()) !== 3) throw new Error('switching back doesn’t show the tiles');
   });
   await step('26b-cookbook-page', async () => {
     await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).tap(); await page.waitForTimeout(1000);
-    const sections = await page.locator(`${CUR} .ck-section-grid .ck-card-title`).allTextContents();
+    // sections are shelves: name, count, See all, and a row of recipes
+    const sections = await page.evaluate((CUR) => [...document.querySelectorAll(`${CUR} .ck-shelf-title`)].map((e) => e.childNodes[0].textContent.trim()), CUR);
+    const meatRow = await page.locator(`${CUR} .ck-shelf`, { hasText: 'Meat' }).locator('.ck-shelf-row .ck-card').count();
+    if (meatRow !== 3) throw new Error(`the Meat shelf shows ${meatRow} recipes`);
     if (sections.join(',') !== 'Meat,Other') throw new Error(`the sections are ${JSON.stringify(sections)}`);
     const unc = await cards();
     if (unc.join(',') !== 'Corn pudding,Tahini Sauce') throw new Error(`Uncategorized shows ${JSON.stringify(unc)}`);
@@ -1185,11 +1203,11 @@ async function swipeLeft(ctx, page, locator) {
     const count = await page.locator(`${CUR} .ck-count`).textContent();
     // the search covers the sections too
     if (found.length !== 2 || !count.includes('2 of 6 recipes')) throw new Error(`searching shows ${JSON.stringify(found)} with "${count}"`);
-    if (await page.locator(`${CUR} .ck-section-grid`).count()) throw new Error('the section tiles stay while searching');
+    if (await page.locator(`${CUR} .ck-shelf`).count()) throw new Error('the shelves stay while searching');
     await page.locator(`${CUR} .ck-home-search input`).fill(''); await page.locator(`${CUR} .ck-home-search input`).blur(); await page.waitForTimeout(500);
   });
   await step('26d-section-page', async () => {
-    await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Meat' }).tap(); await page.waitForTimeout(1000);
+    await page.locator(`${CUR} .ck-shelf`, { hasText: 'Meat' }).locator('.ck-shelf-all').tap(); await page.waitForTimeout(1000);
     const sub = await page.locator('.view.tab-active .page-current > .navbar .subtitle').textContent();
     if (sub !== 'Everything else') throw new Error(`the section's subtitle reads "${sub}"`);
     if ((await cards()).length !== 3) throw new Error(`the section shows ${(await cards()).length} recipes`);
@@ -1270,7 +1288,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Delete Cookbook' }).tap(); await page.waitForTimeout(600);
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
-    const tiles = await page.locator(`${CUR} .ck-book-tile .ck-card-title`).allTextContents();
+    const tiles = await page.locator(`${CUR} .ck-book-tile .ck-book-name`).allTextContents();
     if (tiles.includes('Soups') || tiles.length !== 3) throw new Error(`after deleting, the cookbooks are ${JSON.stringify(tiles)}`);
   });
 

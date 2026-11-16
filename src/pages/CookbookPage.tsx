@@ -7,11 +7,10 @@ import { Ellipsis, Plus } from 'lucide-react';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import RecipeCard from '../components/ui/RecipeCard';
-import CookbookTile from '../components/ui/CookbookTile';
 import RecipePickerPopup from '../components/RecipePickerPopup';
 import OrganizePopup from '../components/OrganizePopup';
 import { useCookbooks, useStore } from '../data/store';
-import { cookbookRecipeIds, coverOf, existing, recipeIdsOf, withRecipeIds, type Cookbook } from '../lib/cookbook';
+import { cookbookRecipeIds, existing, recipeIdsOf, withRecipeIds, type Cookbook } from '../lib/cookbook';
 import { coverPhoto, newId, type Recipe } from '../lib/recipe';
 import { searchByTitle, searchWords } from '../lib/search';
 
@@ -21,11 +20,14 @@ type Props = {
 };
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+// how many recipes a section's shelf shows; See all opens the rest
+const SHELF = 12;
 const aToZ = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
 
 /**
  * A cookbook, or one of its sections (issue #25): /cookbook/:id/ and /cookbook/:id/section/:sectionId/.
- * A cookbook with sections shows them as tiles, then its Uncategorized recipes; without sections, just its recipes.
+ * A cookbook with sections shows each as a shelf of its recipes (scrolling sideways, See all opens the section), then its
+ * Uncategorized recipes; without sections, just its recipes.
  * A section shows its cookbook's name above its own, then its recipes. The search covers every recipe shown from here
  * (a cookbook's sections too). + adds recipes; ⋯ holds Organize, New Section, Rename, Change Cover and Delete.
  */
@@ -175,22 +177,35 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         </BlockFooter>
       )}
 
-      {!searching && !section && book.sections.length > 0 && <BlockTitle key="sections-title" medium className="ck-book-heading">Sections</BlockTitle>}
-      {!searching && !section && book.sections.length > 0 && (
-        <Block key="sections" className="ck-card-grid ck-section-grid">
-          <div className="grid grid-cols-2 grid-gap">
-            {book.sections.map((s) => (
-              <CookbookTile
-                key={s.id}
-                href={`/cookbook/${book.id}/section/${s.id}/`}
-                name={s.name}
-                count={existing(s.recipeIds, byId).length}
-                cover={coverOf(s.coverRecipeId, s.recipeIds, byId)}
-              />
-            ))}
-          </div>
-        </Block>
-      )}
+      {/* each section is a shelf: its name and count (both open it), See all, and its first recipes in a row that scrolls
+          sideways (issue #25 redesign: cookbooks are collages, sections shelves, recipes square tiles) */}
+      {!searching &&
+        !section &&
+        book.sections.map((s) => {
+          const inShelf = existing(s.recipeIds, byId);
+          const href = `/cookbook/${book.id}/section/${s.id}/`;
+          return (
+            <div key={`shelf-${s.id}`} className="ck-shelf">
+              <div className="ck-shelf-head">
+                <Link href={href} noLinkClass className="ck-shelf-title">
+                  {s.name} <span className="ck-shelf-count">{inShelf.length}</span>
+                </Link>
+                <Link href={href} className="ck-shelf-all">
+                  See all
+                </Link>
+              </div>
+              {inShelf.length ? (
+                <div className="ck-shelf-row">
+                  {inShelf.slice(0, SHELF).map((r) => (
+                    <RecipeCard key={r.id} recipe={r} />
+                  ))}
+                </div>
+              ) : (
+                <p className="ck-note ck-shelf-empty">No recipes yet.</p>
+              )}
+            </div>
+          );
+        })}
       {!searching && !section && book.sections.length > 0 && here.length > 0 && (
         <BlockTitle key="uncategorized-title" medium className="ck-book-heading">
           Uncategorized

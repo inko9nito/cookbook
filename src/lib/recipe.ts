@@ -88,6 +88,8 @@ export const Settings = z.object({
   sort: SortKey.default('newest'),
   filterTags: z.array(z.string().max(60)).max(60).default([]),
   filterMode: z.enum(['all', 'any']).default('all'),
+  /** the Cookbooks tab as collage tiles or as a list (issue #25 redesign), remembered like the sort */
+  cookbookView: z.enum(['grid', 'list']).default('grid'),
 });
 export type Settings = z.infer<typeof Settings>;
 

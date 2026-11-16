@@ -3,12 +3,12 @@ import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   Actions, ActionsGroup, ActionsButton, f7,
 } from 'framework7-react';
-import { Ellipsis, Star, ChevronDown } from 'lucide-react';
+import { Ellipsis, Star, ChevronDown, ChevronRight } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
 import CookMode from '../components/CookMode';
 import RecipePhotos from '../components/RecipePhotos';
 import { useStore } from '../data/store';
-import { titleCase, type Ingredient } from '../lib/recipe';
+import { titleCase, linkedRecipe, usedIn, type Ingredient } from '../lib/recipe';
 import { friendly } from '../lib/ingredients';
 import { footerText, type UnitPicks } from '../components/ui/ingredientLine';
 import { ConvertibleAmount, toggleTarget, withPick, type ConvertTarget } from '../components/UnitChoices';
@@ -30,6 +30,23 @@ function groupIngredients(list: Ingredient[]) {
   return groups.filter((g) => g.items.length || g.label);
 }
 
+
+/** Issue #11: an ingredient made from another recipe ("tahini sauce") opens that recipe, pushed like any page. */
+function IngredientName({ ing, linked }: { ing: Ingredient; linked?: { id: string; title: string } }) {
+  if (!linked) return <>{ing.name}</>;
+  return (
+    <Link href={`/recipe/${linked.id}/`} className="ck-ing-linked" aria-label={`${ing.name}, open the ${linked.title} recipe`}>
+      {ing.name}
+      <ChevronRight {...inlineIcon} aria-hidden="true" />
+    </Link>
+  );
+}
+
+/** The delete question; a recipe used as an ingredient elsewhere (issue #11) says where, and that those lines stay. */
+const deleteText = (title: string, users: string[]) =>
+  users.length
+    ? `Delete “${title}”? It’s an ingredient in ${users.map((t) => `“${t}”`).join(', ')}. That line stays, without the link.`
+    : `Delete “${title}”?`;
 
 type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void; navigate: (url: string) => void } };
 
@@ -133,7 +150,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
                 <span slot="title">
                   {/* issue #6: an amount in a measuring unit is underlined; tap it to pick another unit */}
                   <ConvertibleAmount ing={i} factor={factor} picks={picks} onOpen={(t) => setConverting((cur) => toggleTarget(cur, t))} />{' '}
-                  {i.name}
+                  <IngredientName ing={i} linked={linkedRecipe(i, recipes)} />
                 </span>
                 {/* the note, and "not scaled" for an amount that isn't a number (R5) */}
                 {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
@@ -195,7 +212,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
           <ActionsButton
             color="red"
             onClick={() =>
-              f7.dialog.confirm(`Delete “${recipe.title}”?`, 'Delete Recipe', () => {
+              f7.dialog.confirm(deleteText(recipe.title, usedIn(recipe.id, recipes).map((r) => r.title)), 'Delete Recipe', () => {
                 deleteRecipe(recipe.id);
                 f7router?.back();
               })

@@ -49,7 +49,20 @@ async function audit(page, name) {
         // under the tab bar or sitting behind an open sheet doesn't count
         const group = (el) => el.closest('li, .navbar-inner, .toolbar-inner, .actions-group, .segmented, .stepper, .ck-row, .block, .list-button');
         if (!group(a) || group(a) !== group(b)) continue;
-        const r1 = a.getBoundingClientRect(), r2 = b.getBoundingClientRect();
+        // the part of each that shows: a button scrolled out of a scrolling row (e.g. cook mode's recipe tabs) is clipped
+        const shownRect = (el) => {
+          const raw = el.getBoundingClientRect();
+          let r = { left: raw.left, top: raw.top, right: raw.right, bottom: raw.bottom };
+          for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            const cs = getComputedStyle(p);
+            if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+            const c = p.getBoundingClientRect();
+            r = { left: Math.max(r.left, c.left), top: Math.max(r.top, c.top), right: Math.min(r.right, c.right), bottom: Math.min(r.bottom, c.bottom) };
+          }
+          return { ...r, width: Math.max(0, r.right - r.left), height: Math.max(0, r.bottom - r.top) };
+        };
+        const r1 = shownRect(a), r2 = shownRect(b);
+        if (!r1.width || !r1.height || !r2.width || !r2.height) continue;
         const w = Math.min(r1.right, r2.right) - Math.max(r1.left, r2.left);
         const h = Math.min(r1.bottom, r2.bottom) - Math.max(r1.top, r2.top);
         if (w <= 2 || h <= 2) continue;
@@ -757,6 +770,218 @@ async function swipeLeft(ctx, page, locator) {
     if (t.ticked) throw new Error('tapping the amount ticked the ingredient');
     await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(700);
     await page.locator('.ck-cook .navbar a').first().tap(); await page.waitForTimeout(1000);
+  });
+
+  // issue #11: an ingredient made from another recipe (the demo kebabs use the Tahini Sauce recipe): its name is a link
+  // that opens that recipe; in cook mode it opens the sauce's own cook mode over the kebabs' one, without ticking the row
+  await step('25-linked-ingredient', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    const link = page.locator('.page-current .ck-ing-list li', { hasText: 'tahini sauce' }).locator('.ck-ing-linked');
+    await link.scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
+    const color = await link.evaluate((e) => getComputedStyle(e).color);
+    if (color !== 'rgb(196, 66, 28)') throw new Error(`the linked name is ${color}, not Tomato ink`);
+    if (await page.locator('.page-current .ck-ing-list .ck-ing-linked').count() !== 1) throw new Error('only the tahini sauce row should be a link');
+  });
+  await step('25b-linked-recipe-opened', async () => {
+    await page.locator('.page-current .ck-ing-list .ck-ing-linked').tap(); await page.waitForTimeout(1200);
+    const title = await page.locator('.page-current .ck-recipe-title').textContent();
+    if (title !== 'Tahini Sauce') throw new Error(`tapping the linked ingredient opened "${title}"`);
+  });
+  // the sauce opens in a tab, not a layer: one cook mode, the top bar becomes a grey strip of recipe tabs in place of
+  // the title (running up under the status bar, and Safari's strip turns grey too), and switching tabs keeps each
+  // recipe's ticks
+  await step('25c-cook-linked', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    const row = page.locator('.ck-cook .tab-active .ck-pane-ingredients li', { hasText: 'tahini sauce' });
+    await row.scrollIntoViewIfNeeded();
+    await row.locator('.ck-ing-linked').tap(); await page.waitForTimeout(800);
+    const t = await page.evaluate(() => {
+      const cook = document.querySelector('.popup.ck-cook.modal-in');
+      const nav = cook.querySelector('.navbar'); const bar = nav.getBoundingClientRect();
+      const shown = [...cook.querySelectorAll('.ck-cook-tabs > .tab')].filter((x) => getComputedStyle(x).display !== 'none');
+      const li = [...cook.querySelectorAll('.ck-cook-tabs > .tab')][0].querySelector('.ck-pane-ingredients li:has(.ck-ing-linked)');
+      const on = nav.querySelector('.ck-tab-on'); const onBox = on?.getBoundingClientRect();
+      const first = shown[0]?.querySelector('.ck-pane-head')?.getBoundingClientRect();
+      const soft = getComputedStyle(document.documentElement).getPropertyValue('--ck-soft').trim();
+      return {
+        popups: document.querySelectorAll('.popup.modal-in').length, behind: !!document.querySelector('.popup-behind'), shown: shown.length,
+        title: on?.textContent, tabs: [...nav.querySelectorAll('.ck-tab')].map((c) => c.textContent), repeated: !!nav.querySelector('.title'),
+        barTop: bar.top, barBg: getComputedStyle(nav.querySelector('.navbar-bg'), '::after').backgroundColor,
+        joined: !!on && getComputedStyle(on).backgroundColor === getComputedStyle(cook.querySelector('.page')).backgroundColor && Math.abs(onBox.bottom - bar.bottom) < 1,
+        clear: !!first && first.top >= bar.bottom, ticked: li.querySelector('input').checked,
+        theme: document.querySelector('meta[name="theme-color"][media*="light"]').content === soft,
+        thumbs: [...nav.querySelectorAll('.ck-tab')].map((c) => { const th = c.querySelector('.ck-tab-thumb'); return !!th && (getComputedStyle(th).backgroundImage !== 'none' || !!th.querySelector('svg')); }),
+        fade: getComputedStyle(shown[0].querySelector('.ck-pane-ingredients')).webkitMaskImage || getComputedStyle(shown[0].querySelector('.ck-pane-ingredients')).maskImage,
+      };
+    });
+    if (t.popups !== 1 || t.behind) throw new Error(`the sauce opened as a layer (${t.popups} popups open)`);
+    if (t.shown !== 1 || t.title !== 'Tahini Sauce') throw new Error(`the shown tab is "${t.title}" (${t.shown} recipes displayed)`);
+    if (t.tabs.length !== 2 || !t.tabs[0].includes('Kebabs')) throw new Error(`the recipe tabs read ${JSON.stringify(t.tabs)}`);
+    if (t.repeated) throw new Error('the recipe title still shows above its tab');
+    if (t.barTop !== 0 || t.barBg !== 'rgb(236, 236, 238)') throw new Error(`the tab bar starts at ${t.barTop}px in ${t.barBg}, not grey from the top`);
+    if (!t.theme) throw new Error('the status bar strip (theme colour) is not the tab strip grey');
+    if (t.thumbs.length !== 2 || !t.thumbs.every(Boolean)) throw new Error('every recipe tab should show its photo (or the chef hat)');
+    if (!String(t.fade).includes('gradient')) throw new Error('ingredients scrolling under the top bar do not fade');
+    if (!t.joined) throw new Error("the shown tab isn't joined to the page in the page colour");
+    if (!t.clear) throw new Error('the tabs cover the Ingredients heading');
+    if (t.ticked) throw new Error('tapping the linked name ticked the ingredient');
+  });
+  await step('25d-cook-linked-units', async () => {
+    // the sauce's unit sheet opens over cook mode
+    await page.locator('.ck-cook .tab-active .ck-pane-ingredients li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);
+    const t = await page.evaluate(() => {
+      const sh = document.querySelector('.sheet-modal.modal-in.ck-unit-sheet'); const r = sh?.getBoundingClientRect();
+      const hit = sh && document.elementFromPoint(r.left + r.width / 2, r.top + 30);
+      return { title: sh?.querySelector('.toolbar b')?.textContent, onTop: !!hit?.closest('.sheet-modal') };
+    });
+    if (t.title !== 'Lemon juice' || !t.onTop) throw new Error('the unit sheet is not shown over the sauce');
+    await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(700);
+  });
+  await step('25d2-cook-switch-tabs', async () => {
+    const tab = page.locator('.ck-cook .tab-active');
+    await tab.locator('.ck-pane-ingredients li', { hasText: 'ice water' }).locator('label').tap({ position: { x: 330, y: 12 } }); await page.waitForTimeout(400);
+    await tab.locator('.ck-pane-steps li:has(label)').first().locator('label').tap({ position: { x: 330, y: 12 } }); await page.waitForTimeout(600);
+    await page.locator('.ck-cook .navbar .ck-tab', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(500);
+    const on = await page.locator('.ck-cook .ck-tab-on').textContent();
+    if (!on.includes('Kebabs')) throw new Error(`the Kebabs tab shows "${on}"`);
+    if (await page.locator('.ck-cook .tab-active .ck-pane-ingredients li.ck-done').count()) throw new Error('the sauce’s ticks show in the kebabs');
+  });
+  await step('25d3-cook-progress-kept', async () => {
+    await page.locator('.ck-cook .navbar .ck-tab', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(500);
+    const tab = page.locator('.ck-cook .tab-active');
+    const ing = await tab.locator('.ck-pane-ingredients li.ck-done').allTextContents();
+    const steps = await tab.locator('.ck-pane-steps li.ck-done').count();
+    if (ing.length !== 1 || !ing[0].includes('ice water') || steps !== 1) throw new Error(`back on the sauce, ${ing.length} ingredients and ${steps} steps are ticked, expected the ice water and step 1`);
+    // X closes only the shown recipe's tab: back to the kebabs alone, with the usual title bar
+    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(800);
+    if (!(await page.locator('.popup.ck-cook.modal-in').count())) throw new Error('X closed cook mode instead of the sauce’s tab');
+    const title = await page.locator('.ck-cook .navbar .title').textContent().catch(() => '');
+    if (!title.includes('Kebabs') || (await page.locator('.ck-cook .ck-tab').count())) throw new Error(`after closing the sauce's tab the bar shows "${title}" and ${await page.locator('.ck-cook .ck-tab').count()} tabs`);
+    // opening the sauce again picks up where it was
+    await page.locator('.ck-cook .tab-active .ck-pane-ingredients .ck-ing-linked', { hasText: 'tahini sauce' }).tap(); await page.waitForTimeout(700);
+    const again = await page.locator('.ck-cook .tab-active .ck-pane-ingredients li.ck-done').count();
+    if (again !== 1) throw new Error(`the reopened sauce has ${again} ingredients ticked, expected the ice water`);
+    // closing every tab leaves cook mode, and Safari's strip goes back to the page colour
+    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(800);
+    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(1200);
+    if (await page.locator('.popup.ck-cook.modal-in').count()) throw new Error('closing the last tab did not leave cook mode');
+    const theme = await page.evaluate(() => document.querySelector('meta[name="theme-color"][media*="light"]').content);
+    if (theme !== '#f7f7f8') throw new Error(`the theme colour stayed ${theme} after cook mode closed`);
+  });
+  // the editor: a linked row reads "Recipe: …" under it; the ingredient sheet's Recipe row opens a searchable list of
+  // recipes stacked over the page and the sheet (Framework7 popup push) to link one; a pasted line named like a recipe
+  // links itself
+  await step('25e-edit-linked', async () => {
+    await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1200);
+    const footer = await page.locator('.page-current .ck-edit-list li', { hasText: 'tahini sauce' }).locator('.item-footer').textContent();
+    if (!footer.includes('Recipe: Tahini Sauce')) throw new Error(`the linked row's footer reads "${footer}"`);
+    await page.locator('.page-current .ck-edit-list li', { hasText: 'warm pitas' }).locator('.item-link').first().tap(); await page.waitForTimeout(900);
+    const after = await page.locator('.sheet-modal.modal-in .ck-link-field .item-after').textContent();
+    if (after !== 'None') throw new Error(`an unlinked ingredient's Recipe row reads "${after}"`);
+  });
+  await step('25f-link-picker', async () => {
+    await page.locator('.sheet-modal.modal-in .ck-link-field .item-link').tap(); await page.waitForTimeout(1200);
+    const t = await page.evaluate(() => {
+      const p = document.querySelector('.popup.ck-link-popup.modal-in'); const r = p?.getBoundingClientRect();
+      const hit = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { open: !!p, onTop: !!hit && p.contains(hit), search: !!p?.querySelector('.searchbar'), self: [...(p?.querySelectorAll('li') ?? [])].some((l) => l.textContent.includes('Kebabs')), sheet: !!document.querySelector('.sheet-modal.modal-in') };
+    });
+    if (!t.open || !t.onTop) throw new Error('the recipe list is not shown on top');
+    if (!t.sheet) throw new Error('the ingredient sheet closed instead of staying behind the recipe list');
+    if (!t.search) throw new Error('the recipe list has no search');
+    if (t.self) throw new Error('a recipe can be linked to itself');
+  });
+  await step('25f2-link-search', async () => {
+    await page.locator('.popup.ck-link-popup.modal-in .searchbar input').fill('corn'); await page.waitForTimeout(600);
+    const shown = await page.locator('.popup.ck-link-popup.modal-in .ck-link-list li:visible').allTextContents();
+    if (shown.length !== 1 || !shown[0].includes('Corn pudding')) throw new Error(`searching "corn" shows ${JSON.stringify(shown)}`);
+  });
+  await step('25g-linked-picked', async () => {
+    await page.locator('.popup.ck-link-popup.modal-in li', { hasText: 'Corn pudding' }).tap(); await page.waitForTimeout(1400);
+    if (await page.locator('.popup.ck-link-popup.modal-in').count()) throw new Error('the recipe list stayed open after picking');
+    const after = await page.locator('.sheet-modal.modal-in .ck-link-field .item-after').textContent().catch(() => '(no sheet)');
+    if (after !== 'Corn pudding') throw new Error(`after picking, the ingredient sheet's Recipe row reads "${after}"`);
+    const footer = await page.locator('.page-current .ck-edit-list li', { hasText: 'warm pitas' }).locator('.item-footer').textContent().catch(() => '');
+    if (!footer.includes('Recipe: Corn pudding')) throw new Error(`the row behind the sheet reads "${footer}"`);
+    await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(800);
+    await page.locator('.page-current textarea').first().fill('1 cup tahini sauce'); await page.waitForTimeout(300);
+    await page.locator('.page-current .button', { hasText: 'Add 1 line' }).tap(); await page.waitForTimeout(500);
+    const pasted = await page.locator('.page-current .ck-edit-list li', { hasText: '1 cup tahini sauce' }).locator('.item-footer').textContent().catch(() => '');
+    if (!pasted.includes('Recipe: Tahini Sauce')) throw new Error('a pasted "tahini sauce" line did not link to the Tahini Sauce recipe');
+  });
+  // link two more of the kebabs' ingredients and save, for cook mode with five recipes open (25i)
+  await step('25g2-more-links-saved', async () => {
+    const link = async (row, title) => {
+      await row.locator('.item-link').first().tap(); await page.waitForTimeout(900);
+      await page.locator('.sheet-modal.modal-in .ck-link-field .item-link').tap(); await page.waitForTimeout(1200);
+      await page.locator('.popup.ck-link-popup.modal-in li', { hasText: title }).tap(); await page.waitForTimeout(1200);
+      await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(800);
+    };
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1200);
+    await link(page.locator('.page-current .ck-edit-list li', { hasText: 'warm pitas' }), 'Corn pudding');
+    await link(page.locator('.page-current .ck-edit-list li', { hasText: 'fresh parsley' }), 'Mustard Dill');
+    await link(page.locator('.page-current .ck-edit-list li').filter({ hasText: /^1 lemon/ }), 'Pulled Beef');
+    await page.locator('.navbar .ck-nav-primary:visible').tap(); await page.waitForTimeout(1200);
+    const linked = await page.locator('.page-current .ck-ing-list .ck-ing-linked').count();
+    if (linked !== 4) throw new Error(`after saving, the kebabs have ${linked} linked ingredients, expected 4`);
+  });
+  // more recipes than fit: the tabs keep a readable width and the row scrolls sideways with a swipe; the shown tab
+  // scrolls into view
+  await step('25i-cook-many-tabs', async () => {
+    // straight from the kebabs page the save returned to (reloading would reset the demo's recipes)
+    await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    for (const name of ['tahini sauce', 'warm pitas', 'fresh parsley', 'lemon']) {
+      const main = page.locator('.ck-cook .navbar .ck-tab', { hasText: 'Middle' });
+      if (await main.count()) { await main.tap(); await page.waitForTimeout(500); }
+      await page.locator('.ck-cook .tab-active .ck-pane-ingredients .ck-ing-linked', { hasText: new RegExp(`^${name}$`) }).scrollIntoViewIfNeeded();
+      await page.locator('.ck-cook .tab-active .ck-pane-ingredients .ck-ing-linked', { hasText: new RegExp(`^${name}$`) }).tap(); await page.waitForTimeout(700);
+    }
+    const t = await page.evaluate(() => {
+      const row = document.querySelector('.ck-cook .ck-tabs'); const r = row.getBoundingClientRect();
+      const on = row.querySelector('.ck-tab-on').getBoundingClientRect();
+      return { tabs: row.querySelectorAll('.ck-tab').length, scrolls: row.scrollWidth > row.clientWidth + 1, onText: row.querySelector('.ck-tab-on').textContent,
+        inView: on.left >= r.left - 1 && on.right <= r.right + 1, narrowest: Math.min(...[...row.querySelectorAll('.ck-tab')].map((x) => x.getBoundingClientRect().width)) };
+    });
+    if (t.tabs !== 5) throw new Error(`${t.tabs} recipe tabs, expected 5`);
+    if (!t.scrolls) throw new Error('five tabs squeeze into the bar instead of scrolling');
+    if (t.narrowest < 95) throw new Error(`a tab is only ${Math.round(t.narrowest)}px wide`);
+    if (!t.onText.includes('Pulled Beef') || !t.inView) throw new Error(`the tab just opened (${t.onText}) is not scrolled into view`);
+  });
+  await step('25i2-cook-tabs-swiped', async () => {
+    const row = page.locator('.ck-cook .ck-tabs');
+    const before = await row.evaluate((e) => e.scrollLeft);
+    const box = await row.boundingBox();
+    const cdp = await ctx.newCDPSession(page);
+    const x = box.x + box.width * 0.3, y = box.y + box.height / 2;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 12; i++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + 15 * i, y }] });
+      await page.waitForTimeout(16);
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await page.waitForTimeout(800);
+    const after = await row.evaluate((e) => e.scrollLeft);
+    if (!(after < before - 50)) throw new Error(`swiping the tabs moved them from ${before}px to ${after}px`);
+    // X closes just the shown tab (Pulled Beef), showing the one before it
+    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(800);
+    const left = await page.locator('.ck-cook .ck-tab').allTextContents();
+    const on = await page.locator('.ck-cook .ck-tab-on').textContent();
+    if (left.length !== 4 || left.some((x) => x.includes('Pulled')) || !on.includes('Mustard')) throw new Error(`after X the tabs are ${JSON.stringify(left)}, showing "${on}"`);
+  });
+  await step('25h-delete-used-recipe', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('.page-current .ck-card', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Delete Recipe' }).tap(); await page.waitForTimeout(700);
+    const text = await page.locator('.dialog.modal-in .dialog-text').textContent();
+    if (!text.includes('ingredient in “Middle Eastern Chicken Kebabs”')) throw new Error(`the delete question reads "${text}"`);
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(500);
   });
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)

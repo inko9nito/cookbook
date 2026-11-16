@@ -235,3 +235,44 @@ export const demoCookbooks = [
   { id: 'k3', name: 'Everything else', count: 70 },
   { id: 'k4', name: 'Grilling', count: 11 },
 ];
+
+/**
+ * The demo backend's recipes (local checks): the samples, plus a tahini sauce that the kebabs use as an ingredient
+ * (issue #11). Kept out of `sampleRecipes`, which the seed migration was generated from and must keep matching.
+ */
+export const demoRecipes = (): Recipe[] => {
+  const sauce: Recipe = {
+    id: '6',
+    title: 'Tahini Sauce',
+    photos: [],
+    source: 'My recipe',
+    servings: 6,
+    servingSize: '2 tbsp',
+    prepMinutes: 5,
+    cookMinutes: 0,
+    minutes: 5,
+    createdAt: '2026-06-12',
+    tags: ['sauce'],
+    rating: 4,
+    timesMade: 5,
+    ingredients: [
+      ing('1/2', 'cup', 'tahini', 'stirred well'),
+      ing('1/3', 'cup', 'ice water', 'plus more to thin'),
+      ing('3', 'tbsp', 'lemon juice'),
+      ing('1', 'clove', 'garlic', 'grated'),
+      ing('1/2', 'tsp', 'kosher salt'),
+    ],
+    steps: [
+      step('Whisk the tahini, lemon juice, garlic and salt in a bowl. It will seize up and look grainy; that’s fine.'),
+      step('Whisk in the ice water a tablespoon at a time until the sauce turns pale, smooth and pourable.'),
+    ],
+    notes: 'Keeps a week in the fridge. It thickens as it sits, so loosen it with a splash of water.',
+  };
+  return [
+    ...structuredClone(sampleRecipes).map((r) => ({
+      ...r,
+      ingredients: r.ingredients.map((i) => (i.name === 'tahini sauce' ? { ...i, recipeId: sauce.id } : i)),
+    })),
+    sauce,
+  ];
+};

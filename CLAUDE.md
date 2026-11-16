@@ -51,7 +51,7 @@ No reminders feature (user declined).
 
 ## Data rules
 - Always keep the raw ingredient line exactly as typed, alongside the parsed fields.
-- Cookbooks and meal plans reference recipes by id. Never copy recipe data into them.
+- Cookbooks, meal plans and ingredients made from another recipe (`recipeId`, issue #11) reference recipes by id. Never copy recipe data into them.
 
 ## Requirements from the user's Prepear frustrations (see docs/PLAN.md §2)
 - R1 recipe sort defaults to newest-first and is remembered. R2 filter recipes by tags.

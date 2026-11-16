@@ -258,6 +258,7 @@ Bottom tab bar (Framework7 tabbar, with a `View` per tab so each tab keeps its o
  └───────────────────────────────┘
 ```
 Edits are live. **Done**, swipe-down, and tapping outside all keep the changes. Undo comes from the toast after a delete.
+Issue #11 added one row under the four fields: **Recipe**, a picker (not a field to type in) that links the ingredient to another recipe, so "1 pie crust" opens the Pie Crust recipe. The ingredient stores the recipe's id (`recipeId`), never a copy, and keeps its own words. Later, the grocery list can add a linked recipe's ingredients in its place.
 
 ---
 

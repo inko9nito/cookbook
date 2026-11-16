@@ -244,13 +244,15 @@ html.ios .toolbar.tabbar .toolbar-inner {
 /* Dialogs (alert, confirm, prompt): Framework7's pill buttons stay. The secondary (tonal) one is our soft grey button
    with dark text: Tomato ink on a pale Tomato fill was 4.1:1, below WCAG AA. */
 html.ios .dialog {
-  /* the main one (OK, Sign out) is bright Tomato like every orange button (see .button.ck-main) */
+  /* the main one (OK, Sign out) is bright Tomato with a 600 label, like every orange button (see .button.ck-main) */
   --f7-button-fill-bg-color: var(--ck-accent);
   --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
   --f7-button-tonal-bg-color: var(--ck-soft);
   --f7-button-tonal-pressed-bg-color: var(--ck-strong);
   --f7-button-tonal-text-color: var(--ck-fg);
 }
+/* Framework7 v9 draws dialog buttons as plain buttons (500, like every other button); the orange one is 600 */
+html.ios .dialog .button.button-fill { --f7-button-font-weight: 600; }
 
 /* Sheet header (ingredient sheet, paste sheet): plain bold title, Tomato text button, no glass bubbles */
 html.ios .sheet-modal .toolbar .left,

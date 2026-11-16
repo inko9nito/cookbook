@@ -1172,7 +1172,7 @@ async function swipeLeft(ctx, page, locator) {
     const metas = await page.locator(`${CUR} .ck-book-tile .ck-card-meta`).allTextContents();
     if (metas.join(',') !== '2 sections') throw new Error(`under the names: ${JSON.stringify(metas)}`);
     const spine = await page.locator(`${CUR} .ck-book-tile`).first().evaluate((e) => getComputedStyle(e).borderLeftWidth);
-    if (spine !== '7px') throw new Error(`the book's spine is ${spine}`);
+    if (spine !== '8px') throw new Error(`the book's spine is ${spine}`);
     // covers are collages: Everything else has three photos (one across the top, two below)
     const cells = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).locator('.ck-collage > .ck-photo').count();
     if (cells !== 3) throw new Error(`Everything else's cover has ${cells} photos, not a collage of 3`);

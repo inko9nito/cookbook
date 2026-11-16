@@ -14,6 +14,8 @@ export type PrepearExport = {
   exportedAt: string;
   profile: { id: string; slug: string; recipeTotal?: number };
   recipes: Record<string, Json>;
+  /** the profile's list of cookbooks, in Prepear's order */
+  cookbookList?: Json[];
   cookbooks?: Record<string, Json>;
   plans?: Record<string, Json>;
   failed?: { id: string; error: string }[];

@@ -1,6 +1,7 @@
 // Sample recipes: the demo backend (local checks) starts with these, and the first database migration seeds them.
 
 import type { Ingredient, Recipe, Step } from '../lib/recipe';
+import type { Cookbook } from '../lib/cookbook';
 
 let nextRow = 1000;
 const rowId = () => `s${nextRow++}`;
@@ -229,11 +230,21 @@ export const sampleRecipes: Recipe[] = [
   },
 ];
 
-export const demoCookbooks = [
-  { id: 'k1', name: 'Bread', count: 6 },
-  { id: 'k2', name: 'Dressings and sauces', count: 2 },
-  { id: 'k3', name: 'Everything else', count: 70 },
-  { id: 'k4', name: 'Grilling', count: 11 },
+/** The demo backend's cookbooks (issue #25): one with sections, one without, one empty. */
+export const demoCookbooks = (): Cookbook[] => [
+  {
+    id: 'k3',
+    name: 'Everything else',
+    coverRecipeId: '4',
+    recipeIds: ['1', '6'],
+    sections: [
+      { id: 'k3-meat', name: 'Meat', coverRecipeId: null, recipeIds: ['2', '4', '3'] },
+      { id: 'k3-other', name: 'Other', coverRecipeId: null, recipeIds: ['5'] },
+    ],
+    createdAt: '2026-11-01T10:00:00.000Z',
+  },
+  { id: 'k4', name: 'Grilling', coverRecipeId: null, recipeIds: ['2', '5'], sections: [], createdAt: '2026-11-02T10:00:00.000Z' },
+  { id: 'k2', name: 'Dressings and sauces', coverRecipeId: null, recipeIds: [], sections: [], createdAt: '2026-11-03T10:00:00.000Z' },
 ];
 
 /**

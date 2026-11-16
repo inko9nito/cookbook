@@ -8,17 +8,20 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { del, get, set } from 'idb-keyval';
 import { f7 } from 'framework7-react';
-import { ApiError, backend, isDemo } from './api';
+import { ApiError, backend, demoSlow, isDemo } from './api';
 import { useAuth } from './auth';
 import { Settings, type Recipe, type SortKey } from '../lib/recipe';
+import type { Cookbook } from '../lib/cookbook';
+import { pendingChanges, upsert } from './pending';
 
 const RECIPES = ['recipes'] as const;
 const SETTINGS = ['settings'] as const;
+const COOKBOOKS = ['cookbooks'] as const;
 const DAY = 24 * 60 * 60 * 1000;
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { gcTime: 30 * DAY, staleTime: 60 * 1000, retry: (n, e) => !(e instanceof ApiError && e.status < 500) && n < 2 },
+    queries: { gcTime: 30 * DAY, staleTime: demoSlow ? 0 : 60 * 1000, retry: (n, e) => !(e instanceof ApiError && e.status < 500) && n < 2 },
   },
 });
 
@@ -34,6 +37,15 @@ export async function clearCache() {
 }
 
 const toast = (text: string) => f7.toast?.show({ text, closeTimeout: 3000 });
+
+// Saves and deletes on their way to the server (pending.ts): every list read from the server has them laid over it, so
+// a reload that comes back first can't drop a recipe or cookbook just made, or undo a change. Saves go to the server
+// one at a time, in order (a mutation scope), because each sends the whole recipe or cookbook: two quick changes
+// arriving the wrong way round would keep the older one. On screen they still show at once.
+const recipesUnderWay = pendingChanges<Recipe>();
+const cookbooksUnderWay = pendingChanges<Cookbook>();
+const fetchRecipes = async () => recipesUnderWay.overlay(await backend.listRecipes());
+const fetchCookbooks = async () => cookbooksUnderWay.overlay(await backend.listCookbooks());
 
 /** Upload the photos picked on the phone (data URLs) and swap in their stored addresses. */
 async function withUploadedPhotos(r: Recipe): Promise<Recipe> {
@@ -64,7 +76,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 export function SessionGuard() {
   const auth = useAuth();
   const enabled = auth.status === 'signedIn';
-  const recipesQuery = useQuery({ queryKey: RECIPES, queryFn: backend.listRecipes, enabled });
+  const recipesQuery = useQuery({ queryKey: RECIPES, queryFn: fetchRecipes, enabled });
   const settingsQuery = useQuery({ queryKey: SETTINGS, queryFn: backend.getSettings, enabled });
   const errors = [recipesQuery.error, settingsQuery.error];
   const refusal = errors.find((e) => e instanceof ApiError && e.status !== 401 && e.status < 500) as ApiError | undefined;
@@ -80,35 +92,41 @@ export function useStore() {
   const qc = useQueryClient();
   const enabled = useAuth().status === 'signedIn';
 
-  const recipesQuery = useQuery({ queryKey: RECIPES, queryFn: backend.listRecipes, enabled });
+  const recipesQuery = useQuery({ queryKey: RECIPES, queryFn: fetchRecipes, enabled });
   const settingsQuery = useQuery({ queryKey: SETTINGS, queryFn: backend.getSettings, enabled });
 
   const save = useMutation({
     mutationFn: async (r: Recipe) => backend.saveRecipe(await withUploadedPhotos(r)),
-    onMutate: async (r) => {
-      await qc.cancelQueries({ queryKey: RECIPES });
-      const before = qc.getQueryData<Recipe[]>(RECIPES);
-      qc.setQueryData<Recipe[]>(RECIPES, (list = []) => (list.some((x) => x.id === r.id) ? list.map((x) => (x.id === r.id ? r : x)) : [r, ...list]));
-      return { before };
+    scope: { id: 'recipes' },
+    onMutate: (r) => {
+      recipesUnderWay.start(r.id, r);
+      qc.setQueryData<Recipe[]>(RECIPES, (list = []) => (list.some((x) => x.id === r.id) ? upsert(list, r) : [r, ...list]));
     },
-    onError: (e, _r, ctx) => {
-      qc.setQueryData(RECIPES, ctx?.before);
-      toast(`Couldn’t save the recipe. ${e instanceof Error ? e.message : ''}`.trim());
+    // the server's copy (its stored photo addresses), unless a newer change to the recipe is still on its way
+    onSuccess: (saved) => {
+      if (recipesUnderWay.count(saved.id) === 1) qc.setQueryData<Recipe[]>(RECIPES, (list = []) => upsert(list, saved));
     },
-    onSuccess: (saved) => qc.setQueryData<Recipe[]>(RECIPES, (list = []) => list.map((x) => (x.id === saved.id ? saved : x))),
+    onError: (e) => toast(`Couldn’t save the recipe. ${e instanceof Error ? e.message : ''}`.trim()),
+    // a refused save: the server's list is the truth again (with the other changes still under way laid over it)
+    onSettled: (_saved, e, r) => {
+      recipesUnderWay.end(r.id);
+      if (e) qc.invalidateQueries({ queryKey: RECIPES });
+    },
   });
 
   const remove = useMutation({
     mutationFn: backend.deleteRecipe,
-    onMutate: async (id: string) => {
-      await qc.cancelQueries({ queryKey: RECIPES });
-      const before = qc.getQueryData<Recipe[]>(RECIPES);
+    scope: { id: 'recipes' },
+    onMutate: (id: string) => {
+      recipesUnderWay.start(id, null);
       qc.setQueryData<Recipe[]>(RECIPES, (list = []) => list.filter((x) => x.id !== id));
-      return { before };
     },
-    onError: (e, _id, ctx) => {
-      qc.setQueryData(RECIPES, ctx?.before);
-      toast(`Couldn’t delete the recipe. ${e instanceof Error ? e.message : ''}`.trim());
+    onError: (e) => toast(`Couldn’t delete the recipe. ${e instanceof Error ? e.message : ''}`.trim()),
+    onSettled: (_r, e, id) => {
+      recipesUnderWay.end(id);
+      if (e) qc.invalidateQueries({ queryKey: RECIPES });
+      // the recipe also left every cookbook it was in (the database does that)
+      qc.invalidateQueries({ queryKey: COOKBOOKS });
     },
   });
 
@@ -145,3 +163,60 @@ export function useStore() {
 }
 
 export type { SortKey };
+
+/**
+ * Cookbooks (issue #25): loaded like the recipes, kept offline too. Saving or deleting shows at once and is sent in the
+ * background; if the server refuses, it's undone with a toast.
+ */
+export function useCookbooks() {
+  const qc = useQueryClient();
+  const enabled = useAuth().status === 'signedIn';
+  const query = useQuery({ queryKey: COOKBOOKS, queryFn: fetchCookbooks, enabled });
+
+  const save = useMutation({
+    mutationFn: backend.saveCookbook,
+    scope: { id: 'cookbooks' },
+    onMutate: (c: Cookbook) => {
+      cookbooksUnderWay.start(c.id, c);
+      qc.setQueryData<Cookbook[]>(COOKBOOKS, (list = []) => upsert(list, c));
+    },
+    // the server's copy, unless a newer change to the cookbook is still on its way
+    onSuccess: (saved) => {
+      if (cookbooksUnderWay.count(saved.id) === 1) qc.setQueryData<Cookbook[]>(COOKBOOKS, (list = []) => upsert(list, saved));
+    },
+    onError: (e) => toast(`Couldn’t save the cookbook. ${e instanceof Error ? e.message : ''}`.trim()),
+    onSettled: (_saved, e, c) => {
+      cookbooksUnderWay.end(c.id);
+      if (e) qc.invalidateQueries({ queryKey: COOKBOOKS });
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: backend.deleteCookbook,
+    scope: { id: 'cookbooks' },
+    onMutate: (id: string) => {
+      cookbooksUnderWay.start(id, null);
+      qc.setQueryData<Cookbook[]>(COOKBOOKS, (list = []) => list.filter((x) => x.id !== id));
+    },
+    onError: (e) => toast(`Couldn’t delete the cookbook. ${e instanceof Error ? e.message : ''}`.trim()),
+    onSettled: (_r, e, id) => {
+      cookbooksUnderWay.end(id);
+      if (e) qc.invalidateQueries({ queryKey: COOKBOOKS });
+    },
+  });
+
+  return {
+    cookbooks: query.data ?? [],
+    loading: query.isPending && enabled,
+    loadError: !query.data && query.error instanceof Error ? query.error.message : null,
+    reload: () => query.refetch(),
+    saveCookbook: (c: Cookbook) => save.mutate(c),
+    /** for the Prepear import: waits for the server, and throws if it refuses */
+    saveCookbookNow: async (c: Cookbook) => {
+      const saved = await backend.saveCookbook(c);
+      qc.setQueryData<Cookbook[]>(COOKBOOKS, (list = []) => upsert(list, saved));
+      return saved;
+    },
+    deleteCookbook: (id: string) => remove.mutate(id),
+  };
+}

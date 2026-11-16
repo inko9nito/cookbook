@@ -231,7 +231,7 @@ Bottom tab bar (Framework7 tabbar, with a `View` per tab so each tab keeps its o
    - A sort menu (`Actions` sheet: Newest, Oldest, A–Z, Recently cooked, Rating) that is **remembered** (R1).
    - Grid or list toggle, also remembered.
    - **+** in the navbar → New Recipe (Write manually / Paste link / Paste text).
-2. **Cookbooks** *(later)*
+2. **Cookbooks** *(built in issue #25; the plan and decisions are in the issue)*
    - Cover grid of cookbooks → a cookbook page with section tiles and "Uncategorized" recipes below → a section page.
    - Navigation uses normal iOS push pages with swipe-back.
    - **Add Recipes** opens a `Popup` with a searchbar, where tapping recipes toggles a check mark (adding several at once).

@@ -3,7 +3,8 @@
 // sign-in only works on a Netlify deploy.
 
 import { Settings, type Recipe } from '../lib/recipe';
-import { demoRecipes as demoRecipesSeed } from '../demo/data';
+import type { Cookbook } from '../lib/cookbook';
+import { demoCookbooks as demoCookbooksSeed, demoRecipes as demoRecipesSeed } from '../demo/data';
 import { accessToken, SignedOutError } from './identity';
 
 export type Backend = {
@@ -18,6 +19,12 @@ export type Backend = {
   copyPrepearPhoto: (path: string) => Promise<string>;
   /** issue #14: keep the Prepear export file (its text), for the cookbooks and meal plan later */
   keepPrepearExport: (text: string) => Promise<void>;
+  /** issue #25: the kept Prepear export file (its text), or null when none was kept */
+  keptPrepearExport: () => Promise<string | null>;
+  listCookbooks: () => Promise<Cookbook[]>;
+  /** save a whole cookbook (its sections and recipe ids) */
+  saveCookbook: (c: Cookbook) => Promise<Cookbook>;
+  deleteCookbook: (id: string) => Promise<void>;
 };
 
 /** A refusal from the API, with its status (401 signed out, 403 not an admin). */
@@ -80,6 +87,17 @@ const http: Backend = {
   keepPrepearExport: async (text) => {
     await call('/api/imports/prepear', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: text });
   },
+  keptPrepearExport: async () => {
+    try {
+      return JSON.stringify(await call<unknown>('/api/imports/prepear'));
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) return null;
+      throw e;
+    }
+  },
+  listCookbooks: () => call<Cookbook[]>('/api/cookbooks'),
+  saveCookbook: (c) => call<Cookbook>(`/api/cookbooks/${encodeURIComponent(c.id)}`, jsonInit('PUT', c)),
+  deleteCookbook: (id) => call<void>(`/api/cookbooks/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
 
 // ── the demo backend ──
@@ -94,6 +112,10 @@ const readDemoSettings = (): Settings => {
 };
 
 let demoRecipes: Recipe[] = demoRecipesSeed();
+let demoCookbooks: Cookbook[] = demoCookbooksSeed();
+// the Prepear export kept by an import on this page (locally: the sample file, until the page reloads)
+let demoKeptExport: string | null = null;
+const demoKnown = (ids: string[]) => [...new Set(ids)].filter((i) => demoRecipes.some((r) => r.id === i));
 
 const demo: Backend = {
   listRecipes: async () => structuredClone(demoRecipes),
@@ -104,6 +126,15 @@ const demo: Backend = {
   },
   deleteRecipe: async (id) => {
     demoRecipes = demoRecipes.filter((x) => x.id !== id);
+    // as the database does: the recipe leaves every cookbook
+    const out = (ids: string[]) => ids.filter((i) => i !== id);
+    const cover = (c?: string | null) => (c === id ? null : c);
+    demoCookbooks = demoCookbooks.map((c) => ({
+      ...c,
+      coverRecipeId: cover(c.coverRecipeId),
+      recipeIds: out(c.recipeIds),
+      sections: c.sections.map((s) => ({ ...s, coverRecipeId: cover(s.coverRecipeId), recipeIds: out(s.recipeIds) })),
+    }));
   },
   getSettings: async () => readDemoSettings(),
   saveSettings: async (patch) => {
@@ -119,7 +150,43 @@ const demo: Backend = {
   uploadPhoto: async (dataUrl) => dataUrl,
   // locally there's no photo store or Prepear: imported recipes show the grey placeholder
   copyPrepearPhoto: async () => '',
-  keepPrepearExport: async () => undefined,
+  keepPrepearExport: async (text) => {
+    demoKeptExport = text;
+  },
+  keptPrepearExport: async () => demoKeptExport,
+  listCookbooks: async () => structuredClone(demoCookbooks).sort((a, b) => a.name.localeCompare(b.name)),
+  saveCookbook: async (c) => {
+    if (c.prepearId && demoCookbooks.some((x) => x.prepearId === c.prepearId && x.id !== c.id)) throw new ApiError(409, 'That Prepear cookbook is already here.');
+    const before = demoCookbooks.find((x) => x.id === c.id);
+    const saved: Cookbook = {
+      ...c,
+      prepearId: c.prepearId ?? before?.prepearId,
+      recipeIds: demoKnown(c.recipeIds),
+      sections: c.sections.map((s) => ({ ...s, recipeIds: demoKnown(s.recipeIds) })),
+      updatedAt: new Date().toISOString(),
+    };
+    if (!saved.prepearId) delete saved.prepearId;
+    demoCookbooks = before ? demoCookbooks.map((x) => (x.id === c.id ? saved : x)) : [...demoCookbooks, saved];
+    return structuredClone(saved);
+  },
+  deleteCookbook: async (id) => {
+    demoCookbooks = demoCookbooks.filter((x) => x.id !== id);
+  },
 };
 
-export const backend: Backend = isDemo ? demo : http;
+/**
+ * `?slow` (the demo only, for the UI check): calls take as long as on the network, reads 0.3s and saves 1.2s (a save
+ * writes in a transaction), so a list can be reloaded and come back while a save is still on its way (issue #25: a
+ * cookbook just made vanished that way). The store also treats data as stale at once with it, as it is on the phone
+ * after a minute.
+ */
+export const demoSlow = isDemo && typeof location !== 'undefined' && new URLSearchParams(location.search).has('slow');
+const slowly = (b: Backend): Backend =>
+  Object.fromEntries(
+    Object.entries(b).map(([name, call]) => [name, async (...args: unknown[]) => {
+      await new Promise((r) => setTimeout(r, /^(list|get|kept)/.test(name) ? 300 : 1200));
+      return (call as (...a: unknown[]) => unknown)(...args);
+    }]),
+  ) as Backend;
+
+export const backend: Backend = isDemo ? (demoSlow ? slowly(demo) : demo) : http;

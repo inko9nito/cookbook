@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Copy, FileUp } from 'lucide-react';
-import { Page, Navbar, List, ListItem, Block, BlockTitle, Button, Progressbar, f7 } from 'framework7-react';
+import { BookOpen, Copy, FileUp } from 'lucide-react';
+import { Page, Navbar, List, ListItem, Block, BlockTitle, Button, Progressbar, Preloader, f7 } from 'framework7-react';
 import { inlineIcon } from '../components/ui/icons';
 import { prepearExport } from '../prepear/export';
 import { prepearPeek } from '../prepear/peek';
 import { planPrepearImport, readPrepearExport, type PrepearItem, type PrepearPlan } from '../lib/prepear';
+import { planPrepearCookbooks, type PrepearCookbookPlan } from '../lib/prepear-cookbooks';
+import type { Cookbook } from '../lib/cookbook';
 import { newId } from '../lib/recipe';
 import { ApiError, backend } from '../data/api';
-import { useStore } from '../data/store';
+import { useCookbooks, useStore } from '../data/store';
 
 /*
   Settings → Import from Prepear (issue #14, docs/PLAN.md §6). Prepear has no export, so the recipes come out
@@ -15,6 +17,8 @@ import { useStore } from '../data/store';
   Step 1: the export bookmarklet, which saves everything of theirs as one file.
   Step 2: choosing that file here: it says what's in it, then imports the recipes (src/lib/prepear.ts converts them),
   copying their photos, and keeps the whole file on the server for the cookbooks and meal plan later.
+  Step 3 (issue #25): the cookbooks, from the file kept on the server, once the recipes are in
+  (src/lib/prepear-cookbooks.ts converts them).
   At the bottom, the peek bookmarklet, in case Claude needs to look at Prepear's site again.
 */
 
@@ -201,7 +205,7 @@ export default function PrepearImportPage() {
             <Button large fill round className="ck-main ck-import-button" disabled={!ready.plan.items.length} onClick={() => runImport(ready.plan.items, ready.text)}>
               {ready.plan.items.length ? `Import ${plural(ready.plan.items.length, 'recipe')}` : 'Nothing new to import'}
             </Button>
-            <p className="ck-note">Keep the app open while it imports. Your cookbooks and meal plan are kept for when the app has them.</p>
+            <p className="ck-note">Keep the app open while it imports. Your cookbooks come in next, in step 3; your meal plan is kept for when the app has it.</p>
           </Block>
         </>
       )}
@@ -236,6 +240,8 @@ export default function PrepearImportPage() {
         </Block>
       )}
 
+      <CookbooksStep chosenFile={keptFile.current ?? (ready ? ready.text : null)} />
+
       {/* the first step of #14: it showed Claude how Prepear's site works. Kept in case Prepear changes. */}
       <BlockTitle>For Claude</BlockTitle>
       <List strongIos insetIos dividersIos>
@@ -247,5 +253,132 @@ export default function PrepearImportPage() {
         <p>Only if the export stops working: the peek records how Prepear’s site loads recipes, leaving out your password, sign-in and email address, so Claude can fix the export.</p>
       </Block>
     </Page>
+  );
+}
+
+type BooksPhase =
+  | { kind: 'idle' }
+  | { kind: 'reading' }
+  | { kind: 'ready'; plan: PrepearCookbookPlan }
+  | { kind: 'importing'; done: number; total: number }
+  | { kind: 'done'; imported: number; failed: Cookbook[] }
+  | { kind: 'error'; message: string };
+
+/**
+ * Step 3 (issue #25): Prepear's cookbooks, from the export kept on the server in step 2 (or the file chosen just now),
+ * with their recipes found among the imported ones. Says what's in it, then brings them in; ones brought in before are
+ * skipped.
+ */
+function CookbooksStep({ chosenFile }: { chosenFile: string | null }) {
+  const { recipes, loading } = useStore();
+  const { cookbooks, saveCookbookNow } = useCookbooks();
+  const [phase, setPhase] = useState<BooksPhase>({ kind: 'idle' });
+
+  const look = async () => {
+    setPhase({ kind: 'reading' });
+    try {
+      const text = chosenFile ?? (await backend.keptPrepearExport());
+      if (!text) {
+        setPhase({ kind: 'error', message: 'There’s no Prepear export here yet. Import your recipes in step 2 first: that keeps the file.' });
+        return;
+      }
+      setPhase({ kind: 'ready', plan: planPrepearCookbooks(readPrepearExport(text), recipes, cookbooks, newId) });
+    } catch (e) {
+      setPhase({ kind: 'error', message: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  const run = async (list: Cookbook[]) => {
+    setPhase({ kind: 'importing', done: 0, total: list.length });
+    const failed: Cookbook[] = [];
+    let done = 0;
+    for (const c of list) {
+      try {
+        await saveCookbookNow(c);
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+          setPhase({ kind: 'error', message: `The import stopped: ${e.message}` });
+          return;
+        }
+        // 409: brought in meanwhile (another tap, another phone): nothing to do
+        if (!(e instanceof ApiError && e.status === 409)) failed.push(c);
+      }
+      done++;
+      setPhase({ kind: 'importing', done, total: list.length });
+    }
+    setPhase({ kind: 'done', imported: list.length - failed.length, failed });
+  };
+
+  const ready = phase.kind === 'ready' ? phase.plan : null;
+
+  return (
+    <>
+      <BlockTitle>Step 3 · Cookbooks</BlockTitle>
+      <List strongIos insetIos dividersIos>
+        <ListItem
+          link="#"
+          noChevron
+          title="Look at your Prepear cookbooks"
+          onClick={() => phase.kind !== 'importing' && phase.kind !== 'reading' && look()}
+          disabled={loading || phase.kind === 'importing' || phase.kind === 'reading'}
+          className="ck-copy-row ck-look-books"
+        >
+          <BookOpen slot="after" {...inlineIcon} className="ck-icon ck-copy" aria-hidden="true" />
+        </ListItem>
+      </List>
+      {phase.kind === 'idle' && (
+        <Block className="ck-note">
+          <p>Once your recipes are in. It reads the file kept in step 2, so there’s nothing to export again, and finds each cookbook’s recipes among the ones you imported.</p>
+        </Block>
+      )}
+      {phase.kind === 'reading' && (
+        <Block className="ck-list-state">
+          <Preloader />
+        </Block>
+      )}
+      {ready && (
+        <>
+          <List strongIos insetIos dividersIos className="ck-import-summary ck-books-summary">
+            <ListItem title="Cookbooks to import" after={String(ready.cookbooks.length)} />
+            <ListItem title="With sections" after={String(ready.cookbooks.filter((c) => c.sections.length).length)} />
+            {ready.alreadyHere > 0 && <ListItem title="Already imported" after={String(ready.alreadyHere)} />}
+            {ready.missingRecipes > 0 && (
+              <ListItem title="Recipes not found" after={String(ready.missingRecipes)} footer="Deleted in Prepear, or not imported: left out of the cookbooks" />
+            )}
+          </List>
+          <Block>
+            <Button large fill round className="ck-main ck-import-books-button" disabled={!ready.cookbooks.length} onClick={() => run(ready.cookbooks)}>
+              {ready.cookbooks.length ? `Import ${plural(ready.cookbooks.length, 'cookbook')}` : 'Nothing new to import'}
+            </Button>
+          </Block>
+        </>
+      )}
+      {phase.kind === 'importing' && (
+        <Block strong inset className="ck-import-progress">
+          <Progressbar progress={Math.round((phase.done / Math.max(1, phase.total)) * 100)} />
+          <p>
+            Importing {phase.done} of {phase.total}…
+          </p>
+        </Block>
+      )}
+      {phase.kind === 'done' && (
+        <Block strong inset className="ck-import-progress ck-import-done">
+          <p>
+            <strong>Imported {plural(phase.imported, 'cookbook')}.</strong>
+            {phase.failed.length > 0 && ` ${plural(phase.failed.length, 'cookbook')} couldn’t be saved.`} They’re in the Cookbooks tab.
+          </p>
+          {phase.failed.length > 0 && (
+            <Button large fill round className="ck-main" onClick={() => run(phase.failed)}>
+              Try again
+            </Button>
+          )}
+        </Block>
+      )}
+      {phase.kind === 'error' && (
+        <Block strong inset>
+          <p className="ck-import-error">{phase.message}</p>
+        </Block>
+      )}
+    </>
   );
 }

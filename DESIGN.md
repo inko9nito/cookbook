@@ -45,19 +45,19 @@ typography:
   step:
     fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
     fontSize: "15px"
-    fontWeight: 400
+    fontWeight: 500
   edit-text:
     fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
     fontSize: "14px"
-    fontWeight: 400
+    fontWeight: 500
   body:
     fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
     fontSize: "17px"
-    fontWeight: 400
+    fontWeight: 500
   meta:
     fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
     fontSize: "13px"
-    fontWeight: 400
+    fontWeight: 500
   chip:
     fontFamily: "Fredoka, -apple-system, system-ui, sans-serif"
     fontSize: "14px"
@@ -73,11 +73,11 @@ typography:
   tag:
     fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
     fontSize: "12px"
-    fontWeight: 500
+    fontWeight: 600
   badge:
     fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
     fontSize: "11px"
-    fontWeight: 600
+    fontWeight: 700
 rounded:
   badge: "6px"
   field: "18px"
@@ -160,7 +160,7 @@ Implementation: `src/theme/cookbook.css` (tokens and Framework7 variable mapping
 ## Typography
 
 - **Fonts: Nunito for reading, Fredoka for titles and buttons** (issue #21). The user wanted something rounder and friendlier than the iPhone font, tried Nunito, M PLUS Rounded, Zen Maru Gothic, Quicksand and Baloo 2, and picked Fredoka as the most fun; Fredoka everywhere was hard to read in body text, so Nunito took that over. **Fredoka** (`--ck-font-display`): tab and top bar titles, the recipe name, section headings (Ingredients, Directions, Notes; the editor's and cook mode's too), sheet and dialog titles, every button and link-button (main and soft buttons, Save, Cancel, Done, the servings pill, dialog and action sheet buttons, swipe Delete) and chips. **Nunito** (`--ck-font`): everything else: ingredients (linked recipe names included), steps, notes, meta lines, stats, group labels, recipe card titles, fields, lists and Settings rows. Both are Google Fonts served from this site (`public/fonts/`, declared in `cookbook.css`, their Latin letters preloaded in `index.html`) so they work offline and the first paint is already in them (a late font made iPhone Safari smear the Start cooking bar); they fall back to the iPhone font, which also covers fractions they lack (⅓, ⅔, ⅛).
-- **Weights, one step lighter:** Fredoka's bold is very heavy, so the app uses (Nunito text included) each weight **one step lighter than usual**: what was 700 (bold) is 600, what was 600 (semibold) is 500, regular text stays 400. **Nothing uses 700**, page titles included: the tab screens' large titles (26px), the recipe name, "Cookbook" on the sign-in screen, the editor's section titles (Ingredients, Directions…) and the main buttons are all 600, the same as Save. Framework7's own bold (dialog titles, group titles, action sheet buttons, `<b>`) is lowered the same way in `cookbook.css`. In this document "bold" means 600 and "semibold" 500 unless it says otherwise.
+- **Weights:** Fredoka's bold is very heavy, so **Fredoka text** (titles, buttons, chips) uses each weight one step lighter than usual: bold 600, semibold 500, plain 400; nothing uses 700, page titles included. **Nunito text** read too light at those weights, so it is one notch heavier than that (issue #21, after the switch to Nunito): plain text 500, semibold 600 (recipe card titles, field labels, linked recipe names), bold 700 (ingredient amounts, group labels, step numbers, stats). In `cookbook.css` the page's base weight is 500 (`body`), Framework7's list text and typed text are set to match, and the few Fredoka links that took the base weight (Cancel in a top bar, Sign Out, swipe Delete) are pinned back to 400. Framework7's own bold (dialog titles, sheet titles, action sheet buttons) follows the Fredoka weights.
 - **Icons:** Lucide (`lucide-react`), 22px in navigation bars, 24px in the tab bar, 2px stroke. Framework7's built-in glyphs (back chevron, list chevrons, checkmarks, search magnifier) stay as they are.
 - **Light mode only for now.** A dark version can be added later by redefining the tokens.
 - **Contrast (checked with Impeccable):** Any Tomato *text* uses Tomato ink (4.6:1 on the grey page). **All orange buttons are the same bright Tomato** with a white 600-weight label: Start cooking, Continue with Google, Save, and the dialogs' main button (OK, Sign out). **Deliberate exception:** that is 3.7:1, under WCAG AA (the main buttons passed before as 700 "large bold" text, and Save was Tomato ink, 5:1). The user chose this in issue #21 over Tomato ink, which looked darker than production. `check:ui` skips these buttons in its contrast check. Muted grey is 4.6:1 on the grey page.

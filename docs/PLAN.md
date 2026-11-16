@@ -193,6 +193,7 @@ Most recipe sites publish a machine-readable `schema.org/Recipe` block (JSON-LD)
 3. **Step 3:** in my app, Settings → Import from Prepear → choose that file. Photos are copied over too.
 - Best run on my **Mac in Safari or Chrome**, which handles a big download more easily. It also works on iPhone Safari.
 - Fallback if Prepear's site doesn't expose the data: most of my recipes came from websites, so their source URLs can be re-imported in bulk.
+- *Step 1 built (Nov 2026, issue #14):* Settings → Import → From Prepear copies the peek bookmarklet (source: `src/prepear/peek.ts`; the page turns that function's own code into the bookmarklet). On app.prepear.com it shows a small panel and records the app's API calls while I browse (address, method, header names, a trimmed copy of each answer), plus where the page keeps its sign-in (names only), the API addresses in its code, and its routes. Save file downloads `prepear-peek.json`; Copy puts it on the clipboard. Passwords, tokens, cookies, signed links and email addresses are replaced by `<hidden>` / `<email>`. A page reload stops it; tapping the bookmarklet again carries on with what it had. The file has my real recipe text, so it goes to Claude in chat, never into this public repo.
 
 ---
 

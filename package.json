@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.netlify.json",
     "check:ui": "node scripts/check-ui-states.cjs",
+    "check:peek": "node scripts/check-prepear-peek.mjs",
     "test": "vitest run"
   },
   "dependencies": {

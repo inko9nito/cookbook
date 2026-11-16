@@ -866,3 +866,11 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
    tall, reaching into the row's padding (negative margins) so the row stays as tall as the other cards' rows */
 .ck-account-row .item-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ck-account-row .link.ck-sign-out { height: 44px; margin: -12px 0; padding: 0 4px; color: var(--ck-error); }
+
+/* Settings → Import from Prepear: the copy icon in Tomato ink like Version's refresh; numbered steps with a little
+   room between them; the Mac drag link in Tomato ink */
+.ck-copy-row .ck-copy { color: var(--ck-accent-ink); }
+.ck-steps ol { margin: 0; padding-left: 20px; }
+.ck-steps li + li { margin-top: 8px; }
+.ck-steps .ck-note { margin: 12px 0 0; }
+.ck-steps a.ck-bookmarklet { color: var(--ck-accent-ink); font-weight: 600; }

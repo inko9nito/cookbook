@@ -648,7 +648,7 @@ async function swipeLeft(ctx, page, locator) {
       };
     });
     if (t.loose || t.notWhite) throw new Error(`${t.loose + t.notWhite} Settings group(s) not in a white card`);
-    if (t.titles.join() !== 'Account,Version,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
+    if (t.titles.join() !== 'Account,Import,Version,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
     if (t.footers) throw new Error(`Settings has ${t.footers} footers, expected none`);
     // Account is one row: the address, then Sign Out in red at its end
     const acct = await page.evaluate(() => {
@@ -664,6 +664,22 @@ async function swipeLeft(ctx, page, locator) {
     const tap = await page.locator('.page-current .ck-sign-out').evaluate((e) => e.getBoundingClientRect().height);
     if (tap < 44) throw new Error(`Sign Out's tap target is ${tap}px tall`);
   });
+  // Settings → Import from Prepear (issue #14): the peek bookmarklet to copy, then the steps
+  await step('13d-prepear-import', async () => {
+    await page.locator('.page-current a', { hasText: 'From Prepear' }).tap(); await page.waitForTimeout(800);
+    const href = await page.locator('.page-current a.ck-bookmarklet').getAttribute('href');
+    if (!href || !href.startsWith('javascript:(function')) throw new Error(`the drag link's address is ${String(href).slice(0, 40)}`);
+  });
+  await step('13e-prepear-copied', async () => {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+    await page.locator('.page-current .ck-copy-row a').tap(); await page.waitForTimeout(400);
+    if (!(await page.locator('.toast.modal-in', { hasText: 'copied' }).count())) throw new Error('copying the bookmarklet shows no "copied" toast');
+    // tapping the Mac drag link in the app does nothing (it's for Prepear's page)
+    await page.locator('.page-current a.ck-bookmarklet').tap(); await page.waitForTimeout(300);
+    if (await page.evaluate(() => !!window.__cookbookPeek)) throw new Error('tapping the drag link ran the peek inside the app');
+  });
+  await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
+  await page.locator('.page-current .navbar .back').tap(); await page.waitForTimeout(800);
   await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {
     await step(`15-tab-${tab.toLowerCase()}`, async () => {

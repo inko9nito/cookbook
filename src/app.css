@@ -8,7 +8,7 @@
 
 /* Ingredient rows: amount in bold, note in grey */
 .ingredient-amount {
-  font-weight: 600;
+  font-weight: 500;
 }
 .ingredient-note {
   color: var(--f7-list-item-footer-text-color);

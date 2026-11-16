@@ -1276,6 +1276,9 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
     const now = await cards();
     if (now.length !== 4 || now[3] !== 'Corn pudding') throw new Error(`after adding, the section shows ${JSON.stringify(now)}`);
+    const said = (await page.locator('.toast.modal-in .toast-text').allTextContents()).join('|');
+    if (said !== 'Added 1 recipe') throw new Error(`Add Recipes' toast says "${said}"`);
+    await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
   });
   await step('26f-section-more', async () => {
     await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
@@ -1325,6 +1328,11 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('26i2-added-to-cookbook', async () => {
     await page.locator('.popup.modal-in .ck-addto-list li', { hasText: 'Grilling' }).locator('label').tap(); await page.waitForTimeout(500);
+    // the change doesn't show here, so a toast says it
+    const said = (await page.locator('.toast.modal-in .toast-text').allTextContents()).join('|');
+    if (said !== 'Added to Grilling') throw new Error(`ticking a cookbook's toast says "${said}"`);
+    await page.screenshot({ path: path.join(OUT, '26i3-added-toast.png') });
+    await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
     await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
     // leaving Cookbooks took it back to its first page, so it shows the cookbooks again
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(900);
@@ -1342,6 +1350,9 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
     const tiles = await page.locator(`${CUR} .ck-book-tile .ck-book-name`).allTextContents();
     if (tiles.includes('Soups') || tiles.length !== 3) throw new Error(`after deleting, the cookbooks are ${JSON.stringify(tiles)}`);
+    const said = (await page.locator('.toast.modal-in .toast-text').allTextContents()).join('|');
+    if (said !== 'Deleted “Soups”') throw new Error(`deleting a cookbook's toast says "${said}"`);
+    await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
   });
 
   // One browser history for every tab: a page deep in two tabs at once made one back move both. Leaving a tab now takes

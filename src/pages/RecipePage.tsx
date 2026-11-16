@@ -17,6 +17,7 @@ import UnitSheet from '../components/UnitSheet';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
+import { say } from '../components/ui/toast';
 
 /** Splits the ingredient list at group rows: [{ label, items }]. Rows before the first group get no label. */
 function groupIngredients(list: Ingredient[]) {
@@ -220,6 +221,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
               f7.dialog.confirm(deleteText(recipe.title, usedIn(recipe.id, recipes).map((r) => r.title)), 'Delete Recipe', () => {
                 deleteRecipe(recipe.id);
                 f7router?.back();
+                say(`Deleted “${recipe.title}”`);
               })
             }
           >

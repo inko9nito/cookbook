@@ -14,6 +14,7 @@ import { inlineIcon } from '../components/ui/icons';
 import { photoStyle, photoFromFile, recrop } from '../components/ui/photo';
 import PhotoCropper from '../components/PhotoCropper';
 import { hideTabbar } from '../components/ui/tabbar';
+import { say } from '../components/ui/toast';
 
 type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void } };
 
@@ -192,8 +193,11 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
   };
 
   const save = () => {
-    saveRecipe({ ...draft, title: draft.title.trim() || 'Untitled recipe', minutes: draft.prepMinutes + draft.cookMinutes });
+    const title = draft.title.trim() || 'Untitled recipe';
+    saveRecipe({ ...draft, title, minutes: draft.prepMinutes + draft.cookMinutes });
     f7router?.back();
+    // a new recipe lands in the list, maybe out of sight (by the sort); an edit shows on the recipe itself
+    if (isNew) say(`Added “${title}”`);
   };
   const cancel = () => (dirty ? setDiscardOpen(true) : f7router?.back());
 

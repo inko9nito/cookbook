@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { BOOK_COLORS, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
+import { BOOK_COLORS, changeNote, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, placeName, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
 import { emptyRecipe, type Recipe } from './recipe';
 
 const book: Cookbook = {
@@ -83,5 +83,21 @@ describe('cookbooks', () => {
     const out = fromOrganizeRows(book, moved);
     expect(out.recipeIds).toEqual(['c', 'b']);
     expect(out.sections[0].recipeIds).toEqual(['a']);
+  });
+});
+
+describe('toast wording', () => {
+  test('Add Recipes says what changed, or nothing', () => {
+    expect(changeNote(['a'], ['a', 'b', 'c'])).toBe('Added 2 recipes');
+    expect(changeNote(['a', 'b'], ['b'])).toBe('Took out 1 recipe');
+    expect(changeNote(['a', 'b'], ['b', 'c'])).toBe('Added 1 recipe · Took out 1');
+    expect(changeNote(['a', 'b'], ['b', 'a'])).toBeUndefined();
+  });
+
+  test('a place is the cookbook, or a section in it', () => {
+    expect(placeName({ ...book, sections: [] }, null)).toBe(book.name);
+    const withSection = { ...book, sections: [{ id: 's', name: 'Meat', coverRecipeId: null, recipeIds: [] }] };
+    expect(placeName(withSection, 's')).toBe(`Meat in ${book.name}`);
+    expect(placeName(withSection, null)).toBe(`Uncategorized in ${book.name}`);
   });
 });

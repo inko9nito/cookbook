@@ -117,6 +117,23 @@ export const toggleIn = (c: Cookbook, sectionId: string | null, recipeId: string
   return withRecipeIds(c, sectionId, on ? [...ids, recipeId] : ids);
 };
 
+/** "1 recipe", "3 recipes" */
+export const recipeCount = (n: number) => `${n} ${n === 1 ? 'recipe' : 'recipes'}`;
+
+/** The toast after Add Recipes: what changed between the ids before and after ("Added 2 recipes · Took out 1"), or nothing. */
+export function changeNote(before: string[], after: string[]): string | undefined {
+  const added = after.filter((id) => !before.includes(id)).length;
+  const removed = before.filter((id) => !after.includes(id)).length;
+  const parts = [added ? `Added ${recipeCount(added)}` : '', removed ? `Took out ${added ? removed : recipeCount(removed)}` : ''];
+  return parts.filter(Boolean).join(' · ') || undefined;
+}
+
+/** A place's name for a toast: the cookbook's, or the section's and the cookbook's ("Meat in Dinners"). */
+export const placeName = (c: Cookbook, sectionId: string | null) => {
+  const s = sectionId === null ? undefined : c.sections.find((x) => x.id === sectionId);
+  return s ? `${s.name} in ${c.name}` : c.sections.length && sectionId === null ? `Uncategorized in ${c.name}` : c.name;
+};
+
 /** Cookbooks A–Z, the way Prepear lists them. */
 export const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
 

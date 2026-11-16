@@ -620,6 +620,15 @@ async function swipeLeft(ctx, page, locator) {
   await page.goto(BASE);
   await page.waitForTimeout(900);
   await step('13-settings', async () => { await page.locator('.view-main .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700); });
+  // the App group: which version is running, and Check for Updates (the service worker finds no newer one here)
+  await step('13b-settings-check-updates', async () => {
+    const version = await page.locator('.page-current li', { hasText: 'Version' }).locator('.item-after').textContent();
+    if (!/^\w{5,7} · /.test(version)) throw new Error(`the version reads "${version}"`);
+    await page.locator('.page-current .list-button', { hasText: 'Check for Updates' }).scrollIntoViewIfNeeded();
+    await page.locator('.page-current .list-button', { hasText: 'Check for Updates' }).tap();
+    const found = await page.locator('.toast.modal-in', { hasText: 'latest version' }).waitFor({ timeout: 6000 }).then(() => true, () => false);
+    if (!found) throw new Error('checking for updates did not say "You have the latest version"');
+  });
   await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Style Guide' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {
     await step(`15-tab-${tab.toLowerCase()}`, async () => {

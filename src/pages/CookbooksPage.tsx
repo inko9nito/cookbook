@@ -1,10 +1,10 @@
-import { Page, Navbar, NavTitle, NavRight, Link, Block, Button, Preloader, f7 } from 'framework7-react';
-import { Plus } from 'lucide-react';
+import { Page, Navbar, NavTitle, NavRight, Link, Block, Button, Preloader, List, ListItem, f7 } from 'framework7-react';
+import { LayoutGrid, List as ListIcon, Plus } from 'lucide-react';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
-import CookbookTile from '../components/ui/CookbookTile';
+import CookbookTile, { CookbookThumb } from '../components/ui/CookbookTile';
 import { useCookbooks, useStore } from '../data/store';
-import { byName, cookbookRecipeIds, coverOf, emptyCookbook, existing } from '../lib/cookbook';
+import { byName, colorOf, cookbookRecipeIds, coverPhotos, coversOf, emptyCookbook, existing, type Cookbook } from '../lib/cookbook';
 import { newId } from '../lib/recipe';
 
 type Props = { f7router?: { navigate: (url: string) => void } };
@@ -20,15 +20,23 @@ export function promptNewCookbook(onMade: (id: string) => void, save: ReturnType
 }
 
 /**
- * The Cookbooks tab (issue #25): every cookbook as a tile (cover, name, how many recipes), A–Z, two to a row like the
- * recipe tiles. + makes a new one. With none yet, a note and the way to bring in Prepear's.
+ * The Cookbooks tab (issue #25): every cookbook A–Z, as cards two to a row (its soft colour, three recipes as plates,
+ * the name and counts), or as a list (each row a small square in its colour with its first plate). The button next to + switches between them, remembered like the
+ * recipe sort. + makes a new cookbook. With none yet, a note and the way to bring in Prepear's.
  */
 export default function CookbooksPage({ f7router }: Props) {
-  const { recipes } = useStore();
+  const { recipes, settings, setCookbookView } = useStore();
+  const asList = settings.cookbookView === 'list';
   const { cookbooks, loading, loadError, reload, saveCookbook } = useCookbooks();
   const byId = new Map(recipes.map((r) => [r.id, r]));
   const sorted = [...cookbooks].sort(byName);
   const add = () => promptNewCookbook((id) => f7router?.navigate(`/cookbook/${id}/`), saveCookbook);
+  const about = (c: Cookbook) => {
+    const ids = cookbookRecipeIds(c);
+    const n = existing(ids, byId).length;
+    const meta = [`${n} ${n === 1 ? 'recipe' : 'recipes'}`, c.sections.length ? `${c.sections.length} ${c.sections.length === 1 ? 'section' : 'sections'}` : ''];
+    return { meta: meta.filter(Boolean).join(' · '), photos: coverPhotos(coversOf(c), ids, byId) };
+  };
 
   return (
     <Page name="cookbooks" onPageAfterIn={showTabbar}>
@@ -37,6 +45,10 @@ export default function CookbooksPage({ f7router }: Props) {
         <NavRight>
           <Link iconOnly onClick={add} aria-label="New cookbook">
             <Plus {...navIcon} />
+          </Link>
+          {/* shows the other view: the list icon while tiles show, the grid icon while the list shows */}
+          <Link iconOnly onClick={() => setCookbookView(asList ? 'grid' : 'list')} aria-label={asList ? 'Show as tiles' : 'Show as a list'} className="ck-view-switch">
+            {asList ? <LayoutGrid {...navIcon} /> : <ListIcon {...navIcon} />}
           </Link>
         </NavRight>
       </Navbar>
@@ -71,14 +83,30 @@ export default function CookbooksPage({ f7router }: Props) {
           </Button>
         </Block>
       )}
-      <Block key="grid" className="ck-card-grid">
-        <div className="grid grid-cols-2 grid-gap">
+      {!asList && sorted.length > 0 && (
+        <Block key="grid" className="ck-card-grid ck-book-grid">
+          <div className="grid grid-cols-2 grid-gap">
+            {sorted.map((c) => {
+              const { meta, photos } = about(c);
+              return <CookbookTile key={c.id} href={`/cookbook/${c.id}/`} name={c.name} meta={meta} color={colorOf(c)} photos={photos} />;
+            })}
+          </div>
+        </Block>
+      )}
+      {asList && sorted.length > 0 && (
+        <List key="list" strongIos insetIos dividersIos className="ck-book-list">
           {sorted.map((c) => {
-            const ids = cookbookRecipeIds(c);
-            return <CookbookTile key={c.id} href={`/cookbook/${c.id}/`} name={c.name} count={existing(ids, byId).length} cover={coverOf(c.coverRecipeId, ids, byId)} />;
+            const { meta, photos } = about(c);
+            return (
+              <ListItem key={c.id} link={`/cookbook/${c.id}/`} title={c.name} footer={meta}>
+                <span slot="media">
+                  <CookbookThumb color={colorOf(c)} photo={photos[0]} />
+                </span>
+              </ListItem>
+            );
           })}
-        </div>
-      </Block>
+        </List>
+      )}
     </Page>
   );
 }

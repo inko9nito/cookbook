@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import {
-  Page, Navbar, NavRight, Link, Searchbar, Block, BlockTitle, BlockFooter, Button, Preloader,
-  Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
+  Page, Navbar, NavRight, Link, Searchbar, Block, BlockFooter, Button, Preloader,
+  Actions, ActionsGroup, ActionsLabel, ActionsButton, Sheet, Toolbar, PageContent, f7,
 } from 'framework7-react';
-import { Ellipsis, Plus } from 'lucide-react';
+import { Check, Ellipsis, Plus } from 'lucide-react';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import RecipeCard from '../components/ui/RecipeCard';
-import CookbookTile from '../components/ui/CookbookTile';
 import RecipePickerPopup from '../components/RecipePickerPopup';
 import OrganizePopup from '../components/OrganizePopup';
 import { useCookbooks, useStore } from '../data/store';
-import { cookbookRecipeIds, coverOf, existing, recipeIdsOf, withRecipeIds, type Cookbook } from '../lib/cookbook';
+import { BOOK_COLORS, colorOf, cookbookRecipeIds, coversOf, existing, recipeIdsOf, withRecipeIds, type BookColor, type Cookbook } from '../lib/cookbook';
 import { coverPhoto, newId, type Recipe } from '../lib/recipe';
 import { searchByTitle, searchWords } from '../lib/search';
 
@@ -21,13 +20,22 @@ type Props = {
 };
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+// how many recipes a section's shelf shows; See all opens the rest
+const SHELF = 12;
+// Uncategorized has a shelf and a page like a section's, at /cookbook/:id/section/uncategorized/
+const UNCATEGORIZED = 'uncategorized';
+// the cover's plates take up to three photos, picked in order: the first is the big plate in the middle
+const COVER_SPOTS = ['The big plate', 'Left plate', 'Right plate'];
+const COLOR_NAMES: Record<BookColor, string> = { blush: 'Blush', sage: 'Sage', butter: 'Butter', sky: 'Sky', oat: 'Oat', lilac: 'Lilac' };
 const aToZ = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
 
 /**
  * A cookbook, or one of its sections (issue #25): /cookbook/:id/ and /cookbook/:id/section/:sectionId/.
- * A cookbook with sections shows them as tiles, then its Uncategorized recipes; without sections, just its recipes.
+ * A cookbook with sections shows each as a shelf of its recipes (scrolling sideways, See all opens the section), and
+ * its Uncategorized recipes as one more shelf; without sections, just its recipes as a grid.
  * A section shows its cookbook's name above its own, then its recipes. The search covers every recipe shown from here
- * (a cookbook's sections too). + adds recipes; ⋯ holds Organize, New Section, Rename, Change Cover and Delete.
+ * (a cookbook's sections too). + adds recipes; ⋯ holds Organize, New Section, Rename, Change Cover (up to three photos
+ * for the cookbook's plates), Change Colour (its card's soft colour) and Delete.
  */
 export default function CookbookPage({ f7route, f7router }: Props) {
   const { recipes } = useStore();
@@ -37,10 +45,19 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const [adding, setAdding] = useState(false);
   const [choosingCover, setChoosingCover] = useState(false);
   const [organizing, setOrganizing] = useState(false);
+  const [colouring, setColouring] = useState(false);
 
   const book = cookbooks.find((c) => c.id === f7route?.params.id);
   const sectionId = f7route?.params.sectionId ?? null;
-  const section = book && sectionId ? book.sections.find((s) => s.id === sectionId) : undefined;
+  const uncategorized = sectionId === UNCATEGORIZED;
+  // the place this page shows: a section, Uncategorized (null), or the whole cookbook (null, with no section)
+  const placeId = uncategorized ? null : sectionId;
+  const section =
+    book && sectionId
+      ? uncategorized
+        ? { id: UNCATEGORIZED, name: 'Uncategorized', coverRecipeId: null, recipeIds: book.recipeIds }
+        : book.sections.find((s) => s.id === sectionId)
+      : undefined;
   const byId = new Map(recipes.map((r) => [r.id, r]));
 
   // Not there (yet, or any more). Same page and the same header (key "navbar") as below, so if the cookbook turns up a
@@ -58,7 +75,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
 
   const save = (c: Cookbook) => saveCookbook(c);
   // what this page holds: the cookbook's Uncategorized recipes, or the section's
-  const placeIds = recipeIdsOf(book, sectionId);
+  const placeIds = recipeIdsOf(book, placeId);
   const here = existing(placeIds, byId);
   // the search covers everything shown from here: a cookbook's sections too
   const searchable = section ? here : existing(cookbookRecipeIds(book), byId);
@@ -69,8 +86,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   // where else in this cookbook a recipe is, for Add Recipes ("In Meat", "Uncategorized")
   const elsewhere = (r: Recipe) => {
     const places = [
-      ...(sectionId !== null && book.recipeIds.includes(r.id) ? ['Uncategorized'] : []),
-      ...book.sections.filter((s) => s.id !== sectionId && s.recipeIds.includes(r.id)).map((s) => s.name),
+      ...(placeId !== null && book.recipeIds.includes(r.id) ? ['Uncategorized'] : []),
+      ...book.sections.filter((s) => s.id !== placeId && s.recipeIds.includes(r.id)).map((s) => s.name),
     ];
     return places.length ? places.map((p) => (p === 'Uncategorized' ? p : `In ${p}`)).join(' · ') : undefined;
   };
@@ -114,12 +131,14 @@ export default function CookbookPage({ f7route, f7router }: Props) {
     }
   };
 
-  const setCover = (recipeId: string) => {
+  // the cookbook's plates: up to three recipes with a photo, in the order picked
+  const setCovers = (ids: string[]) => {
     setChoosingCover(false);
-    save(section ? { ...book, sections: book.sections.map((s) => (s.id === section.id ? { ...s, coverRecipeId: recipeId } : s)) } : { ...book, coverRecipeId: recipeId });
+    const picked = ids.slice(0, COVER_SPOTS.length);
+    save({ ...book, coverRecipeIds: picked, coverRecipeId: picked[0] ?? null });
   };
-  const coverChoices = (section ? here : searchable).filter((r) => coverPhoto(r));
-  const currentCover = section ? section.coverRecipeId : book.coverRecipeId;
+  const coverChoices = searchable.filter((r) => coverPhoto(r));
+  const currentCovers = coversOf(book).filter((id) => coverChoices.some((r) => r.id === id));
 
   const searching = words.length > 0;
   // a section with recipes, or a cookbook with recipes or sections: otherwise the page says it's empty
@@ -175,35 +194,47 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         </BlockFooter>
       )}
 
-      {!searching && !section && book.sections.length > 0 && <BlockTitle key="sections-title" medium className="ck-book-heading">Sections</BlockTitle>}
-      {!searching && !section && book.sections.length > 0 && (
-        <Block key="sections" className="ck-card-grid ck-section-grid">
+      {/* each section is a shelf: its name and count (both open it), See all, and its first recipes in a row that scrolls
+          sideways (issue #25 redesign: cookbooks are plates, sections shelves, recipes square tiles). Uncategorized is
+          the last shelf, when it has recipes. */}
+      {!searching &&
+        !section &&
+        book.sections.length > 0 &&
+        [...book.sections, ...(here.length ? [{ id: UNCATEGORIZED, name: 'Uncategorized', recipeIds: book.recipeIds }] : [])].map((s) => {
+          const inShelf = existing(s.recipeIds, byId);
+          const href = `/cookbook/${book.id}/section/${s.id}/`;
+          return (
+            <div key={`shelf-${s.id}`} className="ck-shelf">
+              <div className="ck-shelf-head">
+                <Link href={href} noLinkClass className="ck-shelf-title">
+                  {s.name} <span className="ck-shelf-count">{inShelf.length}</span>
+                </Link>
+                <Link href={href} className="ck-shelf-all">
+                  See all
+                </Link>
+              </div>
+              {inShelf.length ? (
+                <div className="ck-shelf-row">
+                  {inShelf.slice(0, SHELF).map((r) => (
+                    <RecipeCard key={r.id} recipe={r} />
+                  ))}
+                </div>
+              ) : (
+                <p className="ck-note ck-shelf-empty">No recipes yet.</p>
+              )}
+            </div>
+          );
+        })}
+      {/* a grid: search results, a section's (or Uncategorized's) recipes, or a cookbook without sections */}
+      {(searching || section || !book.sections.length) && (
+        <Block key="grid" className="ck-card-grid">
           <div className="grid grid-cols-2 grid-gap">
-            {book.sections.map((s) => (
-              <CookbookTile
-                key={s.id}
-                href={`/cookbook/${book.id}/section/${s.id}/`}
-                name={s.name}
-                count={existing(s.recipeIds, byId).length}
-                cover={coverOf(s.coverRecipeId, s.recipeIds, byId)}
-              />
+            {(searching ? found : here).map((r) => (
+              <RecipeCard key={r.id} recipe={r} />
             ))}
           </div>
         </Block>
       )}
-      {!searching && !section && book.sections.length > 0 && here.length > 0 && (
-        <BlockTitle key="uncategorized-title" medium className="ck-book-heading">
-          Uncategorized
-        </BlockTitle>
-      )}
-
-      <Block key="grid" className="ck-card-grid">
-        <div className="grid grid-cols-2 grid-gap">
-          {(searching ? found : here).map((r) => (
-            <RecipeCard key={r.id} recipe={r} />
-          ))}
-        </div>
-      </Block>
 
       <Actions key="more" opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>
         <ActionsGroup>
@@ -211,11 +242,14 @@ export default function CookbookPage({ f7route, f7router }: Props) {
           <ActionsButton onClick={() => setAdding(true)}>Add Recipes</ActionsButton>
           {(cookbookRecipeIds(book).some((id) => byId.has(id)) || book.sections.length > 1) && <ActionsButton onClick={() => setOrganizing(true)}>Organize</ActionsButton>}
           {!section && <ActionsButton onClick={newSection}>New Section</ActionsButton>}
-          <ActionsButton onClick={rename}>{section ? 'Rename Section' : 'Rename Cookbook'}</ActionsButton>
-          {coverChoices.length > 0 && <ActionsButton onClick={() => setChoosingCover(true)}>Change Cover</ActionsButton>}
-          <ActionsButton color="red" onClick={remove}>
-            {section ? 'Delete Section' : 'Delete Cookbook'}
-          </ActionsButton>
+          {!uncategorized && <ActionsButton onClick={rename}>{section ? 'Rename Section' : 'Rename Cookbook'}</ActionsButton>}
+          {!section && coverChoices.length > 0 && <ActionsButton onClick={() => setChoosingCover(true)}>Change Cover</ActionsButton>}
+          {!section && <ActionsButton onClick={() => setColouring(true)}>Change Colour</ActionsButton>}
+          {!uncategorized && (
+            <ActionsButton color="red" onClick={remove}>
+              {section ? 'Delete Section' : 'Delete Cookbook'}
+            </ActionsButton>
+          )}
         </ActionsGroup>
         <ActionsGroup>
           <ActionsButton strong>Cancel</ActionsButton>
@@ -232,21 +266,61 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         footer={elsewhere}
         onDone={(ids) => {
           // ids no longer a recipe (deleted elsewhere) drop out here too
-          save(withRecipeIds(book, sectionId, ids));
+          save(withRecipeIds(book, placeId, ids));
           setAdding(false);
         }}
         onClosed={() => setAdding(false)}
       />
       <RecipePickerPopup
         key="cover"
-        mode="one"
+        mode="several"
         opened={choosingCover}
-        title="Change Cover"
+        title="Cover Photos"
+        hint="Pick up to three. The first is the big plate in the middle, the next two go either side of it."
         recipes={coverChoices}
-        current={currentCover}
-        onPick={setCover}
+        selected={currentCovers}
+        max={COVER_SPOTS.length}
+        spots={COVER_SPOTS}
+        onDone={setCovers}
         onClosed={() => setChoosingCover(false)}
       />
+      {/* the card's colour: six soft colours as round swatches; tapping one changes it at once (Done closes) */}
+      <Sheet
+        key="colour"
+        opened={colouring}
+        onSheetClosed={() => setColouring(false)}
+        swipeToClose
+        backdrop
+        closeByBackdropClick
+        style={{ height: 'auto' }}
+        className="ck-edit-sheet ck-color-sheet"
+      >
+        <Toolbar>
+          <div className="left">
+            <b>Colour</b>
+          </div>
+          <div className="right">
+            <Link sheetClose>Done</Link>
+          </div>
+        </Toolbar>
+        <PageContent>
+          <div className="ck-swatches" role="radiogroup" aria-label="Cookbook colour">
+            {BOOK_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={colorOf(book) === c}
+                aria-label={COLOR_NAMES[c]}
+                className={`ck-swatch ck-tint-${c}${colorOf(book) === c ? ' ck-swatch-on' : ''}`}
+                onClick={() => save({ ...book, color: c })}
+              >
+                {colorOf(book) === c && <Check size={22} strokeWidth={2.5} aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+        </PageContent>
+      </Sheet>
       <OrganizePopup
         key="organize"
         opened={organizing}

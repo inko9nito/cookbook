@@ -13,6 +13,14 @@
   --ck-photo-dark: #000000; /* behind a photo being cropped */
   --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
   --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
+  --ck-plate-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); /* a cookbook's plates (round recipe photos) on its card */
+  /* a cookbook card's soft colours (issue #25): pale and muted, one per cookbook */
+  --ck-book-blush: #f6e4dd;
+  --ck-book-sage: #e3ebdf;
+  --ck-book-butter: #f3ecd6;
+  --ck-book-sky: #dfe8ef;
+  --ck-book-oat: #ece6dc;
+  --ck-book-lilac: #e9e4ef;
   --ck-done-ink: #a5a5aa; /* ticked rows in cook mode: deliberately below 4.5:1 (about 2.3:1), finished items fade back */
   --ck-line: #e6e6e9;
   --ck-strong: #c9c9ce;
@@ -1029,3 +1037,74 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .list.ck-organize-list li:not(.ck-group-row) .item-inner { align-items: center; }
 .list.ck-organize-list li:not(.ck-group-row) .sortable-handler { align-items: center; padding-top: 0; }
 .list.ck-organize-list li.ck-organize-fixed .sortable-handler { display: none; }
+
+/* ── Cookbooks redesign (issue #25): cookbooks are plates on soft colours, sections are shelves, recipes stay square
+   tiles ── */
+/* a cookbook's soft colour (--ck-book-<name>, see :root) */
+.ck-tint-blush { background-color: var(--ck-book-blush); }
+.ck-tint-sage { background-color: var(--ck-book-sage); }
+.ck-tint-butter { background-color: var(--ck-book-butter); }
+.ck-tint-sky { background-color: var(--ck-book-sky); }
+.ck-tint-oat { background-color: var(--ck-book-oat); }
+.ck-tint-lilac { background-color: var(--ck-book-lilac); }
+/* the plates (from the user's Spotify reference): round photos with white rims and a soft shadow, the first big in the
+   middle (last in the markup, so it's in front; `order` places it), the next two smaller either side, overlapping it
+   and running off the card's edges */
+.ck-plates { display: flex; align-items: center; justify-content: center; height: 112px; margin: 0 -12px 10px; }
+.ck-plate {
+  flex: none; display: grid; place-items: center; border-radius: 50%; border: 3px solid var(--ck-surface);
+  box-shadow: var(--ck-plate-shadow); box-sizing: border-box; color: var(--ck-muted);
+}
+.ck-plate.ck-plate-empty { background-color: var(--ck-soft); }
+.ck-plates .ck-plate-left { order: 1; width: 66px; height: 66px; margin-right: -22px; }
+.ck-plates .ck-plate-middle { order: 2; width: 92px; height: 92px; }
+.ck-plates .ck-plate-right { order: 3; width: 66px; height: 66px; margin-left: -22px; }
+/* the card: its colour, the plates, then the name (title font, two lines at most) and the counts on the left (the user
+   tried them centred under the big plate; left reads better) */
+.link.ck-book-tile, .ck-book-tile {
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px; overflow: hidden; text-align: left;
+  border-radius: 20px; padding: 14px 12px 14px;
+}
+/* a cookbook's name: the title font, so a cookbook doesn't read as a recipe */
+.ck-book-name { font-family: var(--ck-font-display); font-size: 17px; font-weight: 500; line-height: 1.2; }
+.ck-book-tile .ck-book-name { font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* --ck-fg2, not the muted grey: the muted grey is under 4.5:1 on the pale colours */
+.ck-book-meta { font-size: 13px; color: var(--ck-fg2); }
+.ck-book-grid .grid { row-gap: 14px; }
+/* the list's thumbnail: a rounded square in the cookbook's colour with its first plate */
+.ck-book-thumb { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 16px; flex: none; }
+.ck-book-thumb .ck-plate { width: 46px; height: 46px; border-width: 2.5px; }
+/* Change Colour: six round swatches in a row, the chosen one ringed in Tomato with a check */
+.ck-swatches { display: flex; justify-content: space-between; gap: 8px; padding: 16px 20px calc(24px + var(--f7-safe-area-bottom)); }
+.ck-swatch {
+  width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--ck-line); padding: 0; margin: 0;
+  display: grid; place-items: center; color: var(--ck-accent-ink); cursor: pointer; appearance: none;
+}
+.ck-swatch.ck-swatch-on { box-shadow: 0 0 0 2px var(--ck-surface), 0 0 0 4px var(--ck-accent); }
+/* the list view: white inset card, the collage, the name in the title font, the counts muted */
+.list.ck-book-list {
+  --f7-list-item-media-margin: 14px;
+  --f7-list-item-title-font-size: 17px;
+  --f7-list-item-title-font-weight: 500;
+  --f7-list-item-footer-font-size: 13px;
+  --f7-list-item-footer-text-color: var(--ck-muted);
+  --f7-list-item-padding-vertical: 10px;
+}
+.list.ck-book-list .item-title { font-family: var(--ck-font-display); }
+.list.ck-book-list .item-media { padding-top: 8px; padding-bottom: 8px; align-self: center; }
+/* a section's shelf: its name and count, See all, then its recipes in a row that scrolls sideways (native scrolling,
+   like the chip row) */
+.ck-shelf { margin: 26px 16px 0; }
+.ck-shelf-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.link.ck-shelf-title, .ck-shelf-title { font-family: var(--ck-font-display); font-size: 20px; font-weight: 600; color: var(--ck-fg); min-width: 0; }
+.ck-shelf-count { font-family: var(--ck-font); font-size: 14px; font-weight: 600; color: var(--ck-muted); margin-left: 4px; }
+.link.ck-shelf-all { font-family: var(--ck-font-display); font-size: 15px; font-weight: 500; color: var(--ck-accent-ink); flex: none; padding: 10px 0; margin: -10px 0; }
+.ck-shelf-row {
+  display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  margin: 0 -16px; padding: 0 16px;
+}
+.ck-shelf-row::-webkit-scrollbar { display: none; }
+.ck-shelf-row > .ck-card { flex: none; width: 132px; }
+.ck-shelf-empty { margin: 0; }
+.block.ck-picker-hint { margin: 14px 0 0; }
+.block.ck-picker-hint p { margin: 0; }

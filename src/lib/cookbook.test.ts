@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { cookbookRecipeIds, coverOf, fromOrganizeRows, organizeRows, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
+import { BOOK_COLORS, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
 import { emptyRecipe, type Recipe } from './recipe';
 
 const book: Cookbook = {
@@ -26,6 +26,29 @@ describe('cookbooks', () => {
     expect(coverOf('c', ['a', 'b', 'c'], byId)).toBe('/c.jpg');
     expect(coverOf('a', ['a', 'b', 'c'], byId)).toBe('/b.jpg');
     expect(coverOf(null, ['gone', 'a'], byId)).toBeUndefined();
+  });
+
+  test('a collage takes up to three different photos, the cover recipe’s first', () => {
+    const byId = new Map([recipe('a'), recipe('b', '/b.jpg'), recipe('c', '/c.jpg'), recipe('d', '/b.jpg'), recipe('e', '/e.jpg'), recipe('f', '/f.jpg')].map((r) => [r.id, r]));
+    expect(coverPhotos(['e'], ['a', 'b', 'c', 'd', 'e', 'f'], byId)).toEqual(['/e.jpg', '/b.jpg', '/c.jpg']);
+    // three chosen covers, in the order picked
+    expect(coverPhotos(['f', 'c', 'e'], ['a', 'b', 'c', 'd', 'e', 'f'], byId)).toEqual(['/f.jpg', '/c.jpg', '/e.jpg']);
+    expect(coverPhotos([], ['a', 'b', 'd'], byId)).toEqual(['/b.jpg']);
+    expect(coverPhotos([], [], byId)).toEqual([]);
+  });
+
+  test('the chosen covers: the list, else the one older copies have', () => {
+    expect(coversOf({ coverRecipeId: 'a', coverRecipeIds: ['b', 'c'] })).toEqual(['b', 'c']);
+    expect(coversOf({ coverRecipeId: 'a' })).toEqual(['a']);
+    expect(coversOf({ coverRecipeId: null, coverRecipeIds: [] })).toEqual([]);
+  });
+
+  test('a card’s colour: the one chosen, else the same random one every time', () => {
+    expect(colorOf({ id: 'x', color: 'sage' })).toBe('sage');
+    expect(colorOf({ id: 'abc' })).toBe(colorOf({ id: 'abc' }));
+    expect(BOOK_COLORS).toContain(colorOf({ id: 'abc' }));
+    // different cookbooks get different colours, not all the same one
+    expect(new Set(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) => colorOf({ id }))).size).toBeGreaterThan(2);
   });
 
   test('toggling adds at the end, or takes out', () => {

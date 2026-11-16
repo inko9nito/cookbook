@@ -89,9 +89,11 @@ describe('recipes in the database', () => {
 
 describe('settings', () => {
   test('defaults, then remembered (R1, R2)', async () => {
-    expect(await getSettings(db.sql)).toEqual({ sort: 'newest', filterTags: [], filterMode: 'all' });
+    expect(await getSettings(db.sql)).toEqual({ sort: 'newest', filterTags: [], filterMode: 'all', cookbookView: 'grid' });
     await saveSettings(db.sql, { sort: 'az' });
-    expect(await saveSettings(db.sql, { filterTags: ['soup'], filterMode: 'any' })).toEqual({ sort: 'az', filterTags: ['soup'], filterMode: 'any' });
+    expect(await saveSettings(db.sql, { filterTags: ['soup'], filterMode: 'any' })).toEqual({ sort: 'az', filterTags: ['soup'], filterMode: 'any', cookbookView: 'grid' });
+    // the Cookbooks tab's tiles or list (#25) is remembered the same way
+    expect((await saveSettings(db.sql, { cookbookView: 'list' })).cookbookView).toBe('list');
   });
   test('unknown settings are refused', async () => {
     await expect(saveSettings(db.sql, { sort: 'sideways' } as never)).rejects.toThrow();

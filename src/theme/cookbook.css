@@ -238,7 +238,7 @@ html.ios .toast {
   backdrop-filter: none;
 }
 
-/* Toast (from the user's surgery app): a small dark pill, as wide as its words, centred and floating just above the tab
+/* Toast (from another of the user's apps): a small dark pill, as wide as its words, centred and floating just above the tab
    bar, with a Tomato check for something done (say() in src/components/ui/toast.ts). Framework7's toast is otherwise a
    full-width glass bar along the bottom; its own slide-in stays. Spacing, corners and colours only. */
 html.ios .toast {

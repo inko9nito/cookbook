@@ -465,6 +465,9 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
    The handle is the one hand-built gesture in the app (approved by the user; see CLAUDE.md). It only changes the
    top half's height: no transforms, no animation. Each half scrolls on its own. */
 .popup.ck-cook { --f7-page-bg-color: var(--ck-bg); }
+/* issue #11: each recipe in cook mode is a Framework7 tab holding its split screen; only the shown one displays */
+.popup.ck-cook .tabs.ck-cook-tabs { height: 100%; }
+.tabs.ck-cook-tabs > .tab.ck-split:not(.tab-active) { display: none; }
 .page-content.ck-split { display: flex; flex-direction: column; overflow: hidden; padding-bottom: var(--f7-safe-area-bottom); }
 /* the two halves and the handle, measured without the page's top-bar and home-indicator padding */
 .ck-split-body { --ck-split-half: 22px; position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }

@@ -620,7 +620,7 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 /* step numbers are plain bold text, the same size as the step: no circles */
 .ck-step-no { font-size: 15px; line-height: 1.45; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ck-fg); }
 .ck-step-text { font-size: 15px; line-height: 1.45; white-space: normal; }
-.ck-notes { background-color: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 16px; padding: 12px 14px; font-size: 14px; line-height: 1.45; color: var(--ck-fg2); }
+.ck-notes { background-color: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 16px; padding: 12px 14px; font-size: 14px; line-height: 1.45; color: var(--ck-fg2); white-space: pre-line; overflow-wrap: anywhere; }
 /* ── Cook mode (Prepear layout): Ingredients on top, Directions below, a drag handle between ──
    The handle is the one hand-built gesture in the app (approved by the user; see CLAUDE.md). It only changes the
    top half's height: no transforms, no animation. Each half scrolls on its own. */

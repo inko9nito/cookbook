@@ -251,7 +251,9 @@ html.ios .dialog {
   --f7-button-tonal-pressed-bg-color: var(--ck-strong);
   --f7-button-tonal-text-color: var(--ck-fg);
 }
-/* Framework7 v9 draws dialog buttons as plain buttons (500, like every other button); the orange one is 600 */
+/* Framework7 v9 draws dialog buttons as plain buttons (500, like every other button); the orange one is 600. Both are
+   17px, the same as Save. */
+html.ios .dialog .dialog-buttons .button { --f7-button-font-size: 17px; }
 html.ios .dialog .button.button-fill { --f7-button-font-weight: 600; }
 
 /* Sheet header (ingredient sheet, paste sheet): plain bold title, Tomato text button, no glass bubbles */

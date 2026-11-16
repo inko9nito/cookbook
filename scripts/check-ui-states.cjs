@@ -81,7 +81,7 @@ async function audit(page, name) {
   });
   const textOverlaps = await page.evaluate(() => {
     // every visible run of text in the current page's content and in open sheets/popups, one rect per line
-    const scopes = [...document.querySelectorAll('.page-current .page-content, .sheet-modal.modal-in, .popup.modal-in .page-content, .actions-modal.modal-in')];
+    const scopes = [...document.querySelectorAll('.view.tab-active .page-current .page-content, .sheet-modal.modal-in, .popup.modal-in .page-content, .actions-modal.modal-in')];
     const runs = [];
     for (const scope of scopes) {
       const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT) });
@@ -122,12 +122,12 @@ async function audit(page, name) {
     return [...found];
   });
   const sticky = await page.evaluate(() =>
-    [...document.querySelectorAll('.page-current .page-content *')]
+    [...document.querySelectorAll('.view.tab-active .page-current .page-content *')]
       .filter((el) => getComputedStyle(el).position === 'sticky' && !el.closest('.navbar, .toolbar, .searchbar'))
       .map((el) => `.${String(el.className).trim().split(/\s+/).join('.')} "${el.textContent.trim().slice(0, 18)}"`),
   );
   const rhythm = await page.evaluate(() => {
-    const scope = document.querySelector('.page-current .page-content');
+    const scope = document.querySelector('.view.tab-active .page-current .page-content');
     if (!scope) return [];
     // space above an element = its text top minus the bottom of the nearest visible text above it
     const lines = [];
@@ -150,7 +150,7 @@ async function audit(page, name) {
   });
   // button labels that run into the button's edges (e.g. "Mark as made" in a half-width dialog button): 8px clear each side
   const cramped = await page.evaluate(() =>
-    [...document.querySelectorAll('.dialog.modal-in .dialog-button, .actions-modal.modal-in .actions-button, .page-current .button')]
+    [...document.querySelectorAll('.dialog.modal-in .dialog-button, .actions-modal.modal-in .actions-button, .view.tab-active .page-current .button')]
       .filter((b) => b.offsetParent && b.textContent.trim())
       .filter((b) => {
         // measure the glyphs (text nodes), not the label's block wrappers, which span the whole button
@@ -213,24 +213,24 @@ async function swipeLeft(ctx, page, locator) {
   await step('01-recipes', async () => {});
   // the search bar must filter the grid on screen (it once kept filtering a copy React had replaced when loading ended)
   await step('01b-recipes-search', async () => {
-    const input = page.locator('.page-current .ck-home-search input');
+    const input = page.locator('.view.tab-active .page-current .ck-home-search input');
     await input.fill('chick'); await page.waitForTimeout(600);
-    const shown = await page.locator('.page-current .ck-card-grid .ck-card:visible .ck-card-title').allTextContents();
+    const shown = await page.locator('.view.tab-active .page-current .ck-card-grid .ck-card:visible .ck-card-title').allTextContents();
     if (!shown.length || shown.some((t) => !/chick/i.test(t))) throw new Error(`searching "chick" shows ${JSON.stringify(shown)}`);
     // no grey overlay while searching (the user asked for none): the page stays as it is, chips included
     if (await page.locator('.searchbar-backdrop').count()) throw new Error('searching puts an overlay over the page');
     // the count says how many match out of how many: "2 of 6 recipes"
-    const total = await page.locator('.page-current .ck-card-grid .ck-card').count();
-    const countText = await page.locator('.page-current .ck-count').textContent();
+    const total = await page.locator('.view.tab-active .page-current .ck-card-grid .ck-card').count();
+    const countText = await page.locator('.view.tab-active .page-current .ck-count').textContent();
     if (!countText.includes(`${shown.length} of `) || total !== shown.length) throw new Error(`while searching, the count reads "${countText}" for ${shown.length} cards shown`);
     await page.screenshot({ path: path.join(OUT, '01b-recipes-searching.png') });
-    const chip = await page.locator('.page-current .ck-chip').first().boundingBox();
+    const chip = await page.locator('.view.tab-active .page-current .ck-chip').first().boundingBox();
     const onTop = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.ck-chip'), { x: chip.x + chip.width / 2, y: chip.y + chip.height / 2 });
     if (!onTop) throw new Error('something covers the chips while searching');
     await input.fill('zzzz'); await page.waitForTimeout(600);
-    if (!(await page.locator('.page-current .ck-not-found:visible').count())) throw new Error('no "No recipes found" for a search with no match');
+    if (!(await page.locator('.view.tab-active .page-current .ck-not-found:visible').count())) throw new Error('no "No recipes found" for a search with no match');
     await input.fill(''); await input.blur(); await page.waitForTimeout(600);
-    const all = await page.locator('.page-current .ck-card-grid .ck-card:visible').count();
+    const all = await page.locator('.view.tab-active .page-current .ck-card-grid .ck-card:visible').count();
     if (all <= shown.length) throw new Error('clearing the search didn\'t bring every recipe back');
   });
   await step('02-recipes-chip-selected', async () => { await page.locator('.ck-chip', { hasText: 'Dinner' }).first().tap(); });
@@ -238,13 +238,13 @@ async function swipeLeft(ctx, page, locator) {
   await step('02b-recipes-two-tags-any', async () => {
     await page.locator('.ck-chip', { hasText: 'Quick' }).first().tap();
     await page.waitForTimeout(200);
-    const all = await page.locator('.page-current .ck-card').count();
+    const all = await page.locator('.view.tab-active .page-current .ck-card').count();
     if (all !== 1) throw new Error(`Dinner + Quick (all tags) shows ${all} recipes, expected 1`);
     await page.locator('.view-main .navbar a[aria-label="Sort recipes"]').tap();
     await page.waitForTimeout(400);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Any of the tags' }).tap();
     await page.waitForTimeout(500);
-    const any = await page.locator('.page-current .ck-card').count();
+    const any = await page.locator('.view.tab-active .page-current .ck-card').count();
     if (any !== 4) throw new Error(`Dinner or Quick (any tag) shows ${any} recipes, expected 4`);
   });
   await step('02c-filter-remembered', async () => {
@@ -252,7 +252,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.waitForTimeout(1200);
     const on = await page.locator('.ck-chip.ck-chip-on').allTextContents();
     if (on.join(',') !== 'Dinner,Quick') throw new Error(`after reopening, the picked chips are ${on.join(',') || 'none'}`);
-    const note = await page.locator('.page-current .ck-count').textContent();
+    const note = await page.locator('.view.tab-active .page-current .ck-count').textContent();
     if (!note.includes('any tag')) throw new Error(`count line doesn't say "any tag": ${note}`);
   });
   await step('03-sort-sheet', async () => {
@@ -265,7 +265,7 @@ async function swipeLeft(ctx, page, locator) {
   // iOS's own back gesture (Safari and the home-screen app) is a browser back: it goes back a page inside the app
   // (Framework7 browserHistory), never out of the app to whatever came before it, such as Google's sign-in page
   await step('03b-browser-back-from-recipe', async () => {
-    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap();
+    await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Kebabs' }).tap();
     await page.waitForTimeout(900);
     await page.goBack();
     await page.waitForTimeout(900);
@@ -274,25 +274,25 @@ async function swipeLeft(ctx, page, locator) {
     if (pages !== 1 || !(await page.locator('#view-recipes .page-current .ck-card').count())) throw new Error('back did not return to Recipes');
   });
 
-  await step('04-recipe-page', async () => { await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(900); });
+  await step('04-recipe-page', async () => { await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(900); });
   // scroll through the page: sticky or overlapping content only shows up mid-scroll
   for (const y of [300, 450, 600, 800, 1000]) {
-    await step(`04-recipe-scroll-${y}`, async () => { await page.evaluate((top) => document.querySelector('.page-current .page-content').scrollTo(0, top), y); });
+    await step(`04-recipe-scroll-${y}`, async () => { await page.evaluate((top) => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, top), y); });
   }
   // the top bar hides while scrolling down and comes back on scroll up (Framework7 hideNavbarOnScroll)
   await step('04-recipe-bar-hidden', async () => {
     await page.mouse.move(200, 400);
     for (let i = 0; i < 4; i++) { await page.mouse.wheel(0, 150); await page.waitForTimeout(120); }
     await page.waitForTimeout(500);
-    if (!(await page.locator('.page-current .navbar, .navbar-current').first().evaluate((n) => n.classList.contains('navbar-hidden')))) throw new Error('top bar did not hide on scroll down');
+    if (!(await page.locator('.view.tab-active .page-current .navbar, .navbar-current').first().evaluate((n) => n.classList.contains('navbar-hidden')))) throw new Error('top bar did not hide on scroll down');
   });
   await step('04-recipe-bar-back', async () => {
     for (let i = 0; i < 2; i++) { await page.mouse.wheel(0, -120); await page.waitForTimeout(120); }
     await page.waitForTimeout(500);
-    if (await page.locator('.page-current .navbar, .navbar-current').first().evaluate((n) => n.classList.contains('navbar-hidden'))) throw new Error('top bar did not come back on scroll up');
+    if (await page.locator('.view.tab-active .page-current .navbar, .navbar-current').first().evaluate((n) => n.classList.contains('navbar-hidden'))) throw new Error('top bar did not come back on scroll up');
   });
-  await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 0));
-  await step('05-scale-sheet', async () => { await page.locator('.page-current .ck-scale-button').tap(); await page.waitForTimeout(800); });
+  await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0));
+  await step('05-scale-sheet', async () => { await page.locator('.view.tab-active .page-current .ck-scale-button').tap(); await page.waitForTimeout(800); });
   await step('05b-scale-x2', async () => { await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(400); });
   await step('05c-scale-what-i-have', async () => {
     await page.locator('.sheet-modal.modal-in .segmented .button', { hasText: 'What I have' }).tap();
@@ -313,15 +313,15 @@ async function swipeLeft(ctx, page, locator) {
   await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
   await page.waitForTimeout(700);
   await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
-  await step('05d-recipe-scaled', async () => { await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 420)); });
-  await step('06-recipe-bottom', async () => { await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 99999)); });
+  await step('05d-recipe-scaled', async () => { await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 420)); });
+  await step('06-recipe-bottom', async () => { await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 99999)); });
   await step('07-more-actions', async () => { await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); });
   await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap().catch(() => {});
   await page.waitForTimeout(500);
 
   // cook mode (Prepear layout: ingredients on top, directions below, drag handle between)
   await step('16-cook-open', async () => {
-    await page.locator('.page-current .ck-cta-button', { hasText: 'Start cooking' }).tap(); await page.waitForTimeout(900);
+    await page.locator('.view.tab-active .page-current .ck-cta-button', { hasText: 'Start cooking' }).tap(); await page.waitForTimeout(900);
     // each step's checkbox sits on the middle of its first line of text
     const off = await page.evaluate(() => [...document.querySelectorAll('.ck-cook .ck-pane-steps li:has(label)')].map((li) => {
       const icon = li.querySelector('.icon-checkbox').getBoundingClientRect();
@@ -445,7 +445,7 @@ async function swipeLeft(ctx, page, locator) {
   await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(500);
   await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(900);
   await step('17-crop-photo', async () => {
-    await page.locator('.page-current input[type=file]').setInputFiles(photoFile('seafood-salad.jpg'));
+    await page.locator('.view.tab-active .page-current input[type=file]').setInputFiles(photoFile('seafood-salad.jpg'));
     await page.waitForTimeout(1500);
     if (!(await page.locator('.ck-crop.modal-in .cropper-container').count())) throw new Error('picking one photo did not open Crop Photo');
     const f = await page.locator('.ck-crop .cropper-container').boundingBox();
@@ -455,16 +455,16 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('17b-photos-added', async () => {
     await page.locator('.ck-crop a', { hasText: 'Done' }).tap(); await page.waitForTimeout(1200);
-    await page.locator('.page-current input[type=file]').setInputFiles([photoFile('corn.jpg'), photoFile('meatballs.jpg')]);
+    await page.locator('.view.tab-active .page-current input[type=file]').setInputFiles([photoFile('corn.jpg'), photoFile('meatballs.jpg')]);
     await page.waitForTimeout(1500);
     if (await page.locator('.ck-crop.modal-in').count()) throw new Error('picking several photos opened Crop Photo');
-    const n = await page.locator('.page-current .ck-thumb:not(.ck-thumb-add)').count();
+    const n = await page.locator('.view.tab-active .page-current .ck-thumb:not(.ck-thumb-add)').count();
     if (n !== 4) throw new Error(`expected 4 photos, found ${n}`);
   });
-  await page.locator('.page-current .navbar a', { hasText: 'Save' }).tap(); await page.waitForTimeout(1000);
+  await page.locator('.view.tab-active .page-current .navbar a', { hasText: 'Save' }).tap(); await page.waitForTimeout(1000);
   await step('17c-recipe-photos-swiped', async () => {
-    await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 0)); await page.waitForTimeout(400);
-    const hero = await page.locator('.page-current swiper-container').boundingBox();
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0)); await page.waitForTimeout(400);
+    const hero = await page.locator('.view.tab-active .page-current swiper-container').boundingBox();
     const cdp = await ctx.newCDPSession(page);
     const at = (x) => [{ x: hero.x + x, y: hero.y + hero.height / 2 }];
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(300) });
@@ -472,15 +472,15 @@ async function swipeLeft(ctx, page, locator) {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await cdp.detach();
     await page.waitForTimeout(700);
-    const idx = await page.evaluate(() => document.querySelector('.page-current swiper-container').swiper.activeIndex);
+    const idx = await page.evaluate(() => document.querySelector('.view.tab-active .page-current swiper-container').swiper.activeIndex);
     if (idx !== 1) throw new Error(`swipe did not move to the second photo (at ${idx})`);
     if (await page.locator('.photo-browser-popup.modal-in').count()) throw new Error('swiping opened the photo viewer');
     // the panel's rounded top still sits over the photos
-    const top = await page.evaluate(() => { const r = document.querySelector('.page-current .ck-panel').getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + 10).closest('.ck-panel') !== null; });
+    const top = await page.evaluate(() => { const r = document.querySelector('.view.tab-active .page-current .ck-panel').getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + 10).closest('.ck-panel') !== null; });
     if (!top) throw new Error('the photos cover the panel');
   });
   await step('17d-photo-viewer', async () => {
-    await page.locator('.page-current swiper-slide.swiper-slide-active button').tap(); await page.waitForTimeout(900);
+    await page.locator('.view.tab-active .page-current swiper-slide.swiper-slide-active button').tap(); await page.waitForTimeout(900);
     const title = await page.locator('.photo-browser-popup.modal-in .navbar .title').textContent().catch(() => '');
     if (!/2\s*of\s*4/.test(title)) throw new Error(`photo viewer doesn't show "2 of 4" (${title})`);
   });
@@ -494,17 +494,17 @@ async function swipeLeft(ctx, page, locator) {
     await page.waitForTimeout(900);
   });
   await step('09-edit-row-swiped', async () => {
-    await swipeLeft(ctx, page, page.locator('.page-current .ck-edit-list li.swipeout').nth(2));
+    await swipeLeft(ctx, page, page.locator('.view.tab-active .page-current .ck-edit-list li.swipeout').nth(2));
     await page.waitForTimeout(600);
   });
   await step('10-ingredient-sheet', async () => {
-    await page.locator('.page-current .ck-edit-list li.swipeout').nth(1).locator('.item-content').first().tap();
+    await page.locator('.view.tab-active .page-current .ck-edit-list li.swipeout').nth(1).locator('.item-content').first().tap();
     await page.waitForTimeout(800);
   });
   await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
   await page.waitForTimeout(600);
   await step('11-group-renamed-inline', async () => {
-    const input = page.locator('.page-current .ck-edit-list li.ck-group-row input.ck-group-input').first();
+    const input = page.locator('.view.tab-active .page-current .ck-edit-list li.ck-group-row input.ck-group-input').first();
     await input.tap();
     await input.fill('Yogurt marinade');
     await page.waitForTimeout(300);
@@ -512,7 +512,7 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.locator('.sheet-modal.modal-in').count()) throw new Error('a sheet opened for the group name');
   });
   await step('11b-group-added-inline', async () => {
-    await page.locator('.page-current .button.ck-dashed').first().tap();
+    await page.locator('.view.tab-active .page-current .button.ck-dashed').first().tap();
     await page.waitForTimeout(500);
     const focused = await page.evaluate(() => document.activeElement?.classList.contains('ck-group-input') && document.activeElement.value === '');
     if (!focused) throw new Error('new group name field is not focused');
@@ -522,9 +522,9 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('11c-group-moved-down', async () => {
     // ↑ ↓ on a group row move the whole group (its rows too) past the next group, and keep it under the finger
-    const names = () => page.evaluate(() => [...document.querySelectorAll('.page-current .ck-edit-list')[0].querySelectorAll('.ck-group-input')].map((i) => i.value));
+    const names = () => page.evaluate(() => [...document.querySelectorAll('.view.tab-active .page-current .ck-edit-list')[0].querySelectorAll('.ck-group-input')].map((i) => i.value));
     const rowsUnder = (name) => page.evaluate((name) => {
-      const lis = [...document.querySelectorAll('.page-current .ck-edit-list')[0].children[0].children];
+      const lis = [...document.querySelectorAll('.view.tab-active .page-current .ck-edit-list')[0].children[0].children];
       const k = lis.findIndex((li) => li.querySelector('.ck-group-input')?.value === name);
       const out = []; for (let j = k + 1; j < lis.length && !lis[j].classList.contains('ck-group-row'); j++) out.push(lis[j].textContent.trim().slice(0, 20));
       return out.join('|');
@@ -532,24 +532,24 @@ async function swipeLeft(ctx, page, locator) {
     const before = await names();
     const first = before[0];
     const under = await rowsUnder(first);
-    const row = page.locator('.page-current .ck-edit-list').first().locator('li.ck-group-row').first();
+    const row = page.locator('.view.tab-active .page-current .ck-edit-list').first().locator('li.ck-group-row').first();
     await row.locator('.ck-move-btn').nth(1).scrollIntoViewIfNeeded();
     const y0 = (await row.locator('.ck-move-btn').nth(1).boundingBox()).y;
     await row.locator('.ck-move-btn').nth(1).tap(); await page.waitForTimeout(400);
     const after = await names();
     if (after[1] !== first) throw new Error(`group "${first}" didn't move down (${after.join(', ')})`);
     if ((await rowsUnder(first)) !== under) throw new Error('the group\'s rows didn\'t move with it');
-    const moved = page.locator('.page-current .ck-edit-list').first().locator('li.ck-group-row').nth(1).locator('.ck-move-btn').nth(1);
+    const moved = page.locator('.view.tab-active .page-current .ck-edit-list').first().locator('li.ck-group-row').nth(1).locator('.ck-move-btn').nth(1);
     const y1 = (await moved.boundingBox()).y;
     if (Math.abs(y1 - y0) > 4) throw new Error(`moved group jumped ${Math.round(y1 - y0)}px on screen`);
     // drag handles are on the right, so a thumb on them doesn't cover the row's text
-    const side = await page.evaluate(() => { const li = document.querySelector('.page-current .ck-edit-list li:not(.ck-group-row)'); return li.querySelector('.sortable-handler').getBoundingClientRect().left - li.getBoundingClientRect().left > li.getBoundingClientRect().width / 2; });
+    const side = await page.evaluate(() => { const li = document.querySelector('.view.tab-active .page-current .ck-edit-list li:not(.ck-group-row)'); return li.querySelector('.sortable-handler').getBoundingClientRect().left - li.getBoundingClientRect().left > li.getBoundingClientRect().width / 2; });
     if (!side) throw new Error('drag handles are on the left');
   });
   // a long press on a row picks it up: it turns pale Tomato (no grey pressed shade) while held and dragged
   let holdCdp;
   await step('11d-row-held', async () => {
-    const li = page.locator('.page-current .ck-edit-list li:not(.ck-group-row)').nth(2);
+    const li = page.locator('.view.tab-active .page-current .ck-edit-list li:not(.ck-group-row)').nth(2);
     await li.scrollIntoViewIfNeeded();
     const box = await li.boundingBox();
     const before = await li.evaluate((e) => getComputedStyle(e).backgroundColor);
@@ -567,25 +567,25 @@ async function swipeLeft(ctx, page, locator) {
     await page.waitForTimeout(500);
   }
   await step('12-edit-paste', async () => {
-    await page.locator('.page-current textarea[placeholder^="Add one ingredient"]').fill('For the topping:\n\n1/2 cup brown sugar\n2 tbsp butter, melted');
+    await page.locator('.view.tab-active .page-current textarea[placeholder^="Add one ingredient"]').fill('For the topping:\n\n1/2 cup brown sugar\n2 tbsp butter, melted');
     await page.waitForTimeout(300);
   });
   await step('12b-edit-pasted', async () => {
-    await page.locator('.page-current .button', { hasText: 'Add 3 lines' }).tap();
+    await page.locator('.view.tab-active .page-current .button', { hasText: 'Add 3 lines' }).tap();
     await page.waitForTimeout(500);
   });
   await step('12c-edit-step-sheet', async () => {
-    await page.locator('.page-current .ck-edit-list').nth(1).locator('li.swipeout:not(.ck-group-row)').first().locator('.item-content').first().tap();
+    await page.locator('.view.tab-active .page-current .ck-edit-list').nth(1).locator('li.swipeout:not(.ck-group-row)').first().locator('.item-content').first().tap();
     await page.waitForTimeout(800);
   });
   await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
   await page.waitForTimeout(600);
   await step('12d-edit-recipe-info', async () => {
-    await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 99999));
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 99999));
     const layout = await page.evaluate(() => {
       const out = [];
       // each row's reorder handle (20px icon) is centred on its first line: step number, ingredient, or group name
-      for (const li of document.querySelectorAll('.page-current .ck-edit-list li')) {
+      for (const li of document.querySelectorAll('.view.tab-active .page-current .ck-edit-list li')) {
         // group rows: centred on the "Group" + name label, level with the ↑ ↓ buttons
         const target = li.querySelector('.ck-group-title') || li.querySelector('.ck-step-no') || li.querySelector('.item-title');
         let line = target.getBoundingClientRect();
@@ -601,11 +601,11 @@ async function swipeLeft(ctx, page, locator) {
         if (move) { const m = move.getBoundingClientRect(); if (Math.abs(m.top + m.height / 2 - icon) > 3) out.push(`↑ ↓ not level with the handle on group "${li.querySelector('input').value}"`); }
       }
       // groups are separate cards: a group row sits on the page colour, not the card fill
-      for (const g of document.querySelectorAll('.page-current .ck-edit-list li.ck-group-row')) {
+      for (const g of document.querySelectorAll('.view.tab-active .page-current .ck-edit-list li.ck-group-row')) {
         const next = g.nextElementSibling; if (next && !next.classList.contains('ck-group-row') && getComputedStyle(g).backgroundColor === getComputedStyle(next).backgroundColor) out.push(`group row "${g.textContent.trim()}" has the same fill as its card (${getComputedStyle(g).backgroundColor})`);
       }
       // clear buttons inside their field
-      for (const b of document.querySelectorAll('.page-current .ck-fields .input-clear-button')) {
+      for (const b of document.querySelectorAll('.view.tab-active .page-current .ck-fields .input-clear-button')) {
         const wrap = b.closest('.item-input-wrap').getBoundingClientRect(); const r = b.getBoundingClientRect();
         if (r.width && wrap.right - r.right < 8) out.push(`clear button ${Math.round(wrap.right - r.right)}px from the field edge`);
       }
@@ -616,27 +616,27 @@ async function swipeLeft(ctx, page, locator) {
   await step('12d2-add-tag-typing', async () => {
     // tags are typed inline at the end of the chips, no dialog; the chip hugs its text like the other chips
     const slack = () => page.evaluate(() => {
-      const chip = document.querySelector('.page-current .ck-tag-add'); const i = chip.querySelector('input');
+      const chip = document.querySelector('.view.tab-active .page-current .ck-tag-add'); const i = chip.querySelector('input');
       const c = document.createElement('canvas').getContext('2d'); const cs = getComputedStyle(i); c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
       return Math.round(chip.getBoundingClientRect().right - i.getBoundingClientRect().left - c.measureText(i.value || i.placeholder).width);
     });
     const empty = await slack();
-    await page.locator('.page-current .ck-tag-add input').fill('Make-ahead');
+    await page.locator('.view.tab-active .page-current .ck-tag-add input').fill('Make-ahead');
     const typed = await slack();
     if (empty > 24 || typed > 24) throw new Error(`"Add tag" chip has ${Math.max(empty, typed)}px after its text (other chips have 15)`);
   });
   await step('12d3-tag-added', async () => {
-    await page.locator('.page-current .ck-tag-add input').press('Enter'); await page.waitForTimeout(300);
+    await page.locator('.view.tab-active .page-current .ck-tag-add input').press('Enter'); await page.waitForTimeout(300);
     if (await page.locator('.dialog.modal-in').count()) throw new Error('adding a tag opened a dialog');
-    const on = await page.locator('.page-current .ck-chip.ck-chip-on', { hasText: 'Make-ahead' }).count();
+    const on = await page.locator('.view.tab-active .page-current .ck-chip.ck-chip-on', { hasText: 'Make-ahead' }).count();
     if (!on) throw new Error('new tag is not shown as a selected chip');
-    if ((await page.locator('.page-current .ck-tag-add input').inputValue()) !== '') throw new Error('tag field not cleared after adding');
-    if (await page.locator('.page-current .ck-fields input[placeholder^="#"]').count()) throw new Error('the separate Tags text field is still there');
+    if ((await page.locator('.view.tab-active .page-current .ck-tag-add input').inputValue()) !== '') throw new Error('tag field not cleared after adding');
+    if (await page.locator('.view.tab-active .page-current .ck-fields input[placeholder^="#"]').count()) throw new Error('the separate Tags text field is still there');
   });
   await step('12e-discard-prompt', async () => { await page.locator('.navbar a', { hasText: 'Cancel' }).filter({ visible: true }).first().tap(); });
   await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Discard Changes' }).tap().catch(() => {});
   await page.waitForTimeout(900);
-  await step('12f-recipe-scrolled', async () => { await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 500)); });
+  await step('12f-recipe-scrolled', async () => { await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 500)); });
 
   await page.goto(BASE);
   await page.waitForTimeout(900);
@@ -645,7 +645,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.waitForTimeout(900);
     // the form title is centered on the screen (DESIGN.md "Pushed form screens")
     const off = await page.evaluate(() => {
-      const t = document.querySelector('.page-current .navbar .title');
+      const t = document.querySelector('.view.tab-active .page-current .navbar .title');
       const r = t.getBoundingClientRect();
       return Math.round(r.left + r.width / 2 - innerWidth / 2);
     });
@@ -658,7 +658,7 @@ async function swipeLeft(ctx, page, locator) {
   // the App group: which version is running; tapping it checks for updates, its refresh icon spinning meanwhile, with
   // no dialog or toast (the service worker finds no newer version here, so the icon just stops)
   await step('13b-settings-check-updates', async () => {
-    const row = page.locator('.page-current li.ck-version-row');
+    const row = page.locator('.view.tab-active .page-current li.ck-version-row');
     const version = await row.locator('.item-title').textContent();
     if (!/^\w{5,7} · /.test(version.trim())) throw new Error(`the version reads "${version}"`);
     await row.scrollIntoViewIfNeeded();
@@ -674,12 +674,12 @@ async function swipeLeft(ctx, page, locator) {
   // every Settings group is a white card under its own title (rows outside the card once sat on the grey page)
   await step('13c-settings-groups', async () => {
     const t = await page.evaluate(() => {
-      const lists = [...document.querySelectorAll('.page-current .list')];
+      const lists = [...document.querySelectorAll('.view.tab-active .page-current .list')];
       return {
         loose: lists.filter((l) => [...l.children].some((c) => c.tagName === 'LI' || c.classList.contains('item-content'))).length,
         notWhite: lists.filter((l) => getComputedStyle(l.querySelector('ul')).backgroundColor !== 'rgb(255, 255, 255)').length,
-        titles: [...document.querySelectorAll('.page-current .block-title')].map((x) => x.textContent),
-        footers: document.querySelectorAll('.page-current .block-footer').length,
+        titles: [...document.querySelectorAll('.view.tab-active .page-current .block-title')].map((x) => x.textContent),
+        footers: document.querySelectorAll('.view.tab-active .page-current .block-footer').length,
       };
     });
     if (t.loose || t.notWhite) throw new Error(`${t.loose + t.notWhite} Settings group(s) not in a white card`);
@@ -687,59 +687,76 @@ async function swipeLeft(ctx, page, locator) {
     if (t.footers) throw new Error(`Settings has ${t.footers} footers, expected none`);
     // Account is one row: the address, then Sign Out in red at its end
     const acct = await page.evaluate(() => {
-      const li = document.querySelector('.page-current li.ck-account-row'); const out = li?.querySelector('.ck-sign-out');
+      const li = document.querySelector('.view.tab-active .page-current li.ck-account-row'); const out = li?.querySelector('.ck-sign-out');
       return { rows: li?.closest('ul').children.length, title: li?.querySelector('.item-title').textContent, out: out?.textContent, color: out && getComputedStyle(out).color,
         right: out && li.getBoundingClientRect().right - out.getBoundingClientRect().right };
     });
     if (acct.rows !== 1 || acct.title !== 'demo@example.com') throw new Error(`the Account card has ${acct.rows} rows, titled "${acct.title}"`);
     if (acct.out !== 'Sign Out' || acct.color !== 'rgb(209, 41, 31)' || acct.right > 40) throw new Error('Sign Out is not red at the end of the account row');
     // every card's row is the same height, and Sign Out is still a 44px tap target
-    const heights = await page.evaluate(() => [...document.querySelectorAll('.page-current .list li')].map((li) => Math.round(li.getBoundingClientRect().height)).filter(Boolean));
+    const heights = await page.evaluate(() => [...document.querySelectorAll('.view.tab-active .page-current .list li')].map((li) => Math.round(li.getBoundingClientRect().height)).filter(Boolean));
     if (new Set(heights).size !== 1) throw new Error(`Settings rows are ${heights.join(', ')}px tall, not all the same`);
-    const tap = await page.locator('.page-current .ck-sign-out').evaluate((e) => e.getBoundingClientRect().height);
+    const tap = await page.locator('.view.tab-active .page-current .ck-sign-out').evaluate((e) => e.getBoundingClientRect().height);
     if (tap < 44) throw new Error(`Sign Out's tap target is ${tap}px tall`);
   });
   // Settings → Import from Prepear (issue #14): the peek bookmarklet to copy, then the steps
   await step('13d-prepear-import', async () => {
-    await page.locator('.page-current a', { hasText: 'From Prepear' }).tap(); await page.waitForTimeout(800);
-    const href = await page.locator('.page-current a.ck-bookmarklet').getAttribute('href');
+    await page.locator('.view.tab-active .page-current a', { hasText: 'From Prepear' }).tap(); await page.waitForTimeout(800);
+    const href = await page.locator('.view.tab-active .page-current a.ck-bookmarklet').getAttribute('href');
     if (!href || !href.startsWith('javascript:(function')) throw new Error(`the drag link's address is ${String(href).slice(0, 40)}`);
   });
   await step('13e-prepear-copied', async () => {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
-    await page.locator('.page-current .ck-copy-export a').tap(); await page.waitForTimeout(400);
+    await page.locator('.view.tab-active .page-current .ck-copy-export a').tap(); await page.waitForTimeout(400);
     if (!(await page.locator('.toast.modal-in', { hasText: 'copied' }).count())) throw new Error('copying the bookmarklet shows no "copied" toast');
     // tapping the Mac drag link in the app does nothing (it's for Prepear's page)
-    await page.locator('.page-current a.ck-bookmarklet').tap(); await page.waitForTimeout(300);
+    await page.locator('.view.tab-active .page-current a.ck-bookmarklet').tap(); await page.waitForTimeout(300);
     if (await page.evaluate(() => !!window.__cookbookPeek)) throw new Error('tapping the drag link ran the peek inside the app');
   });
   await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
   // Step 2: a (made-up) export file is chosen: what's in it, then the import (the demo backend has no photo store)
   await step('13f-prepear-file-chosen', async () => {
-    await page.locator('.page-current input[type=file]').setInputFiles(path.join(__dirname, 'fixtures', 'prepear-export-sample.json'));
+    await page.locator('.view.tab-active .page-current input[type=file]').setInputFiles(path.join(__dirname, 'fixtures', 'prepear-export-sample.json'));
     await page.waitForTimeout(500);
     const text = await page.evaluate(() =>
-      [...document.querySelectorAll('.page-current .ck-import-summary li')].map((li) => `${li.querySelector('.item-title').childNodes[0].textContent.trim()} ${li.querySelector('.item-after').textContent.trim()}`).join(' | '),
+      [...document.querySelectorAll('.view.tab-active .page-current .ck-import-summary li')].map((li) => `${li.querySelector('.item-title').childNodes[0].textContent.trim()} ${li.querySelector('.item-after').textContent.trim()}`).join(' | '),
     );
     if (text !== 'Recipes to import 2 | With a photo 1 | Can’t import 1') throw new Error(`the summary reads "${text}"`);
-    await page.locator('.page-current .ck-import-button').scrollIntoViewIfNeeded();
+    await page.locator('.view.tab-active .page-current .ck-import-button').scrollIntoViewIfNeeded();
   });
   await step('13g-prepear-imported', async () => {
-    await page.locator('.page-current .ck-import-button').tap();
-    await page.waitForSelector('.page-current .ck-import-done', { timeout: 10000 });
-    const done = (await page.locator('.page-current .ck-import-done').textContent()).trim();
+    await page.locator('.view.tab-active .page-current .ck-import-button').tap();
+    await page.waitForSelector('.view.tab-active .page-current .ck-import-done', { timeout: 10000 });
+    const done = (await page.locator('.view.tab-active .page-current .ck-import-done').textContent()).trim();
     if (!/^Imported 2 recipes\.$/.test(done)) throw new Error(`after importing it says "${done}"`);
   });
-  await page.locator('.page-current .navbar .back').tap(); await page.waitForTimeout(800);
+  // Step 3 (issue #25): the cookbooks, from the file kept in step 2 (the demo keeps it until the page reloads)
+  await step('13g2-prepear-cookbooks', async () => {
+    await page.locator('.view.tab-active .page-current .ck-look-books a').scrollIntoViewIfNeeded();
+    await page.locator('.view.tab-active .page-current .ck-look-books a').tap(); await page.waitForSelector('.view.tab-active .page-current .ck-books-summary', { timeout: 5000 });
+    const text = await page.evaluate(() =>
+      [...document.querySelectorAll('.view.tab-active .page-current .ck-books-summary li')].map((li) => `${li.querySelector('.item-title').childNodes[0].textContent.trim()} ${li.querySelector('.item-after').textContent.trim()}`).join(' | '),
+    );
+    if (!text.startsWith('Cookbooks to import 1 | With sections 0')) throw new Error(`the cookbooks summary reads "${text}"`);
+    await page.locator('.view.tab-active .page-current .ck-import-books-button').tap();
+    await page.waitForSelector('.view.tab-active .page-current .ck-import-done >> text=cookbook', { timeout: 10000 });
+    const done = (await page.locator('.view.tab-active .page-current .ck-import-done', { hasText: 'cookbook' }).textContent()).trim();
+    if (!done.startsWith('Imported 1 cookbook.')) throw new Error(`after importing cookbooks it says "${done}"`);
+    // again: nothing new
+    await page.locator('.view.tab-active .page-current .ck-look-books a').tap(); await page.waitForTimeout(600);
+    const again = await page.locator('.view.tab-active .page-current .ck-import-books-button').textContent();
+    if (!again.includes('Nothing new')) throw new Error(`looking again offers "${again}"`);
+  });
+  await page.locator('.view.tab-active .page-current .navbar .back').tap(); await page.waitForTimeout(800);
   // #14 feedback, on the imported recipes (the demo backend keeps them until the page reloads): a lower-case title got
   // a capital; a card shows its time but not its source, and nothing when no time is set; a card without a photo has
   // its chef hat centred; the recipe page shows a dash for no time
-  await page.locator('.page-current .navbar .back').tap(); await page.waitForTimeout(800);
+  await page.locator('.view.tab-active .page-current .navbar .back').tap(); await page.waitForTimeout(800);
   await step('13h-imported-cards', async () => {
-    const salad = page.locator('.page-current .ck-card', { hasText: 'Sample green salad' });
+    const salad = page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Sample green salad' });
     await salad.scrollIntoViewIfNeeded();
     const t = await page.evaluate(() => {
-      const card = (title) => [...document.querySelectorAll('.page-current .ck-card')].find((c) => c.querySelector('.ck-card-title').textContent === title);
+      const card = (title) => [...document.querySelectorAll('.view.tab-active .page-current .ck-card')].find((c) => c.querySelector('.ck-card-title').textContent === title);
       const salad = card('Sample green salad'), soup = card('Sample Lentil Soup');
       const box = salad.querySelector('.ck-card-photo').getBoundingClientRect(), hat = salad.querySelector('.ck-card-photo svg').getBoundingClientRect();
       return {
@@ -753,13 +770,13 @@ async function swipeLeft(ctx, page, locator) {
     if (t.soupMeta !== '45 min') throw new Error(`a card with a source and a time shows "${t.soupMeta}", expected just the time`);
   });
   await step('13i-recipe-no-time', async () => {
-    await page.locator('.page-current .ck-card', { hasText: 'Sample green salad' }).tap(); await page.waitForTimeout(1000);
-    const time = (await page.locator('.page-current .ck-stats > div').nth(2).locator('b').textContent()).trim();
+    await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Sample green salad' }).tap(); await page.waitForTimeout(1000);
+    const time = (await page.locator('.view.tab-active .page-current .ck-stats > div').nth(2).locator('b').textContent()).trim();
     if (time !== '–') throw new Error(`no time set reads "${time}" on the recipe page, expected a dash`);
   });
-  await page.locator('.navbar-current .link.back, .page-current .navbar .link.back').first().tap(); await page.waitForTimeout(900);
+  await page.locator('.navbar-current .link.back, .view.tab-active .page-current .navbar .link.back').first().tap(); await page.waitForTimeout(900);
   await page.locator('.view-main .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
-  await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
+  await step('14-style-guide', async () => { await page.locator('.view.tab-active .page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {
     await step(`15-tab-${tab.toLowerCase()}`, async () => {
       // hold a finger on the tab first: the tab bar must not swell under it (Framework7's iOS 26 touch highlight is off)
@@ -792,8 +809,8 @@ async function swipeLeft(ctx, page, locator) {
     const problems = [];
     if (tab.innerBottom !== tab.screen) problems.push(`tab bar stops ${tab.screen - tab.innerBottom}px above the screen's bottom`);
     if (Math.abs(tab.mid - tab.above / 2) > 2) problems.push(`tab icons not centred above the home-indicator strip (${tab.mid}px of ${tab.above})`);
-    await page.locator('.page-current .ck-card').first().tap(); await page.waitForTimeout(900);
-    const cta = await bar('.page-current .toolbar.ck-cta', '.ck-cta-button');
+    await page.locator('.view.tab-active .page-current .ck-card').first().tap(); await page.waitForTimeout(900);
+    const cta = await bar('.view.tab-active .page-current .toolbar.ck-cta', '.ck-cta-button');
     if (cta.innerBottom !== cta.screen) problems.push(`Start cooking bar stops ${cta.screen - cta.innerBottom}px above the screen's bottom`);
     if (Math.abs(cta.mid - cta.above / 2) > 2) problems.push(`Start cooking not centred above the home-indicator strip (${cta.mid}px of ${cta.above})`);
     await safe.evaluate((el) => el.remove());
@@ -804,7 +821,7 @@ async function swipeLeft(ctx, page, locator) {
   await step('20-square-tiles', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
     const t = await page.evaluate(() => {
-      const card = document.querySelector('.page-current .ck-card'); const photo = card.querySelector('.ck-card-photo').getBoundingClientRect();
+      const card = document.querySelector('.view.tab-active .page-current .ck-card'); const photo = card.querySelector('.ck-card-photo').getBoundingClientRect();
       const title = card.querySelector('.ck-card-title').getBoundingClientRect();
       return { ratio: photo.width / photo.height, cardBg: getComputedStyle(card).backgroundColor, titleBelow: title.top >= photo.bottom };
     });
@@ -814,10 +831,10 @@ async function swipeLeft(ctx, page, locator) {
   });
   // issue #7: back and ••• float over the photo, which starts at the top of the screen, with no bar behind them
   await step('21-buttons-over-photo', async () => {
-    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
     const t = await page.evaluate(() => {
-      const hero = document.querySelector('.page-current .ck-hero, .page-current .ck-hero-wrap').getBoundingClientRect();
-      const nav = document.querySelector('.navbar-current, .page-current .navbar');
+      const hero = document.querySelector('.view.tab-active .page-current .ck-hero, .view.tab-active .page-current .ck-hero-wrap').getBoundingClientRect();
+      const nav = document.querySelector('.navbar-current, .view.tab-active .page-current .navbar');
       const back = nav.querySelector('.link.back').getBoundingClientRect();
       return { heroTop: Math.round(hero.top), bg: getComputedStyle(nav.querySelector('.navbar-bg')).display, backInPhoto: back.top >= hero.top && back.bottom <= hero.bottom };
     });
@@ -829,13 +846,13 @@ async function swipeLeft(ctx, page, locator) {
   // bottom sheet with radio options (24-*); picking one replaces the amount, and the
   // Original option puts it back
   await step('22-unit-underline', async () => {
-    await page.locator('.page-current .ck-scale-button').tap(); await page.waitForTimeout(700);
+    await page.locator('.view.tab-active .page-current .ck-scale-button').tap(); await page.waitForTimeout(700);
     await page.locator('.sheet-modal.modal-in .ck-chip', { hasText: '×2' }).tap(); await page.waitForTimeout(300);
     await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).first().tap(); await page.waitForTimeout(700);
-    const row = page.locator('.page-current .ck-ing-list li', { hasText: 'lemon juice' });
+    const row = page.locator('.view.tab-active .page-current .ck-ing-list li', { hasText: 'lemon juice' });
     await row.scrollIntoViewIfNeeded();
     const t = await page.evaluate(() => {
-      const li = [...document.querySelectorAll('.page-current .ck-ing-list li')];
+      const li = [...document.querySelectorAll('.view.tab-active .page-current .ck-ing-list li')];
       const juice = li.find((l) => l.textContent.includes('lemon juice')).querySelector('.ck-convertible');
       const garlic = li.find((l) => l.textContent.includes('garlic'));
       const b = juice.getBoundingClientRect(); const title = juice.closest('.item-title').getBoundingClientRect();
@@ -850,12 +867,12 @@ async function swipeLeft(ctx, page, locator) {
   // kept in view above it; picking closes it and replaces the amount; in cook mode it opens over cook mode
   await step('24-unit-sheet', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
-    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
-    await page.evaluate(() => document.querySelector('.page-current .page-content').scrollTo(0, 700)); await page.waitForTimeout(400);
-    await page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);
+    await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 700)); await page.waitForTimeout(400);
+    await page.locator('.view.tab-active .page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);
     const t = await page.evaluate(() => {
       const sh = document.querySelector('.sheet-modal.modal-in.ck-unit-sheet'); const r = sh?.getBoundingClientRect();
-      const row = document.querySelector('.page-current li.ck-ing-on')?.getBoundingClientRect();
+      const row = document.querySelector('.view.tab-active .page-current li.ck-ing-on')?.getBoundingClientRect();
       return { sheet: !!sh, title: sh?.querySelector('.toolbar b')?.textContent, rowAbove: row && r && row.bottom <= r.top, dimmed: !!document.querySelector('.sheet-backdrop.backdrop-in'), popover: !!document.querySelector('.popover.modal-in'), radios: sh?.querySelectorAll('input[type=radio]').length };
     });
     if (!t.sheet || t.popover) throw new Error('tapping an amount did not open the bottom sheet');
@@ -867,13 +884,13 @@ async function swipeLeft(ctx, page, locator) {
   await step('24b-unit-sheet-picked', async () => {
     await page.locator('.sheet-modal.modal-in li', { hasText: 'tbsp' }).tap(); await page.waitForTimeout(800);
     if (await page.locator('.sheet-modal.modal-in.ck-unit-sheet').count()) throw new Error('the sheet stayed open after picking');
-    const text = await page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible').textContent();
+    const text = await page.locator('.view.tab-active .page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible').textContent();
     if (text !== '½ tbsp') throw new Error(`after picking ½ tbsp the amount reads "${text}"`);
   });
   // tapping another amount switches the sheet to it; tapping the highlighted one again closes it (toggles it off)
   await step('24b2-unit-sheet-toggle', async () => {
-    const salt = page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible');
-    const pepper = page.locator('.page-current .ck-ing-list li', { hasText: 'black pepper' }).locator('.ck-convertible');
+    const salt = page.locator('.view.tab-active .page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible');
+    const pepper = page.locator('.view.tab-active .page-current .ck-ing-list li', { hasText: 'black pepper' }).locator('.ck-convertible');
     await salt.tap(); await page.waitForTimeout(900);
     const picked = await page.locator('.sheet-modal.modal-in input[type=radio]:checked').evaluate((e) => e.closest('li').textContent);
     if (!picked.includes('½ tbsp')) throw new Error(`reopened sheet has "${picked}" picked, not ½ tbsp`);
@@ -882,17 +899,17 @@ async function swipeLeft(ctx, page, locator) {
     if (title !== 'Black pepper') throw new Error(`tapping another amount should switch the sheet to it (title "${title}")`);
     await pepper.tap(); await page.waitForTimeout(800);
     if (await page.locator('.sheet-modal.modal-in.ck-unit-sheet').count()) throw new Error('tapping the highlighted amount again did not close the sheet');
-    if (await page.locator('.page-current li.ck-ing-on').count()) throw new Error('the ingredient stayed highlighted after closing');
+    if (await page.locator('.view.tab-active .page-current li.ck-ing-on').count()) throw new Error('the ingredient stayed highlighted after closing');
   });
   await step('24b3-unit-sheet-original', async () => {
-    const salt = page.locator('.page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible');
+    const salt = page.locator('.view.tab-active .page-current .ck-ing-list li', { hasText: 'kosher salt' }).locator('.ck-convertible');
     await salt.tap(); await page.waitForTimeout(900);
     await page.locator('.sheet-modal.modal-in li', { hasText: 'Original' }).tap(); await page.waitForTimeout(800);
     const text = await salt.textContent();
     if (text !== '1 1/2 tsp') throw new Error(`after Original the amount reads "${text}"`);
   });
   await step('24c-cook-unit-sheet', async () => {
-    await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    await page.locator('.view.tab-active .page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
     // opening the sheet must not move cook mode's divider (it once padded the split screen and squeezed the halves)
     const divider = () => page.evaluate(() => Math.round(document.querySelector('.ck-split-handle').getBoundingClientRect().top));
     const before = await divider();
@@ -915,16 +932,16 @@ async function swipeLeft(ctx, page, locator) {
   // that opens that recipe; in cook mode it opens the sauce's own cook mode over the kebabs' one, without ticking the row
   await step('25-linked-ingredient', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
-    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
-    const link = page.locator('.page-current .ck-ing-list li', { hasText: 'tahini sauce' }).locator('.ck-ing-linked');
+    await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    const link = page.locator('.view.tab-active .page-current .ck-ing-list li', { hasText: 'tahini sauce' }).locator('.ck-ing-linked');
     await link.scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
     const color = await link.evaluate((e) => getComputedStyle(e).color);
     if (color !== 'rgb(196, 66, 28)') throw new Error(`the linked name is ${color}, not Tomato ink`);
-    if (await page.locator('.page-current .ck-ing-list .ck-ing-linked').count() !== 1) throw new Error('only the tahini sauce row should be a link');
+    if (await page.locator('.view.tab-active .page-current .ck-ing-list .ck-ing-linked').count() !== 1) throw new Error('only the tahini sauce row should be a link');
   });
   await step('25b-linked-recipe-opened', async () => {
-    await page.locator('.page-current .ck-ing-list .ck-ing-linked').tap(); await page.waitForTimeout(1200);
-    const title = await page.locator('.page-current .ck-recipe-title').textContent();
+    await page.locator('.view.tab-active .page-current .ck-ing-list .ck-ing-linked').tap(); await page.waitForTimeout(1200);
+    const title = await page.locator('.view.tab-active .page-current .ck-recipe-title').textContent();
     if (title !== 'Tahini Sauce') throw new Error(`tapping the linked ingredient opened "${title}"`);
   });
   // the sauce opens in a tab, not a layer: one cook mode, the top bar becomes a grey strip of recipe tabs in place of
@@ -932,8 +949,8 @@ async function swipeLeft(ctx, page, locator) {
   // recipe's ticks
   await step('25c-cook-linked', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
-    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
-    await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.view.tab-active .page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
     const row = page.locator('.ck-cook .tab-active .ck-pane-ingredients li', { hasText: 'tahini sauce' });
     await row.scrollIntoViewIfNeeded();
     await row.locator('.ck-ing-linked').tap(); await page.waitForTimeout(800);
@@ -1016,9 +1033,9 @@ async function swipeLeft(ctx, page, locator) {
   await step('25e-edit-linked', async () => {
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1200);
-    const footer = await page.locator('.page-current .ck-edit-list li', { hasText: 'tahini sauce' }).locator('.item-footer').textContent();
+    const footer = await page.locator('.view.tab-active .page-current .ck-edit-list li', { hasText: 'tahini sauce' }).locator('.item-footer').textContent();
     if (!footer.includes('Recipe: Tahini Sauce')) throw new Error(`the linked row's footer reads "${footer}"`);
-    await page.locator('.page-current .ck-edit-list li', { hasText: 'warm pitas' }).locator('.item-link').first().tap(); await page.waitForTimeout(900);
+    await page.locator('.view.tab-active .page-current .ck-edit-list li', { hasText: 'warm pitas' }).locator('.item-link').first().tap(); await page.waitForTimeout(900);
     const after = await page.locator('.sheet-modal.modal-in .ck-link-field .item-after').textContent();
     if (after !== 'None') throw new Error(`an unlinked ingredient's Recipe row reads "${after}"`);
   });
@@ -1044,12 +1061,12 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.locator('.popup.ck-link-popup.modal-in').count()) throw new Error('the recipe list stayed open after picking');
     const after = await page.locator('.sheet-modal.modal-in .ck-link-field .item-after').textContent().catch(() => '(no sheet)');
     if (after !== 'Corn pudding') throw new Error(`after picking, the ingredient sheet's Recipe row reads "${after}"`);
-    const footer = await page.locator('.page-current .ck-edit-list li', { hasText: 'warm pitas' }).locator('.item-footer').textContent().catch(() => '');
+    const footer = await page.locator('.view.tab-active .page-current .ck-edit-list li', { hasText: 'warm pitas' }).locator('.item-footer').textContent().catch(() => '');
     if (!footer.includes('Recipe: Corn pudding')) throw new Error(`the row behind the sheet reads "${footer}"`);
     await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(800);
-    await page.locator('.page-current textarea').first().fill('1 cup tahini sauce'); await page.waitForTimeout(300);
-    await page.locator('.page-current .button', { hasText: 'Add 1 line' }).tap(); await page.waitForTimeout(500);
-    const pasted = await page.locator('.page-current .ck-edit-list li', { hasText: '1 cup tahini sauce' }).locator('.item-footer').textContent().catch(() => '');
+    await page.locator('.view.tab-active .page-current textarea').first().fill('1 cup tahini sauce'); await page.waitForTimeout(300);
+    await page.locator('.view.tab-active .page-current .button', { hasText: 'Add 1 line' }).tap(); await page.waitForTimeout(500);
+    const pasted = await page.locator('.view.tab-active .page-current .ck-edit-list li', { hasText: '1 cup tahini sauce' }).locator('.item-footer').textContent().catch(() => '');
     if (!pasted.includes('Recipe: Tahini Sauce')) throw new Error('a pasted "tahini sauce" line did not link to the Tahini Sauce recipe');
   });
   // link two more of the kebabs' ingredients and save, for cook mode with five recipes open (25i)
@@ -1061,21 +1078,21 @@ async function swipeLeft(ctx, page, locator) {
       await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(800);
     };
     await page.goto(BASE); await page.waitForTimeout(1200);
-    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1200);
-    await link(page.locator('.page-current .ck-edit-list li', { hasText: 'warm pitas' }), 'Corn pudding');
-    await link(page.locator('.page-current .ck-edit-list li', { hasText: 'fresh parsley' }), 'Mustard Dill');
-    await link(page.locator('.page-current .ck-edit-list li').filter({ hasText: /^1 lemon/ }), 'Pulled Beef');
+    await link(page.locator('.view.tab-active .page-current .ck-edit-list li', { hasText: 'warm pitas' }), 'Corn pudding');
+    await link(page.locator('.view.tab-active .page-current .ck-edit-list li', { hasText: 'fresh parsley' }), 'Mustard Dill');
+    await link(page.locator('.view.tab-active .page-current .ck-edit-list li').filter({ hasText: /^1 lemon/ }), 'Pulled Beef');
     await page.locator('.navbar .ck-nav-primary:visible').tap(); await page.waitForTimeout(1200);
-    const linked = await page.locator('.page-current .ck-ing-list .ck-ing-linked').count();
+    const linked = await page.locator('.view.tab-active .page-current .ck-ing-list .ck-ing-linked').count();
     if (linked !== 4) throw new Error(`after saving, the kebabs have ${linked} linked ingredients, expected 4`);
   });
   // more recipes than fit: the tabs keep a readable width and the row scrolls sideways with a swipe; the shown tab
   // scrolls into view
   await step('25i-cook-many-tabs', async () => {
     // straight from the kebabs page the save returned to (reloading would reset the demo's recipes)
-    await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    await page.locator('.view.tab-active .page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
     for (const name of ['tahini sauce', 'warm pitas', 'fresh parsley', 'lemon']) {
       const main = page.locator('.ck-cook .navbar .ck-tab', { hasText: 'Middle' });
       if (await main.count()) { await main.tap(); await page.waitForTimeout(500); }
@@ -1115,12 +1132,154 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('25h-delete-used-recipe', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
-    await page.locator('.page-current .ck-card', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(1000);
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Delete Recipe' }).tap(); await page.waitForTimeout(700);
     const text = await page.locator('.dialog.modal-in .dialog-text').textContent();
     if (!text.includes('ingredient in “Middle Eastern Chicken Kebabs”')) throw new Error(`the delete question reads "${text}"`);
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(500);
+  });
+
+  // ── Cookbooks (issue #25), from a fresh start (the demo's three cookbooks) ──
+  const CUR = '.view.tab-active .page-current';
+  const cards = () => page.locator(`${CUR} .ck-card-grid:not(.ck-section-grid) .ck-card .ck-card-title`).allTextContents();
+  const prompt = async (text) => {
+    await page.waitForSelector('.dialog.modal-in input');
+    await page.locator('.dialog.modal-in input').fill(text);
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(900);
+  };
+  await step('26-cookbooks-tab', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(900);
+    const tiles = await page.locator(`${CUR} .ck-book-tile .ck-card-title`).allTextContents();
+    if (tiles.join(',') !== 'Dressings and sauces,Everything else,Grilling') throw new Error(`the cookbooks are ${JSON.stringify(tiles)}, not A–Z`);
+    const counts = await page.locator(`${CUR} .ck-book-tile .ck-card-meta`).allTextContents();
+    if (counts.join(',') !== '0 recipes,6 recipes,2 recipes') throw new Error(`the counts read ${JSON.stringify(counts)}`);
+    if (!(await page.locator(`${CUR} .ck-book-tile`).first().locator('.ck-photo-empty svg').count())) throw new Error('an empty cookbook has no book icon');
+  });
+  await step('26b-cookbook-page', async () => {
+    await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).tap(); await page.waitForTimeout(1000);
+    const sections = await page.locator(`${CUR} .ck-section-grid .ck-card-title`).allTextContents();
+    if (sections.join(',') !== 'Meat,Other') throw new Error(`the sections are ${JSON.stringify(sections)}`);
+    const unc = await cards();
+    if (unc.join(',') !== 'Corn pudding,Tahini Sauce') throw new Error(`Uncategorized shows ${JSON.stringify(unc)}`);
+    const count = await page.locator(`${CUR} .ck-count`).textContent();
+    if (!count.includes('6 recipes · 2 sections')) throw new Error(`the count reads "${count}"`);
+  });
+  await step('26c-cookbook-search', async () => {
+    await page.locator(`${CUR} .ck-home-search input`).fill('chick'); await page.waitForTimeout(500);
+    const found = await cards();
+    const count = await page.locator(`${CUR} .ck-count`).textContent();
+    // the search covers the sections too
+    if (found.length !== 2 || !count.includes('2 of 6 recipes')) throw new Error(`searching shows ${JSON.stringify(found)} with "${count}"`);
+    if (await page.locator(`${CUR} .ck-section-grid`).count()) throw new Error('the section tiles stay while searching');
+    await page.locator(`${CUR} .ck-home-search input`).fill(''); await page.locator(`${CUR} .ck-home-search input`).blur(); await page.waitForTimeout(500);
+  });
+  await step('26d-section-page', async () => {
+    await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Meat' }).tap(); await page.waitForTimeout(1000);
+    const sub = await page.locator('.view.tab-active .page-current > .navbar .subtitle').textContent();
+    if (sub !== 'Everything else') throw new Error(`the section's subtitle reads "${sub}"`);
+    if ((await cards()).length !== 3) throw new Error(`the section shows ${(await cards()).length} recipes`);
+  });
+  await step('26e-add-recipes', async () => {
+    await page.locator(`.view.tab-active .page-current > .navbar a[aria-label="Add recipes"]`).tap(); await page.waitForTimeout(900);
+    const ticked = await page.locator('.popup.modal-in .ck-picker-list input:checked').count();
+    if (ticked !== 3) throw new Error(`Add Recipes starts with ${ticked} ticked, not the section's 3`);
+    const footer = await page.locator('.popup.modal-in li', { hasText: 'Mustard Dill' }).locator('.item-footer').textContent();
+    if (footer !== 'In Other') throw new Error(`a recipe in another section says "${footer}"`);
+    await page.locator('.popup.modal-in li', { hasText: 'Corn pudding' }).locator('label').tap(); await page.waitForTimeout(300);
+  });
+  await step('26e2-recipes-added', async () => {
+    await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
+    const now = await cards();
+    if (now.length !== 4 || now[3] !== 'Corn pudding') throw new Error(`after adding, the section shows ${JSON.stringify(now)}`);
+  });
+  await step('26f-section-more', async () => {
+    await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
+    const items = await page.locator('.actions-modal.modal-in .actions-button').allTextContents();
+    if (items.join('|') !== 'Add Recipes|Organize|Rename Section|Change Cover|Delete Section|Cancel') throw new Error(`the section menu is ${JSON.stringify(items)}`);
+  });
+  await step('26g-organize', async () => {
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Organize' }).tap(); await page.waitForTimeout(1000);
+    const headings = await page.locator('.popup.modal-in .ck-organize-heading .item-title').allTextContents();
+    if (headings.join(',') !== 'Uncategorized,Meat,Other') throw new Error(`Organize's headings are ${JSON.stringify(headings)}`);
+    const rows = await page.locator('.popup.modal-in .ck-organize-list li:not(.ck-organize-heading)').count();
+    // Uncategorized 2, Meat 4 (Corn pudding is in both), Other 1
+    if (rows !== 7) throw new Error(`Organize lists ${rows} recipe rows, expected 7`);
+  });
+  await step('26g2-organize-removed', async () => {
+    // swipe a recipe out of Meat, then Done
+    const row = page.locator('.popup.modal-in .ck-organize-list li', { hasText: 'Pulled Beef' });
+    const box = await row.boundingBox();
+    const cdp = await ctx.newCDPSession(page);
+    const y = box.y + box.height / 2;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + box.width * 0.6, y }] });
+    for (let i = 1; i <= 10; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: box.x + box.width * 0.6 - 25 * i, y }] }); await page.waitForTimeout(16); }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await cdp.detach(); await page.waitForTimeout(500);
+    await page.locator('.popup.modal-in .ck-organize-list li', { hasText: 'Pulled Beef' }).locator('.swipeout-delete').tap(); await page.waitForTimeout(800);
+    await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
+    const now = await cards();
+    if (now.includes('Pulled Beef with Parsnip Purée') || now.length !== 3) throw new Error(`after taking it out, the section shows ${JSON.stringify(now)}`);
+  });
+  await step('26h-new-section', async () => {
+    await page.locator('.view.tab-active .page-current > .navbar .link.back').tap(); await page.waitForTimeout(900);
+    await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'New Section' }).tap(); await page.waitForTimeout(600);
+    await prompt('Fish');
+    const title = await page.locator('.view.tab-active .page-current > .navbar .title').first().textContent();
+    if (!title.includes('Fish')) throw new Error(`a new section opens "${title}"`);
+    if (!(await page.locator(`${CUR} .ck-list-state`, { hasText: 'No recipes in this section yet' }).count())) throw new Error('an empty section doesn’t say so');
+  });
+  await step('26i-add-to-cookbook', async () => {
+    await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
+    await page.locator(`${CUR} .ck-card`, { hasText: 'Corn pudding' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.view.tab-active .navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Add to Cookbook' }).tap(); await page.waitForTimeout(1000);
+    const rows = await page.locator('.popup.modal-in .ck-addto-list li .item-title').allTextContents();
+    if (rows.join(',') !== 'Dressings and sauces,Everything else,Uncategorized,Meat,Other,Fish,Grilling') throw new Error(`Add to Cookbook lists ${JSON.stringify(rows)}`);
+    const checked = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-addto-list li')].filter((li) => li.querySelector('input:checked')).map((li) => li.querySelector('.item-title').textContent));
+    if (checked.join(',') !== 'Uncategorized,Meat') throw new Error(`Corn pudding is ticked in ${JSON.stringify(checked)}`);
+  });
+  await step('26i2-added-to-cookbook', async () => {
+    await page.locator('.popup.modal-in .ck-addto-list li', { hasText: 'Grilling' }).locator('label').tap(); await page.waitForTimeout(500);
+    await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
+    // leaving Cookbooks took it back to its first page, so it shows the cookbooks again
+    await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(900);
+    const grilling = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Grilling' }).locator('.ck-card-meta').textContent();
+    if (grilling !== '3 recipes') throw new Error(`Grilling has "${grilling}" after adding Corn pudding`);
+  });
+  await step('26j-new-cookbook', async () => {
+    await page.locator('.view.tab-active .page-current > .navbar a[aria-label="New cookbook"]').tap(); await page.waitForTimeout(600);
+    await prompt('Soups');
+    if (!(await page.locator(`${CUR} .ck-list-state`, { hasText: 'No recipes in this cookbook yet' }).count())) throw new Error('a new cookbook doesn’t open, empty');
+  });
+  await step('26k-delete-cookbook', async () => {
+    await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Delete Cookbook' }).tap(); await page.waitForTimeout(600);
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
+    const tiles = await page.locator(`${CUR} .ck-book-tile .ck-card-title`).allTextContents();
+    if (tiles.includes('Soups') || tiles.length !== 3) throw new Error(`after deleting, the cookbooks are ${JSON.stringify(tiles)}`);
+  });
+
+  // One browser history for every tab: a page deep in two tabs at once made one back move both. Leaving a tab now takes
+  // it back to its first page, so back only ever moves the tab shown.
+  await step('26l-tabs-back', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('#view-recipes .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(900);
+    await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(800);
+    await page.locator('#view-cookbooks .page-current .ck-book-tile', { hasText: 'Everything else' }).tap(); await page.waitForTimeout(900);
+    const recipesPages = await page.locator('#view-recipes .page').count();
+    if (recipesPages !== 1) throw new Error(`leaving Recipes left ${recipesPages} pages in it, not its first page`);
+    await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
+    await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(800);
+    // coming back, Cookbooks starts at its first page
+    const books = await page.locator('#view-cookbooks .page').filter({ has: page.locator('.ck-book-tile') }).count();
+    if (!books || (await page.locator('#view-cookbooks .page-current .ck-book-tile').count()) !== 3) throw new Error('coming back to Cookbooks doesn’t show the cookbooks');
+    await page.locator('#view-cookbooks .page-current .ck-book-tile', { hasText: 'Grilling' }).tap(); await page.waitForTimeout(900);
+    await page.goBack(); await page.waitForTimeout(900);
+    if (!page.url().startsWith(BASE)) throw new Error(`back left the app for ${page.url()}`);
+    if ((await page.locator('#view-cookbooks .page-current .ck-book-tile').count()) !== 3) throw new Error('back from a cookbook didn’t return to the cookbooks');
+    if ((await page.locator('#view-recipes .page').count()) !== 1) throw new Error('back in Cookbooks moved Recipes');
   });
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)
@@ -1136,7 +1295,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.ck-signin-button').tap();
     await page.waitForTimeout(900);
     if (await page.locator('.login-screen.modal-in').count()) throw new Error('sign-in screen still open after signing in');
-    if (!(await page.locator('.page-current .ck-card').count())) throw new Error('no recipes after signing in');
+    if (!(await page.locator('.view.tab-active .page-current .ck-card').count())) throw new Error('no recipes after signing in');
   });
 
   if (errors.length) {

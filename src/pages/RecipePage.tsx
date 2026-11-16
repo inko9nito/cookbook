@@ -7,6 +7,7 @@ import { Ellipsis, Star, ChevronDown, ChevronRight } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
 import CookMode from '../components/CookMode';
 import RecipePhotos from '../components/RecipePhotos';
+import AddToCookbookPopup from '../components/AddToCookbookPopup';
 import { useStore } from '../data/store';
 import { titleCase, linkedRecipe, usedIn, type Ingredient } from '../lib/recipe';
 import { friendly } from '../lib/ingredients';
@@ -62,6 +63,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const [factor, setFactor] = useState(1);
   const [scaleOpen, setScaleOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [addingToCookbook, setAddingToCookbook] = useState(false);
   const [cooking, setCooking] = useState(false);
   // issue #6: the tapped amount (its popover is open), and units picked for some ingredients until the recipe is
   // closed; cook mode shows and changes the same picks
@@ -200,10 +202,12 @@ export default function RecipePage({ f7route, f7router }: Props) {
       <UnitSheet slot="fixed" target={converting} factor={factor} picks={picks} onPick={pickUnit} onClosed={() => setConverting(null)} />
       <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setScaleOpen(false)} />
 
+      <AddToCookbookPopup opened={addingToCookbook} recipe={recipe} onClosed={() => setAddingToCookbook(false)} />
+
       <Actions opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>
         <ActionsGroup>
           <ActionsButton onClick={() => f7router?.navigate(`/recipe/${recipe.id}/edit/`)}>Edit Recipe</ActionsButton>
-          <ActionsButton onClick={() => soon('Cookbooks')}>Add to Cookbook</ActionsButton>
+          <ActionsButton onClick={() => setAddingToCookbook(true)}>Add to Cookbook</ActionsButton>
           <ActionsButton onClick={() => soon('Meal planning')}>Add to Plan</ActionsButton>
           <ActionsButton onClick={() => soon('The grocery list')}>Add to Grocery List</ActionsButton>
           <ActionsButton onClick={() => soon('Sharing')}>Share</ActionsButton>

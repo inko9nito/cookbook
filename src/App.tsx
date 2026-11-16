@@ -1,4 +1,4 @@
-import { App, Views, View, Toolbar, ToolbarPane, Link } from 'framework7-react';
+import { App, Views, View, Toolbar, ToolbarPane, Link, f7 } from 'framework7-react';
 import { ChefHat, BookOpen, CalendarDays, ShoppingCart } from 'lucide-react';
 import routes from './routes';
 import { tabIcon } from './components/ui/icons';
@@ -28,12 +28,23 @@ const f7params = {
 // gesture left the app for whatever came before it, such as Google's sign-in page. That gesture is the swipe-back:
 // Framework7's own (iosSwipeBack) is off, or one swipe would go back twice. Opening the app starts on the first page of
 // each tab, as before (browserHistoryOnLoad off), and the page under iOS's swipe doesn't animate a second time.
+//
+// The browser has one history for all the tabs, and Framework7 keeps each tab's place in it, which only works while one
+// tab at a time is more than a page deep: with a cookbook open in Cookbooks and Settings open in Recipes, one back moved
+// both. So leaving a tab takes it back to its first page (issue #25), and coming back to it starts there.
+const backToFirstPage = (el?: HTMLElement) => {
+  const view = el && f7.views.get(el);
+  const router = view?.router;
+  if (router && router.history.length > 1) router.back(router.history[0], { force: true, animate: false });
+};
+
 const viewHistory = {
   browserHistory: true,
   browserHistoryOnLoad: false,
   browserHistoryStoreHistory: false,
   browserHistoryAnimate: false,
   iosSwipeBack: false,
+  onTabHide: backToFirstPage,
 };
 
 export default function CookbookApp() {

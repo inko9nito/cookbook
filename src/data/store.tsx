@@ -11,9 +11,11 @@ import { f7 } from 'framework7-react';
 import { ApiError, backend, isDemo } from './api';
 import { useAuth } from './auth';
 import { Settings, type Recipe, type SortKey } from '../lib/recipe';
+import type { Cookbook } from '../lib/cookbook';
 
 const RECIPES = ['recipes'] as const;
 const SETTINGS = ['settings'] as const;
+const COOKBOOKS = ['cookbooks'] as const;
 const DAY = 24 * 60 * 60 * 1000;
 
 const queryClient = new QueryClient({
@@ -110,6 +112,8 @@ export function useStore() {
       qc.setQueryData(RECIPES, ctx?.before);
       toast(`Couldn’t delete the recipe. ${e instanceof Error ? e.message : ''}`.trim());
     },
+    // the recipe also left every cookbook it was in (the database does that)
+    onSettled: () => qc.invalidateQueries({ queryKey: COOKBOOKS }),
   });
 
   const changeSettings = useMutation({
@@ -145,3 +149,57 @@ export function useStore() {
 }
 
 export type { SortKey };
+
+/**
+ * Cookbooks (issue #25): loaded like the recipes, kept offline too. Saving or deleting shows at once and is sent in the
+ * background; if the server refuses, it's undone with a toast.
+ */
+export function useCookbooks() {
+  const qc = useQueryClient();
+  const enabled = useAuth().status === 'signedIn';
+  const query = useQuery({ queryKey: COOKBOOKS, queryFn: backend.listCookbooks, enabled });
+
+  const save = useMutation({
+    mutationFn: backend.saveCookbook,
+    onMutate: async (c: Cookbook) => {
+      await qc.cancelQueries({ queryKey: COOKBOOKS });
+      const before = qc.getQueryData<Cookbook[]>(COOKBOOKS);
+      qc.setQueryData<Cookbook[]>(COOKBOOKS, (list = []) => (list.some((x) => x.id === c.id) ? list.map((x) => (x.id === c.id ? c : x)) : [...list, c]));
+      return { before };
+    },
+    onError: (e, _c, ctx) => {
+      qc.setQueryData(COOKBOOKS, ctx?.before);
+      toast(`Couldn’t save the cookbook. ${e instanceof Error ? e.message : ''}`.trim());
+    },
+    onSuccess: (saved) => qc.setQueryData<Cookbook[]>(COOKBOOKS, (list = []) => list.map((x) => (x.id === saved.id ? saved : x))),
+  });
+
+  const remove = useMutation({
+    mutationFn: backend.deleteCookbook,
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: COOKBOOKS });
+      const before = qc.getQueryData<Cookbook[]>(COOKBOOKS);
+      qc.setQueryData<Cookbook[]>(COOKBOOKS, (list = []) => list.filter((x) => x.id !== id));
+      return { before };
+    },
+    onError: (e, _id, ctx) => {
+      qc.setQueryData(COOKBOOKS, ctx?.before);
+      toast(`Couldn’t delete the cookbook. ${e instanceof Error ? e.message : ''}`.trim());
+    },
+  });
+
+  return {
+    cookbooks: query.data ?? [],
+    loading: query.isPending && enabled,
+    loadError: !query.data && query.error instanceof Error ? query.error.message : null,
+    reload: () => query.refetch(),
+    saveCookbook: (c: Cookbook) => save.mutate(c),
+    /** for the Prepear import: waits for the server, and throws if it refuses */
+    saveCookbookNow: async (c: Cookbook) => {
+      const saved = await backend.saveCookbook(c);
+      qc.setQueryData<Cookbook[]>(COOKBOOKS, (list = []) => (list.some((x) => x.id === saved.id) ? list.map((x) => (x.id === saved.id ? saved : x)) : [...list, saved]));
+      return saved;
+    },
+    deleteCookbook: (id: string) => remove.mutate(id),
+  };
+}

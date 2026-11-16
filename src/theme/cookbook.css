@@ -984,3 +984,26 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-import-progress .progressbar { margin: 4px 0 10px; }
 .ck-import-progress p { margin: 0; }
 .ck-import-error { color: var(--ck-error); }
+
+/* ── Cookbooks (issue #25) ── tiles are the recipe tiles (.ck-card); a cookbook without a photo shows a muted book */
+/* "Sections" / "Uncategorized" on a cookbook page: the medium block title, set in like the grid below it */
+.block-title.ck-book-heading { margin-top: 24px; }
+/* the recipe pickers, Organize and Add to Cookbook: a 44px rounded thumbnail at the start of each row */
+.ck-picker-thumb { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; flex: none; }
+.list.ck-picker-list, .list.ck-addto-list { --f7-list-item-title-font-weight: 600; --f7-list-item-footer-text-color: var(--ck-muted); }
+/* Add to Cookbook: a cookbook with sections is a plain row (its name), its thumbnail in line with the other rows'
+   (past where their check box is: 22px box + 16px gap), with its sections under it, their boxes in that same column */
+.list.ck-addto-list li.ck-addto-book > .item-content { padding-left: calc(var(--f7-list-item-padding-horizontal) + 38px); }
+.list.ck-addto-list li.ck-addto-section > label { padding-left: calc(var(--f7-list-item-padding-horizontal) + 38px); }
+.list.ck-addto-list li.ck-addto-section .item-title { font-weight: 500; }
+.popup.ck-link-popup .list.ck-addto-new { margin: 16px var(--f7-list-inset-side-margin) 0; }
+/* Organize: section headings are the editor's group rows; the hint sits between the title bar and the list */
+.block.ck-organize-hint { margin: 16px 0 0; }
+.block.ck-organize-hint p { margin: 0; }
+.list.ck-organize-list .ck-organize-heading .item-title { font-family: var(--ck-font-display); font-weight: 600; font-size: 17px; }
+/* the editor's cards are soft grey, so an empty thumbnail is white there; titles centre on the thumbnail */
+.list.ck-organize-list .ck-picker-thumb.ck-photo-empty { background-color: var(--ck-surface); }
+.list.ck-organize-list li:not(.ck-group-row) .item-content,
+.list.ck-organize-list li:not(.ck-group-row) .item-inner { align-items: center; }
+.list.ck-organize-list li:not(.ck-group-row) .sortable-handler { align-items: center; padding-top: 0; }
+.list.ck-organize-list li.ck-organize-fixed .sortable-handler { display: none; }

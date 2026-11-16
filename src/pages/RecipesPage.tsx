@@ -9,11 +9,10 @@ import { COURSES } from '../lib/recipe';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import RecipeCard from '../components/ui/RecipeCard';
+import { searchByTitle, searchWords } from '../lib/search';
 
 const SORT_LABELS: Record<SortKey, string> = { newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
 const label = (t: string) => t[0].toUpperCase() + t.slice(1);
-// for search: lowercase, without accents ("puree" finds "Purée")
-const fold = (t: string) => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
 type Props = { f7router?: { navigate: (url: string) => void } };
 
@@ -39,8 +38,8 @@ export default function RecipesPage({ f7router }: Props) {
           : a.createdAt.localeCompare(b.createdAt),
     );
   // search: titles with every word typed, among the recipes the chips show
-  const words = fold(query).split(/\s+/).filter(Boolean);
-  const found = words.length ? shown.filter((r) => words.every((w) => fold(r.title).includes(w))) : shown;
+  const words = searchWords(query);
+  const found = searchByTitle(shown, words);
   const toggleTag = (t: string) => setFilter(tags.includes(t) ? tags.filter((x) => x !== t) : [...tags, t]);
 
   return (

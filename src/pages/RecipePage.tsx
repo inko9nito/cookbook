@@ -124,7 +124,8 @@ export default function RecipePage({ f7route, f7router }: Props) {
             <span>made it</span>
           </div>
           <div>
-            <b>{formatMinutes(recipe.minutes).replace(' hr ', 'h ').replace(' min', 'm').replace(' hr', 'h')}</b>
+            {/* no time set: a dash, like an unrated recipe (#14 feedback: "0m" read as instant) */}
+            <b>{recipe.minutes > 0 ? formatMinutes(recipe.minutes).replace(' hr ', 'h ').replace(' min', 'm').replace(' hr', 'h') : '–'}</b>
             <span>total time</span>
           </div>
         </div>

@@ -14,6 +14,10 @@ export type Backend = {
   saveSettings: (patch: Partial<Settings>) => Promise<Settings>;
   /** store a photo picked on the phone (a data URL) and return its address */
   uploadPhoto: (dataUrl: string) => Promise<string>;
+  /** issue #14: copy a Prepear photo (its path in Prepear's storage) into the photo store and return its address */
+  copyPrepearPhoto: (path: string) => Promise<string>;
+  /** issue #14: keep the Prepear export file (its text), for the cookbooks and meal plan later */
+  keepPrepearExport: (text: string) => Promise<void>;
 };
 
 /** A refusal from the API, with its status (401 signed out, 403 not an admin). */
@@ -72,6 +76,10 @@ const http: Backend = {
     const { url } = await call<{ url: string }>('/api/photos', { method: 'POST', headers: { 'content-type': blob.type }, body: blob });
     return url;
   },
+  copyPrepearPhoto: async (path) => (await call<{ url: string }>('/api/photos', jsonInit('POST', { prepear: path }))).url,
+  keepPrepearExport: async (text) => {
+    await call('/api/imports/prepear', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: text });
+  },
 };
 
 // ── the demo backend ──
@@ -109,6 +117,9 @@ const demo: Backend = {
   },
   // nothing to upload to: the photo stays a data URL
   uploadPhoto: async (dataUrl) => dataUrl,
+  // locally there's no photo store or Prepear: imported recipes show the grey placeholder
+  copyPrepearPhoto: async () => '',
+  keepPrepearExport: async () => undefined,
 };
 
 export const backend: Backend = isDemo ? demo : http;

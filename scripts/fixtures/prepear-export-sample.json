@@ -1,0 +1,171 @@
+{
+ "format": "prepear-export",
+ "version": 1,
+ "exportedAt": "2026-11-16T05:00:00.000Z",
+ "profile": {
+  "id": "u-me",
+  "slug": "sample",
+  "recipeTotal": 3
+ },
+ "recipeList": [],
+ "filteredOriginals": [],
+ "cookbookList": [
+  {
+   "id": "c1",
+   "title": "Soups"
+  }
+ ],
+ "planList": [],
+ "plans": {},
+ "failed": [],
+ "cookbooks": {
+  "c1": {
+   "cookbook": {
+    "id": "c1",
+    "title": "Soups",
+    "sections": [],
+    "uncategorizedRecipes": [
+     "r1"
+    ]
+   },
+   "recipes": {}
+  }
+ },
+ "recipes": {
+  "r1": {
+   "adapted": null,
+   "original": {
+    "recipe": {
+     "id": "r1",
+     "title": "Sample Lentil Soup",
+     "attr_url": "https://www.example.com/lentil-soup/",
+     "deleted": null,
+     "imported_user_id": "u-me",
+     "imported_at": "2025-03-02T10:00:00.000Z",
+     "image_urls": {
+      "120": "/prepear-prod/u-me/r1/small.jpg",
+      "640": "/prepear-prod/u-me/r1/mid.jpg",
+      "1080": "/prepear-prod/u-me/r1/big.jpg"
+     },
+     "ingredients": [
+      {
+       "title": "",
+       "ingredients": [
+        {
+         "amount": "1",
+         "measurement": "cup",
+         "ingredient_name": "green lentils",
+         "note": "rinsed"
+        },
+        {
+         "amount": "2",
+         "measurement": "",
+         "ingredient_name": "carrots, diced"
+        }
+       ]
+      }
+     ],
+     "directions": [
+      {
+       "title": "",
+       "directions": [
+        "Simmer everything for 30&nbsp;minutes."
+       ]
+      }
+     ],
+     "servings": 4,
+     "serving_size": null,
+     "time_prep": "15",
+     "time_cook": "30",
+     "tags": [
+      "soup",
+      "vegan",
+      "milk"
+     ],
+     "notes": null
+    },
+    "meta": {
+     "rating": 5,
+     "prepeared": true
+    }
+   }
+  },
+  "r2": {
+   "adapted": null,
+   "original": {
+    "recipe": {
+     "id": "r2",
+     "title": "sample green salad",
+     "attr_url": null,
+     "deleted": null,
+     "imported_user_id": "u-me",
+     "imported_at": "2025-03-02T10:00:00.000Z",
+     "image_urls": null,
+     "ingredients": [
+      {
+       "title": "Dressing",
+       "ingredients": [
+        {
+         "amount": "3",
+         "measurement": "tbsp",
+         "ingredient_name": "olive oil"
+        }
+       ]
+      },
+      {
+       "title": "Salad",
+       "ingredients": [
+        {
+         "amount": "1",
+         "measurement": "head",
+         "ingredient_name": "lettuce"
+        }
+       ]
+      }
+     ],
+     "directions": [
+      {
+       "title": "",
+       "directions": [
+        "Whisk the dressing.",
+        "Toss."
+       ]
+      }
+     ],
+     "servings": 4,
+     "serving_size": null,
+     "time_prep": "",
+     "time_cook": null,
+     "tags": [
+      "salad"
+     ],
+     "notes": null
+    },
+    "meta": {}
+   }
+  },
+  "r3": {
+   "adapted": null,
+   "original": {
+    "recipe": {
+     "id": "r3",
+     "title": "Deleted one",
+     "attr_url": null,
+     "deleted": "2024-01-01",
+     "imported_user_id": "u-me",
+     "imported_at": "2025-03-02T10:00:00.000Z",
+     "image_urls": null,
+     "ingredients": [],
+     "directions": [],
+     "servings": 4,
+     "serving_size": null,
+     "time_prep": "15",
+     "time_cook": "30",
+     "tags": [],
+     "notes": null
+    },
+    "meta": {}
+   }
+  }
+ }
+}

@@ -4,7 +4,8 @@ import { coverPhoto, type Recipe } from '../../lib/recipe';
 import { photoStyle } from './photo';
 
 /**
- * Recipe card (Prepear's grid): white card, photo on top, title (two lines max), source, and stars once rated.
+ * Recipe card (Prepear's grid): white card, photo on top, title (two lines max), the total time when it's set, and
+ * stars once rated. No source (#14 feedback: not needed on a card; the recipe page shows it).
  * Shown two to a row on the Recipes screen. No shadow: the white card on the grey page is enough.
  */
 export default function RecipeCard({ recipe }: { recipe: Recipe }) {
@@ -19,7 +20,7 @@ export default function RecipeCard({ recipe }: { recipe: Recipe }) {
       )}
       <span className="ck-card-body">
         <span className="ck-card-title">{recipe.title}</span>
-        <span className="ck-card-meta">{recipe.source || formatMinutes(recipe.minutes)}</span>
+        {recipe.minutes > 0 && <span className="ck-card-meta">{formatMinutes(recipe.minutes)}</span>}
         {recipe.rating > 0 && (
           <span className="ck-stars" aria-label={`${recipe.rating} of 5 stars`}>
             {[1, 2, 3, 4, 5].map((n) => (

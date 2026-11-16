@@ -59,6 +59,11 @@ export default function SettingsPage() {
           </Link>
         </ListItem>
       </List>
+      {/* bringing recipes over from Prepear (issue #14) */}
+      <BlockTitle>Import</BlockTitle>
+      <List strongIos insetIos dividersIos>
+        <ListItem link="/settings/prepear/" title="From Prepear" />
+      </List>
       {/* the build running; tapping it checks for a newer one */}
       <BlockTitle>Version</BlockTitle>
       <List strongIos insetIos dividersIos>

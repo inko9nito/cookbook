@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
+import { BOOK_COLORS, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
 import { emptyRecipe, type Recipe } from './recipe';
 
 const book: Cookbook = {
@@ -41,6 +41,14 @@ describe('cookbooks', () => {
     expect(coversOf({ coverRecipeId: 'a', coverRecipeIds: ['b', 'c'] })).toEqual(['b', 'c']);
     expect(coversOf({ coverRecipeId: 'a' })).toEqual(['a']);
     expect(coversOf({ coverRecipeId: null, coverRecipeIds: [] })).toEqual([]);
+  });
+
+  test('a card’s colour: the one chosen, else the same random one every time', () => {
+    expect(colorOf({ id: 'x', color: 'sage' })).toBe('sage');
+    expect(colorOf({ id: 'abc' })).toBe(colorOf({ id: 'abc' }));
+    expect(BOOK_COLORS).toContain(colorOf({ id: 'abc' }));
+    // different cookbooks get different colours, not all the same one
+    expect(new Set(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) => colorOf({ id }))).size).toBeGreaterThan(2);
   });
 
   test('toggling adds at the end, or takes out', () => {

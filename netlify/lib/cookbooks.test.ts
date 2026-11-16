@@ -83,6 +83,12 @@ describe('cookbooks in the database', () => {
     await deleteCookbook(db, 'cv');
   });
 
+  test('a chosen colour is kept; none until one is chosen', async () => {
+    expect((await saveCookbook(db, book({ id: 'co', name: 'Colour', sections: [] }))).color).toBeUndefined();
+    expect((await saveCookbook(db, book({ id: 'co', name: 'Colour', color: 'sage', sections: [] }))).color).toBe('sage');
+    await deleteCookbook(db, 'co');
+  });
+
   test('a Prepear cookbook is kept once', async () => {
     await saveCookbook(db, book({ id: 'p1', name: 'From Prepear', prepearId: 'prep-1', sections: [] }));
     await expect(saveCookbook(db, book({ id: 'p2', name: 'Again', prepearId: 'prep-1', sections: [] }))).rejects.toBeInstanceOf(DuplicatePrepearCookbook);

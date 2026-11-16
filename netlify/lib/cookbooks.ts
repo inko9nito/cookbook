@@ -11,7 +11,7 @@ import { Cookbook } from '../../src/lib/cookbook';
 type Client = { query: (text: string, values?: unknown[]) => Promise<unknown>; release: () => void };
 type Db = Pick<ReturnType<typeof getDatabase>, 'sql'> & { pool: { connect: () => Promise<Client> } };
 
-type BookRow = { id: string; name: string; cover_recipe_id: string | null; cover_recipe_ids: string[] | null; prepear_id: string | null; created_at: Date | string; updated_at: Date | string };
+type BookRow = { id: string; name: string; cover_recipe_id: string | null; cover_recipe_ids: string[] | null; color: string | null; prepear_id: string | null; created_at: Date | string; updated_at: Date | string };
 type SectionRow = { id: string; cookbook_id: string; name: string; cover_recipe_id: string | null };
 type EntryRow = { cookbook_id: string; section_id: string | null; recipe_id: string };
 
@@ -35,6 +35,7 @@ function assemble(books: BookRow[], sections: SectionRow[], entries: EntryRow[])
     sections: sections
       .filter((s) => s.cookbook_id === b.id)
       .map((s) => ({ id: s.id, name: s.name, coverRecipeId: s.cover_recipe_id, recipeIds: places.get(placeKey(b.id, s.id)) ?? [] })),
+    ...(b.color ? { color: b.color as Cookbook['color'] } : {}),
     ...(b.prepear_id ? { prepearId: b.prepear_id } : {}),
     createdAt: iso(b.created_at),
     updatedAt: iso(b.updated_at),
@@ -73,12 +74,13 @@ export async function saveCookbook(db: Db, input: Cookbook): Promise<Cookbook> {
          SELECT coalesce(array_agg(t.id ORDER BY t.n), '{}') AS ids
          FROM unnest($3::text[]) WITH ORDINALITY AS t(id, n) JOIN recipes r ON r.id = t.id
        )
-       INSERT INTO cookbooks (id, name, cover_recipe_id, cover_recipe_ids, prepear_id, created_at, updated_at)
-       SELECT $1, $2, covers.ids[1], covers.ids, $4, $5, now() FROM covers
+       INSERT INTO cookbooks (id, name, cover_recipe_id, cover_recipe_ids, color, prepear_id, created_at, updated_at)
+       SELECT $1, $2, covers.ids[1], covers.ids, $6, $4, $5, now() FROM covers
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name, cover_recipe_id = EXCLUDED.cover_recipe_id, cover_recipe_ids = EXCLUDED.cover_recipe_ids,
+         color = EXCLUDED.color,
          prepear_id = COALESCE(EXCLUDED.prepear_id, cookbooks.prepear_id), updated_at = now()`,
-      [c.id, c.name, [...new Set(covers)].slice(0, 3), c.prepearId ?? null, c.createdAt],
+      [c.id, c.name, [...new Set(covers)].slice(0, 3), c.prepearId ?? null, c.createdAt, c.color ?? null],
     );
     await client.query('DELETE FROM cookbook_recipes WHERE cookbook_id = $1', [c.id]);
     await client.query('DELETE FROM cookbook_sections WHERE cookbook_id = $1', [c.id]);

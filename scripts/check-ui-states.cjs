@@ -1166,24 +1166,21 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(900);
     const tiles = await page.locator(`${CUR} .ck-book-tile .ck-book-name`).allTextContents();
     if (tiles.join(',') !== 'Dressings and sauces,Everything else,Grilling') throw new Error(`the cookbooks are ${JSON.stringify(tiles)}, not A–Z`);
-    // a book: the recipes on a Tomato badge, sections (when any) under the name
-    const badges = await page.locator(`${CUR} .ck-book-tile .ck-book-badge`).allTextContents();
-    if (badges.join(',') !== '0,6,2') throw new Error(`the badges read ${JSON.stringify(badges)}`);
-    const metas = await page.locator(`${CUR} .ck-book-tile .ck-card-meta`).allTextContents();
-    if (metas.join(',') !== '2 sections') throw new Error(`under the names: ${JSON.stringify(metas)}`);
-    const spine = await page.locator(`${CUR} .ck-book-tile`).first().evaluate((e) => getComputedStyle(e).borderLeftWidth);
-    if (spine !== '8px') throw new Error(`the book's spine is ${spine}`);
-    // covers are collages: Everything else has three photos (one across the top, two below)
-    const cells = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).locator('.ck-collage > .ck-photo').count();
-    if (cells !== 3) throw new Error(`Everything else's cover has ${cells} photos, not a collage of 3`);
-    if (!(await page.locator(`${CUR} .ck-book-tile`).first().locator('.ck-photo-empty svg').count())) throw new Error('an empty cookbook has no book icon');
+    // a card: its soft colour, three recipes as plates, the name and the counts
+    const metas = await page.locator(`${CUR} .ck-book-tile .ck-book-meta`).allTextContents();
+    if (metas.join(',') !== '0 recipes,6 recipes · 2 sections,2 recipes') throw new Error(`the counts read ${JSON.stringify(metas)}`);
+    const plates = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).locator('.ck-plate.ck-photo').count();
+    if (plates !== 3) throw new Error(`Everything else's card shows ${plates} plates with photos, not 3`);
+    const tint = await page.locator(`${CUR} .ck-book-tile`).first().evaluate((e) => getComputedStyle(e).backgroundColor);
+    if (tint === 'rgba(0, 0, 0, 0)' || tint === 'rgb(255, 255, 255)') throw new Error(`a card has no soft colour (${tint})`);
+    if (!(await page.locator(`${CUR} .ck-book-tile`).first().locator('.ck-plate-middle svg').count())) throw new Error('an empty cookbook has no book on its plate');
   });
   // the switch next to + shows the cookbooks as a list (remembered), and back as tiles
   await step('26a-cookbooks-list', async () => {
     await page.locator(`${CUR} > .navbar .ck-view-switch`).tap(); await page.waitForTimeout(700);
     const rows = await page.evaluate((CUR) => [...document.querySelectorAll(`${CUR} .ck-book-list li .item-title`)].map((e) => e.childNodes[0].textContent.trim()), CUR);
     if (rows.join(',') !== 'Dressings and sauces,Everything else,Grilling') throw new Error(`the list shows ${JSON.stringify(rows)}`);
-    if (!(await page.locator(`${CUR} .ck-book-list .ck-collage-small`).count())) throw new Error('the list has no collage thumbnails');
+    if (!(await page.locator(`${CUR} .ck-book-list .ck-book-thumb`).count())) throw new Error('the list has no plate thumbnails');
     if (await page.locator(`${CUR} .ck-book-tile`).count()) throw new Error('tiles still show in the list view');
   });
   await step('26a2-cookbooks-tiles-again', async () => {
@@ -1222,11 +1219,11 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Change Cover' }).tap(); await page.waitForTimeout(1000);
     // the current cover (Pulled Beef) starts ticked, across the top: untick it, then pick three in order
     const first = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-picker-list li')].filter((li) => li.querySelector('input:checked')).map((li) => li.querySelector('.item-footer')?.textContent));
-    if (first.join(',') !== 'Across the top') throw new Error(`the current cover reads ${JSON.stringify(first)}`);
+    if (first.join(',') !== 'The big plate') throw new Error(`the current cover reads ${JSON.stringify(first)}`);
     for (const t of ['Pulled Beef', 'Corn pudding', 'Mustard Dill', 'Kebabs']) { await page.locator('.popup.modal-in li', { hasText: t }).locator('label').tap(); await page.waitForTimeout(250); }
     const labels = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-picker-list li')].filter((li) => li.querySelector('input:checked')).map((li) => `${li.querySelector('.item-title').childNodes[0].textContent.trim()}=${li.querySelector('.item-footer')?.textContent}`));
     if (labels.length !== 3) throw new Error(`three cover photos aren't ticked: ${JSON.stringify(labels)}`);
-    if (!labels.some((l) => l.startsWith('Corn pudding=Across the top'))) throw new Error(`the first pick isn't across the top: ${JSON.stringify(labels)}`);
+    if (!labels.some((l) => l.startsWith('Corn pudding=The big plate'))) throw new Error(`the first pick isn't the big plate: ${JSON.stringify(labels)}`);
   });
   await step('26b4-cover-photos-max', async () => {
     // a fourth is refused while three are ticked
@@ -1235,6 +1232,22 @@ async function swipeLeft(ctx, page, locator) {
     if (n !== 3) throw new Error(`${n} cover photos are ticked`);
     await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
     await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
+  });
+  // Change Colour: six swatches; picking one recolours the card at once
+  await step('26b5-change-colour', async () => {
+    await page.locator(`${CUR} > .navbar a[aria-label="More actions"]`).tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Change Colour' }).tap(); await page.waitForTimeout(900);
+    const swatches = await page.locator('.sheet-modal.modal-in .ck-swatch').count();
+    if (swatches !== 6) throw new Error(`the colour sheet has ${swatches} swatches`);
+    await page.locator('.sheet-modal.modal-in .ck-swatch[aria-label="Lilac"]').tap(); await page.waitForTimeout(400);
+    if ((await page.locator('.sheet-modal.modal-in .ck-swatch-on').getAttribute('aria-label')) !== 'Lilac') throw new Error('the picked colour isn’t marked');
+  });
+  await step('26b6-colour-changed', async () => {
+    await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(700);
+    await page.locator(`${CUR} > .navbar .link.back`).tap(); await page.waitForTimeout(900);
+    const cls = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).getAttribute('class');
+    if (!cls.includes('ck-tint-lilac')) throw new Error(`the card isn't lilac: ${cls}`);
+    await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).tap(); await page.waitForTimeout(1000);
   });
   await step('26c-cookbook-search', async () => {
     await page.locator(`${CUR} .ck-home-search input`).fill('chick'); await page.waitForTimeout(500);
@@ -1315,8 +1328,8 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
     // leaving Cookbooks took it back to its first page, so it shows the cookbooks again
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(900);
-    const grilling = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Grilling' }).locator('.ck-book-badge').textContent();
-    if (grilling.trim() !== '3') throw new Error(`Grilling's badge reads "${grilling}" after adding Corn pudding`);
+    const grilling = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Grilling' }).locator('.ck-book-meta').textContent();
+    if (grilling.trim() !== '3 recipes') throw new Error(`Grilling reads "${grilling}" after adding Corn pudding`);
   });
   await step('26j-new-cookbook', async () => {
     await page.locator('.view.tab-active .page-current > .navbar a[aria-label="New cookbook"]').tap(); await page.waitForTimeout(600);

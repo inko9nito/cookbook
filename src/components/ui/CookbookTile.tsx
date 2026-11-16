@@ -1,57 +1,50 @@
 import { Link } from 'framework7-react';
-import { BookOpen, ChefHat } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
+import type { BookColor } from '../../lib/cookbook';
 import { photoStyle } from './photo';
 
 /**
- * A cookbook's cover (issue #25 redesign, as in RecipeMe): a collage of up to three of its recipes' photos, one across
- * the top half and two quarters below, so a cookbook reads as a collection, not a recipe. With one photo it fills the
- * cover; with none, soft grey with a muted book. `small` is the list view's thumbnail.
+ * A cookbook's cover (issue #25 redesign, from the user's Spotify reference): up to three of its recipes as round plates
+ * with white rims, the first one big in the middle and in front, the next two smaller on each side, running off the
+ * card's edges. Missing photos are empty grey plates; a cookbook with none shows a muted book on the middle one.
+ * The middle plate comes last in the markup so it paints in front; `order` puts it in the middle.
  */
-export function CookbookCollage({ photos, small }: { photos: string[]; small?: boolean }) {
-  const cls = `ck-collage${small ? ' ck-collage-small' : ''}`;
-  if (!photos.length) {
-    return (
-      <span className={`${cls} ck-collage-one ck-photo-empty`} aria-hidden="true">
-        <BookOpen size={small ? 18 : 28} strokeWidth={1.5} />
-      </span>
-    );
-  }
-  if (photos.length === 1) {
-    return (
-      <span className={`${cls} ck-collage-one`} aria-hidden="true">
-        <span className="ck-photo" style={photoStyle(photos[0])} />
-      </span>
-    );
-  }
+export function CookbookPlates({ photos }: { photos: string[] }) {
+  const plate = (cls: string, src?: string, icon?: boolean) => (
+    <span className={`ck-plate ${cls}${src ? ' ck-photo' : ' ck-plate-empty'}`} style={photoStyle(src)}>
+      {icon && <BookOpen size={24} strokeWidth={1.5} />}
+    </span>
+  );
   return (
-    <span className={cls} aria-hidden="true">
-      {[0, 1, 2].map((i) =>
-        photos[i] ? <span key={i} className="ck-photo" style={photoStyle(photos[i])} /> : <span key={i} className="ck-photo ck-photo-empty" />,
-      )}
+    <span className="ck-plates" aria-hidden="true">
+      {plate('ck-plate-left', photos[1])}
+      {plate('ck-plate-right', photos[2])}
+      {plate('ck-plate-middle', photos[0], !photos.length)}
+    </span>
+  );
+}
+
+/** The list view's thumbnail: the cookbook's colour with its first plate on it. */
+export function CookbookThumb({ color, photo }: { color: BookColor; photo?: string }) {
+  return (
+    <span className={`ck-book-thumb ck-tint-${color}`} aria-hidden="true">
+      <span className={`ck-plate${photo ? ' ck-photo' : ' ck-plate-empty'}`} style={photoStyle(photo)}>
+        {!photo && <BookOpen size={16} strokeWidth={1.5} />}
+      </span>
     </span>
   );
 }
 
 /**
- * A cookbook as a card on the Cookbooks tab, made to look like a book (option 3 of the mockups): a Tomato spine down
- * the left edge, page edges along the right, a soft shadow, the collage, then a footer with the name (and how many
- * sections, when there are any) beside a Tomato badge with how many recipes (a chef hat and the number). The footer
- * has room for two lines of name; a shorter one sits in its middle.
+ * A cookbook as a card on the Cookbooks tab: its soft colour, the plates, then the name and how many recipes (and
+ * sections), centred under the big plate.
  */
-export default function CookbookTile({ href, name, recipes, sections, photos }: { href: string; name: string; recipes: number; sections: number; photos: string[] }) {
+export default function CookbookTile({ href, name, meta, color, photos }: { href: string; name: string; meta: string; color: BookColor; photos: string[] }) {
   return (
-    <Link href={href} noLinkClass className="ck-card ck-book-tile">
-      <CookbookCollage photos={photos} />
-      <span className="ck-book-foot">
-        <span className="ck-book-text">
-          <span className="ck-book-name">{name}</span>
-          {sections > 0 && <span className="ck-card-meta">{sections === 1 ? '1 section' : `${sections} sections`}</span>}
-        </span>
-        <span className="ck-book-badge" aria-label={`${recipes} ${recipes === 1 ? 'recipe' : 'recipes'}`}>
-          <ChefHat size={14} strokeWidth={2.25} aria-hidden="true" />
-          {recipes}
-        </span>
-      </span>
+    <Link href={href} noLinkClass className={`ck-card ck-book-tile ck-tint-${color}`}>
+      <CookbookPlates photos={photos} />
+      <span className="ck-book-name">{name}</span>
+      <span className="ck-book-meta">{meta}</span>
     </Link>
   );
 }

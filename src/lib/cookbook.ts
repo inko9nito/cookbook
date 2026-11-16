@@ -17,6 +17,10 @@ export const Section = z.object({
 });
 export type Section = z.infer<typeof Section>;
 
+/** The soft colours a cookbook's card can be (tokens --ck-book-<name> in cookbook.css). */
+export const BOOK_COLORS = ['blush', 'sage', 'butter', 'sky', 'oat', 'lilac'] as const;
+export type BookColor = (typeof BOOK_COLORS)[number];
+
 export const Cookbook = z.object({
   id,
   name: z.string().trim().min(1).max(120),
@@ -28,6 +32,8 @@ export const Cookbook = z.object({
   recipeIds,
   /** in order. A recipe can be in several sections, and in a section and Uncategorized too, as in Prepear. */
   sections: z.array(Section).max(100),
+  /** the card's colour, when it was chosen in the cookbook's ⋯ menu; otherwise one picked at random from its id */
+  color: z.enum(BOOK_COLORS).optional(),
   /** Prepear's id for a cookbook brought in from it (#14's export), so it isn't brought in twice */
   prepearId: id.optional(),
   /** ISO timestamps */
@@ -63,6 +69,14 @@ export function coverOf(coverRecipeId: string | null | undefined, ids: string[],
     if (r && coverPhoto(r)) return coverPhoto(r);
   }
   return undefined;
+}
+
+/** The card's colour: the one chosen, else one picked at random from the id (the same every time). */
+export function colorOf(c: Pick<Cookbook, 'id' | 'color'>): BookColor {
+  if (c.color) return c.color;
+  let h = 0;
+  for (const ch of c.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return BOOK_COLORS[h % BOOK_COLORS.length];
 }
 
 /** The cookbook's chosen cover recipes, in order (an older copy has just one). */

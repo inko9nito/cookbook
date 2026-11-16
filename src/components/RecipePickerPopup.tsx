@@ -37,7 +37,7 @@ type Props =
 /**
  * Issue #25: a full-screen Framework7 popup that stacks over the page like an iOS card, with a search bar and the
  * recipes as rows with a thumbnail. "several" ticks recipes (Add Recipes; Cover Photos, up to three, each labelled with
- * where it goes in the collage: Cancel, Done); "one" picks one.
+ * where it goes on the cover: Cancel, Done); "one" picks one.
  * The search only reports what's typed (customSearch) and the rows are filtered here, like the Recipes screen.
  */
 export default function RecipePickerPopup(props: Props) {

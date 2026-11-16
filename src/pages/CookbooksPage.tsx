@@ -2,9 +2,9 @@ import { Page, Navbar, NavTitle, NavRight, Link, Block, Button, Preloader, List,
 import { LayoutGrid, List as ListIcon, Plus } from 'lucide-react';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
-import CookbookTile, { CookbookCollage } from '../components/ui/CookbookTile';
+import CookbookTile, { CookbookThumb } from '../components/ui/CookbookTile';
 import { useCookbooks, useStore } from '../data/store';
-import { byName, cookbookRecipeIds, coverPhotos, coversOf, emptyCookbook, existing, type Cookbook } from '../lib/cookbook';
+import { byName, colorOf, cookbookRecipeIds, coverPhotos, coversOf, emptyCookbook, existing, type Cookbook } from '../lib/cookbook';
 import { newId } from '../lib/recipe';
 
 type Props = { f7router?: { navigate: (url: string) => void } };
@@ -20,8 +20,8 @@ export function promptNewCookbook(onMade: (id: string) => void, save: ReturnType
 }
 
 /**
- * The Cookbooks tab (issue #25): every cookbook A–Z, as collage tiles two to a row, or as a list (each row a small
- * collage, the name, how many recipes and sections). The button next to + switches between them, remembered like the
+ * The Cookbooks tab (issue #25): every cookbook A–Z, as cards two to a row (its soft colour, three recipes as plates,
+ * the name and counts), or as a list (each row a small square in its colour with its first plate). The button next to + switches between them, remembered like the
  * recipe sort. + makes a new cookbook. With none yet, a note and the way to bring in Prepear's.
  */
 export default function CookbooksPage({ f7router }: Props) {
@@ -35,7 +35,7 @@ export default function CookbooksPage({ f7router }: Props) {
     const ids = cookbookRecipeIds(c);
     const n = existing(ids, byId).length;
     const meta = [`${n} ${n === 1 ? 'recipe' : 'recipes'}`, c.sections.length ? `${c.sections.length} ${c.sections.length === 1 ? 'section' : 'sections'}` : ''];
-    return { meta: meta.filter(Boolean).join(' · '), recipes: n, photos: coverPhotos(coversOf(c), ids, byId) };
+    return { meta: meta.filter(Boolean).join(' · '), photos: coverPhotos(coversOf(c), ids, byId) };
   };
 
   return (
@@ -87,8 +87,8 @@ export default function CookbooksPage({ f7router }: Props) {
         <Block key="grid" className="ck-card-grid ck-book-grid">
           <div className="grid grid-cols-2 grid-gap">
             {sorted.map((c) => {
-              const { recipes: n, photos } = about(c);
-              return <CookbookTile key={c.id} href={`/cookbook/${c.id}/`} name={c.name} recipes={n} sections={c.sections.length} photos={photos} />;
+              const { meta, photos } = about(c);
+              return <CookbookTile key={c.id} href={`/cookbook/${c.id}/`} name={c.name} meta={meta} color={colorOf(c)} photos={photos} />;
             })}
           </div>
         </Block>
@@ -100,7 +100,7 @@ export default function CookbooksPage({ f7router }: Props) {
             return (
               <ListItem key={c.id} link={`/cookbook/${c.id}/`} title={c.name} footer={meta}>
                 <span slot="media">
-                  <CookbookCollage photos={photos} small />
+                  <CookbookThumb color={colorOf(c)} photo={photos[0]} />
                 </span>
               </ListItem>
             );

@@ -22,11 +22,12 @@
   --ck-group-gap: 24px;       /* space above a group label (text to text) */
   --ck-group-label-gap: 8px;  /* group label to its first row's text */
   --ck-accent-ink: #c4421c; /* Tomato for text: passes 4.5:1 on white and on the grey page */
+  --ck-accent-ink-press: #a83816; /* a Tomato ink fill (main buttons, Save) while pressed */
   --ck-accent-tint: color-mix(in srgb, var(--ck-accent) 13%, var(--ck-surface));
   --ck-error: #d1291f; /* also the destructive red (Delete, Discard): 5.2:1 on white, 4.8:1 on the grey page */
   /* Fredoka (Google Fonts, served from this site: see main.tsx), picked in issue #21. Its bold is heavy, so the app
-     uses each weight one step lighter than usual (bold 600, semibold 500); only page titles (the tabs' large titles,
-     the recipe name, the sign-in title) and the white-on-Tomato buttons (large-text contrast) keep 700. */
+     uses each weight one step lighter than usual (bold 600, semibold 500), page titles and main buttons included.
+     Nothing uses 700. */
   --ck-font: 'Fredoka Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
 }
 
@@ -153,8 +154,8 @@ html.ios .navbar {
   --f7-navbar-title-font-weight: 500;
 }
 html.ios .navbar.ck-navbar-root {
-  --f7-navbar-title-font-size: 24px;
-  --f7-navbar-title-font-weight: 700;
+  --f7-navbar-title-font-size: 26px;
+  --f7-navbar-title-font-weight: 600;
 }
 html.ios .navbar .left,
 html.ios .navbar .right {
@@ -274,13 +275,14 @@ html.ios .searchbar {
 
 /* ── Main button (DoorDash): full pill, 52px, bold ── */
 .button.ck-main {
-  /* Framework7's theme color is Tomato ink (for text), so the bright Tomato fill is set here */
-  --f7-button-fill-bg-color: var(--ck-accent);
+  /* Tomato ink fill, like Save: white on it is 5:1, so the label can be 600 weight (on bright Tomato, 3.7:1, it had to
+     be large bold 700 text) */
+  --f7-button-fill-bg-color: var(--ck-accent-ink);
   --f7-button-border-radius: 9999px;
   --f7-button-large-height: 52px;
-  --f7-button-large-font-weight: 700;
-  --f7-button-large-font-size: 19px; /* large text: white on Tomato (3.7:1) meets WCAG AA for large text */
-  --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
+  --f7-button-large-font-weight: 600;
+  --f7-button-large-font-size: 19px;
+  --f7-button-fill-pressed-bg-color: var(--ck-accent-ink-press);
 }
 
 /* ── Other buttons (Pinterest): soft grey fill, dark text ── */
@@ -361,7 +363,7 @@ html.ios {
   --f7-chip-bg-color: var(--ck-soft);
   --f7-chip-padding-horizontal: 15px;
   --f7-block-title-medium-font-size: 19px;
-  --f7-block-title-medium-font-weight: 700;
+  --f7-block-title-medium-font-weight: 600;
 }
 .chip.ck-chip { border: 0; }
 /* "Add tag" at the end of the tag chips: dashed, like "Separate into groups" */
@@ -408,7 +410,7 @@ swiper-container.ck-hero-swiper {
 /* sections (Ingredients, Directions, Notes) sit --ck-section-gap below the text before them; the panel's 18px grid gap and line slack make up the rest */
 .ck-panel > .ck-sec:not(:first-child) { margin-top: calc(var(--ck-section-gap) - 22px); }
 .ck-panel-head { display: grid; gap: 4px; text-align: center; }
-.ck-recipe-title { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; }
+.ck-recipe-title { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; }
 .ck-stats { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
 .ck-stats > div { display: grid; gap: 2px; justify-items: center; border-left: 1px solid var(--ck-line); }
 .ck-stats > div:first-child { border-left: 0; }
@@ -570,12 +572,13 @@ html.ios .toolbar.ck-cta .toolbar-inner {
   font-weight: 500;
 }
 .button.ck-cta-button {
-  --f7-button-fill-bg-color: var(--ck-accent);
-  --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
+  /* Tomato ink, like Save and the main button: white on it is 5:1 at any weight */
+  --f7-button-fill-bg-color: var(--ck-accent-ink);
+  --f7-button-fill-pressed-bg-color: var(--ck-accent-ink-press);
   --f7-button-border-radius: 9999px;
   --f7-button-large-height: 48px;
-  --f7-button-large-font-size: 19px; /* large text: white on Tomato meets WCAG AA for large text */
-  --f7-button-large-font-weight: 700;
+  --f7-button-large-font-size: 19px;
+  --f7-button-large-font-weight: 600;
   padding: 0 22px;
 }
 
@@ -638,7 +641,7 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 .list.ck-edit-list .item-title { line-height: 20px; }
 .list.ck-edit-list .ck-step-no,
 .list.ck-edit-list .ck-step-text { line-height: 20px; }
-.list.ck-edit-list .ck-group-input { height: 22px; line-height: 22px; }
+.list.ck-edit-list .ck-group-input { height: 22px; line-height: 22px; font-size: 17px; }
 /* the handle's 20px icon centred on that first line: row padding + half a line - half the icon */
 .list.ck-edit-list .sortable-handler { align-items: flex-start; padding-top: calc(var(--f7-list-item-padding-vertical) + 10px - 10px); box-sizing: border-box; }
 /* group rows: handle and ↑ ↓ centred on the two-line label (13px "Group" + 22px name) */
@@ -757,7 +760,7 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
   text-align: center;
 }
 .ck-signin-icon { border-radius: 20px; }
-.ck-signin-title { margin: 20px 0 0; font-size: 28px; font-weight: 700; color: var(--ck-fg); }
+.ck-signin-title { margin: 20px 0 0; font-size: 28px; font-weight: 600; color: var(--ck-fg); }
 .ck-signin-lede { margin: 8px 0 32px; font-size: 15px; color: var(--ck-muted); }
 .button.ck-signin-button { width: 100%; max-width: 340px; }
 .ck-signin-wait { margin: 10px 0; }

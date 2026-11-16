@@ -6,6 +6,7 @@ import PlanPage from './pages/PlanPage';
 import GroceriesPage from './pages/GroceriesPage';
 import SettingsPage from './pages/SettingsPage';
 import StyleGuidePage from './pages/StyleGuidePage';
+import PrepearImportPage from './pages/PrepearImportPage';
 
 const routes = [
   { path: '/', component: RecipesPage },
@@ -17,6 +18,7 @@ const routes = [
   { path: '/groceries/', component: GroceriesPage },
   { path: '/settings/', component: SettingsPage },
   { path: '/settings/style-guide/', component: StyleGuidePage },
+  { path: '/settings/prepear/', component: PrepearImportPage },
 ];
 
 export default routes;

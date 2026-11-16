@@ -4,14 +4,25 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // which build is running, shown in Settings: Netlify's commit for the deploy (COMMIT_REF), and when it was built
 const version = (process.env.COMMIT_REF ?? 'local').slice(0, 7);
+const built = new Date().toISOString();
 
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(version),
-    __APP_BUILT__: JSON.stringify(new Date().toISOString()),
+    __APP_BUILT__: JSON.stringify(built),
   },
   plugins: [
     react(),
+    // /version.json: which build is live. Settings → Version's refresh icon compares it with the build it's running
+    // (src/lib/appUpdate.ts). It's never kept offline (not in the service worker's list below), so it's always the
+    // deploy's own.
+    {
+      name: 'cookbook-version-file',
+      apply: 'build',
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version, built }) });
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/favicon.svg', 'icons/apple-touch-icon.png'],

@@ -661,7 +661,7 @@ async function swipeLeft(ctx, page, locator) {
       };
     });
     if (t.loose || t.notWhite) throw new Error(`${t.loose + t.notWhite} Settings group(s) not in a white card`);
-    if (t.titles.join() !== 'Account,Version,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
+    if (t.titles.join() !== 'Account,Import,Version,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
     if (t.footers) throw new Error(`Settings has ${t.footers} footers, expected none`);
     // Account is one row: the address, then Sign Out in red at its end
     const acct = await page.evaluate(() => {
@@ -677,6 +677,66 @@ async function swipeLeft(ctx, page, locator) {
     const tap = await page.locator('.page-current .ck-sign-out').evaluate((e) => e.getBoundingClientRect().height);
     if (tap < 44) throw new Error(`Sign Out's tap target is ${tap}px tall`);
   });
+  // Settings → Import from Prepear (issue #14): the peek bookmarklet to copy, then the steps
+  await step('13d-prepear-import', async () => {
+    await page.locator('.page-current a', { hasText: 'From Prepear' }).tap(); await page.waitForTimeout(800);
+    const href = await page.locator('.page-current a.ck-bookmarklet').getAttribute('href');
+    if (!href || !href.startsWith('javascript:(function')) throw new Error(`the drag link's address is ${String(href).slice(0, 40)}`);
+  });
+  await step('13e-prepear-copied', async () => {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+    await page.locator('.page-current .ck-copy-export a').tap(); await page.waitForTimeout(400);
+    if (!(await page.locator('.toast.modal-in', { hasText: 'copied' }).count())) throw new Error('copying the bookmarklet shows no "copied" toast');
+    // tapping the Mac drag link in the app does nothing (it's for Prepear's page)
+    await page.locator('.page-current a.ck-bookmarklet').tap(); await page.waitForTimeout(300);
+    if (await page.evaluate(() => !!window.__cookbookPeek)) throw new Error('tapping the drag link ran the peek inside the app');
+  });
+  await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
+  // Step 2: a (made-up) export file is chosen: what's in it, then the import (the demo backend has no photo store)
+  await step('13f-prepear-file-chosen', async () => {
+    await page.locator('.page-current input[type=file]').setInputFiles(path.join(__dirname, 'fixtures', 'prepear-export-sample.json'));
+    await page.waitForTimeout(500);
+    const text = await page.evaluate(() =>
+      [...document.querySelectorAll('.page-current .ck-import-summary li')].map((li) => `${li.querySelector('.item-title').childNodes[0].textContent.trim()} ${li.querySelector('.item-after').textContent.trim()}`).join(' | '),
+    );
+    if (text !== 'Recipes to import 2 | With a photo 1 | Can’t import 1') throw new Error(`the summary reads "${text}"`);
+    await page.locator('.page-current .ck-import-button').scrollIntoViewIfNeeded();
+  });
+  await step('13g-prepear-imported', async () => {
+    await page.locator('.page-current .ck-import-button').tap();
+    await page.waitForSelector('.page-current .ck-import-done', { timeout: 10000 });
+    const done = (await page.locator('.page-current .ck-import-done').textContent()).trim();
+    if (!/^Imported 2 recipes\.$/.test(done)) throw new Error(`after importing it says "${done}"`);
+  });
+  await page.locator('.page-current .navbar .back').tap(); await page.waitForTimeout(800);
+  // #14 feedback, on the imported recipes (the demo backend keeps them until the page reloads): a lower-case title got
+  // a capital; a card shows its time but not its source, and nothing when no time is set; a card without a photo has
+  // its chef hat centred; the recipe page shows a dash for no time
+  await page.locator('.page-current .navbar .back').tap(); await page.waitForTimeout(800);
+  await step('13h-imported-cards', async () => {
+    const salad = page.locator('.page-current .ck-card', { hasText: 'Sample green salad' });
+    await salad.scrollIntoViewIfNeeded();
+    const t = await page.evaluate(() => {
+      const card = (title) => [...document.querySelectorAll('.page-current .ck-card')].find((c) => c.querySelector('.ck-card-title').textContent === title);
+      const salad = card('Sample green salad'), soup = card('Sample Lentil Soup');
+      const box = salad.querySelector('.ck-card-photo').getBoundingClientRect(), hat = salad.querySelector('.ck-card-photo svg').getBoundingClientRect();
+      return {
+        off: Math.max(Math.abs(box.left + box.width / 2 - (hat.left + hat.width / 2)), Math.abs(box.top + box.height / 2 - (hat.top + hat.height / 2))),
+        saladMeta: salad.querySelector('.ck-card-meta')?.textContent ?? null,
+        soupMeta: soup.querySelector('.ck-card-meta')?.textContent ?? null,
+      };
+    });
+    if (t.off > 2) throw new Error(`the chef hat is ${t.off.toFixed(0)}px off the middle of the empty photo`);
+    if (t.saladMeta !== null) throw new Error(`a card with no time set shows "${t.saladMeta}"`);
+    if (t.soupMeta !== '45 min') throw new Error(`a card with a source and a time shows "${t.soupMeta}", expected just the time`);
+  });
+  await step('13i-recipe-no-time', async () => {
+    await page.locator('.page-current .ck-card', { hasText: 'Sample green salad' }).tap(); await page.waitForTimeout(1000);
+    const time = (await page.locator('.page-current .ck-stats > div').nth(2).locator('b').textContent()).trim();
+    if (time !== '–') throw new Error(`no time set reads "${time}" on the recipe page, expected a dash`);
+  });
+  await page.locator('.navbar-current .link.back, .page-current .navbar .link.back').first().tap(); await page.waitForTimeout(900);
+  await page.locator('.view-main .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
   await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {
     await step(`15-tab-${tab.toLowerCase()}`, async () => {

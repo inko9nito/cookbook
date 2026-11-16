@@ -660,7 +660,7 @@ async function swipeLeft(ctx, page, locator) {
       };
     });
     if (t.loose || t.notWhite) throw new Error(`${t.loose + t.notWhite} Settings group(s) not in a white card`);
-    if (t.titles.join() !== 'Account,Version,Style Guide,Font') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
+    if (t.titles.join() !== 'Account,Version,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
     if (t.footers) throw new Error(`Settings has ${t.footers} footers, expected none`);
     // Account is one row: the address, then Sign Out in red at its end
     const acct = await page.evaluate(() => {

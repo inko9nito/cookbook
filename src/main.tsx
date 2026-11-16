@@ -3,16 +3,14 @@ import Framework7 from 'framework7/lite-bundle';
 import Framework7React from 'framework7-react';
 
 import 'framework7/css/bundle';
+// the app's font (Fredoka, issue #21), served from this site so it works offline
+import '@fontsource-variable/fredoka';
 import './theme/cookbook.css';
 import './app.css';
 
 import CookbookApp from './App';
-import { applyFont, savedFont } from './theme/fonts';
 
 Framework7.use(Framework7React);
-
-// the font picked in Settings → Font (trial, issue #21)
-applyFont(savedFont(), false);
 
 // The app always opens on the first page of each tab: forget the page a reload was on (Framework7 keeps it in the
 // address after "#!" and in the history entry), so going back from there doesn't reopen it.

@@ -25,10 +25,31 @@
   --ck-accent-ink-press: #a83816; /* a Tomato ink fill (main buttons, Save) while pressed */
   --ck-accent-tint: color-mix(in srgb, var(--ck-accent) 13%, var(--ck-surface));
   --ck-error: #d1291f; /* also the destructive red (Delete, Discard): 5.2:1 on white, 4.8:1 on the grey page */
-  /* Fredoka (Google Fonts, served from this site: see main.tsx), picked in issue #21. Its bold is heavy, so the app
+  /* Fredoka (a Google Font, served from this site: see @font-face below), picked in issue #21. Its bold is heavy, so the app
      uses each weight one step lighter than usual (bold 600, semibold 500), page titles and main buttons included.
      Nothing uses 700. */
   --ck-font: 'Fredoka Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+}
+
+/* Fredoka, served from this site (public/fonts, SIL Open Font License) and preloaded in index.html, so the first
+   paint is already in Fredoka. With the font arriving after the first paint, all text was drawn twice, and iPhone
+   Safari (iOS 26) showed the recipe page's Start cooking bar as an orange smear above its address bar. `block` keeps
+   the first paint for Fredoka rather than drawing the iPhone font first. */
+@font-face {
+  font-family: 'Fredoka Variable';
+  font-style: normal;
+  font-display: block;
+  font-weight: 300 700;
+  src: url('/fonts/fredoka-latin.woff2') format('woff2-variations'), url('/fonts/fredoka-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Fredoka Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url('/fonts/fredoka-latin-ext.woff2') format('woff2-variations'), url('/fonts/fredoka-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 /* ── Framework7 mapping (beats Framework7's own `.ios` scope) ── */

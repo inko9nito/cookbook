@@ -3,8 +3,6 @@ import Framework7 from 'framework7/lite-bundle';
 import Framework7React from 'framework7-react';
 
 import 'framework7/css/bundle';
-// the app's font (Fredoka, issue #21), served from this site so it works offline
-import '@fontsource-variable/fredoka';
 import './theme/cookbook.css';
 import './app.css';
 

@@ -27,9 +27,9 @@ async function audit(page, name) {
   await page.screenshot({ path: path.join(OUT, `${name}.png`) });
   await page.addScriptTag({ content: AXE });
   const contrast = await page.evaluate(async () => {
-    // below AA on purpose (DESIGN.md): ticked rows in cook mode fade (--ck-done-ink), and the main buttons' 600-weight
+    // below AA on purpose (DESIGN.md): ticked rows in cook mode fade (--ck-done-ink), and the orange buttons' 600-weight
     // white label on bright Tomato (3.7:1, the user's choice in issue #21). Everything else must pass.
-    const r = await window.axe.run({ include: [document], exclude: [['.ck-cook li.ck-done'], ['.button.ck-main'], ['.button.ck-cta-button']] }, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
+    const r = await window.axe.run({ include: [document], exclude: [['.ck-cook li.ck-done'], ['.button.ck-main'], ['.button.ck-cta-button'], ['.link.ck-nav-primary'], ['.dialog .button.button-fill']] }, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
     return r.violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(' ')}: ${n.any[0]?.message ?? v.help}`));
   });
   const overlaps = await page.evaluate(() => {

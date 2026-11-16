@@ -244,6 +244,9 @@ html.ios .toolbar.tabbar .toolbar-inner {
 /* Dialogs (alert, confirm, prompt): Framework7's pill buttons stay. The secondary (tonal) one is our soft grey button
    with dark text: Tomato ink on a pale Tomato fill was 4.1:1, below WCAG AA. */
 html.ios .dialog {
+  /* the main one (OK, Sign out) is bright Tomato like every orange button (see .button.ck-main) */
+  --f7-button-fill-bg-color: var(--ck-accent);
+  --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
   --f7-button-tonal-bg-color: var(--ck-soft);
   --f7-button-tonal-pressed-bg-color: var(--ck-strong);
   --f7-button-tonal-text-color: var(--ck-fg);
@@ -297,7 +300,8 @@ html.ios .searchbar {
 .button.ck-main {
   /* Framework7's theme color is Tomato ink (for text), so the bright Tomato fill is set here. Deliberate contrast
      exception (the user's choice, issue #21): white on bright Tomato is 3.7:1 and the label is 600, not WCAG's large
-     bold 700, so it's under AA. Tomato ink (5:1) was tried and rejected as darker than production. */
+     bold 700, so it's under AA. Tomato ink (5:1) was tried and rejected as darker than production. Every orange
+     button is this same bright Tomato: the main buttons, Start cooking, Save and the dialogs' main button. */
   --f7-button-fill-bg-color: var(--ck-accent);
   --f7-button-border-radius: 9999px;
   --f7-button-large-height: 52px;
@@ -593,7 +597,7 @@ html.ios .toolbar.ck-cta .toolbar-inner {
   font-weight: 500;
 }
 .button.ck-cta-button {
-  /* bright Tomato, like the main button (same deliberate contrast exception, see .button.ck-main) */
+  /* bright Tomato, like every orange button (same deliberate contrast exception, see .button.ck-main) */
   --f7-button-fill-bg-color: var(--ck-accent);
   --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
   --f7-button-border-radius: 9999px;
@@ -766,8 +770,9 @@ html.ios .photo-browser-page .navbar-bg::after { background-color: var(--ck-phot
 html.ios .navbar-inner-centered-title.navbar-inner-left-title { justify-content: space-between; }
 html.ios .navbar-inner-centered-title.navbar-inner-left-title .right { margin-left: 0; }
 html.ios .navbar-inner-centered-title.navbar-inner-left-title .title { text-align: center; margin-left: 0; margin-right: 0; }
-/* Save: filled Tomato ink pill with white text (5:1); Tomato text on the soft grey circle was 4.3:1 */
-html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent-ink); color: var(--ck-surface); font-weight: 600; }
+/* Save: filled bright Tomato pill with white text, like every orange button (the same contrast exception as
+   .button.ck-main); Tomato text on the soft grey circle was 4.3:1 */
+html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent); color: var(--ck-surface); font-weight: 600; }
 
 /* ── Sign-in screen (Framework7 login screen): the icon, name and one main button, centred on the grey page ── */
 .login-screen.ck-signin { --f7-login-screen-bg-color: var(--ck-bg); --f7-login-screen-content-bg-color: var(--ck-bg); }

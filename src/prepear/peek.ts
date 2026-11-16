@@ -50,9 +50,11 @@ export function prepearPeek(): void {
   const STATIC = /\.(js|mjs|css|map|png|jpe?g|gif|webp|avif|svg|ico|woff2?|ttf|otf|mp4|webm|m3u8|ts)(\?|#|$)/i;
 
   const hidden = (s: string) => `<hidden: ${s.length} chars>`;
-  // a token: a JWT, or a long run of base64-ish characters with no spaces (recipe text has spaces; ids are short)
+  // a token: a JWT, or a long run of base64-ish characters with no spaces (recipe text has spaces; ids are short).
+  // A path made of ids ("prepear/<uuid>/<uuid>.jpg", how Prepear names photos) isn't one.
+  const isIdPath = (s: string) => /^\/?[\w.-]+(\/[\w.-]+)+(\?[\w=,&.-]*)?$/.test(s) && s.split(/[/?]/).some((p) => UUID.test(p.replace(/\.\w+$/, '')));
   const looksLikeToken = (s: string) =>
-    /^eyJ[\w-]{8,}\.[\w-]{8,}/.test(s) || (s.length >= 40 && /^[A-Za-z0-9+/=_.~-]+$/.test(s) && /\d/.test(s) && /[A-Za-z]/.test(s));
+    /^eyJ[\w-]{8,}\.[\w-]{8,}/.test(s) || (s.length >= 40 && !isIdPath(s) && /^[A-Za-z0-9+/=_.~-]+$/.test(s) && /\d/.test(s) && /[A-Za-z]/.test(s));
 
   const cleanText = (s: string, limit: number): string => {
     if (UUID.test(s)) return s;
@@ -325,6 +327,28 @@ export function prepearPeek(): void {
     return { scripts: srcs.map(cleanUrl), apiAddresses: [...found].map(cleanUrl).sort(), graphqlOperations: [...ops].sort() };
   };
 
+  // recipe, cookbook, plan and profile reads the page made before the bookmarklet was tapped (the cookbook list loads
+  // with the page): ask for them again, with the page's own sign-in, so their answers are in the file too. Reads only.
+  const fetchAgain = async (resources: PerformanceResourceTiming[]) => {
+    const urls = [...new Set(resources.filter((r) => /fetch|xmlhttprequest/.test(r.initiatorType)).map((r) => r.name))]
+      .filter((u) => /\/api\/v\d+\/(auth\/user$|profiles\/|cookbooks|plans|mealplans|recipes)/.test(u.split('?')[0]) && !peek.patterns[pattern('GET', u)])
+      .slice(0, 15);
+    const calls: Call[] = [];
+    for (const url of urls) {
+      const call: Call = { at: new Date().toISOString(), via: 'fetched again', method: 'GET', url: cleanUrl(url) };
+      try {
+        const res = await realFetch(url, { credentials: 'include', headers: { Accept: 'application/json' } });
+        call.status = res.status;
+        call.contentType = res.headers.get('content-type');
+        call.response = parse(await res.text());
+      } catch (e) {
+        call.error = String(e);
+      }
+      calls.push(call);
+    }
+    return calls;
+  };
+
   const report = async () => {
     const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
     const hosts: Record<string, number> = {};
@@ -338,7 +362,7 @@ export function prepearPeek(): void {
     }
     return {
       about: 'Cookbook peek of Prepear (issue #14). Tokens, cookies, passwords and email addresses are left out.',
-      version: 1,
+      version: 2,
       started: peek.started,
       saved: new Date().toISOString(),
       page: { url: cleanUrl(location.href), title: document.title, userAgent: navigator.userAgent },
@@ -359,7 +383,8 @@ export function prepearPeek(): void {
       code: await scanCode(),
       hostsLoaded: hosts,
       // before the bookmarklet was tapped: addresses only
-      earlierCalls: [...new Set(resources.filter((r) => /fetch|xmlhttprequest/.test(r.initiatorType)).map((r) => cleanUrl(r.name)))].slice(0, 200),
+      earlierCalls: [...new Set(resources.filter((r) => /fetch|xmlhttprequest/.test(r.initiatorType) && worthKeeping(r.name)).map((r) => cleanUrl(r.name)))].slice(0, 200),
+      earlierCallsFetchedAgain: await fetchAgain(resources),
       imageExamples: [...new Set([...document.images].map((i) => i.currentSrc || i.src).filter((s) => /^https?:/.test(s)).map(cleanUrl))].slice(0, 12),
       sockets: peek.sockets,
       callPatterns: peek.patterns,
@@ -372,7 +397,7 @@ export function prepearPeek(): void {
   panel.setAttribute('style', 'position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));max-width:420px;margin:0 auto;z-index:2147483647;background:#fff;color:#1c1c1e;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.25);padding:14px 16px;font:15px/1.35 -apple-system,system-ui,sans-serif');
   panel.innerHTML = `
     <div style="font-weight:700;font-size:16px;margin-bottom:4px">Cookbook peek <span data-n style="font-weight:400;color:#6e6e73"></span></div>
-    <div style="color:#3a3a3c;margin-bottom:10px">Recording. Scroll your recipe list to the end, open a recipe or two, a cookbook with sections and your meal plan. Then Save and send the file to Claude.<br><span style="color:#6e6e73;font-size:13px">If the page reloads, tap the bookmarklet again: it carries on.</span></div>
+    <div style="color:#3a3a3c;margin-bottom:10px">Recording. Scroll your recipe list to the end, open a recipe or two, a cookbook with sections, and in Plans your meal plan. Then Save and send the file to Claude.<br><span style="color:#6e6e73;font-size:13px">If the page reloads, tap the bookmarklet again: it carries on.</span></div>
     <div style="display:flex;gap:8px">
       <button data-save style="flex:1;border:0;border-radius:10px;padding:10px;background:#c4421c;color:#fff;font:inherit;font-weight:600">Save file</button>
       <button data-copy style="flex:1;border:0;border-radius:10px;padding:10px;background:#f2f2f4;color:#1c1c1e;font:inherit;font-weight:600">Copy</button>

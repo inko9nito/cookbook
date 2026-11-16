@@ -52,7 +52,7 @@ export default function PrepearImportPage() {
           <li>In Safari, open any page, tap Share, then Add Bookmark, and save it.</li>
           <li>Open Bookmarks, tap Edit, then the new bookmark. Name it “Cookbook peek” and replace its address with what you copied.</li>
           <li>Sign in at app.prepear.com. Type “Cookbook peek” in the address bar and tap the bookmark.</li>
-          <li>A panel opens. Scroll your recipe list to the end, open a recipe or two, a cookbook with sections and your meal plan.</li>
+          <li>A panel opens. Scroll your recipe list to the end, open a recipe or two and a cookbook with sections, then go to Plans and open your meal plan.</li>
           <li>Tap Save file and send prepear-peek.json to Claude in the chat.</li>
         </ol>
         <p className="ck-note">

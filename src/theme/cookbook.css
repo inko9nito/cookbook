@@ -24,16 +24,18 @@
   --ck-accent-ink: #c4421c; /* Tomato for text: passes 4.5:1 on white and on the grey page */
   --ck-accent-tint: color-mix(in srgb, var(--ck-accent) 13%, var(--ck-surface));
   --ck-error: #d1291f; /* also the destructive red (Delete, Discard): 5.2:1 on white, 4.8:1 on the grey page */
-  /* Fredoka (a Google Font, served from this site: see @font-face below), picked in issue #21. Its bold is heavy, so the app
-     uses each weight one step lighter than usual (bold 600, semibold 500), page titles and main buttons included.
-     Nothing uses 700. */
-  --ck-font: 'Fredoka Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  /* Two Google Fonts, served from this site (see @font-face below), picked in issue #21: Nunito for reading (body
+     text, ingredients, steps, fields, lists) and Fredoka for titles and buttons (see "Fredoka for titles and buttons"
+     below). The weights were set one step lighter than usual for Fredoka's heavy bold (bold 600, semibold 500), page
+     titles and main buttons included, and stay that way with Nunito. Nothing uses 700. */
+  --ck-font: 'Nunito Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --ck-font-display: 'Fredoka Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
 }
 
-/* Fredoka, served from this site (public/fonts, SIL Open Font License) and preloaded in index.html, so the first
-   paint is already in Fredoka. With the font arriving after the first paint, all text was drawn twice, and iPhone
+/* Fredoka and Nunito, served from this site (public/fonts, SIL Open Font License) and preloaded in index.html, so the
+   first paint is already in them. With a font arriving after the first paint, all text was drawn twice, and iPhone
    Safari (iOS 26) showed the recipe page's Start cooking bar as an orange smear above its address bar. `block` keeps
-   the first paint for Fredoka rather than drawing the iPhone font first. */
+   the first paint for these fonts rather than drawing the iPhone font first. */
 @font-face {
   font-family: 'Fredoka Variable';
   font-style: normal;
@@ -50,10 +52,46 @@
   src: url('/fonts/fredoka-latin-ext.woff2') format('woff2-variations'), url('/fonts/fredoka-latin-ext.woff2') format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
+@font-face {
+  font-family: 'Nunito Variable';
+  font-style: normal;
+  font-display: block;
+  font-weight: 200 1000;
+  src: url('/fonts/nunito-latin.woff2') format('woff2-variations'), url('/fonts/nunito-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Nunito Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 1000;
+  src: url('/fonts/nunito-latin-ext.woff2') format('woff2-variations'), url('/fonts/nunito-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Fredoka for titles and buttons (issue #21): page and top bar titles, the recipe name, section headings, sheet and
+   dialog titles, every button and link-button, and chips. Everything else reads in Nunito (--ck-font). */
+html.ios .navbar .title,
+html.ios .block-title-medium,
+.ck-recipe-title,
+.ck-signin-title,
+.ck-sec h2,
+.ck-pane-head h2,
+html.ios .sheet-modal .toolbar b,
+html.ios .dialog-title,
+.button,
+.link,
+.chip,
+html.ios .actions-button,
+html.ios .swipeout-actions-right > a {
+  font-family: var(--ck-font-display);
+}
+/* a linked recipe inside an ingredient line is part of the ingredient text */
+.link.ck-ing-linked { font-family: inherit; }
 
 /* ── Framework7 mapping (beats Framework7's own `.ios` scope) ── */
 html.ios {
-  /* Framework7's own bold text, one step lighter for Fredoka (see --ck-font) */
+  /* Framework7's own bold text, one step lighter (see --ck-font) */
   --f7-block-title-font-weight: 500;
   --f7-dialog-title-font-weight: 500;
   --f7-dialog-button-strong-font-weight: 500;
@@ -188,7 +226,7 @@ html.ios .navbar .left a + a,
 html.ios .navbar .right a + a { margin-left: 0; }
 /* a shorter bar than iOS 26's 56px: the 40px buttons still fit, and the page starts closer to the title */
 html.ios { --f7-navbar-height: 48px; }
-/* bold text Framework7 and the browser make 600-700: one step lighter for Fredoka (see --ck-font) */
+/* bold text Framework7 and the browser make 600-700: one step lighter (see --ck-font) */
 b, strong { font-weight: 600; }
 html.ios .navbar b,
 html.ios .toolbar b,

@@ -1,7 +1,7 @@
 import { Popup, Page, Navbar, NavTitle, NavRight, Link, List, ListItem, f7 } from 'framework7-react';
 import { BookOpen, Plus } from 'lucide-react';
 import { useCookbooks, useStore } from '../data/store';
-import { byName, cookbookRecipeIds, coverOf, emptyCookbook, isIn, toggleIn } from '../lib/cookbook';
+import { byName, cookbookRecipeIds, coverOf, coversOf, emptyCookbook, isIn, toggleIn } from '../lib/cookbook';
 import { newId, type Recipe } from '../lib/recipe';
 import { inlineIcon } from './ui/icons';
 import { photoStyle } from './ui/photo';
@@ -52,7 +52,7 @@ export default function AddToCookbookPopup({ opened, recipe, onClosed }: Props) 
           <List strongIos insetIos dividersIos className="ck-convert-list ck-addto-list">
             {/* one flat list of rows (Framework7's List moves anything that isn't a row, like a fragment, to its end) */}
             {sorted.flatMap((c) => {
-              const cover = coverOf(c.coverRecipeId, cookbookRecipeIds(c), byId);
+              const cover = coverOf(coversOf(c)[0], cookbookRecipeIds(c), byId);
               if (!c.sections.length) {
                 return [
                   <ListItem

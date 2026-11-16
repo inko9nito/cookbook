@@ -73,6 +73,16 @@ describe('cookbooks in the database', () => {
     expect(c).toMatchObject({ coverRecipeId: null, recipeIds: ['r2'], sections: [{ id: 's9', coverRecipeId: null, recipeIds: [] }] });
   });
 
+  test('a collage cover keeps up to three recipes in order, leaving out ones that don’t exist', async () => {
+    const saved = await saveCookbook(db, book({ id: 'cv', name: 'Covers 2', coverRecipeId: null, coverRecipeIds: ['r4', 'gone', 'r2'], sections: [] }));
+    expect(saved.coverRecipeIds).toEqual(['r4', 'r2']);
+    expect(saved.coverRecipeId).toBe('r4');
+    // an older copy of the app sends just the one cover
+    const older = await saveCookbook(db, book({ id: 'cv', name: 'Covers 2', coverRecipeId: 'r2', sections: [] }));
+    expect(older.coverRecipeIds).toEqual(['r2']);
+    await deleteCookbook(db, 'cv');
+  });
+
   test('a Prepear cookbook is kept once', async () => {
     await saveCookbook(db, book({ id: 'p1', name: 'From Prepear', prepearId: 'prep-1', sections: [] }));
     await expect(saveCookbook(db, book({ id: 'p2', name: 'Again', prepearId: 'prep-1', sections: [] }))).rejects.toBeInstanceOf(DuplicatePrepearCookbook);

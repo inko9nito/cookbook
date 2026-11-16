@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { cookbookRecipeIds, coverOf, coverPhotos, fromOrganizeRows, organizeRows, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
+import { cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
 import { emptyRecipe, type Recipe } from './recipe';
 
 const book: Cookbook = {
@@ -30,9 +30,17 @@ describe('cookbooks', () => {
 
   test('a collage takes up to three different photos, the cover recipe’s first', () => {
     const byId = new Map([recipe('a'), recipe('b', '/b.jpg'), recipe('c', '/c.jpg'), recipe('d', '/b.jpg'), recipe('e', '/e.jpg'), recipe('f', '/f.jpg')].map((r) => [r.id, r]));
-    expect(coverPhotos('e', ['a', 'b', 'c', 'd', 'e', 'f'], byId)).toEqual(['/e.jpg', '/b.jpg', '/c.jpg']);
-    expect(coverPhotos(null, ['a', 'b', 'd'], byId)).toEqual(['/b.jpg']);
-    expect(coverPhotos(null, [], byId)).toEqual([]);
+    expect(coverPhotos(['e'], ['a', 'b', 'c', 'd', 'e', 'f'], byId)).toEqual(['/e.jpg', '/b.jpg', '/c.jpg']);
+    // three chosen covers, in the order picked
+    expect(coverPhotos(['f', 'c', 'e'], ['a', 'b', 'c', 'd', 'e', 'f'], byId)).toEqual(['/f.jpg', '/c.jpg', '/e.jpg']);
+    expect(coverPhotos([], ['a', 'b', 'd'], byId)).toEqual(['/b.jpg']);
+    expect(coverPhotos([], [], byId)).toEqual([]);
+  });
+
+  test('the chosen covers: the list, else the one older copies have', () => {
+    expect(coversOf({ coverRecipeId: 'a', coverRecipeIds: ['b', 'c'] })).toEqual(['b', 'c']);
+    expect(coversOf({ coverRecipeId: 'a' })).toEqual(['a']);
+    expect(coversOf({ coverRecipeId: null, coverRecipeIds: [] })).toEqual([]);
   });
 
   test('toggling adds at the end, or takes out', () => {

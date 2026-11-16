@@ -4,7 +4,7 @@ import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import CookbookTile, { CookbookCollage } from '../components/ui/CookbookTile';
 import { useCookbooks, useStore } from '../data/store';
-import { byName, cookbookRecipeIds, coverPhotos, emptyCookbook, existing, type Cookbook } from '../lib/cookbook';
+import { byName, cookbookRecipeIds, coverPhotos, coversOf, emptyCookbook, existing, type Cookbook } from '../lib/cookbook';
 import { newId } from '../lib/recipe';
 
 type Props = { f7router?: { navigate: (url: string) => void } };
@@ -35,7 +35,7 @@ export default function CookbooksPage({ f7router }: Props) {
     const ids = cookbookRecipeIds(c);
     const n = existing(ids, byId).length;
     const meta = [`${n} ${n === 1 ? 'recipe' : 'recipes'}`, c.sections.length ? `${c.sections.length} ${c.sections.length === 1 ? 'section' : 'sections'}` : ''];
-    return { meta: meta.filter(Boolean).join(' · '), photos: coverPhotos(c.coverRecipeId, ids, byId) };
+    return { meta: meta.filter(Boolean).join(' · '), recipes: n, photos: coverPhotos(coversOf(c), ids, byId) };
   };
 
   return (
@@ -87,8 +87,8 @@ export default function CookbooksPage({ f7router }: Props) {
         <Block key="grid" className="ck-card-grid ck-book-grid">
           <div className="grid grid-cols-2 grid-gap">
             {sorted.map((c) => {
-              const { meta, photos } = about(c);
-              return <CookbookTile key={c.id} href={`/cookbook/${c.id}/`} name={c.name} meta={meta} photos={photos} />;
+              const { recipes: n, photos } = about(c);
+              return <CookbookTile key={c.id} href={`/cookbook/${c.id}/`} name={c.name} recipes={n} sections={c.sections.length} photos={photos} />;
             })}
           </div>
         </Block>

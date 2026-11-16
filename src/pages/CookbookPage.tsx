@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Page, Navbar, NavRight, Link, Searchbar, Block, BlockTitle, BlockFooter, Button, Preloader,
+  Page, Navbar, NavRight, Link, Searchbar, Block, BlockFooter, Button, Preloader,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
 import { Ellipsis, Plus } from 'lucide-react';
@@ -10,7 +10,7 @@ import RecipeCard from '../components/ui/RecipeCard';
 import RecipePickerPopup from '../components/RecipePickerPopup';
 import OrganizePopup from '../components/OrganizePopup';
 import { useCookbooks, useStore } from '../data/store';
-import { cookbookRecipeIds, existing, recipeIdsOf, withRecipeIds, type Cookbook } from '../lib/cookbook';
+import { cookbookRecipeIds, coversOf, existing, recipeIdsOf, withRecipeIds, type Cookbook } from '../lib/cookbook';
 import { coverPhoto, newId, type Recipe } from '../lib/recipe';
 import { searchByTitle, searchWords } from '../lib/search';
 
@@ -22,14 +22,19 @@ type Props = {
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 // how many recipes a section's shelf shows; See all opens the rest
 const SHELF = 12;
+// Uncategorized has a shelf and a page like a section's, at /cookbook/:id/section/uncategorized/
+const UNCATEGORIZED = 'uncategorized';
+// a collage cover takes up to three photos, picked in order: the first goes across the top
+const COVER_SPOTS = ['Across the top', 'Bottom left', 'Bottom right'];
 const aToZ = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
 
 /**
  * A cookbook, or one of its sections (issue #25): /cookbook/:id/ and /cookbook/:id/section/:sectionId/.
- * A cookbook with sections shows each as a shelf of its recipes (scrolling sideways, See all opens the section), then its
- * Uncategorized recipes; without sections, just its recipes.
+ * A cookbook with sections shows each as a shelf of its recipes (scrolling sideways, See all opens the section), and
+ * its Uncategorized recipes as one more shelf; without sections, just its recipes as a grid.
  * A section shows its cookbook's name above its own, then its recipes. The search covers every recipe shown from here
- * (a cookbook's sections too). + adds recipes; ⋯ holds Organize, New Section, Rename, Change Cover and Delete.
+ * (a cookbook's sections too). + adds recipes; ⋯ holds Organize, New Section, Rename, Change Cover (up to three photos
+ * for the cookbook's collage) and Delete.
  */
 export default function CookbookPage({ f7route, f7router }: Props) {
   const { recipes } = useStore();
@@ -42,7 +47,15 @@ export default function CookbookPage({ f7route, f7router }: Props) {
 
   const book = cookbooks.find((c) => c.id === f7route?.params.id);
   const sectionId = f7route?.params.sectionId ?? null;
-  const section = book && sectionId ? book.sections.find((s) => s.id === sectionId) : undefined;
+  const uncategorized = sectionId === UNCATEGORIZED;
+  // the place this page shows: a section, Uncategorized (null), or the whole cookbook (null, with no section)
+  const placeId = uncategorized ? null : sectionId;
+  const section =
+    book && sectionId
+      ? uncategorized
+        ? { id: UNCATEGORIZED, name: 'Uncategorized', coverRecipeId: null, recipeIds: book.recipeIds }
+        : book.sections.find((s) => s.id === sectionId)
+      : undefined;
   const byId = new Map(recipes.map((r) => [r.id, r]));
 
   // Not there (yet, or any more). Same page and the same header (key "navbar") as below, so if the cookbook turns up a
@@ -60,7 +73,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
 
   const save = (c: Cookbook) => saveCookbook(c);
   // what this page holds: the cookbook's Uncategorized recipes, or the section's
-  const placeIds = recipeIdsOf(book, sectionId);
+  const placeIds = recipeIdsOf(book, placeId);
   const here = existing(placeIds, byId);
   // the search covers everything shown from here: a cookbook's sections too
   const searchable = section ? here : existing(cookbookRecipeIds(book), byId);
@@ -71,8 +84,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   // where else in this cookbook a recipe is, for Add Recipes ("In Meat", "Uncategorized")
   const elsewhere = (r: Recipe) => {
     const places = [
-      ...(sectionId !== null && book.recipeIds.includes(r.id) ? ['Uncategorized'] : []),
-      ...book.sections.filter((s) => s.id !== sectionId && s.recipeIds.includes(r.id)).map((s) => s.name),
+      ...(placeId !== null && book.recipeIds.includes(r.id) ? ['Uncategorized'] : []),
+      ...book.sections.filter((s) => s.id !== placeId && s.recipeIds.includes(r.id)).map((s) => s.name),
     ];
     return places.length ? places.map((p) => (p === 'Uncategorized' ? p : `In ${p}`)).join(' · ') : undefined;
   };
@@ -116,12 +129,14 @@ export default function CookbookPage({ f7route, f7router }: Props) {
     }
   };
 
-  const setCover = (recipeId: string) => {
+  // the cookbook's collage: up to three recipes with a photo, in the order picked
+  const setCovers = (ids: string[]) => {
     setChoosingCover(false);
-    save(section ? { ...book, sections: book.sections.map((s) => (s.id === section.id ? { ...s, coverRecipeId: recipeId } : s)) } : { ...book, coverRecipeId: recipeId });
+    const picked = ids.slice(0, COVER_SPOTS.length);
+    save({ ...book, coverRecipeIds: picked, coverRecipeId: picked[0] ?? null });
   };
-  const coverChoices = (section ? here : searchable).filter((r) => coverPhoto(r));
-  const currentCover = section ? section.coverRecipeId : book.coverRecipeId;
+  const coverChoices = searchable.filter((r) => coverPhoto(r));
+  const currentCovers = coversOf(book).filter((id) => coverChoices.some((r) => r.id === id));
 
   const searching = words.length > 0;
   // a section with recipes, or a cookbook with recipes or sections: otherwise the page says it's empty
@@ -178,10 +193,12 @@ export default function CookbookPage({ f7route, f7router }: Props) {
       )}
 
       {/* each section is a shelf: its name and count (both open it), See all, and its first recipes in a row that scrolls
-          sideways (issue #25 redesign: cookbooks are collages, sections shelves, recipes square tiles) */}
+          sideways (issue #25 redesign: cookbooks are collages, sections shelves, recipes square tiles). Uncategorized is
+          the last shelf, when it has recipes. */}
       {!searching &&
         !section &&
-        book.sections.map((s) => {
+        book.sections.length > 0 &&
+        [...book.sections, ...(here.length ? [{ id: UNCATEGORIZED, name: 'Uncategorized', recipeIds: book.recipeIds }] : [])].map((s) => {
           const inShelf = existing(s.recipeIds, byId);
           const href = `/cookbook/${book.id}/section/${s.id}/`;
           return (
@@ -206,19 +223,16 @@ export default function CookbookPage({ f7route, f7router }: Props) {
             </div>
           );
         })}
-      {!searching && !section && book.sections.length > 0 && here.length > 0 && (
-        <BlockTitle key="uncategorized-title" medium className="ck-book-heading">
-          Uncategorized
-        </BlockTitle>
+      {/* a grid: search results, a section's (or Uncategorized's) recipes, or a cookbook without sections */}
+      {(searching || section || !book.sections.length) && (
+        <Block key="grid" className="ck-card-grid">
+          <div className="grid grid-cols-2 grid-gap">
+            {(searching ? found : here).map((r) => (
+              <RecipeCard key={r.id} recipe={r} />
+            ))}
+          </div>
+        </Block>
       )}
-
-      <Block key="grid" className="ck-card-grid">
-        <div className="grid grid-cols-2 grid-gap">
-          {(searching ? found : here).map((r) => (
-            <RecipeCard key={r.id} recipe={r} />
-          ))}
-        </div>
-      </Block>
 
       <Actions key="more" opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>
         <ActionsGroup>
@@ -226,11 +240,13 @@ export default function CookbookPage({ f7route, f7router }: Props) {
           <ActionsButton onClick={() => setAdding(true)}>Add Recipes</ActionsButton>
           {(cookbookRecipeIds(book).some((id) => byId.has(id)) || book.sections.length > 1) && <ActionsButton onClick={() => setOrganizing(true)}>Organize</ActionsButton>}
           {!section && <ActionsButton onClick={newSection}>New Section</ActionsButton>}
-          <ActionsButton onClick={rename}>{section ? 'Rename Section' : 'Rename Cookbook'}</ActionsButton>
-          {coverChoices.length > 0 && <ActionsButton onClick={() => setChoosingCover(true)}>Change Cover</ActionsButton>}
-          <ActionsButton color="red" onClick={remove}>
-            {section ? 'Delete Section' : 'Delete Cookbook'}
-          </ActionsButton>
+          {!uncategorized && <ActionsButton onClick={rename}>{section ? 'Rename Section' : 'Rename Cookbook'}</ActionsButton>}
+          {!section && coverChoices.length > 0 && <ActionsButton onClick={() => setChoosingCover(true)}>Change Cover</ActionsButton>}
+          {!uncategorized && (
+            <ActionsButton color="red" onClick={remove}>
+              {section ? 'Delete Section' : 'Delete Cookbook'}
+            </ActionsButton>
+          )}
         </ActionsGroup>
         <ActionsGroup>
           <ActionsButton strong>Cancel</ActionsButton>
@@ -247,19 +263,22 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         footer={elsewhere}
         onDone={(ids) => {
           // ids no longer a recipe (deleted elsewhere) drop out here too
-          save(withRecipeIds(book, sectionId, ids));
+          save(withRecipeIds(book, placeId, ids));
           setAdding(false);
         }}
         onClosed={() => setAdding(false)}
       />
       <RecipePickerPopup
         key="cover"
-        mode="one"
+        mode="several"
         opened={choosingCover}
-        title="Change Cover"
+        title="Cover Photos"
+        hint="Pick up to three. The first goes across the top of the cover, the next two below it."
         recipes={coverChoices}
-        current={currentCover}
-        onPick={setCover}
+        selected={currentCovers}
+        max={COVER_SPOTS.length}
+        spots={COVER_SPOTS}
+        onDone={setCovers}
         onClosed={() => setChoosingCover(false)}
       />
       <OrganizePopup

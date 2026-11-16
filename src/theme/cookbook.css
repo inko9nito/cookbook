@@ -1046,7 +1046,23 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-collage.ck-collage-small { width: 56px; height: 56px; gap: 2px; border-radius: 12px; }
 /* a cookbook's name: the title font, so a cookbook doesn't read as a recipe */
 .ck-book-name { font-family: var(--ck-font-display); font-size: 17px; font-weight: 500; line-height: 1.2; }
+/* the tile is a book (option 3): a white card with a Tomato spine on the left (square corners on that side) and two page
+   edges along the right, drawn as thin lines in the page colours; the collage runs to the card's edges */
+.link.ck-book-tile, .ck-book-tile {
+  background-color: var(--ck-surface); border-radius: 6px 18px 18px 6px; border-left: 7px solid var(--ck-accent-ink);
+  box-shadow: 2px 0 0 var(--ck-surface), 3px 0 0 var(--ck-strong), 5px 0 0 var(--ck-surface), 6px 0 0 var(--ck-strong);
+  padding-bottom: 12px; margin-right: 6px;
+}
+.ck-book-cover { position: relative; display: block; border-radius: 0 18px 0 0; overflow: hidden; }
+.ck-book-tile .ck-collage { border-radius: 0; }
+.ck-book-tile .ck-card-body { padding: 8px 12px 0; }
 .ck-book-tile .ck-card-meta { font-size: 13px; }
+/* how many recipes: a Tomato badge on the photos */
+.ck-book-badge {
+  position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px 3px 7px; border-radius: 9999px; background-color: var(--ck-accent-ink); color: var(--ck-surface);
+  font-size: 13px; font-weight: 700; line-height: 18px;
+}
 .ck-book-grid .grid { row-gap: 22px; }
 /* the list view: white inset card, the collage, the name in the title font, the counts muted */
 .list.ck-book-list {
@@ -1073,3 +1089,5 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-shelf-row::-webkit-scrollbar { display: none; }
 .ck-shelf-row > .ck-card { flex: none; width: 132px; }
 .ck-shelf-empty { margin: 0; }
+.block.ck-picker-hint { margin: 14px 0 0; }
+.block.ck-picker-hint p { margin: 0; }

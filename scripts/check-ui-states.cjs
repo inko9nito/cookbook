@@ -216,10 +216,14 @@ async function swipeLeft(ctx, page, locator) {
     await input.fill('chick'); await page.waitForTimeout(600);
     const shown = await page.locator('.page-current .ck-card-grid .ck-card:visible .ck-card-title').allTextContents();
     if (!shown.length || shown.some((t) => !/chick/i.test(t))) throw new Error(`searching "chick" shows ${JSON.stringify(shown)}`);
+    // no grey overlay while searching (the user asked for none): the page stays as it is, chips included
+    if (await page.locator('.searchbar-backdrop').count()) throw new Error('searching puts an overlay over the page');
+    const chip = await page.locator('.page-current .ck-chip').first().boundingBox();
+    const onTop = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.ck-chip'), { x: chip.x + chip.width / 2, y: chip.y + chip.height / 2 });
+    if (!onTop) throw new Error('something covers the chips while searching');
     await input.fill('zzzz'); await page.waitForTimeout(600);
     if (!(await page.locator('.page-current .searchbar-not-found:visible').count())) throw new Error('no "No recipes found" for a search with no match');
-    await input.fill(''); await page.waitForTimeout(400);
-    await page.locator('.page-current .searchbar-backdrop-in').tap(); await page.waitForTimeout(600); // closes the search, as on the phone
+    await input.fill(''); await input.blur(); await page.waitForTimeout(600);
     const all = await page.locator('.page-current .ck-card-grid .ck-card:visible').count();
     if (all <= shown.length) throw new Error('clearing the search didn\'t bring every recipe back');
   });

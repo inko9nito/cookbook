@@ -59,7 +59,7 @@ export default function RecipesPage({ f7router }: Props) {
           position, so without keys the grid below is rebuilt when loading ends, and the search bar, which found the
           grid when it started, goes on filtering the old one: typing hid nothing. */}
       <div key="search" className="ck-home-search">
-        <Searchbar searchContainer=".ck-card-grid" searchItem=".ck-card" searchIn=".ck-card-title" placeholder="Search recipes" disableButton={false} />
+        <Searchbar searchContainer=".ck-card-grid" searchItem=".ck-card" searchIn=".ck-card-title" placeholder="Search recipes" disableButton={false} backdrop={false} />
       </div>
 
       <Block key="chips" className="ck-chips ck-chips-scroll">

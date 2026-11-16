@@ -12,6 +12,7 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 - If Framework7 lacks something, **stop and ask the user** before building a custom version.
 - **Approved exception (Nov 2026):** cook mode's split screen (Ingredients over Directions, each half scrolling on its own) with a hand-built drag handle between them (`src/components/CookMode.tsx`), because Framework7 has no split view. The handle only sets the top half's height (pointer events, no transforms, animation or z-index: it is last in the markup and each half has `isolation: isolate`, so it paints on top). Don't reuse it elsewhere without asking.
 - **Approved exception (Nov 2026):** photo cropping uses **Cropper.js 1.x** (`src/components/PhotoCropper.tsx`), because Framework7 has no cropper. It runs inside a Framework7 Popup, with a fixed 4:3 frame (pinch to zoom, drag to move). Swiping through photos and full-screen zoom stay Framework7 (Swiper, Photo Browser).
+- **Approved exception (Nov 2026):** Settings → Version has a refresh icon that **spins** (a CSS rotation, `.ck-spinning`) while it checks for a new version of the app, because the user asked for exactly that instead of Framework7's preloader dialog and a toast. Don't reuse the spin elsewhere without asking.
 - Check the Framework7 v9 docs for a component's props before using it. Don't guess.
 
 ## Workflow: preview before merging

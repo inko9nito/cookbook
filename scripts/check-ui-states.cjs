@@ -620,7 +620,51 @@ async function swipeLeft(ctx, page, locator) {
   await page.goto(BASE);
   await page.waitForTimeout(900);
   await step('13-settings', async () => { await page.locator('.view-main .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700); });
-  await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Style Guide' }).tap(); await page.waitForTimeout(800); });
+  // the App group: which version is running; tapping it checks for updates, its refresh icon spinning meanwhile, with
+  // no dialog or toast (the service worker finds no newer version here, so the icon just stops)
+  await step('13b-settings-check-updates', async () => {
+    const row = page.locator('.page-current li.ck-version-row');
+    const version = await row.locator('.item-title').textContent();
+    if (!/^\w{5,7} · /.test(version.trim())) throw new Error(`the version reads "${version}"`);
+    await row.scrollIntoViewIfNeeded();
+    await row.locator('.item-link').tap(); await page.waitForTimeout(200);
+    const spinning = await row.locator('.ck-refresh.ck-spinning').count();
+    const popups = await page.locator('.dialog.modal-in, .toast.modal-in').count();
+    if (!spinning) throw new Error('the refresh icon does not spin while checking');
+    if (popups) throw new Error('checking for updates still shows a dialog or toast');
+    await page.waitForTimeout(2000);
+    if (await row.locator('.ck-refresh.ck-spinning').count()) throw new Error('the refresh icon kept spinning after the check');
+    if (await page.locator('.dialog.modal-in, .toast.modal-in').count()) throw new Error('the check ended in a dialog or toast');
+  });
+  // every Settings group is a white card under its own title (rows outside the card once sat on the grey page)
+  await step('13c-settings-groups', async () => {
+    const t = await page.evaluate(() => {
+      const lists = [...document.querySelectorAll('.page-current .list')];
+      return {
+        loose: lists.filter((l) => [...l.children].some((c) => c.tagName === 'LI' || c.classList.contains('item-content'))).length,
+        notWhite: lists.filter((l) => getComputedStyle(l.querySelector('ul')).backgroundColor !== 'rgb(255, 255, 255)').length,
+        titles: [...document.querySelectorAll('.page-current .block-title')].map((x) => x.textContent),
+        footers: document.querySelectorAll('.page-current .block-footer').length,
+      };
+    });
+    if (t.loose || t.notWhite) throw new Error(`${t.loose + t.notWhite} Settings group(s) not in a white card`);
+    if (t.titles.join() !== 'Account,Version,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
+    if (t.footers) throw new Error(`Settings has ${t.footers} footers, expected none`);
+    // Account is one row: the address, then Sign Out in red at its end
+    const acct = await page.evaluate(() => {
+      const li = document.querySelector('.page-current li.ck-account-row'); const out = li?.querySelector('.ck-sign-out');
+      return { rows: li?.closest('ul').children.length, title: li?.querySelector('.item-title').textContent, out: out?.textContent, color: out && getComputedStyle(out).color,
+        right: out && li.getBoundingClientRect().right - out.getBoundingClientRect().right };
+    });
+    if (acct.rows !== 1 || acct.title !== 'demo@example.com') throw new Error(`the Account card has ${acct.rows} rows, titled "${acct.title}"`);
+    if (acct.out !== 'Sign Out' || acct.color !== 'rgb(209, 41, 31)' || acct.right > 40) throw new Error('Sign Out is not red at the end of the account row');
+    // every card's row is the same height, and Sign Out is still a 44px tap target
+    const heights = await page.evaluate(() => [...document.querySelectorAll('.page-current .list li')].map((li) => Math.round(li.getBoundingClientRect().height)).filter(Boolean));
+    if (new Set(heights).size !== 1) throw new Error(`Settings rows are ${heights.join(', ')}px tall, not all the same`);
+    const tap = await page.locator('.page-current .ck-sign-out').evaluate((e) => e.getBoundingClientRect().height);
+    if (tap < 44) throw new Error(`Sign Out's tap target is ${tap}px tall`);
+  });
+  await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {
     await step(`15-tab-${tab.toLowerCase()}`, async () => {
       // hold a finger on the tab first: the tab bar must not swell under it (Framework7's iOS 26 touch highlight is off)

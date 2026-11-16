@@ -2,7 +2,14 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// which build is running, shown in Settings: Netlify's commit for the deploy (COMMIT_REF), and when it was built
+const version = (process.env.COMMIT_REF ?? 'local').slice(0, 7);
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+    __APP_BUILT__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     VitePWA({

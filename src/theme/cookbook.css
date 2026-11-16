@@ -855,3 +855,14 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-tab.ck-tab-on::after { content: ''; position: absolute; bottom: 0; width: 14px; height: 14px; pointer-events: none; }
 .ck-tab.ck-tab-on::before { left: -14px; background: radial-gradient(circle at 0 0, transparent 13.5px, var(--ck-bg) 14px); }
 .ck-tab.ck-tab-on::after { right: -14px; background: radial-gradient(circle at 100% 0, transparent 13.5px, var(--ck-bg) 14px); }
+
+/* Settings → Version: the build, then a Tomato refresh icon. Tapping the row checks for a new version; the icon
+   spins while it checks (approved exception: the user asked for a spinning refresh icon instead of a dialog) */
+.ck-version-row .ck-refresh { color: var(--ck-accent-ink); }
+.ck-refresh.ck-spinning { animation: ck-spin 0.9s linear infinite; }
+@keyframes ck-spin { to { transform: rotate(360deg); } }
+
+/* Settings → Account: the signed-in address, with Sign Out in red at the end of the same row. Its tap target is 44px
+   tall, reaching into the row's padding (negative margins) so the row stays as tall as the other cards' rows */
+.ck-account-row .item-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ck-account-row .link.ck-sign-out { height: 44px; margin: -12px 0; padding: 0 4px; color: var(--ck-error); }

@@ -858,7 +858,10 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 
 /* Settings → Version: the build, then a Tomato refresh icon. Tapping the row checks for a new version; the icon
    spins while it checks (approved exception: the user asked for a spinning refresh icon instead of a dialog) */
-.ck-version { display: inline-flex; align-items: center; gap: 10px; }
-.ck-version .ck-refresh { color: var(--ck-accent-ink); }
+.ck-version-row .ck-refresh { color: var(--ck-accent-ink); }
 .ck-refresh.ck-spinning { animation: ck-spin 0.9s linear infinite; }
 @keyframes ck-spin { to { transform: rotate(360deg); } }
+
+/* Settings → Account: the signed-in address, with Sign Out in red at the end of the same row (a 44px tap target) */
+.ck-account-row .item-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ck-account-row .link.ck-sign-out { height: 44px; padding: 0 4px; color: var(--ck-error); }

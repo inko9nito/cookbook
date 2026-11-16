@@ -624,7 +624,7 @@ async function swipeLeft(ctx, page, locator) {
   // no dialog or toast (the service worker finds no newer version here, so the icon just stops)
   await step('13b-settings-check-updates', async () => {
     const row = page.locator('.page-current li.ck-version-row');
-    const version = await row.locator('.item-after').textContent();
+    const version = await row.locator('.item-title').textContent();
     if (!/^\w{5,7} · /.test(version.trim())) throw new Error(`the version reads "${version}"`);
     await row.scrollIntoViewIfNeeded();
     await row.locator('.item-link').tap(); await page.waitForTimeout(200);
@@ -648,8 +648,16 @@ async function swipeLeft(ctx, page, locator) {
       };
     });
     if (t.loose || t.notWhite) throw new Error(`${t.loose + t.notWhite} Settings group(s) not in a white card`);
-    if (t.titles.join() !== 'Account,App,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
-    if (t.footers !== 1) throw new Error(`Settings has ${t.footers} footers, expected just the one under App`);
+    if (t.titles.join() !== 'Account,Version,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
+    if (t.footers) throw new Error(`Settings has ${t.footers} footers, expected none`);
+    // Account is one row: the address, then Sign Out in red at its end
+    const acct = await page.evaluate(() => {
+      const li = document.querySelector('.page-current li.ck-account-row'); const out = li?.querySelector('.ck-sign-out');
+      return { rows: li?.closest('ul').children.length, title: li?.querySelector('.item-title').textContent, out: out?.textContent, color: out && getComputedStyle(out).color,
+        right: out && li.getBoundingClientRect().right - out.getBoundingClientRect().right };
+    });
+    if (acct.rows !== 1 || acct.title !== 'demo@example.com') throw new Error(`the Account card has ${acct.rows} rows, titled "${acct.title}"`);
+    if (acct.out !== 'Sign Out' || acct.color !== 'rgb(209, 41, 31)' || acct.right > 40) throw new Error('Sign Out is not red at the end of the account row');
   });
   await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {

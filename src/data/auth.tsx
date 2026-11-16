@@ -26,7 +26,7 @@ const arrival = !isDemo && typeof location !== 'undefined' ? readArrival(locatio
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<Pick<Auth, 'status' | 'email' | 'problem'>>(() => {
     // the demo is signed in, unless opened with ?signin to show the sign-in screen (the UI check does)
-    if (isDemo) return { status: demoSignIn ? 'signedOut' : 'signedIn', email: 'Demo' };
+    if (isDemo) return { status: demoSignIn ? 'signedOut' : 'signedIn', email: 'demo@example.com' };
     // a sign-in saved on the phone counts at once, so the app opens straight to the recipes, even offline
     const saved = arrival?.kind === 'token' ? null : currentUser();
     return saved ? { status: 'signedIn', email: saved.email } : { status: arrival?.kind === 'token' ? 'checking' : 'signedOut' };
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const auth: Auth = {
     ...state,
     signIn: () => {
-      if (isDemo) return setState({ status: 'signedIn', email: 'Demo' });
+      if (isDemo) return setState({ status: 'signedIn', email: 'demo@example.com' });
       setState((s) => ({ ...s, problem: undefined }));
       startGoogleSignIn(invite.current);
     },

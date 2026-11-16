@@ -636,7 +636,22 @@ async function swipeLeft(ctx, page, locator) {
     if (await row.locator('.ck-refresh.ck-spinning').count()) throw new Error('the refresh icon kept spinning after the check');
     if (await page.locator('.dialog.modal-in, .toast.modal-in').count()) throw new Error('the check ended in a dialog or toast');
   });
-  await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Style Guide' }).tap(); await page.waitForTimeout(800); });
+  // every Settings group is a white card under its own title (rows outside the card once sat on the grey page)
+  await step('13c-settings-groups', async () => {
+    const t = await page.evaluate(() => {
+      const lists = [...document.querySelectorAll('.page-current .list')];
+      return {
+        loose: lists.filter((l) => [...l.children].some((c) => c.tagName === 'LI' || c.classList.contains('item-content'))).length,
+        notWhite: lists.filter((l) => getComputedStyle(l.querySelector('ul')).backgroundColor !== 'rgb(255, 255, 255)').length,
+        titles: [...document.querySelectorAll('.page-current .block-title')].map((x) => x.textContent),
+        footers: document.querySelectorAll('.page-current .block-footer').length,
+      };
+    });
+    if (t.loose || t.notWhite) throw new Error(`${t.loose + t.notWhite} Settings group(s) not in a white card`);
+    if (t.titles.join() !== 'Account,App,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
+    if (t.footers !== 1) throw new Error(`Settings has ${t.footers} footers, expected just the one under App`);
+  });
+  await step('14-style-guide', async () => { await page.locator('.page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {
     await step(`15-tab-${tab.toLowerCase()}`, async () => {
       // hold a finger on the tab first: the tab bar must not swell under it (Framework7's iOS 26 touch highlight is off)

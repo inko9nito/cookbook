@@ -53,16 +53,15 @@ export default function SettingsPage() {
       <Navbar title="Settings" backLink />
       <BlockTitle>Account</BlockTitle>
       <List strongIos insetIos dividersIos>
-        {isDemo ? (
-          <ListItem title="Demo" after="Changes aren’t saved" />
-        ) : (
-          <>
-            <ListItem title="Signed in as" after={email} />
-            <ListButton color="red" onClick={confirmSignOut}>
-              Sign Out
-            </ListButton>
-          </>
-        )}
+        {/* an array, not a fragment: Framework7's List only puts the rows it can see into its card */}
+        {isDemo
+          ? [<ListItem key="demo" title="Demo" after="Changes aren’t saved" />]
+          : [
+              <ListItem key="who" title="Signed in as" after={email} />,
+              <ListButton key="out" color="red" onClick={confirmSignOut}>
+                Sign Out
+              </ListButton>,
+            ]}
       </List>
       <BlockTitle>App</BlockTitle>
       <List strongIos insetIos dividersIos>
@@ -74,10 +73,11 @@ export default function SettingsPage() {
         </ListItem>
       </List>
       <BlockFooter>Tap Version after a change goes live to load it into the app on your home screen.</BlockFooter>
+      {/* the design system, by its name, under its own title like the other groups */}
+      <BlockTitle>Style Guide</BlockTitle>
       <List strongIos insetIos dividersIos>
-        <ListItem link="/settings/style-guide/" title="Style Guide" />
+        <ListItem link="/settings/style-guide/" title="Cookbook" />
       </List>
-      <BlockFooter>The Style Guide shows every component in the Cookbook design system.</BlockFooter>
     </Page>
   );
 }

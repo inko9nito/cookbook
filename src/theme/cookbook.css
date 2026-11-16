@@ -310,7 +310,7 @@ html.ios .searchbar {
   --f7-button-border-radius: 9999px;
   --f7-button-large-height: 52px;
   --f7-button-large-font-weight: 600;
-  --f7-button-large-font-size: 19px;
+  --f7-button-large-font-size: 20px;
   --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
 }
 
@@ -606,7 +606,7 @@ html.ios .toolbar.ck-cta .toolbar-inner {
   --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
   --f7-button-border-radius: 9999px;
   --f7-button-large-height: 48px;
-  --f7-button-large-font-size: 19px;
+  --f7-button-large-font-size: 20px;
   --f7-button-large-font-weight: 600;
   padding: 0 22px;
 }

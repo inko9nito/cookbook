@@ -9,7 +9,7 @@ const SWATCHES: [string, string][] = [
   ['Background', '--ck-bg'], ['Surface', '--ck-surface'], ['Soft', '--ck-soft'], ['Text', '--ck-fg'],
   ['Secondary', '--ck-fg2'], ['Muted', '--ck-muted'], ['Line', '--ck-line'], ['Border', '--ck-strong'],
   ['Tomato', '--ck-accent'], ['Tomato pressed', '--ck-accent-press'], ['Tomato ink', '--ck-accent-ink'],
-  ['Ink pressed', '--ck-accent-ink-press'], ['Error', '--ck-error'],
+  ['Error', '--ck-error'],
 ];
 
 /** Every Cookbook component in one place, to check the design on the phone. Spec: DESIGN.md */

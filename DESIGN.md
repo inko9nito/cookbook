@@ -17,7 +17,6 @@ colors:
   tomato: "#e4572e"
   tomato-pressed: "#c9461f"
   tomato-ink: "#c4421c"
-  tomato-ink-pressed: "#a83816"
   error-red: "#d1291f"
   photo-scrim: "rgba(0, 0, 0, 0.58)"
   tag-glass: "rgba(0, 0, 0, 0.45)"
@@ -97,12 +96,12 @@ spacing:
   group-label-gap: "8px"
 components:
   button-main:
-    backgroundColor: "{colors.tomato-ink}"
+    backgroundColor: "{colors.tomato}"
     textColor: "{colors.surface-white}"
     rounded: "{rounded.main-button}"
     height: "52px"
   button-main-pressed:
-    backgroundColor: "{colors.tomato-ink-pressed}"
+    backgroundColor: "{colors.tomato-pressed}"
   button-soft:
     backgroundColor: "{colors.soft-fill}"
     textColor: "{colors.ink}"
@@ -153,19 +152,18 @@ Implementation: `src/theme/cookbook.css` (tokens and Framework7 variable mapping
 | `--ck-done-ink` | `#a5a5aa` | Ticked (crossed-out) rows in cook mode, step number included. Deliberately below AA (about 2.3:1 on the page): finished items fade back. The only text exempt from the contrast check |
 | `--ck-line` | `#e6e6e9` | Hairlines between rows |
 | `--ck-strong` | `#c9c9ce` | Field and chip borders |
-| `--ck-accent` | `#e4572e` | **Tomato.** Fills and accents: cook mode's divider, focus rings, the selected photo's ring, checked ingredients, badges |
-| `--ck-accent-press` | `#c9461f` | Pressed bright Tomato fill (no main button uses bright Tomato since issue #21) |
-| `--ck-accent-ink` | `#c4421c` | **Tomato ink.** Tomato for text: links, Edit / Save / Done, active tab label, badges. Framework7's theme color. Also the fill of the main buttons and Save (white on it is 5:1) |
-| `--ck-accent-ink-press` | `#a83816` | Pressed main button (a Tomato ink fill) |
+| `--ck-accent` | `#e4572e` | **Tomato.** Main buttons, links, checked ingredients, active tab, badges |
+| `--ck-accent-press` | `#c9461f` | Pressed main button |
+| `--ck-accent-ink` | `#c4421c` | **Tomato ink.** Tomato for text: links, Edit / Save / Done, active tab label, badges. Framework7's theme color. Also Save's fill (white on it is 5:1) |
 | `--ck-error` | `#d1291f` | Field errors and destructive actions (Delete, Discard). Replaces iOS's `#ff3b30`, which is too faint on white |
 
 ## Typography
 
 - **Font: Fredoka** everywhere (issue #21: the user wanted something rounder and friendlier than the iPhone font, tried Nunito, M PLUS Rounded, Zen Maru Gothic, Quicksand and Baloo 2, and picked Fredoka as the most fun). A Google Font, served from this site (`public/fonts/`, declared in `cookbook.css`, preloaded in `index.html`) so it works offline and the first paint is already in it (a late font made iPhone Safari smear the Start cooking bar); `--ck-font` falls back to the iPhone font. Fractions it lacks (⅓, ⅔, ⅛) fall back to the iPhone font.
-- **Weights, one step lighter:** Fredoka's bold is very heavy, so the app uses each weight **one step lighter than usual**: what was 700 (bold) is 600, what was 600 (semibold) is 500, regular text stays 400. **Nothing uses 700**, page titles included: the tab screens' large titles (26px), the recipe name, "Cookbook" on the sign-in screen, the editor's section titles (Ingredients, Directions…) and the main buttons are all 600, the same as Save. The main buttons are filled with Tomato ink rather than bright Tomato for that: white on bright Tomato (3.7:1) only passes as large *bold* (700) text, white on Tomato ink is 5:1. Framework7's own bold (dialog titles, group titles, action sheet buttons, `<b>`) is lowered the same way in `cookbook.css`. In this document "bold" means 600 and "semibold" 500 unless it says otherwise.
+- **Weights, one step lighter:** Fredoka's bold is very heavy, so the app uses each weight **one step lighter than usual**: what was 700 (bold) is 600, what was 600 (semibold) is 500, regular text stays 400. **Nothing uses 700**, page titles included: the tab screens' large titles (26px), the recipe name, "Cookbook" on the sign-in screen, the editor's section titles (Ingredients, Directions…) and the main buttons are all 600, the same as Save. Framework7's own bold (dialog titles, group titles, action sheet buttons, `<b>`) is lowered the same way in `cookbook.css`. In this document "bold" means 600 and "semibold" 500 unless it says otherwise.
 - **Icons:** Lucide (`lucide-react`), 22px in navigation bars, 24px in the tab bar, 2px stroke. Framework7's built-in glyphs (back chevron, list chevrons, checkmarks, search magnifier) stay as they are.
 - **Light mode only for now.** A dark version can be added later by redefining the tokens.
-- **Contrast (checked with Impeccable):** white on bright Tomato is only 3.7:1, so white text sits on Tomato ink (5:1) instead: the main buttons and Save. Any Tomato *text* uses Tomato ink (4.6:1 on the grey page). Muted grey is 4.6:1 on the grey page.
+- **Contrast (checked with Impeccable):** Any Tomato *text* uses Tomato ink (4.6:1 on the grey page). Save is white on Tomato ink (5:1). **Deliberate exception:** the main buttons (Start cooking, Continue with Google) are a 19px, 600-weight white label on bright Tomato, 3.7:1, under WCAG AA (it passed as 700 "large bold" text). The user chose this in issue #21 over Tomato ink, which looked darker than before. `check:ui` skips these two buttons in its contrast check. Muted grey is 4.6:1 on the grey page.
 
 ## Components
 
@@ -181,7 +179,7 @@ Where each component's shape comes from:
 | Ingredients | Instacart | Compact 15px hairline rows (36px minimum, 7px padding, about half Framework7's iOS default) so more of the list fits on screen: bold amount + regular name, 13px muted line under it: the note, and "not scaled" for an amount that isn't a number while scaling. **Unit conversions (issue #6):** an amount in a measuring unit has a **fitted grey underline** (`--ck-strong`, 1.5px, 3px below the text, only under the amount), which says it converts. Tapping it highlights the ingredient row in pale Tomato (`--ck-accent-tint`, the design's selection tint, as for a row held in the editor; 12px corners, set 8px in from the screen edges, since rounded corners never touch them) and opens a **Framework7 bottom sheet**, out from under the thumb that tapped: the ingredient as its bold title with Tomato-ink Done, then **radio rows** (a grey ring; picked: a filled Tomato circle with a white dot): the recipe's own amount first, marked "Original", then the same amount in the other units (4 tbsp: 12 tsp, ¼ cup, 2 fl oz, 59 ml; volume to volume, weight to weight, "about" when rounded, nothing more than 10% off; the neatest one marked "Simpler"). The page isn't dimmed and scrolls so the tapped ingredient sits just above the sheet. Picking one **replaces the amount** in the row (its underline turns Tomato) and closes the sheet; Done, swiping down, tapping elsewhere, or **tapping the same amount again** close it too, and tapping another amount switches the sheet to that ingredient. Tapping a converted amount shows the options with the pick selected, and Original puts it back. Picks last until the recipe is closed. The same works **in cook mode** (tapping the amount converts it; the rest of the row still ticks it off), and a pick in either place shows in both. (A popover beside the amount was tried first and dropped: the thumb that tapped covered it.) Each row has a small grey bullet (5px, `--ck-fg2`, on the first line, indented 6px), which sets the rows in from their group label so the groups stand out, as in Prepear. **No checkboxes** on the recipe page; checking off belongs to Start cooking (cook mode) |
 | Direction steps | (plain) | 15px text, 1.45 line height. Step numbers are plain bold text in the text color, no circles or fills |
 | Dialogs | Framework7 | Framework7's alert/prompt with pill buttons: main button filled Tomato ink, the other soft grey with dark text. When a label won't fit a half-width button, the buttons stack (main one on top), as iOS alerts do |
-| Main button | DoorDash | Pill, 52px tall (48px in the recipe footer), 19px bold (600) white label, Tomato ink fill like Save |
+| Main button | DoorDash | Pill, 52px tall (48px in the recipe footer), 19px bold (600) white label, bright Tomato fill (a contrast exception, see Typography) |
 | Other buttons | Pinterest | Soft grey fill, pill, 46px tall, 500 weight, dark text. **Every button in the app is a pill** (text buttons, dashed "Separate into groups", nav buttons, footer buttons); icon-only buttons are circles |
 | Pushed form screens (Edit / New Recipe) | iOS | Cancel (soft pill) · **centered title** · Save (filled Tomato ink pill). Tab screens keep left titles. No photo yet: a 120px soft grey box with a dashed edge, camera icon and "Add a photo"; the whole box is tappable |
 | Sheet headers | (RED) | Plain bold title on the left, Tomato ink text button ("Done") on the right, no glass bubbles |

@@ -22,7 +22,6 @@
   --ck-group-gap: 24px;       /* space above a group label (text to text) */
   --ck-group-label-gap: 8px;  /* group label to its first row's text */
   --ck-accent-ink: #c4421c; /* Tomato for text: passes 4.5:1 on white and on the grey page */
-  --ck-accent-ink-press: #a83816; /* a Tomato ink fill (main buttons, Save) while pressed */
   --ck-accent-tint: color-mix(in srgb, var(--ck-accent) 13%, var(--ck-surface));
   --ck-error: #d1291f; /* also the destructive red (Delete, Discard): 5.2:1 on white, 4.8:1 on the grey page */
   /* Fredoka (a Google Font, served from this site: see @font-face below), picked in issue #21. Its bold is heavy, so the app
@@ -296,14 +295,15 @@ html.ios .searchbar {
 
 /* ── Main button (DoorDash): full pill, 52px, bold ── */
 .button.ck-main {
-  /* Tomato ink fill, like Save: white on it is 5:1, so the label can be 600 weight (on bright Tomato, 3.7:1, it had to
-     be large bold 700 text) */
-  --f7-button-fill-bg-color: var(--ck-accent-ink);
+  /* Framework7's theme color is Tomato ink (for text), so the bright Tomato fill is set here. Deliberate contrast
+     exception (the user's choice, issue #21): white on bright Tomato is 3.7:1 and the label is 600, not WCAG's large
+     bold 700, so it's under AA. Tomato ink (5:1) was tried and rejected as darker than production. */
+  --f7-button-fill-bg-color: var(--ck-accent);
   --f7-button-border-radius: 9999px;
   --f7-button-large-height: 52px;
   --f7-button-large-font-weight: 600;
   --f7-button-large-font-size: 19px;
-  --f7-button-fill-pressed-bg-color: var(--ck-accent-ink-press);
+  --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
 }
 
 /* ── Other buttons (Pinterest): soft grey fill, dark text ── */
@@ -593,9 +593,9 @@ html.ios .toolbar.ck-cta .toolbar-inner {
   font-weight: 500;
 }
 .button.ck-cta-button {
-  /* Tomato ink, like Save and the main button: white on it is 5:1 at any weight */
-  --f7-button-fill-bg-color: var(--ck-accent-ink);
-  --f7-button-fill-pressed-bg-color: var(--ck-accent-ink-press);
+  /* bright Tomato, like the main button (same deliberate contrast exception, see .button.ck-main) */
+  --f7-button-fill-bg-color: var(--ck-accent);
+  --f7-button-fill-pressed-bg-color: var(--ck-accent-press);
   --f7-button-border-radius: 9999px;
   --f7-button-large-height: 48px;
   --f7-button-large-font-size: 19px;

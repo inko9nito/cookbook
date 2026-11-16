@@ -206,6 +206,28 @@ html.ios .navbar-bg::after {
    rules restyle Framework7's own elements: spacing, corners and colors only.
    ────────────────────────────────────────────────────────────────────────── */
 
+/* No glass blur on the bars that stay on screen: the header, its buttons, the search field and the tab bar. Framework7
+   v9 gives them iOS 26's backdrop blur; the flat design covers it with solid colours, so it never showed, but iPhone
+   Safari sometimes left those blurred layers blank in the page colour until something redrew them: the header, its
+   buttons and the search field vanished a moment after the app opened, and the header stayed gone (issue #25). */
+html.ios .navbar-bg::before,
+html.ios .navbar .left,
+html.ios .navbar .right,
+html.ios .navbar .navbar-pane,
+html.ios .toolbar::before,
+html.ios .toolbar-pane,
+html.ios .toolbar .left,
+html.ios .toolbar .right,
+html.ios .subnavbar,
+html.ios .searchbar input[type='search'],
+html.ios .searchbar input[type='text'],
+html.ios .searchbar-disable-button,
+html.ios .fab > a,
+html.ios .fab-buttons a {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 /* Navbar (RED): title on the left in the same row as separate soft grey round buttons */
 html.ios .navbar {
   --f7-navbar-title-font-size: 17px;

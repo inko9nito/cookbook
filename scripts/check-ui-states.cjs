@@ -211,6 +211,19 @@ async function swipeLeft(ctx, page, locator) {
   await page.goto(BASE);
   await page.waitForTimeout(1000);
   await step('01-recipes', async () => {});
+  // No backdrop blur on the bars that stay on screen (#25): iPhone Safari left those layers blank, so the header, its
+  // buttons and the search field vanished a moment after the app opened
+  await step('01a-no-blur-on-bars', async () => {
+    const blurred = await page.evaluate(() => {
+      const els = [...document.querySelectorAll('.navbar, .navbar *, .toolbar, .toolbar *, .searchbar, .searchbar *')];
+      return els.flatMap((el) => [null, '::before', '::after'].map((pseudo) => {
+        const cs = getComputedStyle(el, pseudo);
+        const bf = cs.backdropFilter || cs.webkitBackdropFilter;
+        return bf && bf !== 'none' ? `${el.className}${pseudo ?? ''}: ${bf}` : null;
+      })).filter(Boolean);
+    });
+    if (blurred.length) throw new Error(`still blurred: ${[...new Set(blurred)].slice(0, 5).join(' | ')}`);
+  });
   // the search bar must filter the grid on screen (it once kept filtering a copy React had replaced when loading ended)
   await step('01b-recipes-search', async () => {
     const input = page.locator('.view.tab-active .page-current .ck-home-search input');

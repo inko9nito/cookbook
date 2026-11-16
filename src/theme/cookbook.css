@@ -831,6 +831,10 @@ html.ios .navbar.ck-cook-tabbed .right .link { background-color: var(--ck-bg); }
 /* the bar's inner row keeps its sides but no top and bottom padding, so the tabs reach the page */
 html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 0; }
 .navbar.ck-cook-tabbed .ck-tabs { flex: 1 1 auto; min-width: 0; align-self: stretch; margin-left: 8px; }
+/* more recipes than fit (each tab keeps at least 96px, the shown one 132px): the row scrolls sideways with a swipe,
+   natively, like the Recipes chips, with no scrollbar */
+.navbar.ck-cook-tabbed .ck-tabs { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; }
+.navbar.ck-cook-tabbed .ck-tabs::-webkit-scrollbar { display: none; }
 .ck-tabs { display: flex; align-items: stretch; gap: 2px; padding: 6px 14px 0; box-sizing: border-box; }
 .ck-tab {
   flex: 1 1 0; min-width: 0; max-width: 240px; margin: 0; padding: 0 10px; border: 0;
@@ -844,6 +848,8 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-tab.ck-tab-on { position: relative; background-color: var(--ck-bg); color: var(--ck-fg); }
 /* when room is short (a timer's pill in the bar, three recipes) the shown tab keeps more of its name */
 .ck-tab.ck-tab-on { flex-grow: 1.6; }
+.navbar.ck-cook-tabbed .ck-tab { min-width: 96px; }
+.navbar.ck-cook-tabbed .ck-tab.ck-tab-on { min-width: 132px; }
 /* the shown tab flares into the page with small inward curves at its feet, so it reads as one piece with it */
 .ck-tab.ck-tab-on::before,
 .ck-tab.ck-tab-on::after { content: ''; position: absolute; bottom: 0; width: 14px; height: 14px; pointer-events: none; }

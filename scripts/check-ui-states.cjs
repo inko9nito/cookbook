@@ -49,7 +49,20 @@ async function audit(page, name) {
         // under the tab bar or sitting behind an open sheet doesn't count
         const group = (el) => el.closest('li, .navbar-inner, .toolbar-inner, .actions-group, .segmented, .stepper, .ck-row, .block, .list-button');
         if (!group(a) || group(a) !== group(b)) continue;
-        const r1 = a.getBoundingClientRect(), r2 = b.getBoundingClientRect();
+        // the part of each that shows: a button scrolled out of a scrolling row (e.g. cook mode's recipe tabs) is clipped
+        const shownRect = (el) => {
+          const raw = el.getBoundingClientRect();
+          let r = { left: raw.left, top: raw.top, right: raw.right, bottom: raw.bottom };
+          for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            const cs = getComputedStyle(p);
+            if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+            const c = p.getBoundingClientRect();
+            r = { left: Math.max(r.left, c.left), top: Math.max(r.top, c.top), right: Math.min(r.right, c.right), bottom: Math.min(r.bottom, c.bottom) };
+          }
+          return { ...r, width: Math.max(0, r.right - r.left), height: Math.max(0, r.bottom - r.top) };
+        };
+        const r1 = shownRect(a), r2 = shownRect(b);
+        if (!r1.width || !r1.height || !r2.width || !r2.height) continue;
         const w = Math.min(r1.right, r2.right) - Math.max(r1.left, r2.left);
         const h = Math.min(r1.bottom, r2.bottom) - Math.max(r1.top, r2.top);
         if (w <= 2 || h <= 2) continue;
@@ -889,6 +902,63 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.page-current .button', { hasText: 'Add 1 line' }).tap(); await page.waitForTimeout(500);
     const pasted = await page.locator('.page-current .ck-edit-list li', { hasText: '1 cup tahini sauce' }).locator('.item-footer').textContent().catch(() => '');
     if (!pasted.includes('Recipe: Tahini Sauce')) throw new Error('a pasted "tahini sauce" line did not link to the Tahini Sauce recipe');
+  });
+  // link two more of the kebabs' ingredients and save, for cook mode with five recipes open (25i)
+  await step('25g2-more-links-saved', async () => {
+    const link = async (row, title) => {
+      await row.locator('.item-link').first().tap(); await page.waitForTimeout(900);
+      await page.locator('.sheet-modal.modal-in .ck-link-field .item-link').tap(); await page.waitForTimeout(1200);
+      await page.locator('.popup.ck-link-popup.modal-in li', { hasText: title }).tap(); await page.waitForTimeout(1200);
+      await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(800);
+    };
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('.page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1200);
+    await link(page.locator('.page-current .ck-edit-list li', { hasText: 'warm pitas' }), 'Corn pudding');
+    await link(page.locator('.page-current .ck-edit-list li', { hasText: 'fresh parsley' }), 'Mustard Dill');
+    await link(page.locator('.page-current .ck-edit-list li').filter({ hasText: /^1 lemon/ }), 'Pulled Beef');
+    await page.locator('.navbar .ck-nav-primary:visible').tap(); await page.waitForTimeout(1200);
+    const linked = await page.locator('.page-current .ck-ing-list .ck-ing-linked').count();
+    if (linked !== 4) throw new Error(`after saving, the kebabs have ${linked} linked ingredients, expected 4`);
+  });
+  // more recipes than fit: the tabs keep a readable width and the row scrolls sideways with a swipe; the shown tab
+  // scrolls into view
+  await step('25i-cook-many-tabs', async () => {
+    // straight from the kebabs page the save returned to (reloading would reset the demo's recipes)
+    await page.locator('.page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    for (const name of ['tahini sauce', 'warm pitas', 'fresh parsley', 'lemon']) {
+      const main = page.locator('.ck-cook .navbar .ck-tab', { hasText: 'Middle' });
+      if (await main.count()) { await main.tap(); await page.waitForTimeout(500); }
+      await page.locator('.ck-cook .tab-active .ck-pane-ingredients .ck-ing-linked', { hasText: new RegExp(`^${name}$`) }).scrollIntoViewIfNeeded();
+      await page.locator('.ck-cook .tab-active .ck-pane-ingredients .ck-ing-linked', { hasText: new RegExp(`^${name}$`) }).tap(); await page.waitForTimeout(700);
+    }
+    const t = await page.evaluate(() => {
+      const row = document.querySelector('.ck-cook .ck-tabs'); const r = row.getBoundingClientRect();
+      const on = row.querySelector('.ck-tab-on').getBoundingClientRect();
+      return { tabs: row.querySelectorAll('.ck-tab').length, scrolls: row.scrollWidth > row.clientWidth + 1, onText: row.querySelector('.ck-tab-on').textContent,
+        inView: on.left >= r.left - 1 && on.right <= r.right + 1, narrowest: Math.min(...[...row.querySelectorAll('.ck-tab')].map((x) => x.getBoundingClientRect().width)) };
+    });
+    if (t.tabs !== 5) throw new Error(`${t.tabs} recipe tabs, expected 5`);
+    if (!t.scrolls) throw new Error('five tabs squeeze into the bar instead of scrolling');
+    if (t.narrowest < 95) throw new Error(`a tab is only ${Math.round(t.narrowest)}px wide`);
+    if (!t.onText.includes('Pulled Beef') || !t.inView) throw new Error(`the tab just opened (${t.onText}) is not scrolled into view`);
+  });
+  await step('25i2-cook-tabs-swiped', async () => {
+    const row = page.locator('.ck-cook .ck-tabs');
+    const before = await row.evaluate((e) => e.scrollLeft);
+    const box = await row.boundingBox();
+    const cdp = await ctx.newCDPSession(page);
+    const x = box.x + box.width * 0.3, y = box.y + box.height / 2;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 12; i++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + 15 * i, y }] });
+      await page.waitForTimeout(16);
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await page.waitForTimeout(800);
+    const after = await row.evaluate((e) => e.scrollLeft);
+    if (!(after < before - 50)) throw new Error(`swiping the tabs moved them from ${before}px to ${after}px`);
+    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(1200);
   });
   await step('25h-delete-used-recipe', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);

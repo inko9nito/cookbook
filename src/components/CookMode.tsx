@@ -116,6 +116,10 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
   const tabs = [recipe, ...visited.map(latest).filter((r): r is Recipe => !!r)];
   const tabbed = tabs.length > 1;
   useStripThemeColor(tabbed);
+  // the shown recipe's tab scrolls into view in the tab row (a new recipe's tab is added at the end)
+  useEffect(() => {
+    document.querySelector('.popup.ck-cook .ck-tab-on')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }, [shown, visited.length]);
 
   // ── timers, for every recipe in cook mode ──
   const [timers, setTimers] = useState<RunningTimer[]>([]);

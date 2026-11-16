@@ -18,6 +18,7 @@ Personal recipe PWA for one user on an iPhone. Mobile-first, iOS-native feel. Fu
 ## Workflow: preview before merging
 - Every change goes to the user as a **pull request with a Netlify deploy preview**: push to the working branch, open a PR into `main` if none is open (or keep updating the open one), and give the user the preview link `https://deploy-preview-<PR number>--cookbk.netlify.app` each time it updates.
 - **Merge only when the user asks.** They look at the preview on the phone first.
+- **Plans live in their GitHub issue.** For an issue worked through in steps (e.g. #14, the Prepear import), keep the plan in the issue's description: tick steps as they land, note decisions and open questions, and add a dated line under Status at each milestone (PR opened, waiting on the user, merged). Update it as part of the work, without being asked. No private data in it (the repo and its issues are public).
 - Preview links are public, and a preview has its own copy of the production database (real recipes). Previews share the photo store with production.
 
 ## Design: the Cookbook design system

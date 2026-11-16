@@ -43,11 +43,13 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const section = book && sectionId ? book.sections.find((s) => s.id === sectionId) : undefined;
   const byId = new Map(recipes.map((r) => [r.id, r]));
 
+  // Not there (yet, or any more). Same page and the same header (key "navbar") as below, so if the cookbook turns up a
+  // moment later, React keeps the header Framework7 set up instead of building a new one.
   if (!book || (sectionId && !section)) {
     return (
-      <Page name="cookbook" onPageAfterIn={showTabbar}>
-        <Navbar backLink title={loading ? '' : 'Not found'} />
-        <Block className="ck-list-state">
+      <Page name="cookbook" className="ck-cookbook-page" onPageAfterIn={showTabbar}>
+        <Navbar key="navbar" backLink title={loading ? '' : 'Not found'} />
+        <Block key="missing" className="ck-list-state">
           {loading ? <Preloader /> : <p className="ck-note">{sectionId ? 'This section isn’t here any more.' : 'This cookbook isn’t here any more.'}</p>}
         </Block>
       </Page>
@@ -136,19 +138,18 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         </NavRight>
       </Navbar>
 
-      {/* keys: Page leaves out the blocks that aren't shown and lists the rest by position (see RecipesPage) */}
-      {hasAny && (
-        <div key="search" className="ck-home-search">
-          <Searchbar
-            customSearch
-            backdrop={false}
-            disableButton={false}
-            placeholder={section ? 'Search this section' : 'Search this cookbook'}
-            onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
-            onSearchbarClear={() => setQuery('')}
-          />
-        </div>
-      )}
+      {/* keys: Page leaves out the blocks that aren't shown and lists the rest by position (see RecipesPage).
+          The search bar is always there, even with nothing to search yet, so the page keeps its shape. */}
+      <div key="search" className="ck-home-search">
+        <Searchbar
+          customSearch
+          backdrop={false}
+          disableButton={false}
+          placeholder={section ? 'Search this section' : 'Search this cookbook'}
+          onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
+          onSearchbarClear={() => setQuery('')}
+        />
+      </div>
 
       {hasAny && (
         <Block key="count" className="ck-count">

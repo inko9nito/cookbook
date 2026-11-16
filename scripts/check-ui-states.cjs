@@ -1282,6 +1282,36 @@ async function swipeLeft(ctx, page, locator) {
     if ((await page.locator('#view-recipes .page').count()) !== 1) throw new Error('back in Cookbooks moved Recipes');
   });
 
+  // A cookbook or section just made stays, even when the list is reloaded from the server before the save lands (#25: on
+  // the phone a new cookbook flipped to "not found", and its header vanished). ?slow makes every demo call take 0.6s.
+  await step('26m-new-cookbook-slow', async () => {
+    await page.goto(`${BASE}?slow`); await page.waitForSelector('#view-recipes .ck-card', { timeout: 10000 });
+    await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForSelector('#view-cookbooks .page-current .ck-book-tile', { timeout: 10000 });
+    await page.locator('#view-cookbooks .page-current > .navbar a[aria-label="New cookbook"]').tap(); await page.waitForTimeout(600);
+    await prompt('Slow soups');
+    const seen = [];
+    for (let i = 0; i < 12; i++) {
+      seen.push(await page.evaluate(() => {
+        const pg = document.querySelector('#view-cookbooks .page-current');
+        return `${pg.querySelector(':scope > .navbar .title')?.textContent}|${!!pg.querySelector('.searchbar')}`;
+      }));
+      await page.waitForTimeout(250);
+    }
+    if (seen.some((x) => x !== 'Slow soups|true')) throw new Error(`while saving, the new cookbook's page showed ${JSON.stringify([...new Set(seen)])}`);
+    await page.locator('#view-cookbooks .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'New Section' }).tap(); await page.waitForTimeout(600);
+    await prompt('Section 1');
+    const seen2 = [];
+    for (let i = 0; i < 12; i++) {
+      seen2.push(await page.evaluate(() => {
+        const pg = document.querySelector('#view-cookbooks .page-current');
+        return `${pg.querySelector(':scope > .navbar .title')?.textContent}|${!!pg.querySelector('.searchbar')}`;
+      }));
+      await page.waitForTimeout(250);
+    }
+    if (seen2.some((x) => !x.startsWith('Section 1') || !x.endsWith('|true'))) throw new Error(`while saving, the new section's page showed ${JSON.stringify([...new Set(seen2)])}`);
+  });
+
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)
   await step('19-sign-in', async () => {
     await page.goto(`${BASE}?signin`);

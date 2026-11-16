@@ -174,4 +174,19 @@ const demo: Backend = {
   },
 };
 
-export const backend: Backend = isDemo ? demo : http;
+/**
+ * `?slow` (the demo only, for the UI check): calls take as long as on the network, reads 0.3s and saves 1.2s (a save
+ * writes in a transaction), so a list can be reloaded and come back while a save is still on its way (issue #25: a
+ * cookbook just made vanished that way). The store also treats data as stale at once with it, as it is on the phone
+ * after a minute.
+ */
+export const demoSlow = isDemo && typeof location !== 'undefined' && new URLSearchParams(location.search).has('slow');
+const slowly = (b: Backend): Backend =>
+  Object.fromEntries(
+    Object.entries(b).map(([name, call]) => [name, async (...args: unknown[]) => {
+      await new Promise((r) => setTimeout(r, /^(list|get|kept)/.test(name) ? 300 : 1200));
+      return (call as (...a: unknown[]) => unknown)(...args);
+    }]),
+  ) as Backend;
+
+export const backend: Backend = isDemo ? (demoSlow ? slowly(demo) : demo) : http;

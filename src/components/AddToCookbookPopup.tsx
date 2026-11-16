@@ -1,7 +1,8 @@
-import { Popup, Page, Navbar, NavTitle, NavRight, Link, List, ListItem, f7 } from 'framework7-react';
+import { useEffect, useState } from 'react';
+import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListItem, f7 } from 'framework7-react';
 import { BookOpen, Plus } from 'lucide-react';
 import { useCookbooks, useStore } from '../data/store';
-import { byName, cookbookRecipeIds, coverOf, coversOf, emptyCookbook, isIn, placeName, toggleIn, type Cookbook } from '../lib/cookbook';
+import { addToNote, byName, cookbookRecipeIds, coverOf, coversOf, emptyCookbook, isIn, recipeIdsOf, toggleIn, withRecipeIds, type Cookbook } from '../lib/cookbook';
 import { newId, type Recipe } from '../lib/recipe';
 import { inlineIcon } from './ui/icons';
 import { photoStyle } from './ui/photo';
@@ -12,27 +13,46 @@ type Props = { opened: boolean; recipe: Recipe; onClosed: () => void };
 /**
  * Add to Cookbook (issue #25), from a recipe's ⋯ menu: a Framework7 popup listing every cookbook A–Z with a check box.
  * A cookbook with sections lists them under its name (and Uncategorized first), each with its own box, since a recipe
- * can be in several. Ticking adds the recipe at once and unticking takes it out, each with a toast; Done closes. "New Cookbook" at the
- * top makes one with this recipe in it.
+ * can be in several. Nothing changes until Done: ticks, unticks and a "New Cookbook" (it starts with this recipe in it)
+ * are kept here, then Done saves the cookbooks that changed and a toast says where the recipe went. Cancel, or swiping
+ * the popup away, leaves everything as it was.
  */
 export default function AddToCookbookPopup({ opened, recipe, onClosed }: Props) {
   const { recipes } = useStore();
   const { cookbooks, saveCookbook } = useCookbooks();
   const byId = new Map(recipes.map((r) => [r.id, r]));
-  const sorted = [...cookbooks].sort(byName);
+  // the cookbooks as ticked here (by id), and the ones made here
+  const [changed, setChanged] = useState<Map<string, Cookbook>>(new Map());
+  const [made, setMade] = useState<Cookbook[]>([]);
+  useEffect(() => {
+    if (!opened) return;
+    setChanged(new Map());
+    setMade([]);
+  }, [opened]);
+
+  const original = (id: string) => cookbooks.find((c) => c.id === id);
+  const sorted = [...cookbooks.map((c) => changed.get(c.id) ?? c), ...made].sort(byName);
 
   const newCookbook = () =>
     f7.dialog.prompt('It starts with this recipe in it.', 'New Cookbook', (name: string) => {
       if (!name.trim()) return;
-      const c = { ...emptyCookbook(name, newId), recipeIds: [recipe.id] };
-      saveCookbook(c);
-      say(`Added to ${c.name}`);
+      setMade((m) => [...m, { ...emptyCookbook(name, newId), recipeIds: [recipe.id] }]);
     });
 
-  // ticking or unticking saves at once, and a toast says where it went
   const toggle = (c: Cookbook, sectionId: string | null, on: boolean) => {
-    saveCookbook(toggleIn(c, sectionId, recipe.id, on));
-    say(`${on ? 'Added to' : 'Taken out of'} ${placeName(c, sectionId)}`);
+    let next = toggleIn(c, sectionId, recipe.id, on);
+    // ticked again where it was: back in its old spot, not at the end
+    const was = original(c.id);
+    if (was && on && isIn(was, sectionId, recipe.id)) next = withRecipeIds(next, sectionId, recipeIdsOf(was, sectionId));
+    if (made.some((m) => m.id === c.id)) setMade((ms) => ms.map((m) => (m.id === c.id ? next : m)));
+    else setChanged((m) => new Map(m).set(c.id, next));
+  };
+
+  const done = () => {
+    const edits = [...changed.values()].filter((c) => JSON.stringify(c) !== JSON.stringify(original(c.id)));
+    const note = addToNote(recipe.id, cookbooks, [...edits, ...made]);
+    for (const c of [...edits, ...made]) saveCookbook(c);
+    if (note) say(note);
   };
 
   const thumb = (cover?: string) => (
@@ -45,9 +65,12 @@ export default function AddToCookbookPopup({ opened, recipe, onClosed }: Props) 
     <Popup className="ck-link-popup ck-addto-popup" opened={opened} onPopupClosed={onClosed} push swipeToClose="to-bottom" swipeHandler=".navbar">
       <Page>
         <Navbar innerClassName="navbar-inner-centered-title">
+          <NavLeft>
+            <Link popupClose>Cancel</Link>
+          </NavLeft>
           <NavTitle>Add to Cookbook</NavTitle>
           <NavRight>
-            <Link popupClose className="ck-nav-primary">
+            <Link popupClose onClick={done} className="ck-nav-primary">
               Done
             </Link>
           </NavRight>

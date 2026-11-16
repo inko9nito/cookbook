@@ -1326,18 +1326,30 @@ async function swipeLeft(ctx, page, locator) {
     const checked = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-addto-list li')].filter((li) => li.querySelector('input:checked')).map((li) => li.querySelector('.item-title').textContent));
     if (checked.join(',') !== 'Uncategorized,Meat') throw new Error(`Corn pudding is ticked in ${JSON.stringify(checked)}`);
   });
-  await step('26i2-added-to-cookbook', async () => {
+  // nothing changes until Done: no toast while ticking, Cancel leaves it as it was
+  await step('26i2-add-to-cookbook-cancel', async () => {
+    await page.locator('.popup.modal-in .ck-addto-list li', { hasText: 'Dressings and sauces' }).locator('label').tap(); await page.waitForTimeout(500);
+    if (await page.locator('.toast.modal-in').count()) throw new Error('ticking a cookbook shows a toast before Done');
+    await page.locator('.popup.modal-in a', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(900);
+    await page.locator('.view.tab-active .navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Add to Cookbook' }).tap(); await page.waitForTimeout(1000);
+    const ticked = await page.locator('.popup.modal-in .ck-addto-list li', { hasText: 'Dressings and sauces' }).locator('input:checked').count();
+    if (ticked) throw new Error('Cancel kept the tick on Dressings and sauces');
+  });
+  await step('26i3-added-to-cookbook', async () => {
     await page.locator('.popup.modal-in .ck-addto-list li', { hasText: 'Grilling' }).locator('label').tap(); await page.waitForTimeout(500);
-    // the change doesn't show here, so a toast says it
+    if (await page.locator('.toast.modal-in').count()) throw new Error('ticking a cookbook shows a toast before Done');
+    await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(700);
     const said = (await page.locator('.toast.modal-in .toast-text').allTextContents()).join('|');
-    if (said !== 'Added to Grilling') throw new Error(`ticking a cookbook's toast says "${said}"`);
+    if (said !== 'Added to Grilling') throw new Error(`Add to Cookbook's toast says "${said}"`);
     await page.screenshot({ path: path.join(OUT, '26i3-added-toast.png') });
     await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
-    await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
     // leaving Cookbooks took it back to its first page, so it shows the cookbooks again
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(900);
     const grilling = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Grilling' }).locator('.ck-book-meta').textContent();
     if (grilling.trim() !== '3 recipes') throw new Error(`Grilling reads "${grilling}" after adding Corn pudding`);
+    const dressings = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Dressings' }).locator('.ck-book-meta').textContent();
+    if (dressings.trim() !== '0 recipes') throw new Error(`Dressings and sauces reads "${dressings}" after Cancel`);
   });
   await step('26j-new-cookbook', async () => {
     await page.locator('.view.tab-active .page-current > .navbar a[aria-label="New cookbook"]').tap(); await page.waitForTimeout(600);

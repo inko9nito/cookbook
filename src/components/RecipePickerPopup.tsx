@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Searchbar, List, ListItem, Block, f7 } from 'framework7-react';
+import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Searchbar, List, ListItem, Block } from 'framework7-react';
 import { ChefHat } from 'lucide-react';
 import { coverPhoto, type Recipe } from '../lib/recipe';
 import { searchByTitle, searchWords } from '../lib/search';
 import { photoStyle } from './ui/photo';
+import { tell } from './ui/toast';
 
 type Common = {
   opened: boolean;
@@ -58,7 +59,7 @@ export default function RecipePickerPopup(props: Props) {
   const max = props.mode === 'several' ? props.max : undefined;
   const toggle = (id: string, on: boolean) => {
     if (on && max && !ticked.includes(id) && ticked.length >= max) {
-      f7.toast.show({ text: `Up to ${max}: untick one first`, closeTimeout: 1800 });
+      tell(`Up to ${max}: untick one first`, 1800);
       setTicked((t) => [...t]); // the box goes back to unticked
       return;
     }

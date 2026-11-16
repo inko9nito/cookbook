@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { BOOK_COLORS, changeNote, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, placeName, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
+import { addToNote, BOOK_COLORS, changeNote, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, placeName, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
 import { emptyRecipe, type Recipe } from './recipe';
 
 const book: Cookbook = {
@@ -99,5 +99,17 @@ describe('toast wording', () => {
     const withSection = { ...book, sections: [{ id: 's', name: 'Meat', coverRecipeId: null, recipeIds: [] }] };
     expect(placeName(withSection, 's')).toBe(`Meat in ${book.name}`);
     expect(placeName(withSection, null)).toBe(`Uncategorized in ${book.name}`);
+  });
+
+  test('Add to Cookbook says where the recipe went and where it left', () => {
+    const a: Cookbook = { ...book, id: 'a', name: 'Grilling', recipeIds: [], sections: [] };
+    const b: Cookbook = { ...book, id: 'b', name: 'Dinners', recipeIds: ['r'], sections: [{ id: 'm', name: 'Meat', coverRecipeId: null, recipeIds: [] }] };
+    const c: Cookbook = { ...book, id: 'c', name: 'Soups', recipeIds: [], sections: [] };
+    const d: Cookbook = { ...book, id: 'd', name: 'Sides', recipeIds: [], sections: [] };
+    expect(addToNote('r', [a, b], [])).toBeUndefined();
+    expect(addToNote('r', [a, b], [{ ...a, recipeIds: ['r'] }])).toBe('Added to Grilling');
+    expect(addToNote('r', [a, b], [{ ...b, recipeIds: [], sections: [{ ...b.sections[0], recipeIds: ['r'] }] }])).toBe('Added to Meat in Dinners · Taken out of Uncategorized in Dinners');
+    // a new cookbook isn't in "before"
+    expect(addToNote('r', [a, b, c, d], [{ ...a, recipeIds: ['r'] }, { ...c, recipeIds: ['r'] }, { ...d, recipeIds: ['r'] }, { ...c, id: 'new', name: 'Brunch', recipeIds: ['r'] }])).toBe('Added to Grilling, Soups and 2 more');
   });
 });

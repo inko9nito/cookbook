@@ -134,6 +134,31 @@ export const placeName = (c: Cookbook, sectionId: string | null) => {
   return s ? `${s.name} in ${c.name}` : c.sections.length && sectionId === null ? `Uncategorized in ${c.name}` : c.name;
 };
 
+/** "Grilling", "Grilling and Soups", "Grilling, Soups and 2 more" */
+const names = (list: string[]) =>
+  list.length <= 2 ? list.join(' and ') : `${list.slice(0, 2).join(', ')} and ${list.length - 2} more`;
+
+/**
+ * The toast after Add to Cookbook's Done: where the recipe went and where it left ("Added to Grilling · Taken out of Meat
+ * in Dinners"), comparing the cookbooks before with the changed and new ones; nothing when nothing changed.
+ */
+export function addToNote(recipeId: string, before: Cookbook[], after: Cookbook[]): string | undefined {
+  const was = new Map(before.map((c) => [c.id, c]));
+  const added: string[] = [];
+  const removed: string[] = [];
+  for (const c of after) {
+    const old = was.get(c.id);
+    for (const sectionId of [null, ...c.sections.map((s) => s.id)]) {
+      const now = isIn(c, sectionId, recipeId);
+      const then = !!old && isIn(old, sectionId, recipeId);
+      if (now && !then) added.push(placeName(c, sectionId));
+      if (then && !now) removed.push(placeName(c, sectionId));
+    }
+  }
+  const parts = [added.length ? `Added to ${names(added)}` : '', removed.length ? `Taken out of ${names(removed)}` : ''];
+  return parts.filter(Boolean).join(' · ') || undefined;
+}
+
 /** Cookbooks A–Z, the way Prepear lists them. */
 export const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
 

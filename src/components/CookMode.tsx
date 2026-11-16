@@ -15,6 +15,7 @@ import { useStore } from '../data/store';
 import ScaleSheet from './ScaleSheet';
 import { ConvertibleAmount, toggleTarget, withPick, type ConvertTarget } from './UnitChoices';
 import UnitSheet from './UnitSheet';
+import { say } from './ui/toast';
 
 type Props = {
   recipe: Recipe;
@@ -223,7 +224,7 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
             strong: true,
             onClick: () => {
               saveRecipe({ ...r, timesMade: r.timesMade + 1, lastMadeAt: new Date().toISOString() });
-              f7.toast.show({ text: `Marked as made · ${r.timesMade + 1}×`, closeTimeout: 1800 });
+              say(`Marked as made · ${r.timesMade + 1}×`);
               setTicks((all) => ({ ...all, [r.id]: noTicks() }));
               closeTab(r.id);
             },

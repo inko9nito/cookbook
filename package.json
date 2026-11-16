@@ -12,11 +12,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fontsource-variable/dm-sans": "^5.3.0",
-    "@fontsource-variable/figtree": "^5.3.0",
+    "@fontsource-variable/baloo-2": "^5.3.0",
+    "@fontsource-variable/fredoka": "^5.3.0",
     "@fontsource-variable/nunito": "^5.3.0",
-    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
-    "@fontsource-variable/rubik": "^5.3.0",
+    "@fontsource-variable/quicksand": "^5.3.0",
+    "@fontsource/m-plus-rounded-1c": "^5.3.0",
+    "@fontsource/zen-maru-gothic": "^5.3.1",
     "@netlify/blobs": "^11.1.9",
     "@netlify/database": "^2.0.3",
     "@tanstack/query-async-storage-persister": "^5.107.1",

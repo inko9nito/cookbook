@@ -160,6 +160,7 @@ Implementation: `src/theme/cookbook.css` (tokens and Framework7 variable mapping
 ## Typography
 
 - **Font:** iPhone system font (SF Pro) everywhere. Weights 400 / 500 / 600 / 700.
+- **Font trial (issue #21):** Settings → Font switches the whole app to one of five Google Fonts (Nunito, Rubik, Figtree, Plus Jakarta Sans, DM Sans), served from this site (`src/theme/fonts.ts`) and remembered on the phone. Once one is picked it becomes `--ck-font` here and the picker goes.
 - **Icons:** Lucide (`lucide-react`), 22px in navigation bars, 24px in the tab bar, 2px stroke. Framework7's built-in glyphs (back chevron, list chevrons, checkmarks, search magnifier) stay as they are.
 - **Light mode only for now.** A dark version can be added later by redefining the tokens.
 - **Contrast (checked with Impeccable):** white on Tomato is 3.7:1, so the main button label is 19px bold (WCAG "large text"). Any Tomato *text* uses Tomato ink (4.6:1 on the grey page). Muted grey is 4.6:1 on the grey page.

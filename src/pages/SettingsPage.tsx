@@ -6,6 +6,7 @@ import { useAuth } from '../data/auth';
 import { clearCache } from '../data/store';
 import { inlineIcon } from '../components/ui/icons';
 import { appVersion, updateApp } from '../lib/appUpdate';
+import { FONTS, applyFont, savedFont } from '../theme/fonts';
 
 export default function SettingsPage() {
   const { email, signOut } = useAuth();
@@ -47,6 +48,13 @@ export default function SettingsPage() {
     setChecking(false);
   };
 
+  // font trial (issue #21): each choice switches the whole app at once, named in its own font
+  const [font, setFont] = useState(savedFont);
+  const chooseFont = (id: string) => {
+    setFont(id);
+    applyFont(id);
+  };
+
   return (
     <Page name="settings" onPageAfterIn={showTabbar}>
       <Navbar title="Settings" backLink />
@@ -70,6 +78,22 @@ export default function SettingsPage() {
       <BlockTitle>Style Guide</BlockTitle>
       <List strongIos insetIos dividersIos>
         <ListItem link="/settings/style-guide/" title="Cookbook" />
+      </List>
+      <BlockTitle>Font</BlockTitle>
+      <List strongIos insetIos dividersIos className="ck-font-list">
+        {FONTS.map((f) => (
+          <ListItem
+            key={f.id}
+            radio
+            radioIcon="end"
+            name="font"
+            value={f.id}
+            title={f.name}
+            checked={font === f.id}
+            onChange={() => chooseFont(f.id)}
+            style={{ fontFamily: f.family }}
+          />
+        ))}
       </List>
     </Page>
   );

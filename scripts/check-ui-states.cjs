@@ -1593,7 +1593,7 @@ async function swipeLeft(ctx, page, locator) {
   const scrollBy = async (px) => {
     const pc = await page.locator(`${CUR} > .page-content`).boundingBox();
     await page.mouse.move(pc.x + pc.width / 2, pc.y + 400);
-    const step = px > 0 ? 20 : -20;
+    const step = Math.sign(px) * Math.min(20, Math.abs(px));
     for (let d = 0; Math.abs(d) < Math.abs(px); d += step) { await page.mouse.wheel(0, step); await page.waitForTimeout(30); }
     await page.waitForTimeout(600);
   };
@@ -1623,13 +1623,20 @@ async function swipeLeft(ctx, page, locator) {
   });
   // the bar is never empty: the title pops in once 40% of the name is under the bar
   await step('90c-cookbook-header-title', async () => {
-    for (let i = 0; i < 6; i++) {
-      await scrollBy(10);
-      const t = await heroState();
-      if (t.nameUnderBar >= 0.45 && t.title !== '1') throw new Error(`${Math.round(t.nameUnderBar * 100)}% of the name is under the bar and the bar has no title`);
-      if (t.nameUnderBar < 0.35 && t.title !== '0') throw new Error(`the title is in the bar with only ${Math.round(t.nameUnderBar * 100)}% of the name under it`);
+    try {
+      for (let i = 0; i < 6; i++) {
+        await scrollBy(10);
+        const t = await heroState();
+        if (t.hidden) break; // the search has docked and the title row slid away
+        if (t.nameUnderBar >= 0.45 && t.title !== '1') throw new Error(`${Math.round(t.nameUnderBar * 100)}% of the name is under the bar and the bar has no title`);
+        if (t.nameUnderBar < 0.35 && t.title !== '0') throw new Error(`the title is in the bar with only ${Math.round(t.nameUnderBar * 100)}% of the name under it`);
+      }
+    } finally {
+      // back to the top for the steps after, whatever happened
+      await scrollBy(-300);
+      await page.evaluate((cur) => document.querySelector(`${cur} > .page-content`).scrollTo(0, 0), CUR);
+      await page.waitForTimeout(600);
     }
-    await scrollBy(-240);
   });
   // Uncategorized's See all opens its own page, like a section's (no Rename or Delete)
   await step('26b2-uncategorized-page', async () => {

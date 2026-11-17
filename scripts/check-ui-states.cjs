@@ -166,7 +166,45 @@ async function audit(page, name) {
       })
       .map((b) => `"${b.textContent.trim()}"`),
   );
+  // Edge inset (DESIGN.md, issue #55): a popup's or sheet's header content sits as far from the container's top edge as
+  // from its sides (16px). Round buttons are measured by their edges, text by its line box.
+  const edges = await page.evaluate(() => {
+    const textBox = (el) => {
+      let box = null;
+      const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let n = w.nextNode(); n; n = w.nextNode()) {
+        if (!n.textContent.trim()) continue;
+        const r = document.createRange(); r.selectNodeContents(n);
+        for (const x of r.getClientRects()) box = box ? { left: Math.min(box.left, x.left), right: Math.max(box.right, x.right), top: Math.min(box.top, x.top) } : { left: x.left, right: x.right, top: x.top };
+      }
+      return box;
+    };
+    const out = [];
+    // only the container on top: a popup slid up over a sheet pushes the sheet back (scaled), and a dialog covers both
+    if (document.querySelector('.dialog.modal-in')) return out;
+    const pushed = document.querySelector('.popup.popup-push.modal-in');
+    for (const c of pushed ? [pushed] : document.querySelectorAll('.sheet-modal.modal-in')) {
+      const edge = c.getBoundingClientRect();
+      const items = c.classList.contains('popup')
+        ? [...c.querySelectorAll(':scope .page-current > .navbar .left .link, :scope .page-current > .navbar .right .link, :scope > .view > .page > .navbar .left .link, :scope > .view > .page > .navbar .right .link, :scope > .page > .navbar .left .link, :scope > .page > .navbar .right .link')].map((a) => a.getBoundingClientRect())
+        : [...c.querySelectorAll(':scope > .toolbar .left, :scope > .toolbar .right, :scope .sheet-modal-inner > .toolbar .left, :scope .sheet-modal-inner > .toolbar .right')].map(textBox);
+      const shown = items.filter((r) => r && r.right > r.left);
+      if (!shown.length) continue;
+      const first = shown.reduce((a, b) => (b.left < a.left ? b : a));
+      const last = shown.reduce((a, b) => (b.right > a.right ? b : a));
+      const top = Math.round(Math.min(...shown.map((r) => r.top)) - edge.top);
+      const left = Math.round(first.left - edge.left), right = Math.round(edge.right - last.right);
+      // a header scrolled out of its sheet (Chromium scrolls the scale sheet when the What I have dialog's field takes focus)
+      if (top < 0) continue;
+      // a side counts only when something sits at it (a header with only a right-hand button has nothing on the left)
+      const mid = edge.left + edge.width / 2;
+      const sides = [first.left < mid ? left : null, last.right > mid ? right : null].filter((x) => x !== null);
+      if (sides.some((x) => Math.abs(top - x) > 2)) out.push(`${c.classList.contains('popup') ? 'popup' : 'sheet'} header is ${top}px from the top but ${left}px / ${right}px from the sides`);
+    }
+    return out;
+  });
   const issues = [
+    ...edges.map((e) => `edge inset: ${e}`),
     ...contrast.map((c) => `contrast: ${c}`),
     ...cramped.map((c) => `label doesn't fit its button: ${c}`),
     ...overlaps.map((o) => `overlap: ${o}`),
@@ -1448,12 +1486,6 @@ async function swipeLeft(ctx, page, locator) {
     const rows = await page.locator('.popup.modal-in .ck-organize-list li:not(.ck-organize-heading)').count();
     // Uncategorized 2, Meat 4 (Corn pudding is in both), Other 1
     if (rows !== 7) throw new Error(`Organize lists ${rows} recipe rows, expected 7`);
-    // issue #55: Cancel and Done sit clear of the popup's rounded top (they were 4px under it, crowding its corners)
-    const room = await page.evaluate(() => {
-      const pop = document.querySelector('.popup.modal-in').getBoundingClientRect();
-      return [...document.querySelectorAll('.popup.modal-in .navbar .left .link, .popup.modal-in .navbar .right .link')].map((a) => Math.round(a.getBoundingClientRect().top - pop.top));
-    });
-    if (!room.length || room.some((y) => y < 12)) throw new Error(`the header buttons are ${room.join(', ')}px under the popup's top`);
   });
   await step('26g2-organize-removed', async () => {
     // swipe a recipe out of Meat, then Done

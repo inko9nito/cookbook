@@ -1,34 +1,33 @@
 import { useRef, useState } from 'react';
 import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListItem, ListInput, f7 } from 'framework7-react';
-import { ClipboardPaste } from 'lucide-react';
 import { useStore } from '../data/store';
 import { linkIn, sameLink } from '../lib/read-recipe';
-import { inlineIcon } from './ui/icons';
 
 const POPUP = '.ck-from-link-popup';
 
 /**
- * Recipes + → From a link opens this. It has to happen in the tap itself: iOS only raises the keyboard for a field
- * focused during a tap (so the field is ready to paste or type into without tapping it first).
+ * Recipes + → From a link opens this, with its field focused (the keyboard up, one tap from iOS's Paste). Both have to
+ * happen in the tap itself: iOS only raises the keyboard for a field focused during a tap. The popup opens without
+ * sliding: focused while it slid up, the field was low on the screen as the keyboard came up, and iOS shifted the
+ * whole screen up to show it, leaving the header off the top.
  */
 export function openFromLink() {
-  f7.popup.open(POPUP);
-  document.querySelector<HTMLTextAreaElement>(`${POPUP} textarea`)?.focus();
+  f7.popup.open(POPUP, false);
+  document.querySelector<HTMLTextAreaElement>(`${POPUP} textarea`)?.focus({ preventScroll: true });
 }
 
 type Props = { onImport: (url: string) => void; onOpenRecipe: (id: string) => void };
 
 /**
- * From a Link (issue #15), a Framework7 popup: Paste Copied Link reads the clipboard (iOS asks with its own Paste
- * button, right on the row tapped) and puts the link it finds in the field, which shows the whole address; the field
- * also takes a link pasted or typed by hand. Under it, the site the recipe comes from, or, for a page already
- * imported (`sameLink` against the recipes' `sourceUrl`), that recipe to open instead. Import opens the editor, which
- * reads the page.
+ * From a Link (issue #15), a Framework7 popup: one field for the link (pasted with iOS's own Paste, or typed), showing
+ * the whole address. A web app can't read the clipboard by itself: iOS asks with its Paste button every time, so the
+ * field is the one place to paste (a separate Paste Copied Link row was confusing). Under the field, the site the
+ * recipe comes from, or, for a page already imported (`sameLink` against the recipes' `sourceUrl`), that recipe to
+ * open instead. Import opens the editor, which reads the page.
  */
 export default function FromLinkPopup({ onImport, onOpenRecipe }: Props) {
   const { recipes } = useStore();
   const [text, setText] = useState('');
-  const [note, setNote] = useState('');
   const [focused, setFocused] = useState(false);
   // what to do once the popup has slid away
   const then = useRef<(() => void) | null>(null);
@@ -41,29 +40,12 @@ export default function FromLinkPopup({ onImport, onOpenRecipe }: Props) {
   } catch {
     /* not a web address after all */
   }
-  const canPaste = typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
-
-  const pasteCopied = async () => {
-    let copied = '';
-    try {
-      copied = await navigator.clipboard.readText();
-    } catch {
-      /* the Paste button wasn't tapped */
-      return;
-    }
-    const link = linkIn(copied);
-    if (link) {
-      setText(link);
-      setNote('');
-    } else setNote(copied.trim() ? 'What you copied isn’t a link.' : 'Nothing is copied.');
-  };
-
   const finish = (action: () => void) => {
     then.current = action;
     f7.popup.close(POPUP);
   };
 
-  const info = note || (have ? '' : site ? `From ${site}` : '');
+  const info = have ? '' : site ? `From ${site}` : text.trim() ? '' : 'Tap here and choose Paste, or type the link.';
   // not while a link is still being typed ("h", "https:"): only for words, or once the field is left
   const notLink = !!text.trim() && !url && (!focused || /\s/.test(text.trim()));
 
@@ -73,11 +55,12 @@ export default function FromLinkPopup({ onImport, onOpenRecipe }: Props) {
       push
       swipeToClose="to-bottom"
       swipeHandler=".navbar"
+      // in case iOS shifted the screen up for the keyboard anyway
+      onPopupOpened={() => window.scrollY && window.scrollTo(0, 0)}
       onPopupClosed={() => {
         const action = then.current;
         then.current = null;
         setText('');
-        setNote('');
         action?.();
       }}
     >
@@ -93,13 +76,6 @@ export default function FromLinkPopup({ onImport, onOpenRecipe }: Props) {
             </Link>
           </NavRight>
         </Navbar>
-        {canPaste && (
-          <List strongIos insetIos dividersIos className="ck-from-link-paste">
-            <ListItem link="#" noChevron title="Paste Copied Link" onClick={pasteCopied} className="ck-copy-row">
-              <ClipboardPaste slot="media" {...inlineIcon} className="ck-icon ck-copy" aria-hidden="true" />
-            </ListItem>
-          </List>
-        )}
         <List strongIos insetIos dividersIos className="ck-from-link-field">
           <ListInput
             label="Link"
@@ -114,7 +90,6 @@ export default function FromLinkPopup({ onImport, onOpenRecipe }: Props) {
             value={text}
             onInput={(e) => {
               setText(e.target.value.replace(/[\r\n]+/g, ' '));
-              setNote('');
             }}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}

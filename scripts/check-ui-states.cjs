@@ -825,9 +825,9 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator('.view.tab-active .page-current .ck-scan .button', { hasText: 'Try again' }).count())) throw new Error('no Try again');
   });
 
-  // issue #15: a recipe from a link. + → From a link opens its own screen (a popup): Paste Copied Link fills the field
-  // from the clipboard, or a link is typed in; Import opens the editor at once with the site in the banner, then it
-  // fills in (the demo backend's made-up recipe) with the page's photo
+  // issue #15: a recipe from a link. + → From a link opens its own screen (a popup) with one field for the link (iOS's
+  // own Paste, or typed); Import opens the editor at once with the site in the banner, then it fills in (the demo
+  // backend's made-up recipe) with the page's photo
   const POP = '.popup.ck-from-link-popup.modal-in';
   const askLink = async (link) => {
     await page.locator('.navbar a[aria-label="New recipe"]').first().tap(); await page.waitForTimeout(600);
@@ -850,28 +850,21 @@ async function swipeLeft(ctx, page, locator) {
     const title = await page.locator(`${POP} .navbar .title`).textContent();
     if (title.trim() !== 'From a Link') throw new Error(`the screen is titled "${title}"`);
     if (!(await page.locator(`${POP} .navbar a.disabled`, { hasText: 'Import' }).count())) throw new Error('Import works with no link');
-    if (!(await page.locator(`${POP} .item-title`, { hasText: 'Paste Copied Link' }).count())) throw new Error('no Paste Copied Link');
+    // one place to paste: the field (a separate Paste row only brought up iOS's Paste button, which looked like a bug)
+    if ((await page.locator(`${POP} .list`).count()) !== 1) throw new Error('more than the link field on the screen');
+    const info = await page.locator(`${POP} .item-input-info`).textContent();
+    if (!/choose Paste/.test(info)) throw new Error(`under the empty field: "${info}"`);
   });
-  // a link just copied (in other words) comes in on Paste Copied Link (iOS asks with its own Paste button; Chromium is
-  // given the permission), with its site under it
-  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
-  const copy = (text) => page.evaluate((t) => navigator.clipboard.writeText(t), text);
-  await step('12l0-link-from-clipboard', async () => {
-    await copy(`Saw this on Instagram ${LINK}`);
-    await page.locator(`${POP} .item-title`, { hasText: 'Paste Copied Link' }).tap(); await page.waitForTimeout(400);
-    const value = await page.locator(`${POP} textarea`).inputValue();
-    if (value !== LINK) throw new Error(`with a link copied, the field holds "${value}"`);
+  // a link pasted in a message: the field keeps all of it, the site shows under it, and the long address wraps clear
+  // of the clear button (✕), which used to sit over its text
+  await step('12l0-link-pasted', async () => {
+    await page.locator(`${POP} textarea`).fill(`Saw this on Instagram https://www.example.com/2026/09/simple-weeknight-chickpea-curry-with-spinach/`);
     const info = await page.locator(`${POP} .item-input-info`).textContent();
     if (info !== 'From example.com') throw new Error(`under the link: "${info}"`);
     if (await page.locator(`${POP} .navbar a.disabled`, { hasText: 'Import' }).count()) throw new Error('Import is still off');
-  });
-  await step('12l1-copied-not-a-link', async () => {
-    await page.locator(`${POP} textarea`).fill('');
-    await copy('chicken curry');
-    await page.locator(`${POP} .item-title`, { hasText: 'Paste Copied Link' }).tap(); await page.waitForTimeout(400);
-    const info = await page.locator(`${POP} .item-input-info`).textContent();
-    if (!/isn’t a link/.test(info)) throw new Error(`with words copied, it says "${info}"`);
-    if (await page.locator(`${POP} textarea`).inputValue()) throw new Error('the words went into the field');
+    const clear = await page.locator(`${POP} .input-clear-button`).boundingBox();
+    const [pad, right] = await page.locator(`${POP} textarea`).evaluate((el) => [parseFloat(getComputedStyle(el).paddingRight), el.getBoundingClientRect().right]);
+    if (!clear || right - pad > clear.x) throw new Error('the link runs under the clear button');
   });
   await step('12l2-not-a-link', async () => {
     await page.locator(`${POP} textarea`).fill('chicken curry');

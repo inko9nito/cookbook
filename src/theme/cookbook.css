@@ -1281,3 +1281,8 @@ html.ios .navbar .right .link.ck-plan-today { font-weight: 500; }
 html.ios .calendar.ck-calendar .toolbar .calendar-month-selector { width: auto; max-width: none; gap: 12px; }
 html.ios .calendar.ck-calendar .toolbar .calendar-month-selector .current-month-value { overflow: visible; text-overflow: clip; min-width: 7.5em; text-align: center; }
 .calendar.ck-calendar .calendar-header { font-family: var(--ck-font-display); font-weight: 600; color: var(--ck-fg); }
+
+/* issue #15: Framework7 puts a field's clear button (✕) over its right edge without moving the text, so a long link in a
+   field that wraps (Source link, From a Link) ran under it. Text in a field with a clear button stops short of it. */
+.item-input-wrap:has(> .input-clear-button) > textarea,
+.item-input-wrap:has(> .input-clear-button) > input { padding-right: calc(var(--f7-input-clear-button-size) + 8px); }

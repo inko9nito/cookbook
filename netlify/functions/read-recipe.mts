@@ -3,11 +3,14 @@
 // background function that reads them (read-recipe-background.mts: reading can take longer than the 30 seconds this
 // function gets) → 202 { id }. GET /api/read-recipe/:id → { status: 'reading' | 'done' (with the recipe) | 'failed' }.
 // The photos are deleted once read, the result once the phone has it. Admin only: every read is billed to Netlify.
+// Issue #15: POST { url } opens that page. A page with the recipe in it for search engines (most recipe sites) is read
+// at once → 200 { status: 'done', url, recipe, photo? }; any other page's text is read by Claude as a job like the
+// photos → 202 { id }.
 
 import type { Config, Context } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
-import { ReadRequest } from '../../src/lib/read-recipe';
-import { ReadError, jobStatus, startJob } from '../lib/read-recipe';
+import { LinkRequest, ReadRequest, type JobRequest } from '../../src/lib/read-recipe';
+import { ReadError, jobStatus, readLink, startJob } from '../lib/read-recipe';
 import { error, json, refuseUnlessAdmin } from '../lib/http';
 
 export default async (req: Request, context: Context) => {
@@ -23,11 +26,22 @@ export default async (req: Request, context: Context) => {
   }
 
   if (req.method === 'POST' && !id) {
-    let body: ReadRequest;
-    try {
-      body = ReadRequest.parse(await req.json());
-    } catch {
-      return error(400, 'Send one to four photos to read.');
+    const sent: unknown = await req.json().catch(() => null);
+    let body: JobRequest;
+    const link = LinkRequest.safeParse(sent);
+    if (link.success) {
+      try {
+        const read = await readLink(link.data.url.trim());
+        if ('done' in read) return json({ status: 'done', ...read.done });
+        body = read.page;
+      } catch (e) {
+        if (e instanceof ReadError) return error(e.status, e.message);
+        throw e;
+      }
+    } else {
+      const photos = ReadRequest.safeParse(sent);
+      if (!photos.success) return error(400, 'Send one to four photos to read.');
+      body = photos.data;
     }
     let jobId: string;
     try {
@@ -45,7 +59,7 @@ export default async (req: Request, context: Context) => {
     if (!started || started.status !== 202) {
       await jobs.delete(`${jobId}/request`);
       await jobs.delete(`${jobId}/status`);
-      return error(502, 'Reading the photo couldn’t be started. Try again.');
+      return error(502, `Reading the ${'page' in body ? 'page' : 'photo'} couldn’t be started. Try again.`);
     }
     return json({ id: jobId }, 202);
   }

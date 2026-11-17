@@ -1209,6 +1209,9 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-scan-title { font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; color: var(--ck-fg); }
 .ck-scan-title.ck-scan-failed { color: var(--ck-error); }
 .ck-scan-detail { font-size: 14px; color: var(--ck-fg2); }
+/* issue #15: reading a link shows a soft tile with a globe where the photos would be, and the site under the text */
+.ck-scan-site { display: flex; align-items: center; justify-content: center; color: var(--ck-fg2); }
+.ck-scan-text .ck-scan-link { justify-self: start; margin-top: 4px; font-size: 14px; font-weight: 600; color: var(--ck-accent-ink); }
 
 /* ── Planner (issue #62): a week's calendar strip under the title (Framework7's subnavbar, so it stays while the agenda
    scrolls), then the week as an agenda, day by day. Like iOS's own Calendar: today's date in Tomato, the picked day
@@ -1318,3 +1321,8 @@ html.ios .calendar.ck-calendar .toolbar .calendar-month-selector .current-month-
 /* (each month is padded, not the strip they slide in: Framework7 moves the months by the strip's full width) */
 .calendar.ck-calendar .calendar-week-header,
 .calendar.ck-calendar .calendar-month { box-sizing: border-box; padding-left: 18px; padding-right: 18px; }
+
+/* issue #15: Framework7 puts a field's clear button (✕) over its right edge without moving the text, so a long link in a
+   field that wraps (Source link, From a Link) ran under it. Text in a field with a clear button stops short of it. */
+.item-input-wrap:has(> .input-clear-button) > textarea,
+.item-input-wrap:has(> .input-clear-button) > input { padding-right: calc(var(--f7-input-clear-button-size) + 8px); }

@@ -3,7 +3,7 @@ import {
   Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListInput, ListItem, BlockTitle, Block, Button, Chip, Stepper,
   SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton, PhotoBrowser, Progressbar, f7,
 } from 'framework7-react';
-import { Camera, ImagePlus, Trash2, Plus, ArrowUp, ArrowDown, Crop, Star } from 'lucide-react';
+import { Camera, ImagePlus, Trash2, Plus, ArrowUp, ArrowDown, Crop, Star, Globe } from 'lucide-react';
 import { useStore } from '../data/store';
 import { COURSES, emptyRecipe, newId, titleCase, withRaw, linkedRecipe, recipeNamed, type Ingredient, type Photo, type Recipe, type Step } from '../lib/recipe';
 import { parseLine, isHeaderLine, headerText, pastedLines, isStepLabel, stepText } from '../lib/ingredients';
@@ -22,9 +22,20 @@ type Props = {
   f7router?: { back: () => void };
   /** issue #17: photos or screenshots picked with + → From photos or screenshots, to read the new recipe from */
   scanFiles?: File[];
+  /** issue #15: a link given with + → From a link, to read the new recipe from */
+  scanUrl?: string;
 };
 
-/** Reading a new recipe from photos (issue #17): under way, done, nothing found, or failed (with why). */
+/** "https://www.example.com/…" → "example.com" */
+const siteOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+};
+
+/** Reading a new recipe from photos (issue #17) or a link (#15): under way, done, nothing found, or failed (with why). */
 type Scan = { status: 'reading' | 'read' | 'empty' } | { status: 'failed'; message: string };
 
 const move = <T,>(list: T[], from: number, to: number) => {
@@ -108,7 +119,7 @@ function StepField({ step, no, onType, onKeyDown }: StepFieldProps & { slot: 'ti
  * photo, name, grouped ingredients and directions with paste boxes, notes, tags (courses included),
  * servings, serving size, prep and cook time, source. Style: Headspace edit screen, compact 14px text.
  */
-export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) {
+export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }: Props) {
   const { recipes, saveRecipe } = useStore();
   const id = f7route?.params.id;
   const original = useMemo<Recipe>(() => recipes.find((r) => r.id === id) ?? emptyRecipe(), []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -296,12 +307,42 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) 
 
   // ── issue #17: a new recipe read from photos or screenshots. The editor opens at once and fills in when Claude has
   // read them; the photos stay at the top to check the recipe against (tap one to see it full screen). ──
-  const [scan, setScan] = useState<Scan | null>(scanFiles?.length ? { status: 'reading' } : null);
+  const [scan, setScan] = useState<Scan | null>(scanFiles?.length || scanUrl ? { status: 'reading' } : null);
   const [sources] = useState(() => (scanFiles ?? []).map((f) => URL.createObjectURL(f)));
   const several = sources.length > 1;
   useEffect(() => () => sources.forEach((u) => URL.revokeObjectURL(u)), [sources]);
   const sourceBrowser = useRef<{ f7PhotoBrowser: () => { open: (index?: number) => void } } | null>(null);
+  // the server's and the app's own messages are written for the person; anything else (a bug) isn't shown raw
+  const failed = (e: unknown) => {
+    console.error(e);
+    const message =
+      e instanceof ApiError
+        ? e.message
+        : e instanceof TypeError // fetch couldn't reach the server ("Load failed" on the iPhone)
+          ? 'Couldn’t reach the server. Check the connection and try again.'
+          : 'Something went wrong. Try again, or update the app in Settings → Version.';
+    setScan({ status: 'failed', message });
+  };
+  // issue #15: the page's recipe, its link kept as the source, its photo added (cropped to 4:3, to recrop if needed)
+  const readLink = async (link: string) => {
+    setScan({ status: 'reading' });
+    try {
+      const { url, recipe, photo } = await backend.readLink(link);
+      if (!recipe.found) return setScan({ status: 'empty' });
+      const picture = photo
+        ? await fetch(photo)
+            .then((r) => r.blob())
+            .then((b) => photoFromFile(new File([b], 'photo', { type: b.type }), newId()))
+            .catch(() => null)
+        : null;
+      setDraft((d) => ({ ...withReading(d, recipe, others), sourceUrl: d.sourceUrl || url, photos: picture ? [...d.photos, picture] : d.photos }));
+      setScan({ status: 'read' });
+    } catch (e) {
+      failed(e);
+    }
+  };
   const readScan = async () => {
+    if (scanUrl) return readLink(scanUrl);
     const files = scanFiles ?? [];
     setScan({ status: 'reading' });
     let images: Awaited<ReturnType<typeof imageForReading>>[];
@@ -320,19 +361,11 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) 
       setDraft((d) => ({ ...withReading(d, reading, others), photos: photo ? [...d.photos, photo] : d.photos }));
       setScan({ status: 'read' });
     } catch (e) {
-      // the server's and the app's own messages are written for the person; anything else (a bug) isn't shown raw
-      console.error(e);
-      const message =
-        e instanceof ApiError
-          ? e.message
-          : e instanceof TypeError // fetch couldn't reach the server ("Load failed" on the iPhone)
-            ? 'Couldn’t reach the server. Check the connection and try again.'
-            : 'Something went wrong. Try again, or update the app in Settings → Version.';
-      setScan({ status: 'failed', message });
+      failed(e);
     }
   };
   useEffect(() => {
-    if (scanFiles?.length) void readScan();
+    if (scanFiles?.length || scanUrl) void readScan();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const reading = scan?.status === 'reading';
   const scanTitle: Record<Scan['status'], string> = {
@@ -343,8 +376,11 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) 
   };
 
   const save = () => {
+    const { sourceUrl, ...rest } = draft;
+    const link = sourceUrl?.trim().slice(0, 2000);
     saveRecipe({
-      ...draft,
+      ...rest,
+      ...(link ? { sourceUrl: link } : {}),
       title: draft.title.trim() || 'Untitled recipe',
       minutes: draft.prepMinutes + draft.cookMinutes,
       // a step left empty (Return pressed at the end of the last one) isn't kept
@@ -376,6 +412,11 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) 
         <Block strong inset className="ck-scan" aria-live="polite">
           <div className="ck-scan-row">
             <div className="ck-scan-sources">
+              {scanUrl && (
+                <span className="ck-scan-source ck-scan-site" aria-hidden="true">
+                  <Globe {...inlineIcon} />
+                </span>
+              )}
               {sources.map((u, i) => (
                 <Link
                   key={u}
@@ -389,12 +430,26 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) 
             </div>
             <div className="ck-scan-text">
               <p className={`ck-scan-title ${scan.status === 'failed' ? 'ck-scan-failed' : ''}`}>{scanTitle[scan.status]}</p>
-              <p className="ck-scan-detail">
-                {scan.status === 'reading' && 'This takes about half a minute. You can type while you wait.'}
-                {scan.status === 'read' && `Check it against your ${several ? 'photos' : 'photo'} before saving.`}
-                {scan.status === 'empty' && `Type it in below, or try ${several ? 'other photos' : 'another photo'}.`}
-                {scan.status === 'failed' && scan.message}
-              </p>
+              {scanUrl ? (
+                <p className="ck-scan-detail">
+                  {scan.status === 'reading' && 'This takes a few seconds, sometimes half a minute. You can type while you wait.'}
+                  {scan.status === 'read' && 'Check it against the page before saving.'}
+                  {scan.status === 'empty' && 'Type it in below, or take screenshots of the recipe and use From photos or screenshots.'}
+                  {scan.status === 'failed' && scan.message}
+                </p>
+              ) : (
+                <p className="ck-scan-detail">
+                  {scan.status === 'reading' && 'This takes about half a minute. You can type while you wait.'}
+                  {scan.status === 'read' && `Check it against your ${several ? 'photos' : 'photo'} before saving.`}
+                  {scan.status === 'empty' && `Type it in below, or try ${several ? 'other photos' : 'another photo'}.`}
+                  {scan.status === 'failed' && scan.message}
+                </p>
+              )}
+              {scanUrl && (
+                <Link external href={scanUrl} target="_blank" className="ck-scan-link">
+                  {siteOf(scanUrl)}
+                </Link>
+              )}
             </div>
           </div>
           {scan.status === 'reading' && <Progressbar infinite />}
@@ -694,6 +749,21 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) 
       </div>
       <List className="ck-fields">
         <ListInput label="Source" type="text" placeholder="Website or person" value={draft.source} onInput={(e) => set({ source: e.target.value })} clearButton />
+        {/* issue #15: the full address of the recipe's page (the recipe page shows only the site, linked to it), wrapped
+            onto as many lines as it takes so all of it shows; a line break can't get into it */}
+        <ListInput
+          label="Source link"
+          type="textarea"
+          resizable
+          inputmode="url"
+          placeholder="https://"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          value={draft.sourceUrl ?? ''}
+          onInput={(e) => set({ sourceUrl: e.target.value.replace(/[\r\n]+/g, '') })}
+          clearButton
+        />
       </List>
 
       <PhotoCropper photo={cropping} onDone={(box) => void applyCrop(box)} onClose={() => setCropping(null)} />

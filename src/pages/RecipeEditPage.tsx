@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListInput, ListItem, BlockTitle, Block, Button, Chip, Stepper,
-  SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton, PhotoBrowser, Progressbar,
+  SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton, PhotoBrowser, Progressbar, f7,
 } from 'framework7-react';
 import { Camera, ImagePlus, Trash2, Plus, ArrowUp, ArrowDown, Crop, Star, Globe } from 'lucide-react';
 import { useStore } from '../data/store';
@@ -9,7 +9,6 @@ import { COURSES, emptyRecipe, newId, titleCase, withRaw, linkedRecipe, recipeNa
 import { parseLine, isHeaderLine, headerText, pastedLines, isStepLabel, stepText } from '../lib/ingredients';
 import IngredientSheet from '../components/IngredientSheet';
 import RecipeLinkPopup from '../components/RecipeLinkPopup';
-import StepSheet from '../components/StepSheet';
 import { inlineIcon } from '../components/ui/icons';
 import { photoStyle, photoFromFile, recrop, imageForReading, photoCroppedTo } from '../components/ui/photo';
 import { READ_IMAGE_EDGE, dishCrop, withReading } from '../lib/read-recipe';
@@ -76,6 +75,45 @@ function GroupMove({ name, isFirst, isLast, onMove }: { slot: 'after'; name: str
   );
 }
 
+/** Turns pasted direction lines into rows (R6): blank lines and "Step 1" labels skipped, headings become groups. */
+const stepRows = (lines: string[]): Step[] =>
+  lines.filter((line) => !isStepLabel(line)).map((line) => (isHeaderLine(line) ? { id: newId(), kind: 'header', text: headerText(line) } : { id: newId(), text: stepText(line) }));
+
+type StepFieldProps = {
+  step: Step;
+  no: number;
+  onType: (value: string) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+};
+
+/**
+ * Issue #71: a step is typed right in its row, no sheet. Framework7 grows a `textarea.resizable` as you type; it's
+ * also asked to after the text changes some other way (a step split with Return, or joined with Backspace).
+ */
+// `slot` is read by Framework7's ListItem from this element's props (it places it in the row's title)
+function StepField({ step, no, onType, onKeyDown }: StepFieldProps & { slot: 'title' }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    if (ref.current) f7?.input?.resizeTextarea(ref.current);
+  }, [step.text]);
+  return (
+    <label className="ck-step">
+      <span className="ck-step-no">{no}</span>
+      <textarea
+        ref={ref}
+        className="ck-step-input resizable"
+        data-step-id={step.id}
+        rows={1}
+        value={step.text}
+        placeholder="Describe this step"
+        aria-label={`Step ${no}`}
+        onChange={(e) => onType(e.target.value)}
+        onKeyDown={onKeyDown}
+      />
+    </label>
+  );
+}
+
 /**
  * Edit Recipe: a stacked page (pushed, with swipe-back) with Prepear's editing features:
  * photo, name, grouped ingredients and directions with paste boxes, notes, tags (courses included),
@@ -89,7 +127,6 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
   const set = (patch: Partial<Recipe>) => setDraft((d) => ({ ...d, ...patch }));
 
   const [editingIngredientId, setEditingIngredientId] = useState<string | null>(null);
-  const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [ingredientPaste, setIngredientPaste] = useState('');
   const [stepPaste, setStepPaste] = useState('');
   const [discardOpen, setDiscardOpen] = useState(false);
@@ -100,6 +137,21 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
     document.querySelector<HTMLInputElement>(`.page-current input[data-group-id="${focusGroupId}"]`)?.focus();
     setFocusGroupId(null);
   }, [focusGroupId]);
+  // a step just split, joined or pasted into: put the cursor there (at a character, or in a group's name field).
+  // A layout effect, so it runs inside the key press that asked for it and iOS keeps the keyboard up.
+  const [focusStep, setFocusStep] = useState<{ id: string; at: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!focusStep) return;
+    const el = document.querySelector<HTMLTextAreaElement | HTMLInputElement>(
+      `.page-current textarea[data-step-id="${focusStep.id}"], .page-current input[data-group-id="${focusStep.id}"]`,
+    );
+    if (el) {
+      el.focus();
+      const at = Math.min(focusStep.at, el.value.length);
+      el.setSelectionRange(at, at);
+    }
+    setFocusStep(null);
+  }, [focusStep]);
   const fileRef = useRef<HTMLInputElement>(null);
   // after ↑/↓ moves a group, scroll so that group stays under the finger
   const keepInView = useRef<{ id: string; dir: -1 | 1; top: number } | null>(null);
@@ -156,13 +208,53 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
   };
 
   // ── directions ──
-  const editingStep = draft.steps.find((s) => s.id === editingStepId) ?? null;
-  const updateStep = (text: string) => set({ steps: draft.steps.map((s) => (s.id === editingStepId ? { ...s, text } : s)) });
   const removeStep = (sid: string) => setDraft((d) => ({ ...d, steps: d.steps.filter((s) => s.id !== sid) }));
+  /** Typing in a step. Several lines at once (pasted) become several steps, like the paste box below the list. */
+  const typeStep = (s: Step, value: string) => {
+    // only a line break that wasn't there before splits (a step read from photos may already have one)
+    const breaks = (t: string) => t.split('\n').length;
+    if (breaks(value) <= breaks(s.text)) return set({ steps: draft.steps.map((x) => (x.id === s.id ? { ...x, text: value } : x)) });
+    const lines = pastedLines(value);
+    // what was already in the step stays as typed; into an empty step, the first line is read like the others
+    const [first, ...rest] = s.text.trim() ? lines : [];
+    const rows = [...(first !== undefined ? [{ ...s, text: first }] : []), ...stepRows(s.text.trim() ? rest : lines)];
+    if (!rows.length) rows.push({ ...s, text: '' });
+    rows[0] = { ...rows[0], id: s.id };
+    const at = draft.steps.findIndex((x) => x.id === s.id);
+    set({ steps: [...draft.steps.slice(0, at), ...rows, ...draft.steps.slice(at + 1)] });
+    const last = rows[rows.length - 1];
+    setFocusStep({ id: last.id, at: last.text.length });
+  };
+  /** Return starts a new step after this one (with the text after the cursor); Backspace at the start joins it to the step above. */
+  const stepKeyDown = (s: Step) => (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const el = e.currentTarget;
+    const start = el.selectionStart, end = el.selectionEnd;
+    const at = draft.steps.findIndex((x) => x.id === s.id);
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      const next: Step = { id: newId(), text: el.value.slice(end).trimStart() };
+      const steps = [...draft.steps];
+      steps.splice(at, 1, { ...s, text: el.value.slice(0, start).trimEnd() }, next);
+      set({ steps });
+      setFocusStep({ id: next.id, at: 0 });
+    } else if (e.key === 'Backspace' && start === 0 && end === 0 && at > 0) {
+      const prev = draft.steps[at - 1];
+      if (prev.kind === 'header') {
+        // an empty step under a group name: remove it and go back to the name
+        if (s.text) return;
+        e.preventDefault();
+        removeStep(s.id);
+        return setFocusStep({ id: prev.id, at: prev.text.length });
+      }
+      e.preventDefault();
+      const join = prev.text && s.text ? ' ' : '';
+      set({ steps: draft.steps.flatMap((x) => (x.id === s.id ? [] : x.id === prev.id ? [{ ...x, text: x.text + join + s.text }] : [x])) });
+      setFocusStep({ id: prev.id, at: prev.text.length + join.length });
+    }
+  };
   const pastedSteps = pastedLines(stepPaste).filter((line) => !isStepLabel(line));
   const addPastedSteps = () => {
-    const rows: Step[] = pastedSteps.map((line) => (isHeaderLine(line) ? { id: newId(), kind: 'header', text: headerText(line) } : { id: newId(), text: stepText(line) }));
-    set({ steps: [...draft.steps, ...rows] });
+    set({ steps: [...draft.steps, ...stepRows(pastedLines(stepPaste))] });
     setStepPaste('');
   };
   const addStepGroup = () => {
@@ -286,7 +378,14 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
   const save = () => {
     const { sourceUrl, ...rest } = draft;
     const link = sourceUrl?.trim().slice(0, 2000);
-    saveRecipe({ ...rest, ...(link ? { sourceUrl: link } : {}), title: draft.title.trim() || 'Untitled recipe', minutes: draft.prepMinutes + draft.cookMinutes });
+    saveRecipe({
+      ...rest,
+      ...(link ? { sourceUrl: link } : {}),
+      title: draft.title.trim() || 'Untitled recipe',
+      minutes: draft.prepMinutes + draft.cookMinutes,
+      // a step left empty (Return pressed at the end of the last one) isn't kept
+      steps: draft.steps.filter((s) => s.kind === 'header' || s.text.trim()),
+    });
     f7router?.back();
   };
   const cancel = () => (dirty ? setDiscardOpen(true) : f7router?.back());
@@ -554,11 +653,8 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
                 </SwipeoutActions>
               </ListItem>
             ) : (
-              <ListItem key={s.id} swipeout link="#" noChevron onClick={() => setEditingStepId(s.id)} onSwipeoutDeleted={() => removeStep(s.id)}>
-                <span slot="title" className="ck-step">
-                  <span className="ck-step-no">{stepNo}</span>
-                  <span className="ck-step-text">{s.text}</span>
-                </span>
+              <ListItem key={s.id} swipeout className="ck-step-row" onSwipeoutDeleted={() => removeStep(s.id)}>
+                <StepField slot="title" step={s} no={stepNo} onType={(value) => typeStep(s, value)} onKeyDown={stepKeyDown(s)} />
                 <SwipeoutActions right>
                   <SwipeoutButton delete>Delete</SwipeoutButton>
                 </SwipeoutActions>
@@ -684,16 +780,6 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
         onClose={() => setEditingIngredientId(null)}
       />
       <RecipeLinkPopup opened={linkOpen} recipes={others} current={editingIngredient?.recipeId} onPick={linkRecipe} onClosed={() => setLinkOpen(false)} />
-      <StepSheet
-        noun="Step"
-        value={editingStep && editingStep.kind !== 'header' ? editingStep : null}
-        onChange={updateStep}
-        onDelete={(sid) => {
-          setEditingStepId(null);
-          removeStep(sid);
-        }}
-        onClose={() => setEditingStepId(null)}
-      />
 
       <Actions opened={discardOpen} onActionsClosed={() => setDiscardOpen(false)}>
         <ActionsGroup>

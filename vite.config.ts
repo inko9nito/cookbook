@@ -13,9 +13,9 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    // /version.json: which build is live. Settings → Version's refresh icon compares it with the build it's running
-    // (src/lib/appUpdate.ts). It's never kept offline (not in the service worker's list below), so it's always the
-    // deploy's own.
+    // /version.json: which build is live. Builds before issue #91 compare it with the build they run to see whether
+    // they're behind (the refresh icon now always reloads, src/lib/appUpdate.ts), so it stays for phones still on one.
+    // It's never kept offline (not in the service worker's list below), so it's always the deploy's own.
     {
       name: 'cookbook-version-file',
       apply: 'build',

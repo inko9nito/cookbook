@@ -2,7 +2,8 @@
   Checks Settings → Version's refresh icon against what happens on the phone (issue: the home-screen app kept an old
   version after a deploy). Builds the app twice (versions aaaaaaa and bbbbbbb), serves the first, opens it, then
   publishes the second and lets the service worker take it in the background, as the home-screen app does when it
-  comes to the front. Tapping the icon must then load the new version, not say there's nothing newer.
+  comes to the front. Tapping the icon must then load the new version, not say there's nothing newer. Tapping it again,
+  with nothing newer, must still reload the app (issue #91).
 
   Usage: npm run check:update   (builds into a temporary folder and serves it itself)
 */
@@ -75,6 +76,16 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     if (onTab !== 'view-settings') problems.push(`after the update the app opened on ${onTab}, not Settings`);
     const after = await running();
     if (!after.startsWith('bbbbbbb')) problems.push(`after tapping refresh it still runs "${after}", not the new version bbbbbbb`);
+
+    // issue #91: with nothing newer, the icon still reloads the app (the home-screen app's only way to reload), and
+    // comes back on Settings, still on the new version
+    await page.evaluate(() => { window.__ckNotReloaded = true; });
+    await page.locator('#view-settings .page-current .ck-version-row .ck-refresh-link').click();
+    await page.waitForTimeout(4000);
+    if (await page.evaluate(() => window.__ckNotReloaded)) problems.push('with nothing newer, tapping refresh didn’t reload the app');
+    const again = await page.evaluate(() => document.querySelector('.view.tab-active')?.id);
+    if (again !== 'view-settings') problems.push(`after a refresh with nothing newer the app opened on ${again}, not Settings`);
+    if (!(await running()).startsWith('bbbbbbb')) problems.push(`after a refresh with nothing newer it runs "${await running()}"`);
   } finally {
     await browser.close();
     server.close();
@@ -84,5 +95,5 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     console.error(problems.map((p) => `✗ ${p}`).join('\n'));
     process.exit(1);
   }
-  console.log('✓ the refresh icon loads a version the service worker already took in the background');
+  console.log('✓ the refresh icon loads a version the service worker already took in the background, and reloads with nothing newer');
 })();

@@ -1007,23 +1007,29 @@ async function swipeLeft(ctx, page, locator) {
     if (title.trim() !== 'Settings') throw new Error(`the Settings tab is titled "${title}"`);
   });
   // the Version group: which version is running. Tapping it copies it, with a toast (issue #48); its refresh icon
-  // checks for updates, spinning meanwhile, with no dialog or toast (the service worker finds no newer version here,
-  // so the icon just stops)
-  await step('13b-settings-check-updates', async () => {
+  // spins with no dialog or toast, then reloads the app back on Settings, even with nothing newer to get (issue #91:
+  // the home-screen app has no other way to reload). A mark left on the page shows it really reloaded.
+  await step('13b-settings-refresh-reloads', async () => {
     const row = page.locator('.view.tab-active .page-current li.ck-version-row');
     const version = await row.locator('.item-title').textContent();
     if (!/^\w{5,7} · /.test(version.trim())) throw new Error(`the version reads "${version}"`);
     await row.scrollIntoViewIfNeeded();
+    const target = await row.locator('.ck-refresh-link').evaluate((e) => { const r = e.getBoundingClientRect(); return [r.width, r.height]; });
+    if (Math.min(...target) < 44) throw new Error(`the refresh icon's tap target is ${target.join('×')}px`);
+    await page.evaluate(() => { window.__ckNotReloaded = true; });
+    const loaded = page.waitForEvent('load', { timeout: 15000 });
     await row.locator('.ck-refresh-link').tap(); await page.waitForTimeout(200);
     const spinning = await row.locator('.ck-refresh.ck-spinning').count();
     const popups = await page.locator('.dialog.modal-in, .toast.modal-in').count();
-    if (!spinning) throw new Error('the refresh icon does not spin while checking');
-    if (popups) throw new Error('checking for updates still shows a dialog or toast');
-    await page.waitForTimeout(2000);
-    if (await row.locator('.ck-refresh.ck-spinning').count()) throw new Error('the refresh icon kept spinning after the check');
-    if (await page.locator('.dialog.modal-in, .toast.modal-in').count()) throw new Error('the check ended in a dialog or toast');
-    const target = await row.locator('.ck-refresh-link').evaluate((e) => { const r = e.getBoundingClientRect(); return [r.width, r.height]; });
-    if (Math.min(...target) < 44) throw new Error(`the refresh icon's tap target is ${target.join('×')}px`);
+    if (!spinning) throw new Error('the refresh icon does not spin while refreshing');
+    if (popups) throw new Error('refreshing still shows a dialog or toast');
+    await loaded.catch(() => { throw new Error('the refresh icon did not reload the app when there was nothing newer'); });
+    await page.waitForTimeout(1200);
+    if (await page.evaluate(() => window.__ckNotReloaded)) throw new Error('the app was not reloaded');
+    const active = await page.evaluate(() => [document.querySelector('.view.tab-active')?.id, document.querySelector('.tabbar .tab-link-active')?.getAttribute('aria-label')]);
+    if (active.join() !== 'view-settings,Settings') throw new Error(`after the refresh the app opened on ${active.join(' / ')}`);
+    if (await page.locator('.dialog.modal-in, .toast.modal-in').count()) throw new Error('the refresh ended in a dialog or toast');
+    if (await page.locator('#view-settings .page-current .ck-refresh.ck-spinning').count()) throw new Error('the refresh icon still spins after the reload');
   });
   await step('13b2-settings-copy-version', async () => {
     await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(BASE).origin });
@@ -1053,6 +1059,26 @@ async function swipeLeft(ctx, page, locator) {
     if (later !== 'view-recipes') throw new Error(`opening the app again started on ${later}, not Recipes`);
     await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
   });
+  // issue #91: on the iPhone the icon spun forever and nothing happened, as if the service worker never answered.
+  // Its calls are made to hang (looking for a new version, then asking for the registration at all): the app must
+  // still reload, back on Settings, within the time limits in src/lib/appUpdate.ts.
+  for (const [name, hang] of [
+    ['13b4-settings-refresh-update-hangs', () => { ServiceWorkerRegistration.prototype.update = () => new Promise(() => {}); }],
+    ['13b5-settings-refresh-registration-hangs', () => { navigator.serviceWorker.getRegistration = () => new Promise(() => {}); }],
+  ]) {
+    await step(name, async () => {
+      const row = page.locator('.view.tab-active .page-current li.ck-version-row');
+      await page.evaluate(hang);
+      await page.evaluate(() => { window.__ckNotReloaded = true; });
+      const loaded = page.waitForEvent('load', { timeout: 12000 });
+      await row.locator('.ck-refresh-link').tap();
+      await loaded.catch(() => { throw new Error('with the service worker not answering, the refresh icon never reloaded the app'); });
+      await page.waitForTimeout(1200);
+      if (await page.evaluate(() => window.__ckNotReloaded)) throw new Error('the app was not reloaded');
+      const active = await page.evaluate(() => document.querySelector('.view.tab-active')?.id);
+      if (active !== 'view-settings') throw new Error(`after the refresh the app opened on ${active}`);
+    });
+  }
   // every Settings group is a white card under its own title (rows outside the card once sat on the grey page)
   await step('13c-settings-groups', async () => {
     const t = await page.evaluate(() => {

@@ -238,7 +238,7 @@ Bottom tab bar (Framework7 tabbar, with a `View` per tab so each tab keeps its o
    - **Organize** means drag-to-reorder and moving recipes between sections.
    - The **⋯** menus are `Actions` sheets.
 3. **Plan**
-   - **Planner** *(built in issue #62)*: the dated calendar. A week's strip under the title (today picked, swipe for other weeks), then the week as an agenda of days with their recipes. + adds recipes to a day; swipe a row to Move or Remove it. The recipe page's ⋯ → Add to Planner picks a day, and its Planned section lists the days it's planned for.
+   - **Planner** *(built in issues #62, #67)*: the dated calendar. A week's strip under the title (today picked, swipe for other weeks, follows the agenda's scroll), then the week as an agenda of days. A day holds recipes and notes, for the whole day or in a Breakfast / Lunch / Dinner slot. + adds recipes (in a slot) or a note; swipe a row to change its Meal, Move or Remove it. The recipe page's ⋯ → Add to Planner picks a day and a meal and keeps the servings shown; its Planned section lists the days it's planned for.
    - **Meal Plans** *(later, #26)*: templates. They may join the Planner under a `Segmented` control (Planner | Meal Plans).
    - A template page shows the guide, then days grouped by week with prep tips.
    - **Add to Calendar** asks for a start date (`Calendar` picker) and places the template's recipes onto real days.

@@ -75,7 +75,7 @@ export default function WeekStrip({ now, selected, busy, countOf, onSelect }: Pr
                   noLinkClass
                   className={cls.filter(Boolean).join(' ')}
                   aria-current={day === selected ? 'date' : undefined}
-                  aria-label={`${day === now ? 'Today, ' : ''}${mediumDate(day)}${n ? `, ${n} ${n === 1 ? 'recipe' : 'recipes'}` : ''}`}
+                  aria-label={`${day === now ? 'Today, ' : ''}${mediumDate(day)}${n ? `, ${n} planned` : ''}`}
                   onClick={() => onSelect(day)}
                 >
                   <span className="ck-week-letter" aria-hidden="true">{weekdayLetter(day)}</span>

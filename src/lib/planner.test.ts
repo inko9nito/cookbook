@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { addDays, dayName, dayOf, daysBetween, Planned, plannedOn, upcomingDaysOf, weekDays, weekName, weekRange, weekStart, type Planned as P } from './planner';
+import { addDays, dayName, dayOf, daysBetween, inMeal, Planned, plan, planNote, plannedOn, slotsOn, upcomingDaysOf, weekDays, weekName, weekRange, weekStart, type Planned as P } from './planner';
 
 const p = (id: string, day: string, recipeId: string, createdAt: string): P => ({ id, day, recipeId, createdAt });
 
@@ -65,5 +65,42 @@ describe('planned recipes', () => {
   test('a day must be a calendar day', () => {
     expect(Planned.safeParse(p('x', '2026-11-18', 'r1', '2026-11-17T10:00:00.000Z')).success).toBe(true);
     expect(Planned.safeParse(p('x', '2026-11-18T00:00:00Z', 'r1', '2026-11-17T10:00:00.000Z')).success).toBe(false);
+  });
+});
+
+describe('meal slots and notes (issue #67)', () => {
+  const list: P[] = [
+    { id: 'd', day: '2026-11-18', recipeId: 'r1', meal: 'dinner', createdAt: '2026-11-17T10:00:00.000Z' },
+    { id: 'n', day: '2026-11-18', note: 'Eating out', meal: 'lunch', createdAt: '2026-11-17T10:00:01.000Z' },
+    { id: 'a', day: '2026-11-18', recipeId: 'r2', createdAt: '2026-11-17T10:00:02.000Z' },
+    { id: 'b', day: '2026-11-18', recipeId: 'r3', meal: 'breakfast', createdAt: '2026-11-17T10:00:03.000Z' },
+  ];
+
+  test('a day by slot: the whole day first, then breakfast, lunch, dinner; empty slots left out', () => {
+    expect(slotsOn(list, '2026-11-18').map((s) => [s.meal, s.items.map((p) => p.id)])).toEqual([
+      [null, ['a']],
+      ['breakfast', ['b']],
+      ['lunch', ['n']],
+      ['dinner', ['d']],
+    ]);
+    expect(slotsOn(list, '2026-11-19')).toEqual([]);
+  });
+
+  test('a recipe or a note, never both or neither', () => {
+    const base = { id: 'x', day: '2026-11-18', createdAt: '2026-11-17T10:00:00.000Z' };
+    expect(Planned.safeParse({ ...base, note: 'Leftovers', meal: 'dinner' }).success).toBe(true);
+    expect(Planned.safeParse({ ...base, recipeId: 'r1', servings: 6 }).success).toBe(true);
+    expect(Planned.safeParse({ ...base, recipeId: 'r1', note: 'and this' }).success).toBe(false);
+    expect(Planned.safeParse(base).success).toBe(false);
+    expect(Planned.safeParse({ ...base, recipeId: 'r1', meal: 'brunch' }).success).toBe(false);
+  });
+
+  test('new items keep their slot and servings; moving to another slot', () => {
+    const p = plan('r1', '2026-11-18', () => 'id1', { meal: 'dinner', servings: 6 });
+    expect(p).toMatchObject({ id: 'id1', recipeId: 'r1', meal: 'dinner', servings: 6 });
+    expect(plan('r1', '2026-11-18', () => 'id2')).not.toHaveProperty('servings');
+    expect(planNote('  Eating out ', '2026-11-18', () => 'id3')).toMatchObject({ note: 'Eating out' });
+    expect(inMeal(p, 'lunch').meal).toBe('lunch');
+    expect(inMeal(p, null)).not.toHaveProperty('meal');
   });
 });

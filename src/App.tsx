@@ -5,6 +5,7 @@ import { tabIcon } from './components/ui/icons';
 import { AuthProvider } from './data/auth';
 import { SessionGuard, StoreProvider } from './data/store';
 import SignInScreen from './components/SignInScreen';
+import { takeStartTab } from './data/startTab';
 
 const f7params = {
   name: 'Cookbook',
@@ -47,6 +48,10 @@ const viewHistory = {
   onTabHide: backToFirstPage,
 };
 
+// Recipes, unless the app reloaded itself from another tab (issue #48: Settings → Version's refresh comes back to Settings).
+// Read once, as the app loads.
+const startTab = takeStartTab();
+
 export default function CookbookApp() {
   return (
     <AuthProvider>
@@ -55,29 +60,29 @@ export default function CookbookApp() {
         <Views tabs className="safe-areas">
           <Toolbar tabbar icons bottom>
             <ToolbarPane>
-              <Link tabLink="#view-recipes" aria-label="Recipes" tabLinkActive>
+              <Link tabLink="#view-recipes" aria-label="Recipes" tabLinkActive={startTab === 'recipes'}>
                 <ChefHat {...tabIcon} />
               </Link>
-              <Link tabLink="#view-cookbooks" aria-label="Cookbooks">
+              <Link tabLink="#view-cookbooks" aria-label="Cookbooks" tabLinkActive={startTab === 'cookbooks'}>
                 <BookOpen {...tabIcon} />
               </Link>
-              <Link tabLink="#view-plan" aria-label="Plan">
+              <Link tabLink="#view-plan" aria-label="Plan" tabLinkActive={startTab === 'plan'}>
                 <CalendarDays {...tabIcon} />
               </Link>
-              <Link tabLink="#view-groceries" aria-label="Groceries">
+              <Link tabLink="#view-groceries" aria-label="Groceries" tabLinkActive={startTab === 'groceries'}>
                 <ShoppingCart {...tabIcon} />
               </Link>
               {/* issue #27: Settings is a tab of its own, the last one (it was a button on Recipes) */}
-              <Link tabLink="#view-settings" aria-label="Settings">
+              <Link tabLink="#view-settings" aria-label="Settings" tabLinkActive={startTab === 'settings'}>
                 <Settings {...tabIcon} />
               </Link>
             </ToolbarPane>
           </Toolbar>
-          <View id="view-recipes" main tab tabActive url="/" {...viewHistory} />
-          <View id="view-cookbooks" name="cookbooks" tab url="/cookbooks/" {...viewHistory} />
-          <View id="view-plan" name="plan" tab url="/plan/" {...viewHistory} />
-          <View id="view-groceries" name="groceries" tab url="/groceries/" {...viewHistory} />
-          <View id="view-settings" name="settings" tab url="/settings/" {...viewHistory} />
+          <View id="view-recipes" main tab tabActive={startTab === 'recipes'} url="/" {...viewHistory} />
+          <View id="view-cookbooks" name="cookbooks" tab tabActive={startTab === 'cookbooks'} url="/cookbooks/" {...viewHistory} />
+          <View id="view-plan" name="plan" tab tabActive={startTab === 'plan'} url="/plan/" {...viewHistory} />
+          <View id="view-groceries" name="groceries" tab tabActive={startTab === 'groceries'} url="/groceries/" {...viewHistory} />
+          <View id="view-settings" name="settings" tab tabActive={startTab === 'settings'} url="/settings/" {...viewHistory} />
         </Views>
         <SignInScreen />
         <SessionGuard />

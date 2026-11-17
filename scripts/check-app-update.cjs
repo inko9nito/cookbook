@@ -42,11 +42,12 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
   const browser = await chromium.launch();
   try {
     const page = await (await browser.newContext()).newPage();
-    const running = () => page.evaluate(() => document.querySelector('.page-current .ck-version-row .item-title')?.textContent ?? '');
+    const running = () => page.evaluate(() => document.querySelector('#view-settings .page-current .ck-version-row .item-title')?.textContent ?? '');
+    // Settings is the last tab (issue #27)
     const openSettings = async () => {
-      await page.waitForSelector('.view-main .navbar a[aria-label="Settings"]', { timeout: 15000 });
-      await page.locator('.view-main .navbar a[aria-label="Settings"]').first().click();
-      await page.waitForSelector('.page-current .ck-version-row', { timeout: 10000 });
+      await page.waitForSelector('.tabbar a[aria-label="Settings"]', { timeout: 15000 });
+      await page.locator('.tabbar a[aria-label="Settings"]').click();
+      await page.waitForSelector('#view-settings .page-current .ck-version-row', { timeout: 10000 });
     };
 
     await page.goto(base);
@@ -66,10 +67,12 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     });
     if (!(await running()).startsWith('aaaaaaa')) problems.push('the page changed version by itself, so this check can’t tell anything');
 
-    // the refresh icon
-    await page.locator('.page-current .ck-version-row .item-link').click();
+    // the refresh icon (tapping the version itself copies it, issue #48)
+    await page.locator('#view-settings .page-current .ck-version-row .ck-refresh-link').click();
     await page.waitForTimeout(4000);
-    await openSettings().catch(() => {});
+    // the app comes back on Settings, without tapping the tab again (issue #48)
+    const onTab = await page.evaluate(() => document.querySelector('.view.tab-active')?.id);
+    if (onTab !== 'view-settings') problems.push(`after the update the app opened on ${onTab}, not Settings`);
     const after = await running();
     if (!after.startsWith('bbbbbbb')) problems.push(`after tapping refresh it still runs "${after}", not the new version bbbbbbb`);
   } finally {

@@ -45,9 +45,10 @@ function takeOver(incoming: ServiceWorker): Promise<void> {
 /**
  * Look for a newer version of the app. If the live site serves a different build than the one on screen, the service
  * worker is brought up to date and the app reloads into it (this never returns); otherwise "latest". "unsupported"
- * when there's no service worker and nothing newer (a browser without one, or local dev).
+ * when there's no service worker and nothing newer (a browser without one, or local dev). `beforeReload` runs just
+ * before the reload (Settings uses it to come back to Settings, issue #48).
  */
-export async function updateApp(): Promise<'latest' | 'unsupported'> {
+export async function updateApp({ beforeReload }: { beforeReload?: () => void } = {}): Promise<'latest' | 'unsupported'> {
   const live = await liveBuild();
   const behind = !!live && (live.version !== __APP_VERSION__ || live.built !== __APP_BUILT__);
   const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
@@ -58,6 +59,7 @@ export async function updateApp(): Promise<'latest' | 'unsupported'> {
     if (incoming) await takeOver(incoming);
   }
   if (behind || incoming) {
+    beforeReload?.();
     window.location.reload();
     return new Promise(() => {});
   }

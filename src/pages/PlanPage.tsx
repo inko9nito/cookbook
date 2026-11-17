@@ -125,7 +125,7 @@ export default function PlanPage() {
             <Plus {...navIcon} />
           </Link>
         </NavRight>
-        <Subnavbar className="ck-week-bar">
+        <Subnavbar className="ck-docked-bar ck-week-bar">
           <div className="ck-week-label">{label}</div>
           <WeekStrip now={now} selected={selected} busy={loading ? new Set() : busy} countOf={(d) => plannedOn(shown, d).length} onSelect={(d) => select(d)} />
         </Subnavbar>

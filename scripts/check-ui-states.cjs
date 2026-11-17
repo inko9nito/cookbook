@@ -1829,9 +1829,10 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator(`${CUR} .ck-card`, { hasText: 'Corn pudding' }).tap(); await page.waitForTimeout(1000);
     await page.locator('.view.tab-active .navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Add to Cookbook' }).tap(); await page.waitForTimeout(1000);
-    const rows = await page.locator('.popup.modal-in .ck-addto-list li .item-title').allTextContents();
+    // a row's name without its footer line (Framework7's iOS lists put the footer inside .item-title)
+    const rows = await page.locator('.popup.modal-in .ck-addto-list li .item-title').evaluateAll((ts) => ts.map((t) => [...t.childNodes].filter((n) => !n.classList?.contains('item-footer')).map((n) => n.textContent).join('').trim()));
     if (rows.join(',') !== 'Dressings and sauces,Everything else,Uncategorized,Meat,Other,Fish,Grilling') throw new Error(`Add to Cookbook lists ${JSON.stringify(rows)}`);
-    const checked = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-addto-list li')].filter((li) => li.querySelector('input:checked')).map((li) => li.querySelector('.item-title').textContent));
+    const checked = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-addto-list li')].filter((li) => li.querySelector(':scope > label input:checked')).map((li) => li.querySelector('.item-title').textContent));
     if (checked.join(',') !== 'Uncategorized,Meat') throw new Error(`Corn pudding is ticked in ${JSON.stringify(checked)}`);
     // #83: a cookbook with sections is a closed accordion row; closed, it says where the recipe is
     const book = page.locator('.popup.modal-in .ck-addto-list li.ck-addto-book', { hasText: 'Everything else' });
@@ -1844,7 +1845,7 @@ async function swipeLeft(ctx, page, locator) {
     const book = page.locator('.popup.modal-in .ck-addto-list li.ck-addto-book', { hasText: 'Everything else' });
     await book.locator('.item-link').first().tap(); await page.waitForTimeout(700);
     const shown = await page.locator('.popup.modal-in .ck-addto-list li.ck-addto-section:visible .item-title').allTextContents();
-    if (shown.join(',') !== 'Uncategorized,Meat,Other') throw new Error(`opening Everything else shows ${JSON.stringify(shown)}`);
+    if (shown.join(',') !== 'Uncategorized,Meat,Other,Fish') throw new Error(`opening Everything else shows ${JSON.stringify(shown)}`);
     // its last section keeps the hairline before the next cookbook
     const line = await book.locator('li.ck-addto-section').last().evaluate((li) => getComputedStyle(li.querySelector('.item-inner'), '::after').display);
     if (line === 'none') throw new Error('no hairline between the last section and the next cookbook');

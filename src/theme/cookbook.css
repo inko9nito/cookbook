@@ -23,6 +23,7 @@
   --ck-book-lilac: #e9e4ef;
   --ck-done-ink: #a5a5aa; /* ticked rows in cook mode: deliberately below 4.5:1 (about 2.3:1), finished items fade back */
   --ck-line: #e6e6e9;
+  --ck-skeleton: #e2e2e6; /* loading placeholders (issue #35): a shade under --ck-soft, so they show on the grey page */
   --ck-strong: #c9c9ce;
   --ck-accent: #e4572e;
   --ck-accent-press: #c9461f;
@@ -885,7 +886,22 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 .ck-signin-wait { margin: 10px 0; }
 .ck-signin-problem { margin: 20px 0 0; max-width: 340px; font-size: 14px; line-height: 1.4; color: var(--ck-error); }
 
-/* Recipes screen while the list first loads, or when it couldn't load */
+/* Loading placeholders (issue #35): Framework7's skeleton elements in the shape of what's coming (recipe tiles, chips,
+   the count line, cookbook cards), in --ck-skeleton, with Framework7's own wave. Sizes only here. */
+:root { --skeleton-color: var(--ck-skeleton); }
+.skeleton-block.ck-card-photo { height: auto; } /* square from aspect-ratio, not the skeleton's 1em */
+.ck-skeleton-card .ck-card-body { justify-items: start; gap: 4px; }
+.skeleton-block.ck-skeleton-chip { flex: none; display: inline-block; height: var(--f7-chip-height); border-radius: 999px; }
+.ck-skeleton-tile.ck-book-tile { background: var(--ck-surface); }
+.ck-skeleton-tile .ck-plate { border-color: var(--ck-surface); box-shadow: none; }
+.skeleton-block.ck-book-thumb { display: block; }
+.skeleton-block.ck-plate { border-radius: 50%; }
+/* Reduce Motion: the placeholders stay still */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-effect-wave { animation: none; -webkit-mask-image: none; mask-image: none; }
+}
+
+/* Recipes screen when the list couldn't load (and the Prepear import while it reads a file) */
 .block.ck-list-state { display: grid; justify-items: center; gap: 12px; margin-top: 48px; text-align: center; }
 .block.ck-list-state p { margin: 0; }
 .button.ck-inline-button { width: auto; padding: 0 20px; }

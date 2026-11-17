@@ -189,4 +189,11 @@ const slowly = (b: Backend): Backend =>
     }]),
   ) as Backend;
 
-export const backend: Backend = isDemo ? (demoSlow ? slowly(demo) : demo) : http;
+/**
+ * `?loading` (the demo only, for the UI check, issue #35): the recipes and cookbooks never arrive, so the screens stay in
+ * their loading state (the grey placeholders) long enough to look at.
+ */
+const demoLoading = isDemo && typeof location !== 'undefined' && new URLSearchParams(location.search).has('loading');
+const neverLoading = (b: Backend): Backend => ({ ...b, listRecipes: () => new Promise(() => {}), listCookbooks: () => new Promise(() => {}) });
+
+export const backend: Backend = isDemo ? (demoLoading ? neverLoading(demo) : demoSlow ? slowly(demo) : demo) : http;

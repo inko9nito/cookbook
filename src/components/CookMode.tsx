@@ -75,9 +75,16 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
   const s = cook.session!;
   const tabbed = tabs.length > 1;
   const shownRecipe = tabs.find((r) => r.id === s.shown) ?? tabs[0];
-  // the shown recipe's tab scrolls into view in the tab bar (a new recipe's tab is added at the end)
+  // the shown recipe's tab scrolls into view in the tab bar (a new recipe's tab is added at the end). Only the strip
+  // scrolls, sideways: scrollIntoView also scrolled the boxes around it, and while cook mode was sliding up from below the
+  // screen (Start cooking, Add to cooking, Resume) that pulled the whole of it up, top bar cut off and blank underneath
   useEffect(() => {
-    document.querySelector('.popup.ck-cook .ck-cook-recipe-on')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    const strip = document.querySelector<HTMLElement>('.popup.ck-cook .ck-cook-recipes .toolbar-inner');
+    const tab = strip?.querySelector<HTMLElement>('.ck-cook-recipe-on');
+    if (!strip || !tab) return;
+    const left = tab.offsetLeft - strip.offsetLeft;
+    const target = left < strip.scrollLeft ? left - 14 : left + tab.offsetWidth > strip.scrollLeft + strip.clientWidth ? left + tab.offsetWidth - strip.clientWidth + 14 : null;
+    if (target !== null) strip.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
   }, [s.shown, tabs.length]);
 
   const [timersOpen, setTimersOpen] = useState(false);

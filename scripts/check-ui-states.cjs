@@ -2022,8 +2022,12 @@ async function swipeLeft(ctx, page, locator) {
     const back = (await page.locator('#view-recipes .page-current .ck-cta-back').innerText().catch(() => '')).trim();
     const add = (await page.locator('#view-recipes .page-current .ck-cta-button').innerText()).trim();
     if (back !== '1' || add !== 'Add to cooking') throw new Error(`the footer reads "${back}" and "${add}"`);
-    // Add to cooking adds it as a tab
-    await page.locator('#view-recipes .page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    // Add to cooking adds it as a tab. Cook mode slides up whole: scrolling the new tab into view once pulled all of it
+    // up mid-slide, its top bar cut off and blank underneath
+    await page.locator('#view-recipes .page-current .ck-cta-button').tap(); await page.waitForTimeout(150);
+    const midTop = await page.evaluate(() => document.querySelector('.popup.ck-cook .navbar').getBoundingClientRect().top);
+    if (midTop < -1) throw new Error(`cook mode's top bar is ${Math.round(-midTop)}px above the screen while it slides up`);
+    await page.waitForTimeout(1050);
     const tabs = await page.locator('.ck-cook .ck-cook-recipe').allTextContents();
     if (tabs.length !== 2 || !(await page.locator('.ck-cook .ck-cook-recipe-on').textContent()).includes('Corn')) throw new Error(`cook mode has the tabs ${JSON.stringify(tabs)}`);
     await page.locator('.ck-cook a[aria-label="Minimize cook mode"]').tap(); await page.waitForTimeout(1000);

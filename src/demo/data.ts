@@ -290,16 +290,18 @@ export const demoRecipes = (): Recipe[] => {
 };
 
 /**
- * The demo backend's Planner (issue #62), around today so the screen always has something to show: two recipes
- * today, one tomorrow, one in two days, and one a week from today (always next week). Recipes by id only.
+ * The demo backend's Planner (issues #62, #67), around today so the screen always has something to show: today a recipe
+ * for the whole day and one for dinner; tomorrow lunch at 8 servings (changed on its recipe page) and a note for dinner;
+ * a recipe the day after; one a week from today (always next week). Recipes by id only.
  */
 export const demoPlanned = (now: Day): Planned[] => {
-  const at = (day: Day, recipeId: string, n: number): Planned => ({ id: `pl-${n}`, day, recipeId, createdAt: `2026-11-1${n}T10:00:00.000Z` });
+  const at = (day: Day, n: number, what: Partial<Planned>): Planned => ({ id: `pl-${n}`, day, createdAt: `2026-11-1${n}T10:00:00.000Z`, ...what });
   return [
-    at(now, '5', 0),
-    at(now, '1', 1),
-    at(addDays(now, 1), '2', 2),
-    at(addDays(now, 2), '4', 3),
-    at(addDays(now, 7), '3', 4),
+    at(now, 0, { recipeId: '5', meal: 'dinner' }),
+    at(now, 1, { recipeId: '1' }),
+    at(addDays(now, 1), 2, { recipeId: '2', meal: 'lunch', servings: 8 }),
+    at(addDays(now, 1), 5, { note: 'Eating out with Sam', meal: 'dinner' }),
+    at(addDays(now, 2), 3, { recipeId: '4' }),
+    at(addDays(now, 7), 4, { recipeId: '3' }),
   ];
 };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import {
   Page, Navbar, NavRight, Subnavbar, Link, Searchbar, Block, BlockFooter, Button,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
@@ -10,9 +10,10 @@ import RecipeCard from '../components/ui/RecipeCard';
 import { CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import RecipePickerPopup from '../components/RecipePickerPopup';
 import EditCoverPopup from '../components/EditCoverPopup';
+import { CookbookPlates } from '../components/ui/CookbookTile';
 import OrganizePopup from '../components/OrganizePopup';
 import { useCookbooks, useStore } from '../data/store';
-import { colorOf, cookbookRecipeIds, coversOf, existing, recipeIdsOf, withRecipeIds, type BookColor, type Cookbook } from '../lib/cookbook';
+import { colorOf, platePhotos, cookbookRecipeIds, coversOf, existing, recipeIdsOf, withRecipeIds, type BookColor, type Cookbook } from '../lib/cookbook';
 import { newId, type Recipe } from '../lib/recipe';
 import { searchByTitle, searchWords } from '../lib/search';
 
@@ -151,10 +152,16 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   // a section with recipes, or a cookbook with recipes or sections: otherwise the page says it's empty
   const hasAny = section ? here.length > 0 : searchable.length > 0 || book.sections.length > 0;
 
+  // issue #90: a cookbook's page opens with its card's look, a header in its colour with its plates and its name large
+  // (from the user's Spotify reference); a section's page keeps the plain bar
+  const hero = !section;
+  const tint = hero ? ({ '--ck-tint': `var(--ck-book-${colorOf(book)})` } as CSSProperties) : undefined;
+
   return (
-    // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays
-    <Page name="cookbook" className="ck-cookbook-page" hideNavbarOnScroll onPageAfterIn={showTabbar}>
-      <Navbar key="navbar" backLink title={name} subtitle={section ? book.name : undefined}>
+    // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays.
+    // With the header (issue #90) the bar is see-through over it, then fills in (Framework7's transparent navbar).
+    <Page name="cookbook" className={`ck-cookbook-page${hero ? ' ck-book-hero-page' : ''}`} style={tint} hideNavbarOnScroll onPageAfterIn={showTabbar}>
+      <Navbar key="navbar" backLink title={name} subtitle={section ? book.name : undefined} transparent={hero} className={hero ? 'ck-hero-bar' : undefined}>
         <NavRight>
           <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes" className="ck-nav-primary">
             <Plus {...navIcon} />
@@ -177,8 +184,21 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         </Subnavbar>
       </Navbar>
 
-      {/* keys: Page leaves out the blocks that aren't shown and lists the rest by position (see RecipesPage). */}
-      {hasAny && (
+      {/* issue #90: the cookbook's colour fading into the page, its plates big, its name and counts */}
+      {hero && (
+        <div key="hero" className="ck-book-hero">
+          <CookbookPlates photos={platePhotos(book, byId)} />
+          <h1 className="ck-book-hero-title">{name}</h1>
+          <p className="ck-book-hero-meta">
+            {count(searchable.length, 'recipe')}
+            {book.sections.length > 0 && ` · ${count(book.sections.length, 'section')}`}
+          </p>
+        </div>
+      )}
+
+      {/* keys: Page leaves out the blocks that aren't shown and lists the rest by position (see RecipesPage). The
+          header already counts a cookbook's recipes, so its count line shows only while searching. */}
+      {hasAny && (!hero || searching) && (
         <Block key="count" className="ck-count">
           <span className="ck-note">
             {searching ? `${found.length} of ${count(searchable.length, 'recipe')}` : count(searchable.length, 'recipe')}

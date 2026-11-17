@@ -1207,8 +1207,11 @@ async function swipeLeft(ctx, page, locator) {
       const hero = document.querySelector('.view.tab-active .page-current .ck-hero, .view.tab-active .page-current .ck-hero-wrap').getBoundingClientRect();
       const nav = document.querySelector('.navbar-current, .view.tab-active .page-current .navbar');
       const back = nav.querySelector('.link.back').getBoundingClientRect();
-      return { heroTop: Math.round(hero.top), bg: getComputedStyle(nav.querySelector('.navbar-bg')).display, backInPhoto: back.top >= hero.top && back.bottom <= hero.bottom };
+      const ink = getComputedStyle(nav.querySelector('.link.back'));
+      return { heroTop: Math.round(hero.top), bg: getComputedStyle(nav.querySelector('.navbar-bg')).display, backInPhoto: back.top >= hero.top && back.bottom <= hero.bottom, backBg: ink.backgroundColor, backInk: ink.color };
     });
+    // issue #90: dark see-through circles with white icons over the photo (Uber Eats), not white ones
+    if (t.backBg !== 'rgba(0, 0, 0, 0.45)' || t.backInk !== 'rgb(255, 255, 255)') throw new Error(`the back button over the photo is ${t.backInk} on ${t.backBg}`);
     if (t.heroTop !== 0) throw new Error(`photo starts ${t.heroTop}px down, not at the top`);
     if (t.bg !== 'none') throw new Error('the top bar still has a background');
     if (!t.backInPhoto) throw new Error('back button is not over the photo');
@@ -1556,8 +1559,43 @@ async function swipeLeft(ctx, page, locator) {
     const unc = await page.locator(`${CUR} .ck-shelf`, { hasText: 'Uncategorized' }).locator('.ck-card-title').allTextContents();
     if (unc.join(',') !== 'Corn pudding,Tahini Sauce') throw new Error(`the Uncategorized shelf shows ${JSON.stringify(unc)}`);
     if ((await cards()).length) throw new Error('a grid shows under the shelves');
-    const count = await page.locator(`${CUR} .ck-count`).textContent();
+    // issue #90: the header counts them, under the cookbook's name, on the cookbook's colour; no count line besides
+    const count = await page.locator(`${CUR} .ck-book-hero-meta`).textContent();
     if (!count.includes('6 recipes · 2 sections')) throw new Error(`the count reads "${count}"`);
+    if (await page.locator(`${CUR} .ck-count`).count()) throw new Error('a count line shows under the header too');
+  });
+  // Issue #90: the cookbook's header, from the user's Spotify reference. The page starts at the top of the screen in the
+  // cookbook's colour, its plates big, its name large; the bar is see-through over it, its buttons dark see-through
+  // circles (Uber Eats), the search field white
+  await step('90a-cookbook-header', async () => {
+    const t = await page.evaluate((cur) => {
+      const pg = document.querySelector(cur);
+      const hero = pg.querySelector('.ck-book-hero');
+      const bar = pg.querySelector(':scope > .navbar');
+      const back = bar.querySelector('.left .link').getBoundingClientRect();
+      return {
+        heroTop: Math.round(hero.getBoundingClientRect().top),
+        heroBg: getComputedStyle(hero).backgroundImage,
+        tint: getComputedStyle(pg).getPropertyValue('--ck-tint').trim(),
+        title: hero.querySelector('.ck-book-hero-title').textContent,
+        titleSize: getComputedStyle(hero.querySelector('.ck-book-hero-title')).fontSize,
+        plates: hero.querySelectorAll('.ck-plate.ck-photo').length,
+        barBg: getComputedStyle(bar.querySelector('.navbar-bg')).opacity,
+        barTitle: getComputedStyle(bar.querySelector('.title')).opacity,
+        backBg: getComputedStyle(bar.querySelector('.left .link')).backgroundColor,
+        plusBg: getComputedStyle(bar.querySelector('.ck-nav-primary')).backgroundColor,
+        field: getComputedStyle(bar.querySelector('.searchbar input')).backgroundColor,
+        under: document.elementFromPoint(back.left + back.width / 2, back.top + 2)?.closest('.navbar') === bar,
+      };
+    }, CUR);
+    if (t.heroTop !== 0) throw new Error(`the header starts ${t.heroTop}px down, not at the top of the screen`);
+    if (!/^#[0-9a-f]{6}$/i.test(t.tint) || !t.heroBg.startsWith('linear-gradient')) throw new Error(`the header isn't in the cookbook's colour (${t.tint}, ${t.heroBg})`);
+    if (t.title !== 'Everything else' || t.titleSize !== '32px') throw new Error(`the header's name is "${t.title}" at ${t.titleSize}`);
+    if (t.plates !== 3) throw new Error(`the header shows ${t.plates} plates with photos`);
+    if (t.barBg !== '0' || t.barTitle !== '0') throw new Error(`the bar isn't see-through over the header (background ${t.barBg}, title ${t.barTitle})`);
+    if (t.backBg !== 'rgba(0, 0, 0, 0.45)') throw new Error(`the back button over the header is ${t.backBg}`);
+    if (t.plusBg === 'rgba(0, 0, 0, 0.45)') throw new Error('+ lost its Tomato');
+    if (t.field !== 'rgb(255, 255, 255)') throw new Error(`the search field on the colour is ${t.field}`);
   });
   // Uncategorized's See all opens its own page, like a section's (no Rename or Delete)
   await step('26b2-uncategorized-page', async () => {
@@ -1666,16 +1704,26 @@ async function swipeLeft(ctx, page, locator) {
     await tile.tap(); await page.waitForTimeout(1000);
   });
   // issue #63: a cookbook's search bar stays under its title too
+  // scrolled, it's the bar as on Recipes (issue #90): the bar fills in in the page colour with its usual grey buttons,
+  // the title row slides away and the search bar stays at the top
   await step('26c0-cookbook-search-sticky', async () => {
     const top = () => page.evaluate((cur) => Math.round(document.querySelector(`${cur} .subnavbar .searchbar`)?.getBoundingClientRect().top ?? -1), CUR);
-    const before = await top();
-    if (before < 0) throw new Error('the search bar is not in the bar under the title');
-    await page.evaluate((cur) => document.querySelector(`${cur} .page-content`).scrollTo(0, 400), CUR);
-    await page.waitForTimeout(400);
+    if ((await top()) < 0) throw new Error('the search bar is not in the bar under the title');
+    const pc = await page.locator(`${CUR} > .page-content`).boundingBox();
+    await page.mouse.move(pc.x + pc.width / 2, pc.y + 400);
+    for (let i = 0; i < 12; i++) { await page.mouse.wheel(0, 40); await page.waitForTimeout(50); }
+    await page.waitForTimeout(600);
     const after = await top();
-    await page.evaluate((cur) => document.querySelector(`${cur} .page-content`).scrollTo(0, 0), CUR);
-    if (after !== before) throw new Error(`scrolling moved the search bar from ${before} to ${after}`);
+    const bar = await page.evaluate((cur) => {
+      const nb = document.querySelector(`${cur} > .navbar`);
+      return { filled: nb.classList.contains('navbar-transparent-visible'), bg: getComputedStyle(nb.querySelector('.navbar-bg')).opacity, back: getComputedStyle(nb.querySelector('.left .link')).backgroundColor };
+    }, CUR);
+    if (after < 0 || after > 60) throw new Error(`scrolled, the search bar is at ${after}px, not at the top`);
+    if (!bar.filled || bar.bg !== '1') throw new Error(`scrolled, the bar didn't fill in (${JSON.stringify(bar)})`);
+    if (bar.back === 'rgba(0, 0, 0, 0.45)') throw new Error('scrolled, the buttons are still the dark ones for over a picture');
   });
+  await page.evaluate((cur) => document.querySelector(`${cur} > .page-content`).scrollTo(0, 0), CUR);
+  await page.waitForTimeout(600);
   await step('26c-cookbook-search', async () => {
     await page.locator(`${CUR} .ck-search-bar input`).fill('chick'); await page.waitForTimeout(500);
     const found = await cards();

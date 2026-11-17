@@ -1347,6 +1347,27 @@ async function swipeLeft(ctx, page, locator) {
     if (color !== 'rgb(196, 66, 28)') throw new Error(`the linked name is ${color}, not Tomato ink`);
     if (await page.locator('.view.tab-active .page-current .ck-ing-list .ck-ing-linked').count() !== 1) throw new Error('only the tahini sauce row should be a link');
   });
+  // #72: groups stand apart. The space above a group label (text to text) is about twice the space between the rows
+  await step('25a-recipe-groups-apart', async () => {
+    await page.locator('.view.tab-active .page-current .ck-ing-group .ck-group-label', { hasText: 'Kebabs' }).scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
+    const t = await page.evaluate(() => {
+      const scope = document.querySelector('.view.tab-active .page-current .page-content');
+      const top = (el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().top; };
+      const bottom = (el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().bottom; };
+      const apart = (a, b) => Math.round(top(b) - bottom(a));
+      const ing = [...scope.querySelectorAll('.ck-ing-group')];
+      const rows = (g) => [...g.querySelectorAll('.ck-ing-list li .item-inner')];
+      const group = apart(rows(ing[0]).at(-1), ing[1].querySelector('.ck-group-label'));
+      const row = apart(rows(ing[1])[0].querySelector('.item-title'), rows(ing[1])[1].querySelector('.item-title'));
+      const steps = [...scope.querySelectorAll('.ck-steps > *')];
+      const label = steps.findLast((el) => el.classList.contains('ck-group-label'));
+      const stepGroup = apart(label.previousElementSibling, label);
+      const stepRow = apart(steps[1], steps[2]);
+      return { group, row, stepGroup, stepRow };
+    });
+    if (t.group < t.row * 1.8) throw new Error(`a group of ingredients is ${t.group}px below the one before it, its rows ${t.row}px apart`);
+    if (t.stepGroup < t.stepRow * 1.8) throw new Error(`a group of steps is ${t.stepGroup}px below the one before it, its steps ${t.stepRow}px apart`);
+  });
   await step('25b-linked-recipe-opened', async () => {
     await page.locator('.view.tab-active .page-current .ck-ing-list .ck-ing-linked').tap(); await page.waitForTimeout(1200);
     const title = await page.locator('.view.tab-active .page-current .ck-recipe-title').textContent();
@@ -1376,6 +1397,7 @@ async function swipeLeft(ctx, page, locator) {
         // a browser-like tab: the strip is soft grey, the shown tab is the page colour and starts at the strip's top edge
         strip: getComputedStyle(bar.querySelector('.toolbar-inner')).backgroundColor,
         bold: on && getComputedStyle(on).fontWeight, shadow: on && getComputedStyle(on).boxShadow,
+        stripLine: getComputedStyle(bar.querySelector('.toolbar-inner')).boxShadow,
         stepsFade: (() => { const st = getComputedStyle(shown[0].querySelector('.ck-pane-steps')); return String(st.webkitMaskImage || st.maskImage); })(),
         titleSize: getComputedStyle(cook.querySelector('.navbar .title')).fontSize,
         joined: !!on && getComputedStyle(on).backgroundColor === getComputedStyle(cook.querySelector('.page')).backgroundColor && Math.abs(on.getBoundingClientRect().top - barBox.top) < 1,
@@ -1393,6 +1415,9 @@ async function swipeLeft(ctx, page, locator) {
     if (t.strip !== 'rgb(236, 236, 238)') throw new Error(`the tab strip is ${t.strip}, not soft grey`);
     if (!t.joined) throw new Error("the shown tab isn't joined to the page in the page colour");
     if (t.bold !== '700' || !t.shadow || t.shadow === 'none') throw new Error(`the shown tab is weight ${t.bold} with shadow ${t.shadow}, not bold and lifted`);
+    // #96: a hairline (--ck-line) where the page meets the strip and around the shown tab
+    if (!t.stripLine.includes('rgb(230, 230, 233)') || !t.stripLine.includes('inset')) throw new Error(`the tab strip's top edge is ${t.stripLine}, not a hairline`);
+    if (!/rgb\(230, 230, 233\) 0px 0px 0px 1px/.test(t.shadow)) throw new Error(`the shown tab has no hairline around it (${t.shadow})`);
     if (!t.stepsFade.includes('gradient')) throw new Error('Directions doesn’t fade where it meets the tabs');
     if (t.titleSize !== '21px') throw new Error(`cook mode's title is ${t.titleSize}, not 21px`);
     if (t.thumbs.length !== 2 || !t.thumbs.every(Boolean)) throw new Error('every recipe tab should show its photo (or the chef hat)');
@@ -1808,6 +1833,21 @@ async function swipeLeft(ctx, page, locator) {
     if (rows.join(',') !== 'Dressings and sauces,Everything else,Uncategorized,Meat,Other,Fish,Grilling') throw new Error(`Add to Cookbook lists ${JSON.stringify(rows)}`);
     const checked = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-addto-list li')].filter((li) => li.querySelector('input:checked')).map((li) => li.querySelector('.item-title').textContent));
     if (checked.join(',') !== 'Uncategorized,Meat') throw new Error(`Corn pudding is ticked in ${JSON.stringify(checked)}`);
+    // #83: a cookbook with sections is a closed accordion row; closed, it says where the recipe is
+    const book = page.locator('.popup.modal-in .ck-addto-list li.ck-addto-book', { hasText: 'Everything else' });
+    if (!(await book.evaluate((li) => li.classList.contains('accordion-item') && !li.classList.contains('accordion-item-opened')))) throw new Error('Everything else doesn’t start as a closed accordion row');
+    if (await page.locator('.popup.modal-in .ck-addto-list li.ck-addto-section:visible').count()) throw new Error('sections show before their cookbook is opened');
+    const where = (await book.locator('.item-footer').first().textContent()).trim();
+    if (where !== 'In Uncategorized, Meat') throw new Error(`the closed cookbook reads "${where}"`);
+  });
+  await step('26i0-add-to-cookbook-opened', async () => {
+    const book = page.locator('.popup.modal-in .ck-addto-list li.ck-addto-book', { hasText: 'Everything else' });
+    await book.locator('.item-link').first().tap(); await page.waitForTimeout(700);
+    const shown = await page.locator('.popup.modal-in .ck-addto-list li.ck-addto-section:visible .item-title').allTextContents();
+    if (shown.join(',') !== 'Uncategorized,Meat,Other') throw new Error(`opening Everything else shows ${JSON.stringify(shown)}`);
+    // its last section keeps the hairline before the next cookbook
+    const line = await book.locator('li.ck-addto-section').last().evaluate((li) => getComputedStyle(li.querySelector('.item-inner'), '::after').display);
+    if (line === 'none') throw new Error('no hairline between the last section and the next cookbook');
   });
   // nothing changes until Done: Cancel leaves it as it was
   await step('26i2-add-to-cookbook-cancel', async () => {

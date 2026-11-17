@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListItem, f7 } from 'framework7-react';
+import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListItem, AccordionContent, f7 } from 'framework7-react';
 import { BookOpen, Plus } from 'lucide-react';
 import { useCookbooks, useStore } from '../data/store';
 import { byName, emptyCookbook, platePhotos, isIn, recipeIdsOf, toggleIn, withRecipeIds, type Cookbook } from '../lib/cookbook';
@@ -11,8 +11,9 @@ type Props = { opened: boolean; recipe: Recipe; onClosed: () => void };
 
 /**
  * Add to Cookbook (issue #25), from a recipe's ⋯ menu: a Framework7 popup listing every cookbook A–Z with a check box.
- * A cookbook with sections lists them under its name (and Uncategorized first), each with its own box, since a recipe
- * can be in several. Nothing changes until Done: ticks, unticks and a "New Cookbook" (it starts with this recipe in it)
+ * A cookbook with sections is a Framework7 accordion row (issue #83: all of them open made the list very long): tapping it
+ * opens its sections under it (Uncategorized first), each with its own box, since a recipe can be in several; closed, a
+ * muted line under its name says which ones it's in. All start closed each time. Nothing changes until Done: ticks, unticks and a "New Cookbook" (it starts with this recipe in it)
  * are kept here, then Done saves the cookbooks that changed. Cancel, or swiping the popup away, leaves everything as it
  * was.
  */
@@ -23,10 +24,13 @@ export default function AddToCookbookPopup({ opened, recipe, onClosed }: Props) 
   // the cookbooks as ticked here (by id), and the ones made here
   const [changed, setChanged] = useState<Map<string, Cookbook>>(new Map());
   const [made, setMade] = useState<Cookbook[]>([]);
+  // a fresh list each time it opens, so every cookbook starts closed (Framework7 keeps the open ones in the DOM)
+  const [round, setRound] = useState(0);
   useEffect(() => {
     if (!opened) return;
     setChanged(new Map());
     setMade([]);
+    setRound((n) => n + 1);
   }, [opened]);
 
   const original = (id: string) => cookbooks.find((c) => c.id === id);
@@ -78,7 +82,7 @@ export default function AddToCookbookPopup({ opened, recipe, onClosed }: Props) 
           </ListItem>
         </List>
         {sorted.length > 0 && (
-          <List strongIos insetIos dividersIos className="ck-convert-list ck-addto-list">
+          <List key={round} strongIos insetIos dividersIos className="ck-convert-list ck-addto-list">
             {/* one flat list of rows (Framework7's List moves anything that isn't a row, like a fragment, to its end) */}
             {sorted.flatMap((c) => {
               const cover = platePhotos(c, byId)[0];
@@ -95,20 +99,26 @@ export default function AddToCookbookPopup({ opened, recipe, onClosed }: Props) 
                   </ListItem>,
                 ];
               }
+              const sections = [{ id: null, name: 'Uncategorized' }, ...c.sections];
+              const inSections = sections.filter((s) => isIn(c, s.id, recipe.id)).map((s) => s.name);
               return [
-                <ListItem key={c.id} className="ck-addto-book" title={c.name}>
+                <ListItem key={c.id} accordionItem className="ck-addto-book" title={c.name} footer={inSections.length ? `In ${inSections.join(', ')}` : undefined}>
                   {thumb(cover)}
+                  <AccordionContent>
+                    <List dividersIos className="ck-addto-sections">
+                      {sections.map((s) => (
+                        <ListItem
+                          key={s.id ?? ''}
+                          className="ck-addto-section"
+                          checkbox
+                          checked={isIn(c, s.id, recipe.id)}
+                          onChange={(e: { target: { checked: boolean } }) => toggle(c, s.id, e.target.checked)}
+                          title={s.name}
+                        />
+                      ))}
+                    </List>
+                  </AccordionContent>
                 </ListItem>,
-                ...[{ id: null, name: 'Uncategorized' }, ...c.sections].map((s) => (
-                  <ListItem
-                    key={`${c.id}:${s.id ?? ''}`}
-                    className="ck-addto-section"
-                    checkbox
-                    checked={isIn(c, s.id, recipe.id)}
-                    onChange={(e: { target: { checked: boolean } }) => toggle(c, s.id, e.target.checked)}
-                    title={s.name}
-                  />
-                )),
               ];
             })}
           </List>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Page, Navbar, NavTitle, NavRight, Link, Searchbar,
-  Block, BlockFooter, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton, Button, Preloader,
+  Block, BlockFooter, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton, Button,
 } from 'framework7-react';
 import { Settings, ArrowUpDown, Plus } from 'lucide-react';
 import { useStore, type SortKey } from '../data/store';
@@ -9,6 +9,7 @@ import { COURSES } from '../lib/recipe';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import RecipeCard from '../components/ui/RecipeCard';
+import { ChipsSkeleton, CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import { searchByTitle, searchWords } from '../lib/search';
 
 const SORT_LABELS: Record<SortKey, string> = { newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
@@ -75,24 +76,36 @@ export default function RecipesPage({ f7router }: Props) {
         />
       </div>
 
-      <Block key="chips" className="ck-chips ck-chips-scroll">
-        <Chip text="All" className={`ck-chip ${tags.length === 0 ? 'ck-chip-on' : ''}`} onClick={() => setFilter([])} />
-        {allTags.map((t) => (
-          <Chip key={t} text={label(t)} className={`ck-chip ${tags.includes(t) ? 'ck-chip-on' : ''}`} onClick={() => toggleTag(t)} />
-        ))}
-      </Block>
-
-      <Block key="count" className="ck-count">
-        <span className="ck-note">
-          {words.length ? `${found.length} of ${shown.length}` : shown.length} {shown.length === 1 ? 'recipe' : 'recipes'} · {SORT_LABELS[sort]}
-          {tags.length > 1 && (matchAny ? ' · any tag' : ' · all tags')}
-        </span>
-      </Block>
-      {loading && (
-        <Block key="loading" className="ck-list-state">
-          <Preloader />
+      {/* issue #35: until the recipes arrive, grey placeholders stand in for the chips, the count and the tiles (no lone
+          "All" chip, no "0 recipes"); if they can't be loaded, only the error shows */}
+      {!loadError && (
+        <Block key="chips" className="ck-chips ck-chips-scroll">
+          {loading ? (
+            <ChipsSkeleton />
+          ) : (
+            <>
+              <Chip text="All" className={`ck-chip ${tags.length === 0 ? 'ck-chip-on' : ''}`} onClick={() => setFilter([])} />
+              {allTags.map((t) => (
+                <Chip key={t} text={label(t)} className={`ck-chip ${tags.includes(t) ? 'ck-chip-on' : ''}`} onClick={() => toggleTag(t)} />
+              ))}
+            </>
+          )}
         </Block>
       )}
+
+      {!loadError && (
+        <Block key="count" className="ck-count">
+          {loading ? (
+            <CountSkeleton />
+          ) : (
+            <span className="ck-note">
+              {words.length ? `${found.length} of ${shown.length}` : shown.length} {shown.length === 1 ? 'recipe' : 'recipes'} · {SORT_LABELS[sort]}
+              {tags.length > 1 && (matchAny ? ' · any tag' : ' · all tags')}
+            </span>
+          )}
+        </Block>
+      )}
+      {loading && <RecipeGridSkeleton key="loading" />}
       {loadError && (
         <Block key="error" className="ck-list-state">
           <p className="ck-note">Couldn’t load your recipes. {loadError}</p>

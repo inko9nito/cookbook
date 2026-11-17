@@ -28,9 +28,9 @@ async function audit(page, name) {
   await page.addScriptTag({ content: AXE });
   const contrast = await page.evaluate(async () => {
     // below AA on purpose (DESIGN.md): ticked rows in cook mode fade (--ck-done-ink), and the orange buttons' 600-weight
-    // white label on bright Tomato (3.7:1, the user's choice in issue #21). Loading placeholders (issue #35) are grey bars
+    // white label on bright Tomato (3.7:1, the user's choice in issue #21; also today's filled date in the Planner). Loading placeholders (issue #35) are grey bars
     // drawn with a font, not text to read. Everything else must pass.
-    const r = await window.axe.run({ include: [document], exclude: [['.skeleton-text'], ['.ck-cook li.ck-done'], ['.button.ck-main'], ['.button.ck-cta-button'], ['.link.ck-nav-primary'], ['.dialog .button.button-fill']] }, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
+    const r = await window.axe.run({ include: [document], exclude: [['.skeleton-text'], ['.ck-cook li.ck-done'], ['.button.ck-main'], ['.button.ck-cta-button'], ['.link.ck-nav-primary'], ['.ck-week-selected.ck-week-today .ck-week-num'], ['.ck-calendar .calendar-day-today.calendar-day-selected'], ['.dialog .button.button-fill']] }, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
     return r.violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(' ')}: ${n.any[0]?.message ?? v.help}`));
   });
   const overlaps = await page.evaluate(() => {
@@ -700,12 +700,64 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.view.tab-active .page-current .button', { hasText: 'Add 3 lines' }).tap();
     await page.waitForTimeout(500);
   });
-  await step('12c-edit-step-sheet', async () => {
-    await page.locator('.view.tab-active .page-current .ck-edit-list').nth(1).locator('li.swipeout:not(.ck-group-row)').first().locator('.item-content').first().tap();
-    await page.waitForTimeout(800);
+  // issue #71: steps are typed right in their rows (no sheet). Return starts a new step, Backspace at the start of one
+  // joins it to the step above, and several lines pasted into a step become several steps
+  const steps = () => page.locator('.view.tab-active .page-current .ck-edit-list').nth(1).locator('textarea.ck-step-input');
+  const stepValues = () => steps().evaluateAll((ts) => ts.map((t) => t.value));
+  const focusedStep = () => page.evaluate(() => { const a = document.activeElement; return a?.classList.contains('ck-step-input') ? { i: [...a.closest('.ck-edit-list').querySelectorAll('textarea.ck-step-input')].indexOf(a), value: a.value, at: a.selectionStart } : null; });
+  let before = [];
+  await step('12c-edit-step-inline', async () => {
+    before = await stepValues();
+    if (before.length < 2) throw new Error(`expected steps to edit, found ${before.length}`);
+    // every step shows in full: Framework7 grows each field to its text
+    const cut = await steps().evaluateAll((ts) => ts.filter((t) => t.scrollHeight > t.clientHeight + 1).map((t) => t.value.slice(0, 24)));
+    if (cut.length) throw new Error(`steps cut off: ${cut.join(', ')}`);
+    const field = steps().first();
+    await field.scrollIntoViewIfNeeded();
+    await field.tap(); await page.waitForTimeout(400);
+    if (await page.locator('.sheet-modal.modal-in').count()) throw new Error('a sheet opened for the step');
+    if ((await focusedStep())?.i !== 0) throw new Error('tapping a step did not put the cursor in it');
+    await field.evaluate((t) => t.setSelectionRange(t.value.length, t.value.length));
+    await page.keyboard.press('Enter'); await page.waitForTimeout(300);
+    const f = await focusedStep();
+    if (!f || f.i !== 1 || f.value !== '') throw new Error(`Return didn't start a new step with the cursor in it (${JSON.stringify(f)})`);
+    await page.keyboard.type('Let it rest for 5 minutes.'); await page.waitForTimeout(200);
+    const after = await stepValues();
+    if (after.length !== before.length + 1 || after[0] !== before[0] || after[1] !== 'Let it rest for 5 minutes.') throw new Error(`steps after Return: ${JSON.stringify(after.map((v) => v.slice(0, 24)))}`);
   });
-  await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
-  await page.waitForTimeout(600);
+  await step('12c2-edit-step-joined', async () => {
+    // Backspace at the start of the new step joins it back onto the first
+    await page.evaluate(() => document.activeElement.setSelectionRange(0, 0));
+    await page.keyboard.press('Backspace'); await page.waitForTimeout(300);
+    const after = await stepValues();
+    if (after.length !== before.length || after[0] !== `${before[0]} Let it rest for 5 minutes.`) throw new Error(`steps after Backspace: ${JSON.stringify(after.map((v) => v.slice(-30)))}`);
+    const f = await focusedStep();
+    if (!f || f.i !== 0 || f.at !== before[0].length + 1) throw new Error(`cursor not at the join (${JSON.stringify(f)})`);
+  });
+  await step('12c3-edit-steps-pasted-inline', async () => {
+    // Return at the end of the last step, then a whole list pasted into the empty step it made
+    const last = steps().last();
+    await last.tap(); await last.evaluate((t) => t.setSelectionRange(t.value.length, t.value.length));
+    await page.keyboard.press('Enter'); await page.waitForTimeout(300);
+    await steps().last().fill('For the glaze:\n\n1. Whisk the sugar and lemon juice.\nStep 2\nDrizzle it over the top.');
+    await page.waitForTimeout(400);
+    const groups = await page.locator('.view.tab-active .page-current .ck-edit-list').nth(1).locator('input.ck-group-input').evaluateAll((is) => is.map((i) => i.value));
+    const after = await stepValues();
+    if (groups[groups.length - 1] !== 'For the glaze') throw new Error(`the heading didn't become a group (${JSON.stringify(groups)})`);
+    if (after.slice(-2).join('|') !== 'Whisk the sugar and lemon juice.|Drizzle it over the top.') throw new Error(`pasted steps: ${JSON.stringify(after.slice(-3))}`);
+    const f = await focusedStep();
+    if (!f || f.value !== 'Drizzle it over the top.') throw new Error('cursor is not in the last pasted step');
+  });
+  await page.evaluate(() => document.activeElement?.blur());
+  await step('12c4-step-row-swiped', async () => {
+    // a step row still swipes open to Delete, though the swipe starts on its text field
+    const li = page.locator('.view.tab-active .page-current .ck-edit-list').nth(1).locator('li.ck-step-row').first();
+    await li.scrollIntoViewIfNeeded();
+    await swipeLeft(ctx, page, li); await page.waitForTimeout(600);
+    if (!(await li.evaluate((e) => e.classList.contains('swipeout-opened')))) throw new Error('swiping a step did not show Delete');
+  });
+  await page.locator('.view.tab-active .page-current .navbar .title').tap().catch(() => {});
+  await page.waitForTimeout(500);
   await step('12d-edit-recipe-info', async () => {
     await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 99999));
     const layout = await page.evaluate(() => {
@@ -1687,7 +1739,7 @@ async function swipeLeft(ctx, page, locator) {
     const sel = page.locator(`${PLAN} .swiper-slide-active .ck-week-day.ck-week-selected`);
     if ((await sel.count()) !== 1 || !(await sel.getAttribute('class')).includes('ck-week-today')) throw new Error('today isn’t the picked day');
     const fill = await sel.locator('.ck-week-num').evaluate((e) => getComputedStyle(e).backgroundColor);
-    if (fill !== 'rgb(196, 66, 28)') throw new Error(`today picked is filled ${fill}, not Tomato ink`);
+    if (fill !== 'rgb(228, 87, 46)') throw new Error(`today picked is filled ${fill}, not bright Tomato like the +`);
     // the other days' dates are dark (a day is a link: it once took the links' Tomato)
     const plain = await page.locator(`${PLAN} .swiper-slide-active .ck-week-day:not(.ck-week-today):not(.ck-week-selected) .ck-week-num`).first().evaluate((e) => getComputedStyle(e).color);
     if (plain !== 'rgb(38, 38, 40)') throw new Error(`another day's date is ${plain}, not dark`);
@@ -1778,6 +1830,19 @@ async function swipeLeft(ctx, page, locator) {
     const month = await page.locator('.calendar.modal-in .current-month-value').evaluate((e) => ({ text: e.textContent, cut: e.scrollWidth > e.clientWidth + 1 }));
     if (month.cut) throw new Error(`the month "${month.text}" is cut short`);
     if ((await page.locator('.calendar.modal-in .calendar-month-current .calendar-day-event').count()) < 2) throw new Error('no dots on planned days');
+    // a day looks the same here as in the week strip: the circle's size, the number's font, and the dot's size and its
+    // gap under the circle (they differed: 36px circles in a lighter font, dots tucked 1px under them)
+    const looks = await page.evaluate(() => {
+      const of = (num, dot) => {
+        const n = num.getBoundingClientRect(), d = dot.getBoundingClientRect(), cs = getComputedStyle(num);
+        return { circle: Math.round(n.width), font: `${cs.fontFamily.split(',')[0]} ${cs.fontSize} ${cs.fontWeight}`, dot: Math.round(d.width), gap: Math.round(d.top - n.bottom) };
+      };
+      const strip = document.querySelector('.ck-week-busy');
+      const cal = document.querySelector('.calendar.modal-in .calendar-month-current .calendar-day:not(.calendar-day-today):not(.calendar-day-selected) .calendar-day-event')?.closest('.calendar-day');
+      const plain = document.querySelector('.ck-week-day.ck-week-busy:not(.ck-week-today):not(.ck-week-selected)') ?? strip;
+      return { strip: of(plain.querySelector('.ck-week-num'), plain.querySelector('.ck-week-dot')), calendar: of(cal.querySelector('.calendar-day-number'), cal.querySelector('.calendar-day-event')) };
+    });
+    if (JSON.stringify(looks.strip) !== JSON.stringify(looks.calendar)) throw new Error(`a day in the strip ${JSON.stringify(looks.strip)} differs from one in the calendar ${JSON.stringify(looks.calendar)}`);
   });
   await step('62i-planner-moved', async () => {
     await pickInCalendar(today1);
@@ -1895,6 +1960,34 @@ async function swipeLeft(ctx, page, locator) {
     const last = await page.locator(`${PLAN} .ck-plan-day`).last().getAttribute('data-day');
     const picked = await page.locator(`${PLAN} .swiper-slide-active .ck-week-day.ck-week-selected`).getAttribute('aria-label');
     if (!picked.includes(await shortLabel(last))) throw new Error(`at the end, the strip picked "${picked}"`);
+  });
+  // follow-up to #67: one Tomato for today's filled date and the +, recipe names in semibold, empty days muted, lighter
+  // day names, the thumbnail as far from the card's edge on the left as above and below, no line under a card's last row
+  await step('67j-planner-look', async () => {
+    // Today scrolls the agenda back to today (scrolling to the top instead would pick Monday)
+    await page.locator(`${PLAN} .navbar a.ck-plan-today`).tap(); await page.waitForTimeout(1200);
+    const look = await page.locator(PLAN).evaluate((pg) => {
+      const css = (sel, prop) => { const e = pg.querySelector(sel); return e && getComputedStyle(e)[prop]; };
+      const li = pg.querySelector('.ck-plan-list li:not(.ck-plan-note)');
+      const c = li.querySelector('.item-content').getBoundingClientRect(), m = li.querySelector('.ck-picker-thumb').getBoundingClientRect();
+      return {
+        todayFill: css('.swiper-slide-active .ck-week-today.ck-week-selected .ck-week-num', 'backgroundColor'),
+        plus: css('.navbar .ck-nav-primary', 'backgroundColor'),
+        title: css('.ck-plan-list li:not(.ck-plan-note) .item-title', 'fontWeight'),
+        dayName: css('.ck-plan-day-head h2', 'fontWeight'),
+        empty: css('.ck-plan-day-empty:not(.ck-plan-day-today) h2', 'color'),
+        busy: css('.ck-plan-day:not(.ck-plan-day-empty):not(.ck-plan-day-today) h2', 'color'),
+        gaps: [m.left - c.left, m.top - c.top, c.bottom - m.bottom].map(Math.round),
+        lastLine: getComputedStyle(pg.querySelector('.ck-plan-list li:last-child .item-inner'), '::after').display,
+      };
+    });
+    if (look.todayFill !== look.plus) throw new Error(`today's date is ${look.todayFill}, the + is ${look.plus}`);
+    if (look.title !== '600') throw new Error(`a recipe's name is weight ${look.title}`);
+    if (look.dayName !== '500') throw new Error(`a day's name is weight ${look.dayName}`);
+    if (look.empty !== 'rgb(110, 110, 115)') throw new Error(`an empty day's name is ${look.empty}, not muted`);
+    if (look.busy === look.empty) throw new Error('a day with plans is as dim as an empty one');
+    if (look.lastLine !== 'none') throw new Error('a hairline under the last row of a card');
+    if (new Set(look.gaps).size !== 1) throw new Error(`the thumbnail's gaps (left, top, bottom) are ${look.gaps}`);
   });
 
   // Issue #35: while the recipes and cookbooks first load, grey placeholders in their shape: no lone "All" chip, no

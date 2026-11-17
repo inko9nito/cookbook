@@ -686,28 +686,30 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
   height: 36px; padding: 0 12px; gap: 6px; border-radius: 9999px;
   background-color: var(--ck-soft); color: var(--ck-accent-ink); font-weight: 600; font-variant-numeric: tabular-nums;
 }
-/* Cooking button (issue #85): Framework7's extended FAB, a Tomato pill at the bottom centre while cook mode is tucked
-   away (Framework7 places it above the tab bar). Chef hat, "Cooking", how many recipes when more than one, the next timer */
+/* Cooking bar (issue #85), like Instacart's cart bar: Framework7's extended FAB as a wide flat pill at the bottom centre
+   while cook mode is tucked away (Framework7 places it above the tab bar). Bright Tomato like every orange button (the
+   same deliberate contrast exception as .button.ck-main), no shadow or glass: the recipe's name (Fredoka 17px 600) over
+   the next timer or the steps done (Nunito 13px), and a chef hat with the number of recipes on the right */
 html.ios .fab.ck-cooking-fab {
-  --f7-fab-bg-color: var(--ck-accent-ink); /* ink, not bright Tomato: white 15px text on it passes AA */
+  --f7-fab-bg-color: var(--ck-accent);
+  --f7-fab-pressed-bg-color: var(--ck-accent-press);
   --f7-fab-text-color: var(--ck-surface);
-  --f7-fab-extended-size: 48px;
-  --f7-fab-extended-text-font-size: 16px;
+  --f7-fab-extended-size: 56px;
   --f7-fab-extended-text-transform: none;
-  --f7-fab-extended-text-padding: 0 18px 0 8px;
-  --f7-fab-box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  --f7-fab-extended-text-padding: 0 20px 0 22px;
+  --f7-fab-box-shadow: none;
+  --f7-glass-shadow-fab: none; /* Framework7 v9's iOS 26 glass edge and glow */
+  width: min(calc(100% - 48px), 440px);
 }
-html.ios .fab.ck-cooking-fab > a { font-family: var(--ck-font-display); }
-.ck-cooking-fab > a > svg { flex: none; margin-left: 16px; } /* not padding on the link: Framework7 sets it to 100% wide, so padding would push it off centre */
-.ck-cooking-fab-text { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.ck-cooking-fab .badge.ck-cooking-count {
-  --f7-badge-bg-color: var(--ck-surface);
-  --f7-badge-text-color: var(--ck-accent-ink);
-  --f7-badge-size: 22px;
-  --f7-badge-font-size: 13px;
-  --f7-badge-font-weight: 700;
-}
-.ck-cooking-timer { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+html.ios .fab.ck-cooking-fab .fab-text { width: 100%; }
+.ck-cooking-fab-body { display: flex; align-items: center; gap: 12px; }
+.ck-cooking-fab-lines { display: grid; flex: 1; min-width: 0; text-align: left; line-height: 1.2; }
+.ck-cooking-fab-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; }
+.ck-cooking-fab-detail { font-family: var(--ck-font); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ck-cooking-fab-count { display: flex; align-items: center; gap: 6px; flex: none; font-family: var(--ck-font-display); font-size: 20px; font-weight: 600; }
+/* a recipe page that's cooking has its own Resume cooking button */
+.view:has(> .page-current.ck-recipe-cooking) > .ck-cooking-fab { display: none; }
+
 /* Adjust amounts: the result line with a Reset link, under the mode toggle */
 .ck-scale-result { flex-wrap: nowrap; justify-content: space-between; align-items: baseline; gap: 12px; }
 .ck-scale-result .ck-note { flex: 1; min-width: 0; }
@@ -1044,42 +1046,28 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
    bar doesn't apply inside it */
 .sheet-modal.ck-edit-sheet { --f7-page-toolbar-bottom-offset: 0px; }
 
-/* Cook mode with a linked recipe open (issue #11): the top bar becomes a tab strip, like a browser's but rounder.
-   The bar turns soft grey and holds X and a tab per recipe in place of the title; the recipe shown is a tab in the
-   page colour with 14px top corners, running into the page below it; the others are plain grey text on the strip.
-   Tabs share the width (up to 240px each, the shown one a bigger share), long titles end in … */
-html.ios .navbar.ck-cook-tabbed { --f7-navbar-bg-color: var(--ck-soft); }
-html.ios .navbar.ck-cook-tabbed .navbar-bg::after { background-color: var(--ck-soft); }
-/* X (and a running timer's pill) sit on the grey strip as light round buttons, the colour of the page and the shown tab */
-html.ios .navbar.ck-cook-tabbed .left .link,
-html.ios .navbar.ck-cook-tabbed .right .link { background-color: var(--ck-bg); }
-/* the bar's inner row keeps its sides but no top and bottom padding, so the tabs reach the page */
-html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 0; }
-.navbar.ck-cook-tabbed .ck-tabs { flex: 1 1 auto; min-width: 0; align-self: stretch; margin-left: 8px; }
-/* more recipes than fit (each tab keeps at least 96px, the shown one 132px): the row scrolls sideways with a swipe,
-   natively, like the Recipes chips, with no scrollbar */
-.navbar.ck-cook-tabbed .ck-tabs { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; }
-.navbar.ck-cook-tabbed .ck-tabs::-webkit-scrollbar { display: none; }
-.ck-tabs { display: flex; align-items: stretch; gap: 2px; padding: 6px 14px 0; box-sizing: border-box; }
-.ck-tab {
-  flex: 1 1 0; min-width: 0; max-width: 240px; margin: 0; padding: 0 10px; border: 0;
-  border-radius: 14px 14px 0 0; background: none;
-  font: inherit; font-size: 14px; font-weight: 600; color: var(--ck-fg2); cursor: pointer;
+/* Cook mode with several recipes open (issues #11, #65): a tab for each along the bottom, a Framework7 tab bar like the
+   app's (flat white, hairline on top), so the top bar keeps the shown recipe's name, the chevron and X. Each tab is the
+   recipe's photo (28px, 8px corners; the chef hat on soft grey without one) and its name; the shown one is Tomato ink on
+   pale Tomato. They share the width (up to 240px each); with more than fit (each keeps at least 112px) the bar scrolls
+   sideways with a swipe, no scrollbar, and long names end in … */
+.popup.ck-cook { --ck-cook-bar: 60px; }
+html.ios .toolbar.ck-cook-recipes { --f7-toolbar-height: var(--ck-cook-bar); }
+html.ios .toolbar.ck-cook-recipes .toolbar-inner {
+  justify-content: flex-start; gap: 6px; padding: 0 12px var(--f7-safe-area-bottom);
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none;
 }
-.ck-tab { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.ck-tab .ck-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* the recipe's cover photo, 24px with 7px corners, before its name */
-.ck-tab .ck-tab-thumb { flex: none; width: 24px; height: 24px; border-radius: 7px; }
-.ck-tab.ck-tab-on { position: relative; background-color: var(--ck-bg); color: var(--ck-fg); }
-/* when room is short (a timer's pill in the bar, three recipes) the shown tab keeps more of its name */
-.ck-tab.ck-tab-on { flex-grow: 1.6; }
-.navbar.ck-cook-tabbed .ck-tab { min-width: 96px; }
-.navbar.ck-cook-tabbed .ck-tab.ck-tab-on { min-width: 132px; }
-/* the shown tab flares into the page with small inward curves at its feet, so it reads as one piece with it */
-.ck-tab.ck-tab-on::before,
-.ck-tab.ck-tab-on::after { content: ''; position: absolute; bottom: 0; width: 14px; height: 14px; pointer-events: none; }
-.ck-tab.ck-tab-on::before { left: -14px; background: radial-gradient(circle at 0 0, transparent 13.5px, var(--ck-bg) 14px); }
-.ck-tab.ck-tab-on::after { right: -14px; background: radial-gradient(circle at 100% 0, transparent 13.5px, var(--ck-bg) 14px); }
+html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: none; }
+.ck-cook-recipe {
+  display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 112px; max-width: 240px; height: 44px;
+  margin: 8px 0 0; padding: 0 10px 0 8px; border: 0; border-radius: 12px; background: none; cursor: pointer;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--ck-fg2);
+}
+.ck-cook-recipe .ck-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ck-cook-recipe .ck-tab-thumb { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; }
+.ck-cook-recipe.ck-cook-recipe-on { background-color: var(--ck-accent-tint); color: var(--ck-accent-ink); }
+/* the split screen ends above the bar */
+.tabs.ck-cook-tabs-with-bar > .page-content.ck-split { padding-bottom: calc(var(--ck-cook-bar) + var(--f7-safe-area-bottom)); }
 
 /* Settings → Version: the build, then a Tomato refresh icon. Tapping the build copies it; tapping the icon checks for a
    new version, and the icon spins while it checks (approved exception: the user asked for a spinning refresh icon

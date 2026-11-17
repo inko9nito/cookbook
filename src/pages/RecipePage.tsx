@@ -159,7 +159,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
   let stepNo = 0;
 
   return (
-    <Page name="recipe" className="ck-recipe-page" hideNavbarOnScroll onPageBeforeIn={hideTabbar}>
+    <Page name="recipe" className={`ck-recipe-page${cooked ? ' ck-recipe-cooking' : ''}`} hideNavbarOnScroll onPageBeforeIn={hideTabbar}>
       {/* App controls stay out of the content: back and ••• float over the photo with no bar behind them (issue #7; they
           slide away while scrolling down and come back on scroll up, like Prepear), Start cooking in the footer */}
       <Navbar backLink className="ck-float-bar">

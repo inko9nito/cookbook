@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, KeyboardEvent, PointerEvent, SetStateAction } from 'react';
 import {
-  Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Button, List, ListItem, Tabs, Tab,
+  Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Button, List, ListItem, Tabs, Tab, Toolbar,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
-import { ChevronDown, Ellipsis, GripHorizontal, ChevronRight, ChefHat, Timer as TimerIcon } from 'lucide-react';
+import { ChevronDown, X, GripHorizontal, ChevronRight, ChefHat, Timer as TimerIcon } from 'lucide-react';
 import { coverPhoto, linkedRecipe, type Ingredient, type Recipe } from '../lib/recipe';
 import { photoStyle } from './ui/photo';
 import { friendly } from '../lib/ingredients';
@@ -42,23 +42,6 @@ const NO_TICKS: Ticks = { ing: new Set(), steps: new Set() };
 const stepCount = (r: Recipe) => r.steps.filter((s) => s.kind !== 'header').length;
 
 /**
- * While the recipe tabs show, Safari's status bar strip takes the tab strip's grey (it follows the page's theme
- * colour); the installed app's bar already runs under the status bar.
- */
-function useStripThemeColor(on: boolean) {
-  useEffect(() => {
-    if (!on) return;
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"][media*="light"]');
-    if (!meta) return;
-    const was = meta.content;
-    meta.content = getComputedStyle(document.documentElement).getPropertyValue('--ck-soft').trim() || was;
-    return () => {
-      meta.content = was;
-    };
-  }, [on]);
-}
-
-/**
  * Cook mode, laid out like Prepear's: Ingredients on top, Directions below, each half scrolling on its own,
  * with a handle between them to drag the split (the one hand-built gesture in the app, approved by the user).
  * - Tick ingredients and steps as you go; ticked rows are crossed out.
@@ -67,14 +50,14 @@ function useStripThemeColor(on: boolean) {
  * - The screen stays on. Closing a recipe after ticking every step offers "Mark as made".
  *
  * Issue #11, cooking several recipes at once: an ingredient made from another recipe (the sauce, the pie crust) opens
- * that recipe in a new tab: the top bar becomes a strip of recipe tabs (in place of the title), and tapping one
- * switches to it at once (Framework7 Tabs; nothing slides over anything). Every recipe keeps what's ticked and its
- * amounts until cooking is done, even when its tab is closed and opened again, and the timers run and ring whichever
- * recipe is shown.
+ * that recipe in a new tab. Issue #65: the tabs run along the bottom (a Framework7 tab bar, each with the recipe's photo
+ * and name), so the top bar keeps the shown recipe's name; tapping one switches to it at once (Framework7 Tabs).
+ * Every recipe keeps what's ticked and its amounts until cooking is done, even when its tab is closed and opened
+ * again, and the timers run and ring whichever recipe is shown.
  *
  * Issue #85: it lives with the app, not the recipe page (its state is in src/data/cook.tsx). The chevron tucks it away
- * to look at other recipes (the Cooking button at the bottom brings it back as it was); ••• has Close this recipe and
- * Done cooking. Start cooking on another recipe adds it as a tab.
+ * to look at other recipes (the Cooking button at the bottom of every screen brings it back as it was); X closes the
+ * shown recipe (the last one ends cooking). Start cooking on another recipe adds it as a tab.
  */
 export default function CookMode() {
   const cook = useCook();
@@ -91,14 +74,12 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
   const s = cook.session!;
   const tabbed = tabs.length > 1;
   const shownRecipe = tabs.find((r) => r.id === s.shown) ?? tabs[0];
-  useStripThemeColor(tabbed && s.expanded);
-  // the shown recipe's tab scrolls into view in the tab row (a new recipe's tab is added at the end)
+  // the shown recipe's tab scrolls into view in the tab bar (a new recipe's tab is added at the end)
   useEffect(() => {
-    document.querySelector('.popup.ck-cook .ck-tab-on')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    document.querySelector('.popup.ck-cook .ck-cook-recipe-on')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
   }, [s.shown, tabs.length]);
 
   const [timersOpen, setTimersOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const now = useNow(s.expanded && s.timers.length > 0);
   const soonest = [...s.timers].sort((a, b) => a.endsAt - b.endsAt)[0];
   const [split, setSplit] = useState(readSplit);
@@ -141,53 +122,25 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
         })
         .open();
     });
-  // Close this recipe: its tab goes, showing the one before it; the last one ends cooking
+  // X closes the shown recipe: its tab goes, showing the one before it; the last one ends cooking
   const closeShown = async () => {
     await offerMade(shownRecipe);
     if (tabs.length === 1) endCooking();
     else cook.closeRecipe(shownRecipe.id);
-  };
-  // Done cooking: each finished recipe offers Mark as made, then cook mode closes and is forgotten
-  const doneCooking = async () => {
-    for (const r of tabs) await offerMade(r);
-    endCooking();
   };
 
   return (
     <>
       <Popup className="ck-cook" opened={s.expanded} onPopupClosed={onClosed}>
         <Page pageContent={false}>
-          <Navbar className={tabbed ? 'ck-cook-tabbed' : ''}>
+          <Navbar>
             <NavLeft>
               {/* tucks cook mode away, everything kept: the Cooking button brings it back */}
               <Link iconOnly onClick={() => cook.minimize()} aria-label="Minimize cook mode">
                 <ChevronDown {...navIcon} />
               </Link>
             </NavLeft>
-            {/* issue #11: once a linked recipe is open, the bar holds a tab for each recipe in cook mode instead of the
-                title (the shown tab is the title), and the shown tab runs into the page below */}
-            {tabbed ? (
-              <div className="ck-tabs" role="tablist" aria-label="Recipes in cook mode">
-                {tabs.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={t.id === shownRecipe.id}
-                    className={`ck-tab ${t.id === shownRecipe.id ? 'ck-tab-on' : ''}`}
-                    onClick={() => cook.show(t.id)}
-                  >
-                    {/* a little cover photo, so a recipe is found by sight (a recipe without one shows the chef hat) */}
-                    <span className={`ck-tab-thumb ck-photo ${coverPhoto(t) ? '' : 'ck-photo-empty'}`} style={photoStyle(coverPhoto(t))} aria-hidden="true">
-                      {!coverPhoto(t) && <ChefHat size={14} strokeWidth={1.75} />}
-                    </span>
-                    <span className="ck-tab-name">{t.title}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <NavTitle>{shownRecipe.title}</NavTitle>
-            )}
+            <NavTitle>{shownRecipe.title}</NavTitle>
             <NavRight>
               {soonest && (
                 <Link className="ck-timer-pill" onClick={() => setTimersOpen(true)} aria-label={`Timers, next in ${clock((soonest.endsAt - now) / 1000)}`}>
@@ -195,14 +148,35 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
                   <span>{clock((soonest.endsAt - now) / 1000)}</span>
                 </Link>
               )}
-              <Link iconOnly onClick={() => setMenuOpen(true)} aria-label="Cook mode actions">
-                <Ellipsis {...navIcon} />
+              <Link iconOnly onClick={closeShown} aria-label={tabbed ? `Close ${shownRecipe.title}` : 'Close cook mode'}>
+                <X {...navIcon} />
               </Link>
             </NavRight>
           </Navbar>
 
+          {/* issue #65: with more than one recipe, a tab for each along the bottom (photo and name), the shown one in Tomato */}
+          {tabbed && (
+            <Toolbar tabbar bottom scrollable className="ck-cook-recipes">
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`ck-cook-recipe ${t.id === shownRecipe.id ? 'ck-cook-recipe-on' : ''}`}
+                  onClick={() => cook.show(t.id)}
+                  aria-pressed={t.id === shownRecipe.id}
+                >
+                  {/* a little cover photo, so a recipe is found by sight (a recipe without one shows the chef hat) */}
+                  <span className={`ck-tab-thumb ck-photo ${coverPhoto(t) ? '' : 'ck-photo-empty'}`} style={photoStyle(coverPhoto(t))} aria-hidden="true">
+                    {!coverPhoto(t) && <ChefHat size={14} strokeWidth={1.75} />}
+                  </span>
+                  <span className="ck-tab-name">{t.title}</span>
+                </button>
+              ))}
+            </Toolbar>
+          )}
+
           {/* one tab per recipe, all kept (ticks, scroll); only the shown one is displayed */}
-          <Tabs className="ck-cook-tabs">
+          <Tabs className={`ck-cook-tabs${tabbed ? ' ck-cook-tabs-with-bar' : ''}`}>
             {tabs.map((r) => {
               const own = s.amounts[r.id] ?? { factor: 1, picks: {} };
               const t = s.ticks[r.id] ?? NO_TICKS;
@@ -238,18 +212,6 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
         {/* the Adjust amounts sheet's backdrop, inside the popup so it dims cook mode */}
         <div className="sheet-backdrop ck-cook-backdrop" />
       </Popup>
-
-      <Actions opened={menuOpen} onActionsClosed={() => setMenuOpen(false)}>
-        <ActionsGroup>
-          {tabbed && <ActionsButton onClick={closeShown}>Close {shownRecipe.title}</ActionsButton>}
-          <ActionsButton color="red" onClick={doneCooking}>
-            Done cooking
-          </ActionsButton>
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
 
       <Actions opened={timersOpen} onActionsClosed={() => setTimersOpen(false)}>
         <ActionsGroup>

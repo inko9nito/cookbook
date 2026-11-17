@@ -31,8 +31,8 @@
   --ck-strong: #c9c9ce;
   --ck-accent: #e4572e;
   --ck-accent-press: #c9461f;
-  --ck-section-gap: 44px;     /* space above a section heading such as Directions (text to text) */
-  --ck-group-gap: 24px;       /* space above a group label (text to text) */
+  --ck-section-gap: 52px;     /* space above a section heading such as Directions (text to text) */
+  --ck-group-gap: 36px;       /* space above a group label (text to text) */
   --ck-group-label-gap: 8px;  /* group label to its first row's text */
   --ck-edge-inset: 16px;      /* a button with a shape at a container's edge: as far from the top as from the sides (#55) */
   --ck-day-size: 38px;        /* a day's circle, in the Planner's week strip and the day picker alike */
@@ -749,6 +749,9 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 /* the checkbox (a direct child of the row, no item-media) centred on the first 26px line of step text: row padding + (26 - 22) / 2 */
 .list.ck-cook-steps .item-content > .icon-checkbox { align-self: flex-start; margin-top: calc(var(--f7-list-item-padding-vertical) + 2px); }
 .ck-cook-step-group { padding: 18px 16px 2px; list-style: none; }
+/* a later group sits clearly apart from the steps before it (#72: groups blended in); cook mode's steps are bigger and
+   further apart than the recipe page's, so the gap above a group grows with them */
+.ck-cook-steps li + li.ck-cook-step-group { padding-top: calc(var(--ck-group-gap) - 6px); }
 .ck-cook-step { display: grid; justify-items: start; white-space: normal; }
 /* a step's ingredients and timers: a Framework7 accordion item that collapses when the step is ticked */
 .ck-step-extra { justify-self: stretch; }
@@ -1135,7 +1138,7 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 /* Cook mode with several recipes open (issues #11, #65): browser-like tabs along the bottom, so the top bar keeps the
    shown recipe's name, the chevron and X. A Framework7 tab bar turned into a soft grey strip; the recipe shown is a tab
    in the page colour with 14px bottom corners, running up into the page above it with small inward curves where they
-   meet; the others are semibold grey text on the strip. Each tab is the recipe's photo (24px, 7px corners; the chef hat
+   meet, edged by a thin --ck-strong line along the strip's top and around the shown tab (#96); the others are semibold grey text on the strip. Each tab is the recipe's photo (24px, 7px corners; the chef hat
    on soft grey without one) and its name. Tabs share the width (up to 240px each, the shown one a bigger share); with
    more than fit (each keeps at least 112px, the shown one 132px) the strip scrolls sideways with a swipe, no
    scrollbar, and long names end in … */
@@ -1144,6 +1147,9 @@ html.ios .toolbar.ck-cook-recipes { --f7-toolbar-height: var(--ck-cook-bar); }
 html.ios .toolbar.ck-cook-recipes .toolbar-inner {
   justify-content: flex-start; align-items: flex-start; gap: 2px; padding: 0 14px var(--f7-safe-area-bottom);
   background-color: var(--ck-soft); border-top: 0;
+  /* a thin line (--ck-strong) where the page meets the strip (#96); the shown tab, inside the strip, covers it where it runs up into
+     the page. An inset shadow, not a border, so the tab starts at the strip's very top and can cover it */
+  box-shadow: inset 0 1px 0 var(--ck-strong);
   overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none;
 }
 html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: none; }
@@ -1156,12 +1162,14 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
 .ck-cook-recipe .ck-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ck-cook-recipe .ck-tab-thumb { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; }
 /* the shown one: bold, lifted off the strip by a soft shadow */
-.ck-cook-recipe.ck-cook-recipe-on { flex-grow: 1.6; min-width: 132px; background-color: var(--ck-bg); color: var(--ck-fg); font-weight: 700; box-shadow: var(--ck-tab-shadow); }
-/* the shown tab flares into the page with small inward curves at its top corners, so it reads as one piece with it */
+.ck-cook-recipe.ck-cook-recipe-on { flex-grow: 1.6; min-width: 132px; background-color: var(--ck-bg); color: var(--ck-fg); font-weight: 700; box-shadow: 0 0 0 1px var(--ck-strong), var(--ck-tab-shadow); }
+/* the shown tab flares into the page with small inward curves at its top corners, so it reads as one piece with it;
+   the line (#96) follows the curves, from the strip's top edge down into the tab's sides (1px outside the tab, as
+   its ring is) */
 .ck-cook-recipe.ck-cook-recipe-on::before,
-.ck-cook-recipe.ck-cook-recipe-on::after { content: ''; position: absolute; top: 0; width: 14px; height: 14px; pointer-events: none; }
-.ck-cook-recipe.ck-cook-recipe-on::before { left: -14px; background: radial-gradient(circle at 0 100%, transparent 13.5px, var(--ck-bg) 14px); }
-.ck-cook-recipe.ck-cook-recipe-on::after { right: -14px; background: radial-gradient(circle at 100% 100%, transparent 13.5px, var(--ck-bg) 14px); }
+.ck-cook-recipe.ck-cook-recipe-on::after { content: ''; position: absolute; top: 0; width: 15px; height: 14px; pointer-events: none; }
+.ck-cook-recipe.ck-cook-recipe-on::before { left: -15px; background: radial-gradient(circle at 0 100%, transparent 13.6px, var(--ck-strong) 14.1px, var(--ck-strong) 14.9px, var(--ck-bg) 15.4px); }
+.ck-cook-recipe.ck-cook-recipe-on::after { right: -15px; background: radial-gradient(circle at 100% 100%, transparent 13.6px, var(--ck-strong) 14.1px, var(--ck-strong) 14.9px, var(--ck-bg) 15.4px); }
 /* Directions fades into the page colour over its last 16px where it meets the tabs, as both halves do at the divider
    (DESIGN.md: scrolling content fades at a bar's edge), with room at the end so the last step can scroll clear */
 .tabs.ck-cook-tabs-with-bar .ck-pane-steps { -webkit-mask-image: linear-gradient(#000 calc(100% - 16px), transparent); mask-image: linear-gradient(#000 calc(100% - 16px), transparent); }
@@ -1202,10 +1210,13 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
 /* the recipe pickers, Organize and Add to Cookbook: a 44px rounded thumbnail at the start of each row */
 .ck-picker-thumb { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; flex: none; }
 .list.ck-picker-list, .list.ck-addto-list { --f7-list-item-title-font-weight: 600; --f7-list-item-footer-text-color: var(--ck-muted); }
-/* Add to Cookbook: a cookbook with sections is a plain row (its name), its thumbnail in line with the other rows'
-   (past where their check box is: 22px box + 16px gap), with its sections under it, their boxes in that same column */
-.list.ck-addto-list li.ck-addto-book > .item-content { padding-left: calc(var(--f7-list-item-padding-horizontal) + 38px); }
+/* Add to Cookbook: a cookbook with sections is an accordion row (its name; issue #83), its thumbnail in line with the
+   other rows' (past where their check box is: 22px box + 16px gap); open, its sections are under it, their boxes in
+   that same column */
+.list.ck-addto-list li.ck-addto-book > .item-link > .item-content { padding-left: calc(var(--f7-list-item-padding-horizontal) + 38px); }
 .list.ck-addto-list li.ck-addto-section > label { padding-left: calc(var(--f7-list-item-padding-horizontal) + 38px); }
+/* an open cookbook's last section keeps its hairline before the next cookbook (Framework7 drops a list's last one) */
+.list.ck-addto-list li.ck-addto-book:not(:last-child) li.ck-addto-section:last-child > .item-content > .item-inner::after { display: block !important; }
 .list.ck-addto-list li.ck-addto-section .item-title { font-weight: 500; }
 .popup.ck-link-popup .list.ck-addto-new { margin: 16px var(--f7-list-inset-side-margin) 0; }
 /* Organize: section headings are the editor's group rows; the hint sits between the title bar and the list */

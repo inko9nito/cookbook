@@ -663,12 +663,12 @@ async function swipeLeft(ctx, page, locator) {
 
   await page.goto(BASE);
   await page.waitForTimeout(900);
-  // issue #17: + asks how to make the recipe: from photos or screenshots, or typed in
+  // issue #17: + asks how to make the recipe: from a link (#15), from photos or screenshots, or typed in
   await step('12g0-new-recipe-sheet', async () => {
     await page.locator('.navbar a[aria-label="New recipe"]').first().tap();
     await page.waitForTimeout(600);
     const buttons = await page.locator('.actions-modal.modal-in .actions-button').allTextContents();
-    if (buttons.map((b) => b.trim()).join() !== 'From photos or screenshots,Type it in,Cancel') throw new Error(`the sheet offers ${JSON.stringify(buttons)}`);
+    if (buttons.map((b) => b.trim()).join() !== 'From a link,From photos or screenshots,Type it in,Cancel') throw new Error(`the sheet offers ${JSON.stringify(buttons)}`);
   });
   await step('12g-new-recipe', async () => {
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Type it in' }).tap();
@@ -723,6 +723,77 @@ async function swipeLeft(ctx, page, locator) {
     const text = await page.locator('.view.tab-active .page-current .ck-scan-text').textContent();
     if (!/^Couldn’t read the recipe.*busy/.test(text)) throw new Error(`the editor says "${text}"`);
     if (await page.locator('.view.tab-active .page-current .ck-scan .progressbar-infinite').count()) throw new Error('the bar still moves after failing');
+    if (!(await page.locator('.view.tab-active .page-current .ck-scan .button', { hasText: 'Try again' }).count())) throw new Error('no Try again');
+  });
+
+  // issue #15: a recipe from a link. + → From a link asks for it in a dialog (a URL keyboard); the editor opens at once
+  // with the site in the banner, then fills in (the demo backend's made-up recipe) with the page's photo
+  const askLink = async (link) => {
+    await page.locator('.navbar a[aria-label="New recipe"]').first().tap(); await page.waitForTimeout(600);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'From a link' }).tap(); await page.waitForTimeout(700);
+    if (link !== undefined) {
+      await page.locator('.dialog.modal-in input').fill(link);
+      await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(900);
+    }
+  };
+  const LINK = 'https://www.example.com/weeknight-chickpea-curry/';
+  await page.goto(BASE);
+  await page.waitForTimeout(900);
+  await step('12l-link-dialog', async () => {
+    await askLink();
+    const input = page.locator('.dialog.modal-in input');
+    if ((await input.getAttribute('type')) !== 'url') throw new Error('the link field has no URL keyboard');
+    const title = await page.locator('.dialog.modal-in .dialog-title').textContent();
+    if (title.trim() !== 'From a Link') throw new Error(`the dialog is titled "${title}"`);
+  });
+  await step('12l2-not-a-link', async () => {
+    await page.locator('.dialog.modal-in input').fill('chicken curry');
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(700);
+    const title = await page.locator('.dialog.modal-in .dialog-title').textContent();
+    if (!/isn’t a link/.test(title)) throw new Error(`typing words shows "${title}"`);
+  });
+  await page.goto(BASE);
+  await page.waitForTimeout(900);
+  await step('12m-reading-link', async () => {
+    await askLink(`Try this: ${LINK}`);
+    const text = await page.locator('.view.tab-active .page-current .ck-scan-text').textContent();
+    if (!/^Reading the recipe/.test(text)) throw new Error(`the editor says "${text}"`);
+    if (!text.includes('example.com')) throw new Error('the banner doesn’t name the site');
+    if (!(await page.locator('.view.tab-active .page-current .ck-scan-site').count())) throw new Error('no site tile');
+    if ((await page.locator('.view.tab-active .page-current .skeleton-text').count()) < 4) throw new Error('no grey rows while reading');
+  });
+  await step('12n-read-from-link', async () => {
+    await page.waitForTimeout(2200);
+    const text = await page.locator('.view.tab-active .page-current .ck-scan-text').textContent();
+    if (!/^Recipe read.*against the page/.test(text)) throw new Error(`the editor says "${text}"`);
+    const title = await page.locator('.view.tab-active .page-current .ck-fields input[type=text]').first().inputValue();
+    if (title !== 'Weeknight Chickpea Curry') throw new Error(`the name is "${title}"`);
+    if (!(await page.locator('.view.tab-active .page-current .ck-edit-photo.ck-photo').count())) throw new Error('the page’s photo was not added');
+    const source = await page.locator('.view.tab-active .page-current input[placeholder="Website or person"]').inputValue();
+    if (source !== 'Sample Kitchen') throw new Error(`the source is "${source}"`);
+  });
+  await step('12n2-link-saved', async () => {
+    await page.locator('.view.tab-active .page-current .navbar a', { hasText: 'Save' }).tap(); await page.waitForTimeout(900);
+    await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Weeknight Chickpea Curry' }).first().tap(); await page.waitForTimeout(900);
+    const href = await page.locator('.view.tab-active .page-current a.ck-source-link').getAttribute('href');
+    if (href !== LINK) throw new Error(`the recipe's source links to ${href}`);
+    await page.goBack(); await page.waitForTimeout(900);
+  });
+  // the same page again (without www, with a tracking bit): the recipe already made from it is offered first
+  await step('12o-link-already-imported', async () => {
+    await askLink('https://example.com/weeknight-chickpea-curry?utm_source=instagram');
+    const title = await page.locator('.dialog.modal-in .dialog-title').textContent();
+    if (title.trim() !== 'Already in your recipes') throw new Error(`the same link again shows "${title}"`);
+    const buttons = await page.locator('.dialog.modal-in .dialog-button').allTextContents();
+    if (buttons.join() !== 'Open It,Import Again,Cancel') throw new Error(`the dialog offers ${JSON.stringify(buttons)}`);
+  });
+  await page.goto(`${BASE}?readfail`);
+  await page.waitForTimeout(900);
+  await step('12p-link-failed', async () => {
+    await askLink(LINK);
+    await page.waitForTimeout(1800);
+    const text = await page.locator('.view.tab-active .page-current .ck-scan-text').textContent();
+    if (!/^Couldn’t read the recipe.*wouldn’t let the app read the page/.test(text)) throw new Error(`the editor says "${text}"`);
     if (!(await page.locator('.view.tab-active .page-current .ck-scan .button', { hasText: 'Try again' }).count())) throw new Error('no Try again');
   });
 

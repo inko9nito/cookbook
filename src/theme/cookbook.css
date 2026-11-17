@@ -1142,6 +1142,9 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-scan-title { font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; color: var(--ck-fg); }
 .ck-scan-title.ck-scan-failed { color: var(--ck-error); }
 .ck-scan-detail { font-size: 14px; color: var(--ck-fg2); }
+/* issue #15: reading a link shows a soft tile with a globe where the photos would be, and the site under the text */
+.ck-scan-site { display: flex; align-items: center; justify-content: center; color: var(--ck-fg2); }
+.ck-scan-text .ck-scan-link { justify-self: start; margin-top: 4px; font-size: 14px; font-weight: 600; color: var(--ck-accent-ink); }
 
 /* ── Planner (issue #62): a week's calendar strip under the title (Framework7's subnavbar, so it stays while the agenda
    scrolls), then the week as an agenda, day by day. Like iOS's own Calendar: today's date in Tomato, the picked day

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   Page, Navbar, NavTitle, NavRight, Link, Searchbar,
-  Block, BlockFooter, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton, Button,
+  Block, BlockFooter, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton, Button, f7,
 } from 'framework7-react';
 import { ArrowUpDown, Plus } from 'lucide-react';
 import { useStore, type SortKey } from '../data/store';
@@ -11,7 +11,9 @@ import { showTabbar } from '../components/ui/tabbar';
 import RecipeCard from '../components/ui/RecipeCard';
 import { ChipsSkeleton, CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import { searchByTitle, searchWords } from '../lib/search';
-import { MAX_READ_IMAGES } from '../lib/read-recipe';
+import { MAX_READ_IMAGES, linkIn, sameLink } from '../lib/read-recipe';
+
+const escapeHtml = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
 
 const SORT_LABELS: Record<SortKey, string> = { newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
 const label = (t: string) => t[0].toUpperCase() + t.slice(1);
@@ -21,10 +23,42 @@ type Props = { f7router?: { navigate: (url: string, options?: { props?: Record<s
 export default function RecipesPage({ f7router }: Props) {
   const { recipes, loading, loadError, reload, sort, setSort, settings, setFilter } = useStore();
   const [sortOpen, setSortOpen] = useState(false);
-  // issue #17: + asks how: type it in, or read it from photos or screenshots (picked here, read in the editor)
+  // issue #17: + asks how: from a link (#15), from photos or screenshots (picked here, read in the editor), or type it in
   const [newOpen, setNewOpen] = useState(false);
   const scanRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
+
+  // issue #15: + → From a link asks for the link (Framework7's prompt dialog, a URL keyboard), then the editor reads it.
+  // A link already imported (the same page) offers that recipe first.
+  const readLink = (url: string) => f7router?.navigate('/recipe/new/', { props: { scanUrl: url } });
+  const askLink = (typed = '') => {
+    const dialog = f7.dialog.prompt(
+      'Paste the address of the recipe’s page.',
+      'From a Link',
+      (text: string) => {
+        if (!text.trim()) return;
+        const url = linkIn(text);
+        if (!url) return f7.dialog.alert('Copy the address of the recipe’s page (Share → Copy in Safari) and paste it here.', 'That isn’t a link', () => askLink(text));
+        const have = recipes.find((r) => r.sourceUrl && sameLink(r.sourceUrl, url));
+        if (!have) return readLink(url);
+        f7.dialog
+          .create({
+            title: 'Already in your recipes',
+            text: `“${escapeHtml(have.title)}” came from this link.`,
+            verticalButtons: true,
+            buttons: [
+              { text: 'Open It', strong: true, onClick: () => f7router?.navigate(`/recipe/${have.id}/`) },
+              { text: 'Import Again', onClick: () => readLink(url) },
+              { text: 'Cancel' },
+            ],
+          })
+          .open();
+      },
+      undefined,
+      typed,
+    );
+    dialog.$el.find('input').attr({ type: 'url', inputmode: 'url', placeholder: 'https://', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'go', 'aria-label': 'Link to the recipe' });
+  };
 
   // R2: a chip for every tag in use, the course types first (in meal order), then the rest A–Z
   const used = new Set(recipes.flatMap((r) => r.tags));
@@ -134,6 +168,7 @@ export default function RecipesPage({ f7router }: Props) {
         <ActionsGroup>
           <ActionsLabel>New recipe</ActionsLabel>
           {/* the picker has to open in the tap itself (iOS only lets a tap open it) */}
+          <ActionsButton onClick={() => askLink()}>From a link</ActionsButton>
           <ActionsButton onClick={() => scanRef.current?.click()}>From photos or screenshots</ActionsButton>
           <ActionsButton onClick={() => f7router?.navigate('/recipe/new/')}>Type it in</ActionsButton>
         </ActionsGroup>

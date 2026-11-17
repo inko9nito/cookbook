@@ -59,6 +59,55 @@ export const ReadRequest = z.object({
 });
 export type ReadRequest = z.infer<typeof ReadRequest>;
 
+// ── Issue #15: a recipe from a link. The server opens the page and reads the recipe the site publishes in it (schema.org
+// JSON-LD), or, on a page without one, has Claude read the page's text (kept as a job like the photos). ──
+
+/** What the phone sends: the link. */
+export const LinkRequest = z.object({ url: z.string().min(1).max(2000) });
+
+/** A page without a recipe in it for search engines, kept for the background function: its text for Claude. */
+export const PageRequest = z.object({
+  page: z.object({
+    url: z.string().max(2000),
+    text: z.string().max(100_000),
+    /** the page's photo (a data URL), handed back with the reading */
+    photo: z.string().startsWith('data:image/').optional(),
+  }),
+});
+export type PageRequest = z.infer<typeof PageRequest>;
+
+/** What a reading job reads: photos, or a page's text. */
+export const JobRequest = z.union([ReadRequest, PageRequest]);
+export type JobRequest = z.infer<typeof JobRequest>;
+
+/** A recipe read from a link: the page's address (after any redirect), and the dish photo the page had, as a data URL. */
+export const LinkReading = z.object({ url: z.string(), recipe: ReadRecipe, photo: z.string().startsWith('data:image/').optional() });
+export type LinkReading = z.infer<typeof LinkReading>;
+
+/** The first web address in what was pasted ("Look at this! https://…"), or a bare "example.com/recipe", or null. */
+export function linkIn(text: string): string | null {
+  const t = text.trim();
+  const full = t.match(/https?:\/\/[^\s<>"']+/i)?.[0];
+  const bare = full ? null : t.match(/^(?:www\.)?[a-z\d-]+(?:\.[a-z\d-]+)*\.[a-z]{2,}(?:[/?#]\S*)?$/i)?.[0];
+  const found = full ?? (bare ? `https://${bare}` : null);
+  return found ? found.replace(/[).,;!?'"’”]+$/, '') : null;
+}
+
+/** Two links to the same page: the same address without its scheme, "www.", tracking bits (utm_…) or a trailing slash. */
+export function sameLink(a: string, b: string): boolean {
+  const key = (u: string) => {
+    try {
+      const url = new URL(u);
+      for (const k of [...url.searchParams.keys()]) if (/^(utm_|fbclid|gclid|mc_|ref$|igsh)/i.test(k)) url.searchParams.delete(k);
+      url.hash = '';
+      return `${url.hostname.replace(/^www\./, '')}${url.pathname.replace(/\/+$/, '')}${url.search}`.toLowerCase();
+    } catch {
+      return u.trim().toLowerCase();
+    }
+  };
+  return key(a) === key(b);
+}
+
 const minutes = (n: number | null) => (n && n > 0 ? Math.min(100000, Math.round(n)) : 0);
 
 /**

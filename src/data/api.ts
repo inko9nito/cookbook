@@ -5,7 +5,7 @@
 import { Settings, type Recipe } from '../lib/recipe';
 import type { Cookbook } from '../lib/cookbook';
 import { today, type Planned } from '../lib/planner';
-import { ReadRecipe, type ReadRequest } from '../lib/read-recipe';
+import { LinkReading, ReadRecipe, type ReadRequest } from '../lib/read-recipe';
 import { demoCookbooks as demoCookbooksSeed, demoPlanned as demoPlannedSeed, demoRecipes as demoRecipesSeed } from '../demo/data';
 import { accessToken, SignedOutError } from './identity';
 
@@ -29,6 +29,8 @@ export type Backend = {
   deleteCookbook: (id: string) => Promise<void>;
   /** issue #17: read the recipe in photos or screenshots (shrunk on the phone); nothing is stored */
   readRecipe: (images: ReadRequest['images']) => Promise<ReadRecipe>;
+  /** issue #15: read the recipe on the page at a link (with the page's photo); nothing is stored */
+  readLink: (url: string) => Promise<LinkReading>;
   /** issue #62: the Planner, every recipe planned for a day */
   listPlanned: () => Promise<Planned[]>;
   /** plan a recipe for a day, or move it to another day (the same id) */
@@ -81,6 +83,31 @@ const jsonInit = (method: string, body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 });
 
+const outOfDate = () => new ApiError(502, 'The app is out of date. Update it in Settings → Version, then try again.');
+
+type Reading = { status: 'reading' } | { status: 'done'; recipe: unknown } | { status: 'failed'; code: number; error: string };
+
+/** Wait for a reading job (issues #17, #15): ask how it's doing every 2s until it's done (its answer) or failed. */
+async function readingOf(id: unknown, what: 'photo' | 'page'): Promise<Record<string, unknown>> {
+  if (typeof id !== 'string') throw outOfDate();
+  const until = Date.now() + 6 * 60_000;
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 2000));
+    let s: Reading;
+    try {
+      s = await call<Reading>(`/api/read-recipe/${encodeURIComponent(id)}`);
+    } catch (e) {
+      // a lost answer on a bad connection: ask again; a refusal or a lost reading ends it
+      if (e instanceof ApiError && [401, 403, 404].includes(e.status)) throw e;
+      if (Date.now() > until) throw e;
+      continue;
+    }
+    if (s.status === 'done') return s;
+    if (s.status === 'failed') throw new ApiError(s.code, s.error);
+    if (Date.now() > until) throw new ApiError(504, `Reading the ${what} took too long. Try again.`);
+  }
+}
+
 const http: Backend = {
   listRecipes: () => call<Recipe[]>('/api/recipes'),
   saveRecipe: (r) => call<Recipe>(`/api/recipes/${encodeURIComponent(r.id)}`, jsonInit('PUT', r)),
@@ -113,28 +140,17 @@ const http: Backend = {
   // the reading runs in a background function (it can take longer than an ordinary call may); ask for it every 2s
   readRecipe: async (images) => {
     const { id } = await call<{ id?: unknown }>('/api/read-recipe', jsonInit('POST', { images }));
-    if (typeof id !== 'string') throw new ApiError(502, 'The app is out of date. Update it in Settings → Version, then try again.');
-    const until = Date.now() + 6 * 60_000;
-    for (;;) {
-      await new Promise((r) => setTimeout(r, 2000));
-      let s: { status: 'reading' } | { status: 'done'; recipe: unknown } | { status: 'failed'; code: number; error: string };
-      try {
-        s = await call(`/api/read-recipe/${encodeURIComponent(id)}`);
-      } catch (e) {
-        // a lost answer on a bad connection: ask again; a refusal or a lost reading ends it
-        if (e instanceof ApiError && [401, 403, 404].includes(e.status)) throw e;
-        if (Date.now() > until) throw e;
-        continue;
-      }
-      if (s.status === 'done') {
-        const read = ReadRecipe.safeParse(s.recipe);
-        if (read.success) return read.data;
-        // the app on the phone and the server don't agree on the answer: one of them is a newer version
-        throw new ApiError(502, 'The app is out of date. Update it in Settings → Version, then try again.');
-      }
-      if (s.status === 'failed') throw new ApiError(s.code, s.error);
-      if (Date.now() > until) throw new ApiError(504, 'Reading the photo took too long. Try again.');
-    }
+    const read = ReadRecipe.safeParse((await readingOf(id, 'photo')).recipe);
+    if (read.success) return read.data;
+    // the app on the phone and the server don't agree on the answer: one of them is a newer version
+    throw outOfDate();
+  },
+  // a recipe site's page is read at once; any other page is read by Claude like the photos
+  readLink: async (url) => {
+    const started = await call<{ status?: unknown; id?: unknown }>('/api/read-recipe', jsonInit('POST', { url }));
+    const read = LinkReading.safeParse(started.status === 'done' ? started : await readingOf(started.id, 'page'));
+    if (read.success) return read.data;
+    throw outOfDate();
   },
 };
 
@@ -159,6 +175,20 @@ const demoReading = (first: { width: number; height: number }): ReadRecipe => ({
   notes: 'Keeps for 3 days in a tin.',
   dishPhoto: { image: 0, left: 0, top: 0, width: first.width, height: Math.round(first.height * 0.45) },
 });
+
+const demoLinkReading: ReadRecipe = {
+  found: true,
+  title: 'Weeknight Chickpea Curry',
+  source: 'Sample Kitchen',
+  servings: 4,
+  servingSize: '',
+  prepMinutes: 10,
+  cookMinutes: 25,
+  ingredients: [{ group: '', lines: ['2 tbsp olive oil', '1 onion, finely chopped', '3 garlic cloves, crushed', '2 tbsp curry paste', '2 × 400 g cans chickpeas, drained', '400 ml coconut milk', 'Handful of spinach'] }],
+  directions: [{ group: '', steps: ['Soften the onion in the oil for 8 minutes, then add the garlic and curry paste for 1 minute.', 'Add the chickpeas and coconut milk and simmer for 15 minutes.', 'Stir in the spinach until it wilts. Serve with rice.'] }],
+  notes: '',
+  dishPhoto: null,
+};
 
 const DEMO_SETTINGS = 'cookbook.demoSettings';
 const readDemoSettings = (): Settings => {
@@ -239,6 +269,23 @@ const demo: Backend = {
     await new Promise((r) => setTimeout(r, 1500));
     if (new URLSearchParams(location.search).has('readfail')) throw new ApiError(502, 'Claude is busy right now. Try again in a moment.');
     return demoReading(images[0]);
+  },
+  // no web access locally: after a moment, a made-up recipe for any link, with one of the sample photos.
+  // `?readfail` makes it fail instead, for the UI check.
+  readLink: async (url) => {
+    await new Promise((r) => setTimeout(r, 1500));
+    if (new URLSearchParams(location.search).has('readfail')) {
+      throw new ApiError(502, 'example.com wouldn’t let the app read the page. Take screenshots of the recipe and use From photos or screenshots instead.');
+    }
+    const blob = await (await fetch('/photos/meatballs.jpg')).blob().catch(() => null);
+    const photo = blob?.type.startsWith('image/')
+      ? await new Promise<string>((done) => {
+          const reader = new FileReader();
+          reader.onload = () => done(String(reader.result));
+          reader.readAsDataURL(blob);
+        })
+      : undefined;
+    return { url, recipe: demoLinkReading, ...(photo ? { photo } : {}) };
   },
   listPlanned: async () => structuredClone(demoPlanned),
   savePlanned: async (p) => {

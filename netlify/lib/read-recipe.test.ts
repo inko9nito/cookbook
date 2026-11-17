@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import Anthropic from '@anthropic-ai/sdk';
-import { DEFAULT_MODEL, JOB_LIMIT_MS, ReadError, jobStatus, readFailure, readParams, readRecipe, runJob, startJob, type Jobs } from './read-recipe';
+import { DEFAULT_MODEL, JOB_LIMIT_MS, PAGE_SYSTEM, ReadError, jobStatus, readFailure, readParams, readRecipe, runJob, startJob, type Jobs } from './read-recipe';
 import type { ReadRecipe } from '../../src/lib/read-recipe';
 
 const img = { data: 'data:image/jpeg;base64,AAAA', width: 720, height: 1568 };
@@ -33,6 +33,18 @@ describe('readParams', () => {
     expect((content[2] as Anthropic.TextBlockParam).text).toBe('Image 1: 1568×1176 pixels');
     expect((content[1] as Anthropic.ImageBlockParam).source).toEqual({ type: 'base64', media_type: 'image/jpeg', data: 'AAAA' });
     expect(p.output_config.format.type).toBe('json_schema');
+  });
+});
+
+describe('readParams for a page (issue #15)', () => {
+  test('the page’s text, with the page instructions', () => {
+    const p = readParams({ page: { url: 'https://example.com/', text: 'Address: https://example.com/\n\n2 eggs' } });
+    expect(p.system).toBe(PAGE_SYSTEM);
+    expect(p.messages[0].content).toBe('Address: https://example.com/\n\n2 eggs\n\n---\nCopy the recipe from this page.');
+  });
+
+  test('failures speak of the page', () => {
+    expect(readFailure(new Error('x'), true).message).toBe('Reading the page failed: x');
   });
 });
 
@@ -100,6 +112,16 @@ describe('reading as a job', () => {
     expect(m.has(`${id}/request`)).toBe(false);
     expect(await jobStatus(jobs, id)).toEqual({ status: 'done', recipe });
     expect(await jobStatus(jobs, id)).toBeNull();
+  }));
+
+  test('a page’s reading hands back its address and photo', () => withKey(async () => {
+    const { m, jobs } = store();
+    const id = await startJob(jobs, { page: { url: 'https://example.com/r', text: 'Pie', photo: 'data:image/jpeg;base64,AA' } });
+    let asked: unknown;
+    await runJob(jobs, id, async (req) => ((asked = req), recipe));
+    expect(asked).toMatchObject({ page: { text: 'Pie' } });
+    expect(m.has(`${id}/request`)).toBe(false);
+    expect(await jobStatus(jobs, id)).toEqual({ status: 'done', recipe, url: 'https://example.com/r', photo: 'data:image/jpeg;base64,AA' });
   }));
 
   test('a failed reading keeps its message and status', () => withKey(async () => {

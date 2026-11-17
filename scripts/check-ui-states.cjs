@@ -1355,6 +1355,40 @@ async function swipeLeft(ctx, page, locator) {
     if (tiles.includes('Soups') || tiles.length !== 3) throw new Error(`after deleting, the cookbooks are ${JSON.stringify(tiles)}`);
   });
 
+  // Issue #41: a recipe's page ends with where it belongs (labels, then the cookbooks and sections it's in, as chips) and
+  // its source; the header is the title alone
+  await step('41a-recipe-belongs', async () => {
+    await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
+    await page.locator(`${CUR} .ck-card`, { hasText: 'Corn pudding' }).tap(); await page.waitForTimeout(1000);
+    if (await page.locator(`${CUR} .ck-panel-head .ck-note`).count()) throw new Error('the header still has a line under the title');
+    await page.evaluate(() => { const pc = document.querySelector('.view.tab-active .page-current .page-content'); pc.scrollTop = pc.scrollHeight; });
+    await page.waitForTimeout(500);
+    const sections = (await page.locator(`${CUR} .ck-panel-rest .ck-sec h2`).allTextContents()).join(',');
+    if (sections !== 'Directions,Notes,Labels,Cookbooks,Source') throw new Error(`the page ends with ${sections}`);
+    const labels = (await page.locator(`${CUR} .ck-belongs .chip:not(.ck-book-chip)`).allTextContents()).join(',');
+    if (labels !== 'Side,Dessert,Holiday') throw new Error(`the labels are ${labels}`);
+    const books = (await page.locator(`${CUR} .ck-book-chip`).allTextContents()).join(',');
+    if (books !== 'Everything else,Everything else · Meat,Grilling') throw new Error(`the cookbook chips are ${books}`);
+    if ((await page.locator(`${CUR} .ck-book-chip[class*="ck-tint-"]`).count()) !== 3) throw new Error('the cookbook chips have no colour');
+    const source = await page.locator(`${CUR} .ck-source`).textContent();
+    if (source.trim() !== 'My recipe') throw new Error(`the source reads "${source}"`);
+  });
+  await step('41b-cookbook-chip-opens', async () => {
+    await page.locator(`${CUR} .ck-book-chip`, { hasText: 'Meat' }).tap(); await page.waitForTimeout(1000);
+    const title = await page.locator(`${CUR} > .navbar .title`).first().textContent();
+    if (!title.includes('Meat')) throw new Error(`the Meat chip opened "${title}"`);
+    await page.locator(`${CUR} > .navbar .back`).tap(); await page.waitForTimeout(900);
+  });
+  await step('41c-label-chip-filters', async () => {
+    await page.evaluate(() => { const pc = document.querySelector('.view.tab-active .page-current .page-content'); pc.scrollTop = pc.scrollHeight; });
+    await page.waitForTimeout(400);
+    await page.locator(`${CUR} .ck-belongs .chip`, { hasText: 'Dessert' }).tap(); await page.waitForTimeout(1000);
+    const on = (await page.locator(`${CUR} .ck-chips .chip.ck-chip-on`).allTextContents()).join(',');
+    if (on !== 'Dessert') throw new Error(`the Dessert label left Recipes filtered by "${on}"`);
+    if ((await page.locator('#view-recipes .page').count()) !== 1) throw new Error('the label didn’t go back to the recipe list');
+    await page.locator(`${CUR} .ck-chips .chip`, { hasText: 'All' }).first().tap(); await page.waitForTimeout(600);
+  });
+
   // One browser history for every tab: a page deep in two tabs at once made one back move both. Leaving a tab now takes
   // it back to its first page, so back only ever moves the tab shown.
   await step('26l-tabs-back', async () => {

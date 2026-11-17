@@ -698,11 +698,12 @@ async function swipeLeft(ctx, page, locator) {
     const text = await page.locator('.view.tab-active .page-current .ck-scan-text').textContent();
     if (!/^Reading the recipe/.test(text)) throw new Error(`the editor says "${text}"`);
     if ((await page.locator('.view.tab-active .page-current .skeleton-text').count()) < 4) throw new Error('no grey rows while reading');
+    if (!(await page.locator('.view.tab-active .page-current .ck-scan .progressbar-infinite').count())) throw new Error('no moving bar while reading');
   });
   await step('12i-read-from-photo', async () => {
     await page.waitForTimeout(1800);
     const text = await page.locator('.view.tab-active .page-current .ck-scan-text').textContent();
-    if (!/^Read from your photo/.test(text)) throw new Error(`the editor says "${text}"`);
+    if (!/^Recipe read/.test(text)) throw new Error(`the editor says "${text}"`);
     if (await page.locator('.view.tab-active .page-current .skeleton-text').count()) throw new Error('grey rows still showing');
     const title = await page.locator('.view.tab-active .page-current .ck-fields input[type=text]').first().inputValue();
     if (title !== 'Lemon Drizzle Loaf') throw new Error(`the name is "${title}"`);
@@ -720,7 +721,8 @@ async function swipeLeft(ctx, page, locator) {
     await pickScan();
     await page.waitForTimeout(1800);
     const text = await page.locator('.view.tab-active .page-current .ck-scan-text').textContent();
-    if (!/busy/.test(text)) throw new Error(`the editor says "${text}"`);
+    if (!/^Couldn’t read the recipe.*busy/.test(text)) throw new Error(`the editor says "${text}"`);
+    if (await page.locator('.view.tab-active .page-current .ck-scan .progressbar-infinite').count()) throw new Error('the bar still moves after failing');
     if (!(await page.locator('.view.tab-active .page-current .ck-scan .button', { hasText: 'Try again' }).count())) throw new Error('no Try again');
   });
 

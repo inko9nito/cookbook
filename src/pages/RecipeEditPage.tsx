@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListInput, ListItem, BlockTitle, Block, Button, Chip, Stepper,
-  SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton, PhotoBrowser,
+  SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton, PhotoBrowser, Progressbar,
 } from 'framework7-react';
 import { Camera, ImagePlus, Trash2, Plus, ArrowUp, ArrowDown, Crop, Star } from 'lucide-react';
 import { useStore } from '../data/store';
@@ -229,6 +229,13 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) 
     if (scanFiles?.length) void readScan();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const reading = scan?.status === 'reading';
+  const several = sources.length > 1;
+  const scanTitle: Record<Scan['status'], string> = {
+    reading: 'Reading the recipe…',
+    read: 'Recipe read',
+    empty: 'No recipe found',
+    failed: 'Couldn’t read the recipe',
+  };
 
   const save = () => {
     saveRecipe({ ...draft, title: draft.title.trim() || 'Untitled recipe', minutes: draft.prepMinutes + draft.cookMinutes });
@@ -269,15 +276,19 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) 
                 />
               ))}
             </div>
-            <p className="ck-scan-text">
-              {scan.status === 'reading' && (sources.length > 1 ? 'Reading the recipe from your photos…' : 'Reading the recipe from your photo…')}
-              {scan.status === 'read' && (sources.length > 1 ? 'Read from your photos. Check the recipe against them before saving.' : 'Read from your photo. Check the recipe against it before saving.')}
-              {scan.status === 'empty' && (sources.length > 1 ? 'No recipe found in those photos. Type it in below.' : 'No recipe found in that photo. Type it in below.')}
-              {scan.status === 'failed' && scan.message}
-            </p>
+            <div className="ck-scan-text">
+              <p className={`ck-scan-title ${scan.status === 'failed' ? 'ck-scan-failed' : ''}`}>{scanTitle[scan.status]}</p>
+              <p className="ck-scan-detail">
+                {scan.status === 'reading' && 'This takes about half a minute. You can type while you wait.'}
+                {scan.status === 'read' && `Check it against your ${several ? 'photos' : 'photo'} before saving.`}
+                {scan.status === 'empty' && `Type it in below, or try ${several ? 'other photos' : 'another photo'}.`}
+                {scan.status === 'failed' && scan.message}
+              </p>
+            </div>
           </div>
+          {scan.status === 'reading' && <Progressbar infinite />}
           {scan.status === 'failed' && (
-            <Button round className="ck-soft ck-inline-button" onClick={() => void readScan()}>
+            <Button large fill round className="ck-main" onClick={() => void readScan()}>
               Try again
             </Button>
           )}

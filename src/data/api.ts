@@ -101,13 +101,24 @@ const http: Backend = {
   listCookbooks: () => call<Cookbook[]>('/api/cookbooks'),
   saveCookbook: (c) => call<Cookbook>(`/api/cookbooks/${encodeURIComponent(c.id)}`, jsonInit('PUT', c)),
   deleteCookbook: (id) => call<void>(`/api/cookbooks/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  // the reading runs in a background function (it can take longer than an ordinary call may); ask for it every 2s
   readRecipe: async (images) => {
-    try {
-      return ReadRecipe.parse(await call<unknown>('/api/read-recipe', jsonInit('POST', { images })));
-    } catch (e) {
-      // Netlify's own answer when a function runs out of time has no message of ours
-      if (e instanceof ApiError && /^The server said 50[24]/.test(e.message)) throw new ApiError(e.status, 'Reading the photo took too long. Try again.');
-      throw e;
+    const { id } = await call<{ id: string }>('/api/read-recipe', jsonInit('POST', { images }));
+    const until = Date.now() + 6 * 60_000;
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 2000));
+      let s: { status: 'reading' } | { status: 'done'; recipe: unknown } | { status: 'failed'; code: number; error: string };
+      try {
+        s = await call(`/api/read-recipe/${encodeURIComponent(id)}`);
+      } catch (e) {
+        // a lost answer on a bad connection: ask again; a refusal or a lost reading ends it
+        if (e instanceof ApiError && [401, 403, 404].includes(e.status)) throw e;
+        if (Date.now() > until) throw e;
+        continue;
+      }
+      if (s.status === 'done') return ReadRecipe.parse(s.recipe);
+      if (s.status === 'failed') throw new ApiError(s.code, s.error);
+      if (Date.now() > until) throw new ApiError(504, 'Reading the photo took too long. Try again.');
     }
   },
 };

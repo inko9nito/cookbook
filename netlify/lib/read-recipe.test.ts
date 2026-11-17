@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import Anthropic from '@anthropic-ai/sdk';
-import { DEFAULT_MODEL, ReadError, readFailure, readParams, readRecipe } from './read-recipe';
+import { DEFAULT_MODEL, JOB_LIMIT_MS, ReadError, jobStatus, readFailure, readParams, readRecipe, runJob, startJob, type Jobs } from './read-recipe';
 import type { ReadRecipe } from '../../src/lib/read-recipe';
 
 const img = { data: 'data:image/jpeg;base64,AAAA', width: 720, height: 1568 };
@@ -67,5 +67,74 @@ describe('readRecipe', () => {
     expect(readFailure(err(529)).status).toBe(502);
     expect(readFailure(new Error('boom'))).toBeInstanceOf(ReadError);
     await expect(readRecipe({ images: [img] }, fakeClient(err(429)).client)).rejects.toMatchObject({ status: 429 });
+  });
+});
+
+describe('reading as a job', () => {
+  /** a Map standing in for the Blobs store */
+  const store = () => {
+    const m = new Map<string, unknown>();
+    const jobs: Jobs = {
+      get: async (k) => m.get(k) ?? null,
+      setJSON: async (k, v) => void m.set(k, structuredClone(v)),
+      delete: async (k) => void m.delete(k),
+    };
+    return { m, jobs };
+  };
+  const withKey = async (fn: () => Promise<void>) => {
+    const before = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = 'gateway';
+    try {
+      await fn();
+    } finally {
+      if (before === undefined) delete process.env.ANTHROPIC_API_KEY;
+      else process.env.ANTHROPIC_API_KEY = before;
+    }
+  };
+
+  test('start → reading → done once; the photos and then the result are deleted', () => withKey(async () => {
+    const { m, jobs } = store();
+    const id = await startJob(jobs, { images: [img] }, 1000);
+    expect(await jobStatus(jobs, id, 2000)).toEqual({ status: 'reading' });
+    await runJob(jobs, id, async () => recipe);
+    expect(m.has(`${id}/request`)).toBe(false);
+    expect(await jobStatus(jobs, id)).toEqual({ status: 'done', recipe });
+    expect(await jobStatus(jobs, id)).toBeNull();
+  }));
+
+  test('a failed reading keeps its message and status', () => withKey(async () => {
+    const { jobs } = store();
+    const id = await startJob(jobs, { images: [img] });
+    await runJob(jobs, id, async () => { throw new ReadError(429, 'Too many.'); });
+    expect(await jobStatus(jobs, id)).toEqual({ status: 'failed', code: 429, error: 'Too many.' });
+    const id2 = await startJob(jobs, { images: [img] });
+    await runJob(jobs, id2, async () => { throw new Error('boom'); });
+    expect(await jobStatus(jobs, id2)).toMatchObject({ status: 'failed', code: 500 });
+  }));
+
+  test('a reading that never finishes fails after the limit', () => withKey(async () => {
+    const { m, jobs } = store();
+    const id = await startJob(jobs, { images: [img] }, 0);
+    expect(await jobStatus(jobs, id, JOB_LIMIT_MS + 1)).toMatchObject({ status: 'failed', code: 504 });
+    expect(m.size).toBe(0);
+  }));
+
+  test('without the AI Gateway, nothing is started', async () => {
+    const before = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      const { m, jobs } = store();
+      await expect(startJob(jobs, { images: [img] })).rejects.toMatchObject({ status: 503 });
+      expect(m.size).toBe(0);
+    } finally {
+      if (before !== undefined) process.env.ANTHROPIC_API_KEY = before;
+    }
+  });
+
+  test('an unknown or already-run job does nothing', async () => {
+    const { m, jobs } = store();
+    await runJob(jobs, 'nope', async () => recipe);
+    expect(m.size).toBe(0);
+    expect(await jobStatus(jobs, 'nope')).toBeNull();
   });
 });

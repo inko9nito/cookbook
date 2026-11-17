@@ -1136,6 +1136,9 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .block.ck-scan { display: grid; gap: 12px; }
 .ck-scan-row { display: flex; align-items: center; gap: 12px; }
 .ck-scan-sources { display: flex; gap: 6px; flex: none; }
-.ck-scan-source { width: 40px; aspect-ratio: 3 / 4; border-radius: 8px; background-color: var(--ck-soft); }
-.ck-scan-text { margin: 0; font-size: 15px; color: var(--ck-fg2); }
-.block.ck-scan .button.ck-inline-button { justify-self: start; }
+.ck-scan-source { width: 54px; aspect-ratio: 3 / 4; border-radius: 10px; background-color: var(--ck-soft); }
+.ck-scan-text { display: grid; gap: 2px; }
+.ck-scan-text p { margin: 0; }
+.ck-scan-title { font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; color: var(--ck-fg); }
+.ck-scan-title.ck-scan-failed { color: var(--ck-error); }
+.ck-scan-detail { font-size: 14px; color: var(--ck-fg2); }

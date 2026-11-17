@@ -5,7 +5,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { ReadRecipe, type ReadRequest } from '../../src/lib/read-recipe';
+import { ReadRecipe, ReadRequest } from '../../src/lib/read-recipe';
 
 /** The model, unless the site sets READ_RECIPE_MODEL (e.g. if the gateway doesn't offer this one). */
 export const DEFAULT_MODEL = 'claude-opus-5-5';
@@ -65,17 +65,25 @@ export function readFailure(e: unknown): ReadError {
   if (e instanceof Anthropic.NotFoundError) return new ReadError(503, 'Reading photos isn’t set up on this site: the AI model wasn’t found.');
   if (e instanceof Anthropic.RateLimitError) return new ReadError(429, 'Too many photos read just now. Try again in a minute.');
   if (e instanceof Anthropic.BadRequestError) return new ReadError(400, 'That photo couldn’t be read. Try a different one.');
-  if (e instanceof Anthropic.APIConnectionTimeoutError) return new ReadError(504, 'Reading the photo took too long. Try again.');
+  if (e instanceof Anthropic.APIConnectionTimeoutError) return new ReadError(504, 'Claude took too long to answer. Try again.');
   if (e instanceof Anthropic.APIError) return new ReadError(502, 'Claude is busy right now. Try again in a moment.');
   return new ReadError(500, `Reading the photo failed: ${e instanceof Error ? e.message : String(e)}`);
 }
 
-/** Read the recipe in the images. Throws a ReadError with a message for the person. */
-export async function readRecipe(req: ReadRequest, client?: Anthropic, model = process.env.READ_RECIPE_MODEL || DEFAULT_MODEL): Promise<ReadRecipe> {
+/** Whether the photos can be read at all: not too large together, and the AI Gateway (or a key) is there. */
+export function checkReadable(req: ReadRequest, hasClient = false) {
   if (req.images.reduce((n, img) => n + img.data.length, 0) > MAX_IMAGE_CHARS) throw new ReadError(413, 'Those photos are too large together. Try fewer.');
-  if (!client && !process.env.ANTHROPIC_API_KEY) throw new ReadError(503, 'Reading photos isn’t set up on this site: it needs Netlify’s AI Gateway.');
-  // one try, under the function's time limit: the person can tap Try Again
-  const claude = client ?? new Anthropic({ timeout: 50_000, maxRetries: 0 });
+  if (!hasClient && !process.env.ANTHROPIC_API_KEY) throw new ReadError(503, 'Reading photos isn’t set up on this site: it needs Netlify’s AI Gateway.');
+}
+
+/**
+ * Read the recipe in the images. Throws a ReadError with a message for the person. It runs in a background function
+ * (reading can take longer than the 30 seconds an ordinary function gets), so it can wait for Claude and retry once
+ * it's busy.
+ */
+export async function readRecipe(req: ReadRequest, client?: Anthropic, model = process.env.READ_RECIPE_MODEL || DEFAULT_MODEL): Promise<ReadRecipe> {
+  checkReadable(req, !!client);
+  const claude = client ?? new Anthropic({ timeout: 180_000, maxRetries: 2 });
   let message;
   try {
     message = await claude.messages.parse(readParams(req, model));
@@ -85,4 +93,64 @@ export async function readRecipe(req: ReadRequest, client?: Anthropic, model = p
   if (message.stop_reason === 'refusal') throw new ReadError(422, 'Claude wouldn’t read that photo. Try a different one.');
   if (message.stop_reason === 'max_tokens' || !message.parsed_output) throw new ReadError(502, 'The recipe couldn’t be read completely. Try again, or with fewer photos.');
   return message.parsed_output;
+}
+
+// ── Reading as a job (issue #17). The phone sends the photos (POST /api/read-recipe); they're kept in Blobs (store
+// "reads") and the background function reads them; the phone asks for the result every couple of seconds
+// (GET /api/read-recipe/:id). A result is deleted once the phone has it. ──
+
+/** Where the jobs are kept: the parts of a Netlify Blobs store used (a Map stands in for it in the tests). */
+export type Jobs = {
+  get: (key: string, options: { type: 'json' }) => Promise<unknown>;
+  setJSON: (key: string, value: unknown) => Promise<unknown>;
+  delete: (key: string) => Promise<unknown>;
+};
+
+export type JobStatus =
+  | { status: 'reading' }
+  | { status: 'done'; recipe: ReadRecipe }
+  | { status: 'failed'; code: number; error: string };
+
+/** A reading that hasn't finished after this long has stopped (the background function died). */
+export const JOB_LIMIT_MS = 6 * 60_000;
+
+type Kept = JobStatus & { at: number };
+
+/** Keep the photos and mark the job as being read; returns its id. */
+export async function startJob(jobs: Jobs, req: ReadRequest, now = Date.now()): Promise<string> {
+  checkReadable(req);
+  const id = crypto.randomUUID();
+  await jobs.setJSON(`${id}/request`, req);
+  await jobs.setJSON(`${id}/status`, { status: 'reading', at: now } satisfies Kept);
+  return id;
+}
+
+/** Read a job's photos (the background function) and keep the result; the photos are deleted first. */
+export async function runJob(jobs: Jobs, id: string, read: (req: ReadRequest) => Promise<ReadRecipe> = readRecipe, now = () => Date.now()) {
+  const kept = await jobs.get(`${id}/request`, { type: 'json' });
+  if (!kept) return;
+  await jobs.delete(`${id}/request`);
+  let result: JobStatus;
+  try {
+    result = { status: 'done', recipe: await read(ReadRequest.parse(kept)) };
+  } catch (e) {
+    const failure = e instanceof ReadError ? e : readFailure(e);
+    result = { status: 'failed', code: failure.status, error: failure.message };
+  }
+  await jobs.setJSON(`${id}/status`, { ...result, at: now() } satisfies Kept);
+}
+
+/** How a job is doing, or null when there's no such job. A finished one is handed over once and then deleted. */
+export async function jobStatus(jobs: Jobs, id: string, now = Date.now()): Promise<JobStatus | null> {
+  const kept = (await jobs.get(`${id}/status`, { type: 'json' })) as Kept | null;
+  if (!kept) return null;
+  if (kept.status === 'reading') {
+    if (now - kept.at < JOB_LIMIT_MS) return { status: 'reading' };
+    await jobs.delete(`${id}/request`);
+    await jobs.delete(`${id}/status`);
+    return { status: 'failed', code: 504, error: 'Reading the photo stopped part way. Try again.' };
+  }
+  await jobs.delete(`${id}/status`);
+  const { at: _at, ...status } = kept;
+  return status;
 }

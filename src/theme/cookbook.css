@@ -697,7 +697,8 @@ html.ios .fab.ck-cooking-fab {
   --f7-fab-extended-text-padding: 0 18px 0 8px;
   --f7-fab-box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
 }
-html.ios .fab.ck-cooking-fab > a { padding-left: 16px; font-family: var(--ck-font-display); }
+html.ios .fab.ck-cooking-fab > a { font-family: var(--ck-font-display); }
+.ck-cooking-fab > a > svg { flex: none; margin-left: 16px; } /* not padding on the link: Framework7 sets it to 100% wide, so padding would push it off centre */
 .ck-cooking-fab-text { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .ck-cooking-fab .badge.ck-cooking-count {
   --f7-badge-bg-color: var(--ck-surface);

@@ -340,7 +340,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.goBack();
     await page.waitForTimeout(900);
     if (!page.url().startsWith(BASE)) throw new Error(`back left the app for ${page.url()}`);
-    const pages = await page.locator('#view-recipes .page').count();
+    const pages = await page.locator('#view-recipes > .page').count();
     if (pages !== 1 || !(await page.locator('#view-recipes .page-current .ck-card').count())) throw new Error('back did not return to Recipes');
   });
 
@@ -825,47 +825,59 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator('.view.tab-active .page-current .ck-scan .button', { hasText: 'Try again' }).count())) throw new Error('no Try again');
   });
 
-  // issue #15: a recipe from a link. + → From a link asks for it in a dialog (a URL keyboard); the editor opens at once
-  // with the site in the banner, then fills in (the demo backend's made-up recipe) with the page's photo
+  // issue #15: a recipe from a link. + → From a link opens its own screen (a popup): Paste Copied Link fills the field
+  // from the clipboard, or a link is typed in; Import opens the editor at once with the site in the banner, then it
+  // fills in (the demo backend's made-up recipe) with the page's photo
+  const POP = '.popup.ck-from-link-popup.modal-in';
   const askLink = async (link) => {
     await page.locator('.navbar a[aria-label="New recipe"]').first().tap(); await page.waitForTimeout(600);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'From a link' }).tap(); await page.waitForTimeout(700);
     if (link !== undefined) {
-      await page.locator('.dialog.modal-in input').fill(link);
-      await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(900);
+      await page.locator(`${POP} textarea`).fill(link);
+      await page.locator(`${POP} .navbar a`, { hasText: 'Import' }).tap(); await page.waitForTimeout(1100);
     }
   };
   const LINK = 'https://www.example.com/weeknight-chickpea-curry/';
   await page.goto(BASE);
   await page.waitForTimeout(900);
-  // a link just copied fills the field (iOS asks with its own Paste button; Chromium is given the permission)
+  // the field is empty and already focused (the keyboard is up without tapping into it); nothing to import yet
+  await step('12l-link-screen', async () => {
+    await askLink();
+    const field = page.locator(`${POP} textarea`);
+    if ((await field.getAttribute('inputmode')) !== 'url') throw new Error('the link field has no URL keyboard');
+    if (await field.inputValue()) throw new Error(`the field starts with "${await field.inputValue()}"`);
+    if (!(await field.evaluate((el) => el === document.activeElement))) throw new Error('the link field isn’t focused');
+    const title = await page.locator(`${POP} .navbar .title`).textContent();
+    if (title.trim() !== 'From a Link') throw new Error(`the screen is titled "${title}"`);
+    if (!(await page.locator(`${POP} .navbar a.disabled`, { hasText: 'Import' }).count())) throw new Error('Import works with no link');
+    if (!(await page.locator(`${POP} .item-title`, { hasText: 'Paste Copied Link' }).count())) throw new Error('no Paste Copied Link');
+  });
+  // a link just copied (in other words) comes in on Paste Copied Link (iOS asks with its own Paste button; Chromium is
+  // given the permission), with its site under it
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
   const copy = (text) => page.evaluate((t) => navigator.clipboard.writeText(t), text);
   await step('12l0-link-from-clipboard', async () => {
     await copy(`Saw this on Instagram ${LINK}`);
-    await askLink();
-    const value = await page.locator('.dialog.modal-in input').inputValue();
+    await page.locator(`${POP} .item-title`, { hasText: 'Paste Copied Link' }).tap(); await page.waitForTimeout(400);
+    const value = await page.locator(`${POP} textarea`).inputValue();
     if (value !== LINK) throw new Error(`with a link copied, the field holds "${value}"`);
-    const text = await page.locator('.dialog.modal-in .dialog-text').textContent();
-    if (!/link you copied/.test(text)) throw new Error(`the dialog says "${text}"`);
+    const info = await page.locator(`${POP} .item-input-info`).textContent();
+    if (info !== 'From example.com') throw new Error(`under the link: "${info}"`);
+    if (await page.locator(`${POP} .navbar a.disabled`, { hasText: 'Import' }).count()) throw new Error('Import is still off');
   });
-  await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(500);
-  // nothing to use in the clipboard: an empty field, already focused (the keyboard is up without tapping into it)
-  await step('12l-link-dialog', async () => {
+  await step('12l1-copied-not-a-link', async () => {
+    await page.locator(`${POP} textarea`).fill('');
     await copy('chicken curry');
-    await askLink();
-    const input = page.locator('.dialog.modal-in input');
-    if ((await input.getAttribute('type')) !== 'url') throw new Error('the link field has no URL keyboard');
-    if (await input.inputValue()) throw new Error(`with no link copied, the field holds "${await input.inputValue()}"`);
-    if (!(await input.evaluate((el) => el === document.activeElement))) throw new Error('the link field isn’t focused');
-    const title = await page.locator('.dialog.modal-in .dialog-title').textContent();
-    if (title.trim() !== 'From a Link') throw new Error(`the dialog is titled "${title}"`);
+    await page.locator(`${POP} .item-title`, { hasText: 'Paste Copied Link' }).tap(); await page.waitForTimeout(400);
+    const info = await page.locator(`${POP} .item-input-info`).textContent();
+    if (!/isn’t a link/.test(info)) throw new Error(`with words copied, it says "${info}"`);
+    if (await page.locator(`${POP} textarea`).inputValue()) throw new Error('the words went into the field');
   });
   await step('12l2-not-a-link', async () => {
-    await page.locator('.dialog.modal-in input').fill('chicken curry');
-    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(700);
-    const title = await page.locator('.dialog.modal-in .dialog-title').textContent();
-    if (!/isn’t a link/.test(title)) throw new Error(`typing words shows "${title}"`);
+    await page.locator(`${POP} textarea`).fill('chicken curry');
+    const error = await page.locator(`${POP} .item-input-error-message`).textContent();
+    if (!/isn’t a link/.test(error)) throw new Error(`typing words shows "${error}"`);
+    if (!(await page.locator(`${POP} .navbar a.disabled`, { hasText: 'Import' }).count())) throw new Error('Import works with words');
   });
   await page.goto(BASE);
   await page.waitForTimeout(900);
@@ -899,11 +911,16 @@ async function swipeLeft(ctx, page, locator) {
   });
   // the same page again (without www, with a tracking bit): the recipe already made from it is offered first
   await step('12o-link-already-imported', async () => {
-    await askLink('https://example.com/weeknight-chickpea-curry?utm_source=instagram');
-    const title = await page.locator('.dialog.modal-in .dialog-title').textContent();
-    if (title.trim() !== 'Already in your recipes') throw new Error(`the same link again shows "${title}"`);
-    const buttons = await page.locator('.dialog.modal-in .dialog-button').allTextContents();
-    if (buttons.join() !== 'Open It,Import Again,Cancel') throw new Error(`the dialog offers ${JSON.stringify(buttons)}`);
+    await askLink();
+    await page.locator(`${POP} textarea`).fill('https://example.com/weeknight-chickpea-curry?utm_source=instagram');
+    const have = await page.locator(`${POP} .ck-from-link-have .item-content`).textContent().catch(() => '');
+    if (!/Already in your recipes.*Weeknight Chickpea Curry/.test(have)) throw new Error(`the same link again shows "${have}"`);
+  });
+  await step('12o2-open-already-imported', async () => {
+    await page.locator(`${POP} .ck-from-link-have a`).tap(); await page.waitForTimeout(1300);
+    if (await page.locator(POP).count()) throw new Error('the screen is still open');
+    const text = await page.locator('.view.tab-active .page-current').textContent();
+    if (!/Weeknight Chickpea Curry/.test(text) || !(await page.locator('.view.tab-active .page-current a.ck-source-link').count())) throw new Error('the recipe didn’t open');
   });
   await page.goto(`${BASE}?readfail`);
   await page.waitForTimeout(900);
@@ -1692,7 +1709,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator(`${CUR} .ck-belongs .chip`, { hasText: 'Dessert' }).tap(); await page.waitForTimeout(1000);
     const on = (await page.locator(`${CUR} .ck-chips .chip.ck-chip-on`).allTextContents()).join(',');
     if (on !== 'Dessert') throw new Error(`the Dessert label left Recipes filtered by "${on}"`);
-    if ((await page.locator('#view-recipes .page').count()) !== 1) throw new Error('the label didn’t go back to the recipe list');
+    if ((await page.locator('#view-recipes > .page').count()) !== 1) throw new Error('the label didn’t go back to the recipe list');
     await page.locator(`${CUR} .ck-chips .chip`, { hasText: 'All' }).first().tap(); await page.waitForTimeout(600);
   });
 
@@ -1704,18 +1721,18 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('#view-settings .page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(900);
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(800);
     await page.locator('#view-cookbooks .page-current .ck-book-tile', { hasText: 'Everything else' }).tap(); await page.waitForTimeout(900);
-    const settingsPages = await page.locator('#view-settings .page').count();
+    const settingsPages = await page.locator('#view-settings > .page').count();
     if (settingsPages !== 1) throw new Error(`leaving Settings left ${settingsPages} pages in it, not its first page`);
     await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(800);
     // coming back, Cookbooks starts at its first page
-    const books = await page.locator('#view-cookbooks .page').filter({ has: page.locator('.ck-book-tile') }).count();
+    const books = await page.locator('#view-cookbooks > .page').filter({ has: page.locator('.ck-book-tile') }).count();
     if (!books || (await page.locator('#view-cookbooks .page-current .ck-book-tile').count()) !== 3) throw new Error('coming back to Cookbooks doesn’t show the cookbooks');
     await page.locator('#view-cookbooks .page-current .ck-book-tile', { hasText: 'Grilling' }).tap(); await page.waitForTimeout(900);
     await page.goBack(); await page.waitForTimeout(900);
     if (!page.url().startsWith(BASE)) throw new Error(`back left the app for ${page.url()}`);
     if ((await page.locator('#view-cookbooks .page-current .ck-book-tile').count()) !== 3) throw new Error('back from a cookbook didn’t return to the cookbooks');
-    if ((await page.locator('#view-settings .page').count()) !== 1) throw new Error('back in Cookbooks moved Settings');
+    if ((await page.locator('#view-settings > .page').count()) !== 1) throw new Error('back in Cookbooks moved Settings');
   });
 
   // A cookbook or section just made stays, even when the list is reloaded from the server before the save lands (#25: on

@@ -13,7 +13,7 @@ import StepSheet from '../components/StepSheet';
 import { inlineIcon } from '../components/ui/icons';
 import { photoStyle, photoFromFile, recrop, imageForReading, photoCroppedTo } from '../components/ui/photo';
 import { READ_IMAGE_EDGE, dishCrop, withReading } from '../lib/read-recipe';
-import { backend } from '../data/api';
+import { ApiError, backend } from '../data/api';
 import PhotoCropper from '../components/PhotoCropper';
 import { EditRowsSkeleton } from '../components/ui/Skeletons';
 import { hideTabbar } from '../components/ui/tabbar';
@@ -206,13 +206,19 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) 
   // read them; the photos stay at the top to check the recipe against (tap one to see it full screen). ──
   const [scan, setScan] = useState<Scan | null>(scanFiles?.length ? { status: 'reading' } : null);
   const [sources] = useState(() => (scanFiles ?? []).map((f) => URL.createObjectURL(f)));
+  const several = sources.length > 1;
   useEffect(() => () => sources.forEach((u) => URL.revokeObjectURL(u)), [sources]);
   const sourceBrowser = useRef<{ f7PhotoBrowser: () => { open: (index?: number) => void } } | null>(null);
   const readScan = async () => {
     const files = scanFiles ?? [];
     setScan({ status: 'reading' });
+    let images: Awaited<ReturnType<typeof imageForReading>>[];
     try {
-      const images = await Promise.all(files.map((f) => imageForReading(f, READ_IMAGE_EDGE)));
+      images = await Promise.all(files.map((f) => imageForReading(f, READ_IMAGE_EDGE)));
+    } catch {
+      return setScan({ status: 'failed', message: several ? 'One of those photos couldn’t be opened. Try others.' : 'That photo couldn’t be opened. Try another.' });
+    }
+    try {
       const reading = await backend.readRecipe(images);
       if (!reading.found) return setScan({ status: 'empty' });
       // the photo of the dish in a screenshot or on the page, cropped to it, if Claude found one
@@ -222,14 +228,21 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) 
       setDraft((d) => ({ ...withReading(d, reading, others), photos: photo ? [...d.photos, photo] : d.photos }));
       setScan({ status: 'read' });
     } catch (e) {
-      setScan({ status: 'failed', message: e instanceof Error ? e.message : String(e) });
+      // the server's and the app's own messages are written for the person; anything else (a bug) isn't shown raw
+      console.error(e);
+      const message =
+        e instanceof ApiError
+          ? e.message
+          : e instanceof TypeError // fetch couldn't reach the server ("Load failed" on the iPhone)
+            ? 'Couldn’t reach the server. Check the connection and try again.'
+            : 'Something went wrong. Try again, or update the app in Settings → Version.';
+      setScan({ status: 'failed', message });
     }
   };
   useEffect(() => {
     if (scanFiles?.length) void readScan();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const reading = scan?.status === 'reading';
-  const several = sources.length > 1;
   const scanTitle: Record<Scan['status'], string> = {
     reading: 'Reading the recipe…',
     read: 'Recipe read',

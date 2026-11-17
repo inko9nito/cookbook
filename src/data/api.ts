@@ -103,7 +103,8 @@ const http: Backend = {
   deleteCookbook: (id) => call<void>(`/api/cookbooks/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   // the reading runs in a background function (it can take longer than an ordinary call may); ask for it every 2s
   readRecipe: async (images) => {
-    const { id } = await call<{ id: string }>('/api/read-recipe', jsonInit('POST', { images }));
+    const { id } = await call<{ id?: unknown }>('/api/read-recipe', jsonInit('POST', { images }));
+    if (typeof id !== 'string') throw new ApiError(502, 'The app is out of date. Update it in Settings → Version, then try again.');
     const until = Date.now() + 6 * 60_000;
     for (;;) {
       await new Promise((r) => setTimeout(r, 2000));
@@ -116,7 +117,12 @@ const http: Backend = {
         if (Date.now() > until) throw e;
         continue;
       }
-      if (s.status === 'done') return ReadRecipe.parse(s.recipe);
+      if (s.status === 'done') {
+        const read = ReadRecipe.safeParse(s.recipe);
+        if (read.success) return read.data;
+        // the app on the phone and the server don't agree on the answer: one of them is a newer version
+        throw new ApiError(502, 'The app is out of date. Update it in Settings → Version, then try again.');
+      }
       if (s.status === 'failed') throw new ApiError(s.code, s.error);
       if (Date.now() > until) throw new ApiError(504, 'Reading the photo took too long. Try again.');
     }

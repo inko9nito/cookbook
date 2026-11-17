@@ -11,13 +11,25 @@ const id = z.string().min(1).max(64);
 export const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'should be a day like 2026-11-17');
 export type Day = z.infer<typeof Day>;
 
-export const Planned = z.object({
-  id,
-  day: Day,
-  recipeId: id,
-  /** ISO timestamp. A day's recipes show in the order they were added. */
-  createdAt: z.string(),
-});
+/** A day's meal slots (issue #67), in the order they show. A planned item without one is for the day as a whole. */
+export const MEALS = ['breakfast', 'lunch', 'dinner'] as const;
+export type Meal = (typeof MEALS)[number];
+export const mealName = (m: Meal) => m[0].toUpperCase() + m.slice(1);
+
+/** Something planned for a day: a recipe (by id) or a note ("Eating out"), either one, never both. */
+export const Planned = z
+  .object({
+    id,
+    day: Day,
+    recipeId: id.optional(),
+    note: z.string().trim().min(1).max(500).optional(),
+    meal: z.enum(MEALS).optional(),
+    /** issue #67: the servings picked on the recipe page when it was added; none: the recipe's own */
+    servings: z.number().positive().max(1000).optional(),
+    /** ISO timestamp. Within a slot, items show in the order they were added. */
+    createdAt: z.string(),
+  })
+  .refine((p) => !p.recipeId !== !p.note, { message: 'needs a recipe or a note, not both' });
 export type Planned = z.infer<typeof Planned>;
 
 // ── days ──
@@ -89,20 +101,50 @@ export function weekName(start: Day, now: Day): string | undefined {
 
 const byAdded = (a: Planned, b: Planned) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
 
-/** A day's planned recipes, in the order they were added. */
+/** A day's planned items, in the order they were added. */
 export const plannedOn = (list: Planned[], day: Day) => list.filter((p) => p.day === day).sort(byAdded);
+
+/**
+ * A day's items by slot: those for the day as a whole first (no label), then Breakfast, Lunch and Dinner, each in the
+ * order added. Empty slots are left out.
+ */
+export const slotsOn = (list: Planned[], day: Day): { meal: Meal | null; items: Planned[] }[] => {
+  const items = plannedOn(list, day);
+  return [null, ...MEALS]
+    .map((meal) => ({ meal, items: items.filter((p) => (p.meal ?? null) === meal) }))
+    .filter((s) => s.items.length);
+};
 
 /** The days that have something planned. */
 export const busyDays = (list: Planned[]) => new Set(list.map((p) => p.day));
 
-/** The days a recipe is planned for from today on, soonest first (each day once). */
+/** The days a recipe is planned for from today on, soonest first (each day once). Notes have no recipe. */
 export const upcomingDaysOf = (list: Planned[], recipeId: string, now: Day): Day[] =>
   [...new Set(list.filter((p) => p.recipeId === recipeId && p.day >= now).map((p) => p.day))].sort();
 
+type PlanOptions = { meal?: Meal; servings?: number; place?: number };
+const withOptions = ({ meal, servings }: PlanOptions) => ({ ...(meal ? { meal } : {}), ...(servings ? { servings } : {}) });
+
 /** A new planned recipe. Several added at once pass their place (0, 1, 2…), so they keep that order on the day. */
-export const plan = (recipeId: string, day: Day, newId: () => string, place = 0): Planned => ({
+export const plan = (recipeId: string, day: Day, newId: () => string, options: PlanOptions = {}): Planned => ({
   id: newId(),
   day,
   recipeId,
-  createdAt: new Date(Date.now() + place).toISOString(),
+  ...withOptions(options),
+  createdAt: new Date(Date.now() + (options.place ?? 0)).toISOString(),
 });
+
+/** A new note for a day ("Eating out", "Leftovers"). */
+export const planNote = (note: string, day: Day, newId: () => string, meal?: Meal): Planned => ({
+  id: newId(),
+  day,
+  note: note.trim(),
+  ...withOptions({ meal }),
+  createdAt: new Date().toISOString(),
+});
+
+/** The same item in another slot (null: for the day as a whole). */
+export const inMeal = (p: Planned, meal: Meal | null): Planned => {
+  const { meal: _old, ...rest } = p;
+  return meal ? { ...rest, meal } : rest;
+};

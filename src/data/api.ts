@@ -242,7 +242,7 @@ const demo: Backend = {
   },
   listPlanned: async () => structuredClone(demoPlanned),
   savePlanned: async (p) => {
-    if (!demoRecipes.some((r) => r.id === p.recipeId)) throw new ApiError(409, 'That recipe was deleted.');
+    if (p.recipeId && !demoRecipes.some((r) => r.id === p.recipeId)) throw new ApiError(409, 'That recipe was deleted.');
     demoPlanned = demoPlanned.some((x) => x.id === p.id) ? demoPlanned.map((x) => (x.id === p.id ? p : x)) : [...demoPlanned, p];
     return structuredClone(p);
   },

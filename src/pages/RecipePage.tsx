@@ -10,7 +10,7 @@ import RecipePhotos from '../components/RecipePhotos';
 import AddToCookbookPopup from '../components/AddToCookbookPopup';
 import { useCookbooks, usePlanner, useStore } from '../data/store';
 import { showInPlanner } from '../data/plannerNav';
-import { busyDays, mediumDate, plan, today, upcomingDaysOf, type Day } from '../lib/planner';
+import { busyDays, mealName, MEALS, mediumDate, plan, today, upcomingDaysOf, type Day, type Meal } from '../lib/planner';
 import { pickDay } from '../components/ui/pickDay';
 import { colorOf, placesOfRecipe } from '../lib/cookbook';
 import { titleCase, linkedRecipe, newId, usedIn, type Ingredient } from '../lib/recipe';
@@ -59,7 +59,7 @@ type Router = {
   history: string[];
   view: { el: HTMLElement };
 };
-type Props = { f7route?: { params: Record<string, string> }; f7router?: Router };
+type Props = { f7route?: { params: Record<string, string>; query?: Record<string, string> }; f7router?: Router };
 
 /** The source's web address as a short name ("seriouseats.com"), for a source with an address and no name. */
 const siteOf = (url: string) => {
@@ -81,7 +81,11 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const { cookbooks } = useCookbooks();
   const { planned, savePlanned } = usePlanner();
   const recipe = recipes.find((r) => r.id === f7route?.params.id);
-  const [factor, setFactor] = useState(1);
+  // issue #67: opened from the Planner, it starts at the servings it was planned with (?servings=6)
+  const [factor, setFactor] = useState(() => {
+    const planned = Number(f7route?.query?.servings);
+    return recipe && planned > 0 ? planned / recipe.servings : 1;
+  });
   const [scaleOpen, setScaleOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [addingToCookbook, setAddingToCookbook] = useState(false);
@@ -105,13 +109,31 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const places = placesOfRecipe(cookbooks, recipe.id);
   // issue #62: the days it's planned for, from today on
   const planDays = upcomingDaysOf(planned, recipe.id, today());
+  // Add to Planner: a day, then which meal (Framework7 action sheets). The servings shown now go with it (issue #67), so
+  // it opens at them from the Planner.
   const addToPlanner = () =>
     pickDay({
-      title: 'Add to Planner',
+      title: 'Plan for which day?',
       busy: busyDays(planned.filter((p) => p.recipeId === recipe.id)),
       onPick: (day) => {
-        savePlanned(plan(recipe.id, day, newId));
-        f7.toast.show({ text: `Added to ${mediumDate(day)}`, closeTimeout: 2000 });
+        const servings = scaled ? Math.round(recipe.servings * factor * 100) / 100 : undefined;
+        const add = (meal?: Meal) => {
+          savePlanned(plan(recipe.id, day, newId, { meal, servings }));
+          const what = [mediumDate(day), meal && mealName(meal), servings && `${friendly(servings)} servings`].filter(Boolean).join(' · ');
+          f7.toast.show({ text: `Added to ${what}`, closeTimeout: 2000 });
+        };
+        const sheet = f7.actions.create({
+          buttons: [
+            [
+              { text: `${mediumDate(day)}: which meal?`, label: true },
+              ...MEALS.map((m) => ({ text: mealName(m), onClick: () => add(m) })),
+              { text: 'Any time', onClick: () => add() },
+            ],
+            [{ text: 'Cancel', strong: true }],
+          ],
+          on: { closed: () => sheet.destroy() },
+        });
+        sheet.open();
       },
     });
   // a Planned chip opens the Planner on that day: back to the Planner in the Plan tab, or over to it

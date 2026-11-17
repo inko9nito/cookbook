@@ -15,7 +15,8 @@
   --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
   --ck-overlay-button: rgba(0, 0, 0, 0.45); /* round bar buttons over a recipe photo, white icons (issue #90) */
   --ck-plate-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); /* a cookbook's plates (round recipe photos) on its card */
-  --ck-bar-shadow: 0 4px 10px rgba(0, 0, 0, 0.07); /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
+  --ck-bar-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
+  --ck-tab-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.12); /* the recipe tab shown in cook mode, lifted off the grey strip (#85) */ /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
   /* a cookbook card's soft colours (issue #25): pale and muted, one per cookbook */
   --ck-book-blush: #f6e4dd;
   --ck-book-sage: #e3ebdf;
@@ -755,6 +756,27 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
   height: 36px; padding: 0 12px; gap: 6px; border-radius: 9999px;
   background-color: var(--ck-soft); color: var(--ck-accent-ink); font-weight: 600; font-variant-numeric: tabular-nums;
 }
+/* Cooking pill (issue #85), like Uber Eats' "View cart • 1": Framework7's extended FAB, small and flat dark at the bottom
+   centre while cook mode is tucked away (Framework7 places it above the tab bar; 10px above it). No shadow or iOS 26
+   glass. A cooking pot, "Cooking", a dot at 60% and how many recipes are open (Fredoka 17px 500), evenly spaced */
+html.ios .fab.ck-cooking-fab {
+  --f7-fab-bg-color: var(--ck-fg);
+  --f7-fab-pressed-bg-color: var(--ck-fg2);
+  --f7-fab-text-color: var(--ck-surface);
+  --f7-fab-extended-size: 48px;
+  --f7-fab-extended-text-transform: none;
+  --f7-fab-extended-text-padding: 0 22px 0 18px;
+  --f7-fab-box-shadow: none;
+  --f7-glass-shadow-fab: none; /* Framework7 v9's iOS 26 glass edge and glow */
+  --f7-fab-margin: 10px;
+}
+.ck-cooking-fab-body { display: flex; align-items: center; gap: 8px; white-space: nowrap; font-family: var(--ck-font-display); font-size: 17px; font-weight: 500; }
+.ck-cooking-fab-dot { opacity: 0.6; }
+.ck-cooking-fab-count { font-variant-numeric: tabular-nums; }
+
+/* cook mode's top bar: the recipe's name larger than an ordinary bar title */
+html.ios .popup.ck-cook .navbar { --f7-navbar-title-font-size: 21px; --f7-navbar-title-font-weight: 600; }
+
 /* Adjust amounts: the result line with a Reset link, under the mode toggle */
 .ck-scale-result { flex-wrap: nowrap; justify-content: space-between; align-items: baseline; gap: 12px; }
 .ck-scale-result .ck-note { flex: 1; min-width: 0; }
@@ -773,7 +795,14 @@ html.ios .toolbar.ck-cta .toolbar-inner {
   border-top: 1px solid var(--ck-line);
 }
 /* servings pill next to "Ingredients" (opens Adjust amounts); the footer is just Start cooking, full width */
-.button.ck-cta-button { flex: 1; }
+.button.ck-cta-button { flex: 1; gap: 6px; }
+/* issue #85: while other recipes are cooking, a dark round cooking-pot button with how many, beside Add to cooking: back
+   to cook mode (the same dark as the floating Cooking pill) */
+.toolbar.ck-cta .link.ck-cta-back {
+  flex: none; gap: 6px; height: 48px; padding: 0 18px 0 16px; margin-right: 10px; border-radius: 9999px;
+  background-color: var(--ck-fg); color: var(--ck-surface);
+  font-family: var(--ck-font-display); font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; /* the same as the Cooking pill */
+}
 .ck-sec .link.ck-scale-button { font-size: 14px; }
 .link.ck-scale-button {
   height: 36px;
@@ -1097,42 +1126,44 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
    bar doesn't apply inside it */
 .sheet-modal.ck-edit-sheet { --f7-page-toolbar-bottom-offset: 0px; }
 
-/* Cook mode with a linked recipe open (issue #11): the top bar becomes a tab strip, like a browser's but rounder.
-   The bar turns soft grey and holds X and a tab per recipe in place of the title; the recipe shown is a tab in the
-   page colour with 14px top corners, running into the page below it; the others are plain grey text on the strip.
-   Tabs share the width (up to 240px each, the shown one a bigger share), long titles end in … */
-html.ios .navbar.ck-cook-tabbed { --f7-navbar-bg-color: var(--ck-soft); }
-html.ios .navbar.ck-cook-tabbed .navbar-bg::after { background-color: var(--ck-soft); }
-/* X (and a running timer's pill) sit on the grey strip as light round buttons, the colour of the page and the shown tab */
-html.ios .navbar.ck-cook-tabbed .left .link,
-html.ios .navbar.ck-cook-tabbed .right .link { background-color: var(--ck-bg); }
-/* the bar's inner row keeps its sides but no top and bottom padding, so the tabs reach the page */
-html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 0; }
-.navbar.ck-cook-tabbed .ck-tabs { flex: 1 1 auto; min-width: 0; align-self: stretch; margin-left: 8px; }
-/* more recipes than fit (each tab keeps at least 96px, the shown one 132px): the row scrolls sideways with a swipe,
-   natively, like the Recipes chips, with no scrollbar */
-.navbar.ck-cook-tabbed .ck-tabs { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; }
-.navbar.ck-cook-tabbed .ck-tabs::-webkit-scrollbar { display: none; }
-.ck-tabs { display: flex; align-items: stretch; gap: 2px; padding: 6px 14px 0; box-sizing: border-box; }
-.ck-tab {
-  flex: 1 1 0; min-width: 0; max-width: 240px; margin: 0; padding: 0 10px; border: 0;
-  border-radius: 14px 14px 0 0; background: none;
-  font: inherit; font-size: 14px; font-weight: 600; color: var(--ck-fg2); cursor: pointer;
+/* Cook mode with several recipes open (issues #11, #65): browser-like tabs along the bottom, so the top bar keeps the
+   shown recipe's name, the chevron and X. A Framework7 tab bar turned into a soft grey strip; the recipe shown is a tab
+   in the page colour with 14px bottom corners, running up into the page above it with small inward curves where they
+   meet; the others are semibold grey text on the strip. Each tab is the recipe's photo (24px, 7px corners; the chef hat
+   on soft grey without one) and its name. Tabs share the width (up to 240px each, the shown one a bigger share); with
+   more than fit (each keeps at least 112px, the shown one 132px) the strip scrolls sideways with a swipe, no
+   scrollbar, and long names end in … */
+.popup.ck-cook { --ck-cook-bar: 56px; }
+html.ios .toolbar.ck-cook-recipes { --f7-toolbar-height: var(--ck-cook-bar); }
+html.ios .toolbar.ck-cook-recipes .toolbar-inner {
+  justify-content: flex-start; align-items: flex-start; gap: 2px; padding: 0 14px var(--f7-safe-area-bottom);
+  background-color: var(--ck-soft); border-top: 0;
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none;
 }
-.ck-tab { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.ck-tab .ck-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* the recipe's cover photo, 24px with 7px corners, before its name */
-.ck-tab .ck-tab-thumb { flex: none; width: 24px; height: 24px; border-radius: 7px; }
-.ck-tab.ck-tab-on { position: relative; background-color: var(--ck-bg); color: var(--ck-fg); }
-/* when room is short (a timer's pill in the bar, three recipes) the shown tab keeps more of its name */
-.ck-tab.ck-tab-on { flex-grow: 1.6; }
-.navbar.ck-cook-tabbed .ck-tab { min-width: 96px; }
-.navbar.ck-cook-tabbed .ck-tab.ck-tab-on { min-width: 132px; }
-/* the shown tab flares into the page with small inward curves at its feet, so it reads as one piece with it */
-.ck-tab.ck-tab-on::before,
-.ck-tab.ck-tab-on::after { content: ''; position: absolute; bottom: 0; width: 14px; height: 14px; pointer-events: none; }
-.ck-tab.ck-tab-on::before { left: -14px; background: radial-gradient(circle at 0 0, transparent 13.5px, var(--ck-bg) 14px); }
-.ck-tab.ck-tab-on::after { right: -14px; background: radial-gradient(circle at 100% 0, transparent 13.5px, var(--ck-bg) 14px); }
+html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: none; }
+.ck-cook-recipe {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 8px;
+  flex: 1 1 0; min-width: 112px; max-width: 240px; height: 48px; margin: 0; padding: 0 10px; border: 0;
+  border-radius: 0 0 14px 14px; background: none; cursor: pointer;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--ck-fg2);
+}
+.ck-cook-recipe .ck-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ck-cook-recipe .ck-tab-thumb { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; }
+/* the shown one: bold, lifted off the strip by a soft shadow */
+.ck-cook-recipe.ck-cook-recipe-on { flex-grow: 1.6; min-width: 132px; background-color: var(--ck-bg); color: var(--ck-fg); font-weight: 700; box-shadow: var(--ck-tab-shadow); }
+/* the shown tab flares into the page with small inward curves at its top corners, so it reads as one piece with it */
+.ck-cook-recipe.ck-cook-recipe-on::before,
+.ck-cook-recipe.ck-cook-recipe-on::after { content: ''; position: absolute; top: 0; width: 14px; height: 14px; pointer-events: none; }
+.ck-cook-recipe.ck-cook-recipe-on::before { left: -14px; background: radial-gradient(circle at 0 100%, transparent 13.5px, var(--ck-bg) 14px); }
+.ck-cook-recipe.ck-cook-recipe-on::after { right: -14px; background: radial-gradient(circle at 100% 100%, transparent 13.5px, var(--ck-bg) 14px); }
+/* Directions fades into the page colour over its last 16px where it meets the tabs, as both halves do at the divider
+   (DESIGN.md: scrolling content fades at a bar's edge), with room at the end so the last step can scroll clear */
+.tabs.ck-cook-tabs-with-bar .ck-pane-steps { -webkit-mask-image: linear-gradient(#000 calc(100% - 16px), transparent); mask-image: linear-gradient(#000 calc(100% - 16px), transparent); }
+.tabs.ck-cook-tabs-with-bar .ck-pane-steps::after { content: ''; display: block; height: 16px; }
+/* a half shown alone (#82) fades at both ends: under the top bar and above the tabs */
+.tabs.ck-cook-tabs-with-bar .ck-pane.ck-pane-alone { -webkit-mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); }
+/* the split screen ends above the bar */
+.tabs.ck-cook-tabs-with-bar > .page-content.ck-split { padding-bottom: calc(var(--ck-cook-bar) + var(--f7-safe-area-bottom)); }
 
 /* Settings → Version: the build, then a Tomato refresh icon. Tapping the build copies it; tapping the icon checks for a
    new version, and the icon spins while it checks (approved exception: the user asked for a spinning refresh icon

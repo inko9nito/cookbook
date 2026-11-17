@@ -4,6 +4,8 @@ import routes from './routes';
 import { tabIcon } from './components/ui/icons';
 import { AuthProvider } from './data/auth';
 import { SessionGuard, StoreProvider } from './data/store';
+import { CookProvider } from './data/cook';
+import CookMode from './components/CookMode';
 import SignInScreen from './components/SignInScreen';
 import { takeStartTab } from './data/startTab';
 
@@ -56,6 +58,7 @@ export default function CookbookApp() {
   return (
     <AuthProvider>
       <StoreProvider>
+        <CookProvider>
         <App {...f7params}>
         <Views tabs className="safe-areas">
           <Toolbar tabbar icons bottom>
@@ -86,7 +89,10 @@ export default function CookbookApp() {
         </Views>
         <SignInScreen />
         <SessionGuard />
+        {/* issue #85: cook mode lives with the app, so it stays (tucked away) while you look at other recipes */}
+        <CookMode />
       </App>
+        </CookProvider>
       </StoreProvider>
     </AuthProvider>
   );

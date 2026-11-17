@@ -16,6 +16,7 @@ import { usePlanner, useStore } from '../data/store';
 import { onShowInPlanner, plannerDay, rememberPlannerDay } from '../data/plannerNav';
 import { coverPhoto, newId, type Recipe } from '../lib/recipe';
 import { friendly } from '../lib/ingredients';
+import CookingFab from '../components/CookingFab';
 import {
   busyDays, dayName, daysBetween, inMeal, mealName, mediumDate, MEALS, plan, planNote, plannedOn, shortDate, slotsOn, today,
   weekDays, weekName, weekRange, weekStart, type Day, type Meal, type Planned,
@@ -208,6 +209,8 @@ export default function PlanPage() {
 
   return (
     <Page name="plan" className="ck-planner" onPageAfterIn={() => (showTabbar(), scrollToPending())} onPageTabShow={scrollToPending}>
+      {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
+      <CookingFab slot="fixed" />
       <Navbar className="ck-navbar-root">
         <NavTitle>Planner</NavTitle>
         <NavRight>

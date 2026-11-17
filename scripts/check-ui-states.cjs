@@ -1573,6 +1573,8 @@ async function swipeLeft(ctx, page, locator) {
     const hero = pg.querySelector('.ck-book-hero');
     return {
       heroTop: Math.round(hero.getBoundingClientRect().top),
+      middlePlate: Math.round(hero.querySelector('.ck-plate-middle').getBoundingClientRect().width),
+      nameTop: Math.round(hero.querySelector('.ck-book-hero-title').getBoundingClientRect().top),
       heroBg: getComputedStyle(hero).backgroundImage,
       name: hero.querySelector('.ck-book-hero-title').textContent,
       nameSize: getComputedStyle(hero.querySelector('.ck-book-hero-title')).fontSize,
@@ -1602,6 +1604,9 @@ async function swipeLeft(ctx, page, locator) {
     if (t.heroTop !== 0 || !t.heroBg.startsWith('linear-gradient')) throw new Error(`the header starts ${t.heroTop}px down (${t.heroBg})`);
     if (t.name !== 'Everything else' || t.nameSize !== '32px') throw new Error(`the header's name is "${t.name}" at ${t.nameSize}`);
     if (t.plates !== 3) throw new Error(`the header shows ${t.plates} plates with photos`);
+    // big plates (150px in the middle) in the same space: the name stays where it was
+    if (t.middlePlate !== 150) throw new Error(`the middle plate is ${t.middlePlate}px, not 150`);
+    if (t.nameTop > 250) throw new Error(`the name starts ${t.nameTop}px down; the plates pushed it down`);
     if (t.heroSearchTop < t.nameBottom) throw new Error('the search bar isn’t under the name');
     if (t.barBg !== '0' || t.title !== '0' || t.docked) throw new Error(`the bar isn't bare over the header (${JSON.stringify(t)})`);
     if (t.backBg !== 'rgba(0, 0, 0, 0.45)') throw new Error(`the back button over the header is ${t.backBg}`);
@@ -1613,7 +1618,8 @@ async function swipeLeft(ctx, page, locator) {
     await scrollBy(60);
     const early = await heroState();
     if (!(Number(early.platesOpacity) < 1 && Number(early.platesOpacity) > 0)) throw new Error(`60px down, the plates' opacity is ${early.platesOpacity}`);
-    if (!(Number(early.barBg) > 0 && Number(early.barBg) < 1)) throw new Error(`60px down, the bar's background is ${early.barBg}, not filling in`);
+    // the bar stays fully see-through over the fading header (the user's mockup), then solid once it has gone
+    if (early.barBg !== '0') throw new Error(`60px down, the bar's background is ${early.barBg}, not see-through`);
     await scrollBy(120);
     const t = await heroState();
     if (t.hidden) throw new Error('the bar’s buttons hid while the header was still on screen');

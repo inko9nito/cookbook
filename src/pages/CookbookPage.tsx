@@ -47,6 +47,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const [docked, setDocked] = useState(false);
   const [overHeader, setOverHeader] = useState(true);
   const [titled, setTitled] = useState(false);
+  const [solid, setSolid] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const headerSearchRef = useRef<HTMLDivElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -69,9 +70,9 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const hasHeader = !!book && !sectionId;
 
   // issue #90 (the user's mockup): the header scrolls with the page, and as it does
-  // - its plates and colour fade out from the first pixel while the bar fills in (`--ck-hero-p`, 0 at the top to 1 once
-  //   the plates have gone under the bar, the way Framework7's transparent navbar fades in), its buttons turning from
-  //   dark see-through to the usual grey half way (`overHeader`);
+  // - its plates and colour fade out from the first pixel (`--ck-hero-p`, 0 at the top to 1 once the plates have gone
+  //   under the bar), its buttons turning from dark see-through to the usual grey half way (`overHeader`); the bar stays
+  //   fully see-through until they've gone, then takes the page colour (`solid`), which is what's under it by then;
   // - the title pops into the bar once 40% of the header's name is under it (`titled`), so the bar is never empty;
   // - once the header's search bar reaches the bar, the bar's docked one takes over exactly there and the header's is
   //   hidden (`docked`), so there's only ever one; from then on the title row hides on scrolling down and comes back on
@@ -97,6 +98,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
       const progress = Math.min(1, Math.max(0, now / fade));
       pageEl.style.setProperty('--ck-hero-p', String(progress));
       setOverHeader(progress < 0.5);
+      setSolid(progress >= 1);
       const nameBox = name.getBoundingClientRect();
       setTitled(barBottom - nameBox.top >= 0.4 * nameBox.height);
       const isDocked = search.getBoundingClientRect().top <= barBottom;
@@ -230,7 +232,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         backLink
         title={name}
         subtitle={section ? book.name : undefined}
-        className={hero ? `ck-hero-bar${docked ? ' ck-hero-docked' : ''}${titled ? ' ck-hero-titled' : ''}${overHeader ? ' ck-hero-over' : ''}` : undefined}
+        className={hero ? `ck-hero-bar${docked ? ' ck-hero-docked' : ''}${titled ? ' ck-hero-titled' : ''}${solid ? ' ck-hero-solid' : ''}${overHeader ? ' ck-hero-over' : ''}` : undefined}
       >
         <NavRight>
           <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes" className="ck-nav-primary">

@@ -325,14 +325,16 @@ html.ios .navbar.ck-hero-bar.ck-hero-over .right .link:not(.ck-nav-primary) {
    of the screen under the bar, in the cookbook's colour (--ck-tint, set on the page) fading into the page colour, with
    its plates big, its name large and its counts, then its search bar. It scrolls away with the page, and the page's
    one scroll listener (CookbookPage) sets --ck-hero-p from 0 at the top to 1 once the plates are under the bar: the
-   plates and the colour fade out with it while the bar's background fades in (as Framework7's transparent navbar
-   does), so the bar is the plain page colour by the time the name reaches it. Its classes: .ck-hero-over (dark
+   plates and the colour fade out with it, the bar staying see-through until they've gone (.ck-hero-solid), then the
+   page colour, by the time the name reaches it. Its classes: .ck-hero-over (dark
    see-through buttons, the first half of the fade), .ck-hero-titled (the title, once 40% of the name is under the bar:
    the bar is never empty), .ck-hero-docked (the bar's docked search bar, exactly where the header's was; the header's
    is hidden, so there's only ever one). */
 .page.ck-book-hero-page { --ck-hero-p: 0; }
 .page.ck-book-hero-page > .page-content { padding-top: 0; }
-html.ios .navbar.ck-hero-bar .navbar-bg { opacity: var(--ck-hero-p); }
+/* the bar stays fully see-through over the header and turns the page colour only once the plates and colour have faded
+   out (.ck-hero-solid), when what's under it is the page colour anyway (the user's mockup) */
+html.ios .navbar.ck-hero-bar:not(.ck-hero-solid) .navbar-bg { opacity: 0; }
 html.ios .navbar.ck-hero-bar:not(.ck-hero-titled) .title { opacity: 0; }
 html.ios .navbar.ck-hero-bar:not(.ck-hero-docked) .subnavbar { visibility: hidden; }
 .ck-hero-search.ck-hero-search-handed-over { visibility: hidden; }
@@ -343,12 +345,13 @@ html.ios .navbar.ck-hero-bar:not(.ck-hero-docked) .subnavbar { visibility: hidde
   overflow: hidden;
 }
 .ck-book-hero .ck-plates { height: 156px; margin: 0 -16px; opacity: calc(1 - var(--ck-hero-p)); }
-.ck-book-hero .ck-plate { border-width: 4px; }
-.ck-book-hero .ck-plate-middle { width: 150px; height: 150px; }
-.ck-book-hero .ck-plate-left,
-.ck-book-hero .ck-plate-right { width: 108px; height: 108px; }
-.ck-book-hero .ck-plate-left { margin-right: -34px; }
-.ck-book-hero .ck-plate-right { margin-left: -34px; }
+/* big plates in the same space as before (the cards' plate sizes, .ck-plates .ck-plate-*, are overridden here) */
+.ck-book-hero .ck-plates .ck-plate { border-width: 4px; }
+.ck-book-hero .ck-plates .ck-plate-middle { width: 150px; height: 150px; }
+.ck-book-hero .ck-plates .ck-plate-left,
+.ck-book-hero .ck-plates .ck-plate-right { width: 108px; height: 108px; }
+.ck-book-hero .ck-plates .ck-plate-left { margin-right: -34px; }
+.ck-book-hero .ck-plates .ck-plate-right { margin-left: -34px; }
 .ck-book-hero-title { margin: 12px 0 0; font-family: var(--ck-font-display); font-size: 32px; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; color: var(--ck-fg); text-wrap: balance; }
 .ck-book-hero-meta { margin: 6px 0 0; font-size: 14px; color: var(--ck-fg2); }
 /* the header's search bar: the same height and insets as the docked one (4px above, 12px below), so they line up */

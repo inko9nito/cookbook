@@ -185,7 +185,7 @@ Most recipe sites publish a machine-readable `schema.org/Recipe` block (JSON-LD)
 2. **Paste a link** in the app → a Netlify Function fetches the page and reads the JSON-LD. This is convenient, but some sites block servers, so it falls back to option 1 or 3.
 3. **Paste the whole page** (Select All → Copy in Safari, or a Reader-mode copy) → the app finds the ingredient and direction lists in the text and opens them for review.
 4. **Paste ingredients / directions separately:** the Prepear-style paste box, which already works well and stays.
-5. *(Optional, later)* **Photo/screenshot of a recipe** (cookbook page, Instagram) → AI extraction into the form.
+5. **Photo/screenshot of a recipe** (cookbook page, Instagram) → AI extraction into the form. *Built (Nov 2026, issue #17):* Recipes **+** → From photos or screenshots. Claude reads the photos through **Netlify's AI Gateway** (no second service or API key; billed as Netlify credits) and the New Recipe editor fills in for checking before saving.
 
 **Bringing my 353 Prepear recipes over: a bookmarklet.** Prepear has no export button, but it has a website (app.prepear.com) that I can log into. Claude's sandbox can't reach that site, and my data needs my login anyway, so the work runs in **my own browser**:
 1. **Step 1, a "peek" bookmarklet.** I tap it once while logged into app.prepear.com. It saves a small file describing how Prepear's site loads my recipes (no password or login token in it), and I send that file to Claude. Claude can't see the site, so this is how it learns its shape.

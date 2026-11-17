@@ -1130,3 +1130,12 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-shelf-empty { margin: 0; }
 .block.ck-picker-hint { margin: 14px 0 0; }
 .block.ck-picker-hint p { margin: 0; }
+
+/* Issue #17: a new recipe read from photos or screenshots. The photos sit at the top of the editor (tap one to see it
+   full screen) with what's happening: reading, read (check it), nothing found, or why it failed. */
+.block.ck-scan { display: grid; gap: 12px; }
+.ck-scan-row { display: flex; align-items: center; gap: 12px; }
+.ck-scan-sources { display: flex; gap: 6px; flex: none; }
+.ck-scan-source { width: 40px; aspect-ratio: 3 / 4; border-radius: 8px; background-color: var(--ck-soft); }
+.ck-scan-text { margin: 0; font-size: 15px; color: var(--ck-fg2); }
+.block.ck-scan .button.ck-inline-button { justify-self: start; }

@@ -663,8 +663,15 @@ async function swipeLeft(ctx, page, locator) {
 
   await page.goto(BASE);
   await page.waitForTimeout(900);
-  await step('12g-new-recipe', async () => {
+  // issue #17: + asks how to make the recipe: from photos or screenshots, or typed in
+  await step('12g0-new-recipe-sheet', async () => {
     await page.locator('.navbar a[aria-label="New recipe"]').first().tap();
+    await page.waitForTimeout(600);
+    const buttons = await page.locator('.actions-modal.modal-in .actions-button').allTextContents();
+    if (buttons.map((b) => b.trim()).join() !== 'From photos or screenshots,Type it in,Cancel') throw new Error(`the sheet offers ${JSON.stringify(buttons)}`);
+  });
+  await step('12g-new-recipe', async () => {
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Type it in' }).tap();
     await page.waitForTimeout(900);
     // the form title is centered on the screen (DESIGN.md "Pushed form screens")
     const off = await page.evaluate(() => {
@@ -673,6 +680,48 @@ async function swipeLeft(ctx, page, locator) {
       return Math.round(r.left + r.width / 2 - innerWidth / 2);
     });
     if (Math.abs(off) > 3) throw new Error(`title is ${off}px off center`);
+  });
+
+  // issue #17: a recipe read from a photo. The editor opens at once with the photo at the top and grey rows where the
+  // ingredients and steps will go; then it fills in (the demo backend's made-up recipe) with the dish photo cropped out
+  const scanPhoto = path.resolve(__dirname, '..', 'public', 'photos', 'corn.jpg');
+  const pickScan = async () => {
+    await page.locator('.navbar a[aria-label="New recipe"]').first().tap(); await page.waitForTimeout(600);
+    await page.locator('#view-recipes .page-current input[type=file]').setInputFiles(scanPhoto);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap().catch(() => {});
+    await page.waitForTimeout(700);
+  };
+  await page.goto(BASE);
+  await page.waitForTimeout(900);
+  await step('12h-reading-photo', async () => {
+    await pickScan();
+    const text = await page.locator('.view.tab-active .page-current .ck-scan-text').textContent();
+    if (!/^Reading the recipe/.test(text)) throw new Error(`the editor says "${text}"`);
+    if ((await page.locator('.view.tab-active .page-current .skeleton-text').count()) < 4) throw new Error('no grey rows while reading');
+  });
+  await step('12i-read-from-photo', async () => {
+    await page.waitForTimeout(1800);
+    const text = await page.locator('.view.tab-active .page-current .ck-scan-text').textContent();
+    if (!/^Read from your photo/.test(text)) throw new Error(`the editor says "${text}"`);
+    if (await page.locator('.view.tab-active .page-current .skeleton-text').count()) throw new Error('grey rows still showing');
+    const title = await page.locator('.view.tab-active .page-current .ck-fields input[type=text]').first().inputValue();
+    if (title !== 'Lemon Drizzle Loaf') throw new Error(`the name is "${title}"`);
+    const headers = await page.locator('.view.tab-active .page-current .ck-group-input').count();
+    if (headers !== 2) throw new Error(`expected 2 groups (drizzle ingredients, drizzle steps), found ${headers}`);
+    if (!(await page.locator('.view.tab-active .page-current .ck-edit-photo.ck-photo').count())) throw new Error('the dish photo was not added');
+  });
+  await step('12j-read-photo-full-screen', async () => {
+    await page.locator('.view.tab-active .page-current .ck-scan-source').first().tap(); await page.waitForTimeout(800);
+    if (!(await page.locator('.photo-browser-popup.modal-in').count())) throw new Error('tapping the photo did not open it full screen');
+  });
+  await page.goto(`${BASE}?readfail`);
+  await page.waitForTimeout(900);
+  await step('12k-read-failed', async () => {
+    await pickScan();
+    await page.waitForTimeout(1800);
+    const text = await page.locator('.view.tab-active .page-current .ck-scan-text').textContent();
+    if (!/busy/.test(text)) throw new Error(`the editor says "${text}"`);
+    if (!(await page.locator('.view.tab-active .page-current .ck-scan .button', { hasText: 'Try again' }).count())) throw new Error('no Try again');
   });
 
   await page.goto(BASE);

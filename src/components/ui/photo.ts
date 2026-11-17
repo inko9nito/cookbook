@@ -72,3 +72,26 @@ export async function recrop(photo: Photo, box: Box): Promise<Photo> {
   const img = await loadImage(original);
   return { ...photo, original, crop: box, src: cropImage(img, box) };
 }
+
+/**
+ * Issue #17: a photo or screenshot to send to be read, shrunk to `edge` on its long side (Claude reads text well at
+ * that size, and a few fit in one request), as a JPEG with its size.
+ */
+export async function imageForReading(file: File, edge: number) {
+  const img = await loadImage(await readFile(file));
+  const scale = Math.min(1, edge / Math.max(img.naturalWidth, img.naturalHeight));
+  const width = Math.round(img.naturalWidth * scale);
+  const height = Math.round(img.naturalHeight * scale);
+  return { data: draw(img, { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight }, width, height), width, height };
+}
+
+/**
+ * A photo from a picked file, cropped to a box on the photo as kept (see photoFromFile) instead of the centre; null when
+ * there's no box (e.g. the dish photo Claude found is too small to use).
+ */
+export async function photoCroppedTo(file: File, id: string, crop: (width: number, height: number) => Box | null): Promise<Photo | null> {
+  const photo = await photoFromFile(file, id);
+  const img = await loadImage(photo.original!);
+  const box = crop(img.naturalWidth, img.naturalHeight);
+  return box ? { ...photo, crop: box, src: cropImage(img, box) } : null;
+}

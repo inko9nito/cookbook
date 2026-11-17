@@ -15,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.9.0",
     "@netlify/blobs": "^11.1.9",
     "@netlify/database": "^2.0.3",
     "@tanstack/query-async-storage-persister": "^5.107.1",

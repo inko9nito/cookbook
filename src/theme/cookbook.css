@@ -14,7 +14,7 @@
   --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
   --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
   --ck-plate-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); /* a cookbook's plates (round recipe photos) on its card */
-  --ck-bar-shadow: 0 4px 10px rgba(0, 0, 0, 0.07); /* under the Planner's week strip, over the agenda scrolling beneath (#67) */
+  --ck-bar-shadow: 0 4px 10px rgba(0, 0, 0, 0.07); /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
   /* a cookbook card's soft colours (issue #25): pale and muted, one per cookbook */
   --ck-book-blush: #f6e4dd;
   --ck-book-sage: #e3ebdf;
@@ -417,11 +417,29 @@ html.ios .searchbar {
 .chip.ck-chip.ck-chip-on { background: var(--ck-fg); border-color: var(--ck-fg); color: var(--ck-surface); }
 .ck-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 /* filter chips on the Recipes screen: one line that scrolls sideways (native overflow scrolling, no custom gesture) */
-.ck-home-search { --f7-searchbar-in-page-content-margin: 4px 16px 0; }
-.block.ck-chips.ck-chips-scroll { margin-top: 12px; }
-.block.ck-chips.ck-chips-scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: 0; margin-right: 0; }
-.block.ck-chips.ck-chips-scroll::-webkit-scrollbar { display: none; }
-.block.ck-chips.ck-chips-scroll .chip { flex: none; }
+.block.ck-chips.ck-chips-scroll { margin-top: 12px; margin-left: 0; margin-right: 0; }
+.ck-chips.ck-chips-scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.ck-chips.ck-chips-scroll::-webkit-scrollbar { display: none; }
+.ck-chips.ck-chips-scroll .chip { flex: none; }
+
+/* ── Docked bars under the title (Framework7's subnavbar), for what has to stay while the page scrolls: the Recipes
+   search bar and chips (issue #63), a cookbook's search bar, the Planner's week strip. Not iOS 26: Framework7 v9 floats
+   the subnavbar as a rounded glass capsule inset from the edges; these are docked flat, full width, in the page colour.
+   Under them a clear line (--ck-strong) and a soft shadow over the content (issue #67: a hairline alone didn't show
+   where the bar ends). ── */
+html.ios .subnavbar.ck-docked-bar { --f7-subnavbar-offset-left: 0px; --f7-subnavbar-offset-right: 0px; border-radius: 0; box-shadow: var(--ck-bar-shadow); background-color: var(--ck-bg); }
+html.ios .subnavbar.ck-docked-bar::after { background-color: var(--ck-strong); }
+html.ios .subnavbar.ck-docked-bar .subnavbar-inner { flex-direction: column; align-items: stretch; justify-content: flex-start; padding: 0; border-radius: 0; }
+/* the search bar (and the chips): 4px under the title row, as when it was in the page, and 12px between them and the
+   hairline; the chips run to the screen's edges as they scroll sideways */
+.page.ck-recipes-page { --f7-subnavbar-height: calc(4px + 44px + 12px + var(--f7-chip-height) + 12px); }
+.page.ck-recipes-page.ck-no-chips,
+.page.ck-cookbook-page { --f7-subnavbar-height: calc(4px + 44px + 12px); }
+html.ios .subnavbar.ck-search-bar .searchbar { flex: none; width: auto; margin: 4px 16px 0; }
+.subnavbar.ck-search-bar .ck-chips-scroll { flex: none; margin-top: 12px; padding: 0 16px; }
+/* the count line starts the scrolling content, a little under the hairline */
+.page.ck-recipes-page .block.ck-count,
+.page.ck-cookbook-page .block.ck-count { margin-top: 16px; }
 
 /* ── Photos ── */
 .ck-photo { background-color: var(--ck-soft); background-size: cover; background-position: center; }
@@ -766,7 +784,7 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 .list.ck-edit-list .item-inner { align-items: flex-start; }
 .list.ck-edit-list .item-title { line-height: 20px; }
 .list.ck-edit-list .ck-step-no,
-.list.ck-edit-list .ck-step-text { line-height: 20px; }
+.list.ck-edit-list .ck-step-input { line-height: 20px; }
 .list.ck-edit-list .ck-group-input { height: 22px; line-height: 22px; font-size: 17px; }
 /* the handle's 20px icon centred on that first line: row padding + half a line - half the icon */
 .list.ck-edit-list .sortable-handler { align-items: flex-start; padding-top: calc(var(--f7-list-item-padding-vertical) + 10px - 10px); box-sizing: border-box; }
@@ -801,9 +819,30 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 .ck-group-input::placeholder { color: var(--ck-fg2); font-weight: 600; }
 .ck-group-input:focus { outline: none; box-shadow: inset 0 -1.5px 0 var(--ck-accent); }
 .list.ck-edit-list .ck-group-row .item-inner { cursor: text; }
+/* issue #71: a step is typed right in its row. It reads as plain text until tapped (no box; Framework7 grows it a
+   line at a time), then gets the group name's Tomato underline */
+.list.ck-edit-list textarea.ck-step-input {
+  width: 100%;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-family: inherit;
+  font-weight: inherit;
+  color: var(--ck-fg);
+  resize: none;
+  overflow: hidden;
+}
+.list.ck-edit-list textarea.ck-step-input::placeholder { color: var(--ck-fg2); }
+.list.ck-edit-list textarea.ck-step-input:focus { outline: none; box-shadow: inset 0 -1.5px 0 var(--ck-accent); }
+.list.ck-edit-list .ck-step-row .item-inner { cursor: text; }
+/* the title fills the row (a textarea is otherwise only 20 characters wide) */
+.list.ck-edit-list .ck-step-row .item-title { flex: 1; min-width: 0; }
 /* small text inside the soft cards uses the darker secondary grey (muted grey on soft fill is only 4.3:1) */
 .list.ck-edit-list { --f7-list-item-footer-text-color: var(--ck-fg2); --f7-list-item-header-text-color: var(--ck-fg2); }
-.list.ck-edit-list .ck-step-text { font-size: 14px; }
+.list.ck-edit-list .ck-step-input { font-size: 14px; }
 .list.ck-edit-list .ck-step-no { font-size: 14px; }
 .list.ck-edit-list .ck-step { grid-template-columns: 22px minmax(0, 1fr); }
 .button.ck-dashed {
@@ -871,6 +910,10 @@ html.ios .photo-browser-page .navbar-bg::after { background-color: var(--ck-phot
 html.ios .navbar-inner-centered-title.navbar-inner-left-title { justify-content: space-between; }
 html.ios .navbar-inner-centered-title.navbar-inner-left-title .right { margin-left: 0; }
 html.ios .navbar-inner-centered-title.navbar-inner-left-title .title { text-align: center; margin-left: 0; margin-right: 0; }
+/* issue #55: in a popup that slides up over the screen (Organize, Add Recipes, Add to Cookbook, Link a Recipe), the
+   header's buttons sat 4px under the popup's 32px rounded top, crowding its corners. A taller bar there gives them
+   12px above and below, like iOS's own sheets. */
+html.ios .popup.popup-push { --f7-navbar-height: 64px; }
 /* Save: filled bright Tomato pill with white text, like every orange button (the same contrast exception as
    .button.ck-main); Tomato text on the soft grey circle was 4.3:1 */
 html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent); color: var(--ck-surface); font-weight: 600; }
@@ -1016,8 +1059,11 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-tab.ck-tab-on::before { left: -14px; background: radial-gradient(circle at 0 0, transparent 13.5px, var(--ck-bg) 14px); }
 .ck-tab.ck-tab-on::after { right: -14px; background: radial-gradient(circle at 100% 0, transparent 13.5px, var(--ck-bg) 14px); }
 
-/* Settings → Version: the build, then a Tomato refresh icon. Tapping the row checks for a new version; the icon
-   spins while it checks (approved exception: the user asked for a spinning refresh icon instead of a dialog) */
+/* Settings → Version: the build, then a Tomato refresh icon. Tapping the build copies it; tapping the icon checks for a
+   new version, and the icon spins while it checks (approved exception: the user asked for a spinning refresh icon
+   instead of a dialog). The icon's tap target is 44px, reaching into the row's padding like Sign Out's. */
+.ck-version-row { cursor: pointer; }
+.ck-version-row .link.ck-refresh-link { width: 44px; height: 44px; margin: -12px -12px -12px 0; color: var(--ck-accent-ink); }
 .ck-version-row .ck-refresh { color: var(--ck-accent-ink); }
 .ck-refresh.ck-spinning { animation: ck-spin 0.9s linear infinite; }
 @keyframes ck-spin { to { transform: rotate(360deg); } }
@@ -1147,13 +1193,9 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 /* ── Planner (issue #62): a week's calendar strip under the title (Framework7's subnavbar, so it stays while the agenda
    scrolls), then the week as an agenda, day by day. Like iOS's own Calendar: today's date in Tomato, the picked day
    filled (Tomato when it's today, dark otherwise), a dot under days with something planned. ── */
-/* Not iOS 26: Framework7 v9 floats the subnavbar as a rounded glass capsule inset from the edges; this one is docked flat,
-   full width, in the page colour. Under it a clear line (--ck-strong) and a soft shadow over the agenda (issue #67: the
-   hairline alone didn't show where the strip ends) */
-.page.ck-planner { --f7-subnavbar-height: 96px; --f7-subnavbar-offset-left: 0px; --f7-subnavbar-offset-right: 0px; }
-html.ios .subnavbar.ck-week-bar { border-radius: 0; box-shadow: var(--ck-bar-shadow); background-color: var(--ck-bg); }
-html.ios .subnavbar.ck-week-bar::after { background-color: var(--ck-strong); }
-html.ios .subnavbar.ck-week-bar .subnavbar-inner { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 6px; padding: 2px 0 0; border-radius: 0; }
+/* docked flat under the title like the other docked bars (.ck-docked-bar: a clear line and a soft shadow under it) */
+.page.ck-planner { --f7-subnavbar-height: 96px; }
+html.ios .subnavbar.ck-week-bar .subnavbar-inner { gap: 6px; padding: 2px 0 0; }
 .ck-week-label { padding: 0 16px; font-size: 13px; font-weight: 600; color: var(--ck-muted); }
 swiper-container.ck-week-swiper { width: 100%; }
 .ck-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0 8px; }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Page, Navbar, NavRight, Link, Searchbar, Block, BlockFooter, Button,
+  Page, Navbar, NavRight, Subnavbar, Link, Searchbar, Block, BlockFooter, Button,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, Sheet, Toolbar, PageContent, f7,
 } from 'framework7-react';
 import { Check, Ellipsis, Plus } from 'lucide-react';
@@ -66,7 +66,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   // grey placeholders in the page's shape, the count and the recipe tiles.
   if (!book || (sectionId && !section)) {
     return (
-      <Page name="cookbook" className="ck-cookbook-page" onPageAfterIn={showTabbar}>
+      // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays
+    <Page name="cookbook" className="ck-cookbook-page" hideNavbarOnScroll onPageAfterIn={showTabbar}>
         <Navbar key="navbar" backLink title={loading ? '' : 'Not found'} />
         {loading ? (
           [
@@ -156,7 +157,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const hasAny = section ? here.length > 0 : searchable.length > 0 || book.sections.length > 0;
 
   return (
-    <Page name="cookbook" className="ck-cookbook-page" onPageAfterIn={showTabbar}>
+    // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays
+    <Page name="cookbook" className="ck-cookbook-page" hideNavbarOnScroll onPageAfterIn={showTabbar}>
       <Navbar key="navbar" backLink title={name} subtitle={section ? book.name : undefined}>
         <NavRight>
           <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes" className="ck-nav-primary">
@@ -166,21 +168,21 @@ export default function CookbookPage({ f7route, f7router }: Props) {
             <Ellipsis {...navIcon} />
           </Link>
         </NavRight>
+        {/* issue #63: the search bar stays under the title while the shelves scroll (Framework7's subnavbar, as on
+            Recipes). It's always there, even with nothing to search yet, so the page keeps its shape. */}
+        <Subnavbar className="ck-docked-bar ck-search-bar">
+          <Searchbar
+            customSearch
+            backdrop={false}
+            disableButton={false}
+            placeholder={section ? 'Search this section' : 'Search this cookbook'}
+            onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
+            onSearchbarClear={() => setQuery('')}
+          />
+        </Subnavbar>
       </Navbar>
 
-      {/* keys: Page leaves out the blocks that aren't shown and lists the rest by position (see RecipesPage).
-          The search bar is always there, even with nothing to search yet, so the page keeps its shape. */}
-      <div key="search" className="ck-home-search">
-        <Searchbar
-          customSearch
-          backdrop={false}
-          disableButton={false}
-          placeholder={section ? 'Search this section' : 'Search this cookbook'}
-          onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
-          onSearchbarClear={() => setQuery('')}
-        />
-      </div>
-
+      {/* keys: Page leaves out the blocks that aren't shown and lists the rest by position (see RecipesPage). */}
       {hasAny && (
         <Block key="count" className="ck-count">
           <span className="ck-note">

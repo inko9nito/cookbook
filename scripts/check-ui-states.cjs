@@ -167,9 +167,9 @@ async function audit(page, name) {
       .map((b) => `"${b.textContent.trim()}"`),
   );
   // Edges (DESIGN.md, issue #55). A popup's header buttons (round, pill) sit as far from its top as from its sides. A
-  // sheet's header is plain text: it lines up with the content's 16px gutter (title left, Done's text right) and its
-  // line starts well below the top (28px, at least 26), never crowded against it. Buttons are measured by their edges,
-  // text by its line box.
+  // sheet keeps 24px from its edges (--ck-sheet-inset): its header text 24px from the top and the sides, and its content
+  // lined up with the header (nothing further out, the outermost content on the same lines). Buttons are measured by
+  // their edges, text by its line box.
   const edges = await page.evaluate(() => {
     const textBox = (el) => {
       let box = null;
@@ -189,7 +189,7 @@ async function audit(page, name) {
       const edge = c.getBoundingClientRect();
       const items = c.classList.contains('popup')
         ? [...c.querySelectorAll(':scope .page-current > .navbar .left .link, :scope .page-current > .navbar .right .link, :scope > .view > .page > .navbar .left .link, :scope > .view > .page > .navbar .right .link, :scope > .page > .navbar .left .link, :scope > .page > .navbar .right .link')].map((a) => a.getBoundingClientRect())
-        : [...c.querySelectorAll(':scope > .toolbar .left, :scope > .toolbar .right, :scope .sheet-modal-inner > .toolbar .left, :scope .sheet-modal-inner > .toolbar .right')].map(textBox);
+        : [...c.querySelectorAll(':scope > .toolbar .left, :scope > .toolbar .right, :scope .sheet-modal-inner > .toolbar .left, :scope .sheet-modal-inner > .toolbar .right, :scope .calendar-header')].map(textBox);
       const shown = items.filter((r) => r && r.right > r.left);
       if (!shown.length) continue;
       const first = shown.reduce((a, b) => (b.left < a.left ? b : a));
@@ -204,8 +204,19 @@ async function audit(page, name) {
       if (c.classList.contains('popup')) {
         if (sides.some((x) => Math.abs(top - x) > 2)) out.push(`popup header buttons are ${top}px from the top but ${left}px / ${right}px from the sides`);
       } else {
-        if (sides.some((x) => Math.abs(x - 16) > 2)) out.push(`sheet header text is ${left}px / ${right}px from the sides, not lined up with the 16px gutter`);
-        if (top < 26) out.push(`sheet header text starts ${top}px from the top, crowding it (28px)`);
+        if (sides.some((x) => Math.abs(x - 24) > 2)) out.push(`sheet header text is ${left}px / ${right}px from the sides, not 24px`);
+        if (Math.abs(top - 24) > 3) out.push(`sheet header text starts ${top}px from the top, not 24px`);
+        // the content: fields, cards, segmented controls, chips, text blocks, swatches, day circles
+        // (boxes with a shape by their edges; text blocks and labels by their glyphs, since a block's box spans the sheet)
+        const seen = (el) => el.checkVisibility({ visibilityProperty: true, opacityProperty: true });
+        const shapes = [...c.querySelectorAll('.page-content .item-input-wrap, .page-content .list.inset ul, .page-content .segmented, .page-content .chip, .page-content .stepper, .ck-unit-sheet-list ul, .ck-swatch, .calendar-month-current .calendar-day-number')]
+          .filter(seen).map((el) => el.getBoundingClientRect());
+        const texts = [...c.querySelectorAll('.page-content .block, .page-content .item-label, .page-content .list:not(.ck-link-field) .item-title')].filter(seen).map(textBox).filter(Boolean);
+        const content = [...shapes, ...texts].filter((r) => r.right - r.left > 4 && (r.bottom ?? innerHeight) > edge.top && r.top < innerHeight);
+        if (content.length) {
+          const cl = Math.round(Math.min(...content.map((r) => r.left)) - edge.left), cr = Math.round(edge.right - Math.max(...content.map((r) => r.right)));
+          if (Math.abs(cl - 24) > 2 || Math.abs(cr - 24) > 2) out.push(`sheet content reaches ${cl}px / ${cr}px from the sides, not the header's 24px`);
+        }
       }
     }
     return out;

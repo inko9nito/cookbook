@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  Page, Navbar, NavTitle, NavRight, Link, Searchbar,
+  Page, Navbar, NavTitle, NavRight, Subnavbar, Link, Searchbar,
   Block, BlockFooter, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton, Button,
 } from 'framework7-react';
 import { ArrowUpDown, Plus } from 'lucide-react';
@@ -48,7 +48,9 @@ export default function RecipesPage({ f7router }: Props) {
   const toggleTag = (t: string) => setFilter(tags.includes(t) ? tags.filter((x) => x !== t) : [...tags, t]);
 
   return (
-    <Page name="recipes" onPageAfterIn={showTabbar}>
+    // the title row slides away while scrolling down and comes back on scrolling up; the search bar and chips under it
+    // stay (Framework7's hideNavbarOnScroll moves the navbar up by its own height, leaving the subnavbar showing)
+    <Page name="recipes" className={`ck-recipes-page ${loadError ? 'ck-no-chips' : ''}`} hideNavbarOnScroll onPageAfterIn={showTabbar}>
       <Navbar key="navbar" className="ck-navbar-root">
         <NavTitle>Recipes</NavTitle>
         <NavRight>
@@ -60,41 +62,42 @@ export default function RecipesPage({ f7router }: Props) {
             <ArrowUpDown {...navIcon} />
           </Link>
         </NavRight>
+        {/* issue #63: the search bar and the tag chips stay under the title while the recipes scroll (Framework7's
+            subnavbar, like the Planner's week strip), so searching or filtering never needs a scroll back up.
+            customSearch: it only says what's typed, and the page filters (so the count can say "6 of 240", and chips
+            tapped mid-search filter too). No backdrop: the user wants no overlay while searching. */}
+        <Subnavbar className="ck-docked-bar ck-search-bar">
+          <Searchbar
+            customSearch
+            backdrop={false}
+            disableButton={false}
+            placeholder="Search recipes"
+            onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
+            onSearchbarClear={() => setQuery('')}
+          />
+          {/* issue #35: until the recipes arrive, grey placeholders stand in for the chips (no lone "All" chip); if they
+              can't be loaded, there are no chips */}
+          {!loadError && (
+            <div className="ck-chips ck-chips-scroll">
+              {loading ? (
+                <ChipsSkeleton />
+              ) : (
+                <>
+                  <Chip text="All" className={`ck-chip ${tags.length === 0 ? 'ck-chip-on' : ''}`} onClick={() => setFilter([])} />
+                  {allTags.map((t) => (
+                    <Chip key={t} text={label(t)} className={`ck-chip ${tags.includes(t) ? 'ck-chip-on' : ''}`} onClick={() => toggleTag(t)} />
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </Subnavbar>
       </Navbar>
 
-      {/* RED: the search bar is part of the page and scrolls with it (wrapped, so Framework7 keeps it in the page content instead of pinning it).
-          customSearch: it only says what's typed, and the page filters (so the count can say "6 of 240", and chips
-          tapped mid-search filter too). No backdrop: the user wants no overlay while searching.
-          Every block here has a key: Page drops the ones that aren't shown (loading, error) and lists the rest by
-          position, so without keys React rebuilds the blocks below whenever loading ends. */}
-      <div key="search" className="ck-home-search">
-        <Searchbar
-          customSearch
-          backdrop={false}
-          disableButton={false}
-          placeholder="Search recipes"
-          onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
-          onSearchbarClear={() => setQuery('')}
-        />
-      </div>
-
-      {/* issue #35: until the recipes arrive, grey placeholders stand in for the chips, the count and the tiles (no lone
-          "All" chip, no "0 recipes"); if they can't be loaded, only the error shows */}
-      {!loadError && (
-        <Block key="chips" className="ck-chips ck-chips-scroll">
-          {loading ? (
-            <ChipsSkeleton />
-          ) : (
-            <>
-              <Chip text="All" className={`ck-chip ${tags.length === 0 ? 'ck-chip-on' : ''}`} onClick={() => setFilter([])} />
-              {allTags.map((t) => (
-                <Chip key={t} text={label(t)} className={`ck-chip ${tags.includes(t) ? 'ck-chip-on' : ''}`} onClick={() => toggleTag(t)} />
-              ))}
-            </>
-          )}
-        </Block>
-      )}
-
+      {/* Every block here has a key: Page drops the ones that aren't shown (loading, error) and lists the rest by
+          position, so without keys React rebuilds the blocks below whenever loading ends. Until the recipes arrive, the
+          count and the tiles are grey placeholders (issue #35, no "0 recipes"); if they can't be loaded, only the error
+          shows. */}
       {!loadError && (
         <Block key="count" className="ck-count">
           {loading ? (

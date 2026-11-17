@@ -240,7 +240,7 @@ async function swipeLeft(ctx, page, locator) {
   });
   // the search bar must filter the grid on screen (it once kept filtering a copy React had replaced when loading ended)
   await step('01b-recipes-search', async () => {
-    const input = page.locator('.view.tab-active .page-current .ck-home-search input');
+    const input = page.locator('.view.tab-active .page-current .ck-search-bar input');
     await input.fill('chick'); await page.waitForTimeout(600);
     const shown = await page.locator('.view.tab-active .page-current .ck-card-grid .ck-card:visible .ck-card-title').allTextContents();
     if (!shown.length || shown.some((t) => !/chick/i.test(t))) throw new Error(`searching "chick" shows ${JSON.stringify(shown)}`);
@@ -259,6 +259,49 @@ async function swipeLeft(ctx, page, locator) {
     await input.fill(''); await input.blur(); await page.waitForTimeout(600);
     const all = await page.locator('.view.tab-active .page-current .ck-card-grid .ck-card:visible').count();
     if (all <= shown.length) throw new Error('clearing the search didn\'t bring every recipe back');
+  });
+  // issue #63: the search bar and the chips stay under the title while the recipes scroll (Framework7's subnavbar),
+  // flat and full width like the Planner's week strip, with nothing showing through them
+  await step('01c-recipes-search-sticky', async () => {
+    const at = () => page.evaluate(() => {
+      const box = (sel) => { const e = document.querySelector(`.view.tab-active .page-current ${sel}`); const r = e?.getBoundingClientRect(); return r && [Math.round(r.left), Math.round(r.top), Math.round(r.width)]; };
+      return { search: box('.subnavbar .searchbar'), chips: box('.subnavbar .ck-chips'), bar: box('.subnavbar') };
+    });
+    const before = await at();
+    if (!before.search || !before.chips) throw new Error('the search bar and chips are not in the bar under the title');
+    if (before.bar[0] !== 0 || before.bar[2] !== 393) throw new Error(`the bar under the title is ${before.bar[2]}px wide at ${before.bar[0]}, not docked full width`);
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 500));
+    await page.waitForTimeout(400);
+    const after = await at();
+    if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error(`scrolling moved the search bar or chips: ${JSON.stringify(before)} → ${JSON.stringify(after)}`);
+    const chip = await page.locator('.view.tab-active .page-current .subnavbar .ck-chip').first().boundingBox();
+    const onTop = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.ck-chip'), { x: chip.x + chip.width / 2, y: chip.y + chip.height / 2 });
+    if (!onTop) throw new Error('the recipes scroll over the chips');
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0));
+    await page.waitForTimeout(400);
+    // scrolling down hides the title row (Framework7 hideNavbarOnScroll) and the search bar and chips move up to the
+    // top, still showing; scrolling up brings the title row back (the user's ask on #63)
+    const hidden = () => page.locator('.view.tab-active .page-current > .navbar').evaluate((n) => n.classList.contains('navbar-hidden'));
+    await page.mouse.move(200, 450);
+    for (let i = 0; i < 3; i++) { await page.mouse.wheel(0, 60); await page.waitForTimeout(120); }
+    await page.waitForTimeout(600);
+    if (!(await hidden())) throw new Error('the title row did not hide on scrolling down');
+    const up = await at();
+    if (!(up.search[1] >= 0 && up.search[1] < before.search[1])) throw new Error(`with the title row hidden the search bar is at ${up.search[1]}px (was ${before.search[1]}px)`);
+    const onScreen = await page.evaluate(() => { const s = document.querySelector('.view.tab-active .page-current .subnavbar .searchbar input'); const r = s.getBoundingClientRect(); return document.elementFromPoint(r.left + 40, r.top + r.height / 2) === s; });
+    if (!onScreen) throw new Error('the search bar is covered with the title row hidden');
+    await page.screenshot({ path: path.join(OUT, '01c2-recipes-title-hidden.png') });
+    for (let i = 0; i < 2; i++) { await page.mouse.wheel(0, -40); await page.waitForTimeout(120); }
+    await page.waitForTimeout(600);
+    if (await hidden()) throw new Error('the title row did not come back on scrolling up');
+    // the first content (the count line) starts below the bar, not under it
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0));
+    await page.waitForTimeout(300);
+    const gap = await page.evaluate(() => {
+      const p = document.querySelector('.view.tab-active .page-current');
+      return Math.round(p.querySelector('.ck-count').getBoundingClientRect().top - p.querySelector('.subnavbar').getBoundingClientRect().bottom);
+    });
+    if (gap < 8) throw new Error(`the count line starts ${gap}px below the bar`);
   });
   await step('02-recipes-chip-selected', async () => { await page.locator('.ck-chip', { hasText: 'Dinner' }).first().tap(); });
   // R2: chips come from the tags in use; two picked offer "all" or "any" in the sort sheet; the filter is remembered
@@ -742,14 +785,15 @@ async function swipeLeft(ctx, page, locator) {
     const title = await page.locator('#view-settings .page-current .navbar .title').textContent();
     if (title.trim() !== 'Settings') throw new Error(`the Settings tab is titled "${title}"`);
   });
-  // the App group: which version is running; tapping it checks for updates, its refresh icon spinning meanwhile, with
-  // no dialog or toast (the service worker finds no newer version here, so the icon just stops)
+  // the Version group: which version is running. Tapping it copies it, with a toast (issue #48); its refresh icon
+  // checks for updates, spinning meanwhile, with no dialog or toast (the service worker finds no newer version here,
+  // so the icon just stops)
   await step('13b-settings-check-updates', async () => {
     const row = page.locator('.view.tab-active .page-current li.ck-version-row');
     const version = await row.locator('.item-title').textContent();
     if (!/^\w{5,7} · /.test(version.trim())) throw new Error(`the version reads "${version}"`);
     await row.scrollIntoViewIfNeeded();
-    await row.locator('.item-link').tap(); await page.waitForTimeout(200);
+    await row.locator('.ck-refresh-link').tap(); await page.waitForTimeout(200);
     const spinning = await row.locator('.ck-refresh.ck-spinning').count();
     const popups = await page.locator('.dialog.modal-in, .toast.modal-in').count();
     if (!spinning) throw new Error('the refresh icon does not spin while checking');
@@ -757,6 +801,36 @@ async function swipeLeft(ctx, page, locator) {
     await page.waitForTimeout(2000);
     if (await row.locator('.ck-refresh.ck-spinning').count()) throw new Error('the refresh icon kept spinning after the check');
     if (await page.locator('.dialog.modal-in, .toast.modal-in').count()) throw new Error('the check ended in a dialog or toast');
+    const target = await row.locator('.ck-refresh-link').evaluate((e) => { const r = e.getBoundingClientRect(); return [r.width, r.height]; });
+    if (Math.min(...target) < 44) throw new Error(`the refresh icon's tap target is ${target.join('×')}px`);
+  });
+  await step('13b2-settings-copy-version', async () => {
+    await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(BASE).origin });
+    const row = page.locator('.view.tab-active .page-current li.ck-version-row');
+    const version = (await row.locator('.item-title').textContent()).trim();
+    await row.locator('.item-title').tap(); await page.waitForTimeout(400);
+    const toast = await page.locator('.toast.modal-in').textContent().catch(() => '');
+    if (!/Version copied/.test(toast)) throw new Error(`tapping the version shows "${toast}", not a "Version copied" toast`);
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    if (copied !== version) throw new Error(`the clipboard holds "${copied}", not "${version}"`);
+    if (await row.locator('.ck-refresh.ck-spinning').count()) throw new Error('copying the version also checks for updates');
+    await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
+  });
+  // issue #48: when the refresh finds a new version, the app reloads into it back on Settings (not on Recipes). The live
+  // site is made to say it serves another build; the next app load starts on Recipes again.
+  await step('13b3-settings-refresh-stays', async () => {
+    await page.route('**/version.json*', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 'fffffff', built: '2030-01-01T00:00:00.000Z' }) }));
+    const row = page.locator('.view.tab-active .page-current li.ck-version-row');
+    await Promise.all([page.waitForEvent('load', { timeout: 15000 }), row.locator('.ck-refresh-link').tap()]);
+    await page.unroute('**/version.json*');
+    await page.waitForTimeout(1200);
+    const active = await page.evaluate(() => [document.querySelector('.view.tab-active')?.id, document.querySelector('.tabbar .tab-link-active')?.getAttribute('aria-label')]);
+    if (active.join() !== 'view-settings,Settings') throw new Error(`after the update the app opened on ${active.join(' / ')}`);
+    if (!(await page.locator('#view-settings .page-current li.ck-version-row').isVisible())) throw new Error('the Version row is not on screen after the update');
+    await page.reload(); await page.waitForTimeout(1200);
+    const later = await page.evaluate(() => document.querySelector('.view.tab-active')?.id);
+    if (later !== 'view-recipes') throw new Error(`opening the app again started on ${later}, not Recipes`);
+    await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
   });
   // every Settings group is a white card under its own title (rows outside the card once sat on the grey page)
   await step('13c-settings-groups', async () => {
@@ -1323,14 +1397,25 @@ async function swipeLeft(ctx, page, locator) {
     if (!cls.includes('ck-tint-lilac')) throw new Error(`the card isn't lilac: ${cls}`);
     await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).tap(); await page.waitForTimeout(1000);
   });
+  // issue #63: a cookbook's search bar stays under its title too
+  await step('26c0-cookbook-search-sticky', async () => {
+    const top = () => page.evaluate((cur) => Math.round(document.querySelector(`${cur} .subnavbar .searchbar`)?.getBoundingClientRect().top ?? -1), CUR);
+    const before = await top();
+    if (before < 0) throw new Error('the search bar is not in the bar under the title');
+    await page.evaluate((cur) => document.querySelector(`${cur} .page-content`).scrollTo(0, 400), CUR);
+    await page.waitForTimeout(400);
+    const after = await top();
+    await page.evaluate((cur) => document.querySelector(`${cur} .page-content`).scrollTo(0, 0), CUR);
+    if (after !== before) throw new Error(`scrolling moved the search bar from ${before} to ${after}`);
+  });
   await step('26c-cookbook-search', async () => {
-    await page.locator(`${CUR} .ck-home-search input`).fill('chick'); await page.waitForTimeout(500);
+    await page.locator(`${CUR} .ck-search-bar input`).fill('chick'); await page.waitForTimeout(500);
     const found = await cards();
     const count = await page.locator(`${CUR} .ck-count`).textContent();
     // the search covers the sections too
     if (found.length !== 2 || !count.includes('2 of 6 recipes')) throw new Error(`searching shows ${JSON.stringify(found)} with "${count}"`);
     if (await page.locator(`${CUR} .ck-shelf`).count()) throw new Error('the shelves stay while searching');
-    await page.locator(`${CUR} .ck-home-search input`).fill(''); await page.locator(`${CUR} .ck-home-search input`).blur(); await page.waitForTimeout(500);
+    await page.locator(`${CUR} .ck-search-bar input`).fill(''); await page.locator(`${CUR} .ck-search-bar input`).blur(); await page.waitForTimeout(500);
   });
   await step('26d-section-page', async () => {
     await page.locator(`${CUR} .ck-shelf`, { hasText: 'Meat' }).locator('.ck-shelf-all').tap(); await page.waitForTimeout(1000);
@@ -1363,6 +1448,12 @@ async function swipeLeft(ctx, page, locator) {
     const rows = await page.locator('.popup.modal-in .ck-organize-list li:not(.ck-organize-heading)').count();
     // Uncategorized 2, Meat 4 (Corn pudding is in both), Other 1
     if (rows !== 7) throw new Error(`Organize lists ${rows} recipe rows, expected 7`);
+    // issue #55: Cancel and Done sit clear of the popup's rounded top (they were 4px under it, crowding its corners)
+    const room = await page.evaluate(() => {
+      const pop = document.querySelector('.popup.modal-in').getBoundingClientRect();
+      return [...document.querySelectorAll('.popup.modal-in .navbar .left .link, .popup.modal-in .navbar .right .link')].map((a) => Math.round(a.getBoundingClientRect().top - pop.top));
+    });
+    if (!room.length || room.some((y) => y < 12)) throw new Error(`the header buttons are ${room.join(', ')}px under the popup's top`);
   });
   await step('26g2-organize-removed', async () => {
     // swipe a recipe out of Meat, then Done

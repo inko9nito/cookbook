@@ -97,8 +97,10 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
     if (!s.expanded) return;
     const marked = () => !!(window.history.state as { ckCook?: boolean } | null)?.ckCook;
     if (!marked()) window.history.pushState({ ...(window.history.state ?? {}), ckCook: true }, '');
+    // iOS has already slid cook mode away under the finger, so it closes at once: Framework7's slide down after it
+    // showed cook mode leave, come back and slide down again
     const onBack = () => {
-      if (!marked()) cook.minimize();
+      if (!marked()) f7.popup.close('.popup.ck-cook', false);
     };
     window.addEventListener('popstate', onBack);
     return () => {

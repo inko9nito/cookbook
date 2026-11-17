@@ -41,11 +41,10 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const { recipes } = useStore();
   const { cookbooks, loading, saveCookbook, deleteCookbook } = useCookbooks();
   const [query, setQuery] = useState('');
-  // issue #90 (the cookbook's header): `docked` once the header's search bar has scrolled up to the bar, which then
-  // shows its own (Framework7's subnavbar, docked) with the title and its background; `overHeader` while the bar's
-  // buttons are over the header's colour (dark see-through buttons)
+  // issue #90 (the cookbook's header), set by its scroll listener below: `docked` once the header's search bar has
+  // scrolled up to the bar (which then shows its own, Framework7's docked subnavbar), `titled` once the name is under
+  // the bar, `solid` once the plates and colour have faded
   const [docked, setDocked] = useState(false);
-  const [overHeader, setOverHeader] = useState(true);
   const [titled, setTitled] = useState(false);
   const [solid, setSolid] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -71,9 +70,10 @@ export default function CookbookPage({ f7route, f7router }: Props) {
 
   // issue #90 (the user's mockup): the header scrolls with the page, and as it does
   // - its plates and colour fade out from the first pixel (`--ck-hero-p`, 0 at the top to 1 once the plates have gone
-  //   under the bar), its buttons turning from dark see-through to the usual grey half way (`overHeader`); the bar stays
-  //   fully see-through until they've gone, then takes the page colour (`solid`), which is what's under it by then;
-  // - the title pops into the bar once 40% of the header's name is under it (`titled`), so the bar is never empty;
+  //   under the bar); the bar stays fully see-through until they've gone, then takes the page colour (`solid`), which
+  //   is what's under it by then; its buttons are the usual bar buttons throughout;
+  // - the title comes into the bar once the header's name has gone all the way under it, as in iOS (never in both
+  //   places), and the count under the name hides at that moment (`titled`);
   // - once the header's search bar reaches the bar, the bar's docked one takes over exactly there and the header's is
   //   hidden (`docked`), so there's only ever one; from then on the title row hides on scrolling down and comes back on
   //   scrolling up with Framework7's own navbar.hide()/show() (its hideNavbarOnScroll would start after 44px, taking the
@@ -97,10 +97,9 @@ export default function CookbookPage({ f7route, f7router }: Props) {
       const fade = Math.max(1, plates.getBoundingClientRect().bottom + now - barBottom);
       const progress = Math.min(1, Math.max(0, now / fade));
       pageEl.style.setProperty('--ck-hero-p', String(progress));
-      setOverHeader(progress < 0.5);
       setSolid(progress >= 1);
-      const nameBox = name.getBoundingClientRect();
-      setTitled(barBottom - nameBox.top >= 0.4 * nameBox.height);
+      // as iOS does it: the title is in the bar only once the name has gone all the way under it, never both at once
+      setTitled(name.getBoundingClientRect().bottom <= barBottom + 1);
       const isDocked = search.getBoundingClientRect().top <= barBottom;
       setDocked(isDocked);
       if (isDocked && now > previous) f7.navbar.hide(navbar, true);
@@ -232,7 +231,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         backLink
         title={name}
         subtitle={section ? book.name : undefined}
-        className={hero ? `ck-hero-bar${docked ? ' ck-hero-docked' : ''}${titled ? ' ck-hero-titled' : ''}${solid ? ' ck-hero-solid' : ''}${overHeader ? ' ck-hero-over' : ''}` : undefined}
+        className={hero ? `ck-hero-bar${docked ? ' ck-hero-docked' : ''}${titled ? ' ck-hero-titled' : ''}${solid ? ' ck-hero-solid' : ''}` : undefined}
       >
         <NavRight>
           <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes" className="ck-nav-primary">
@@ -254,7 +253,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         <div key="header" className="ck-book-hero" ref={headerRef}>
           <CookbookPlates photos={platePhotos(book, byId)} />
           <h1 className="ck-book-hero-title">{name}</h1>
-          <p className="ck-book-hero-meta">
+          <p className={`ck-book-hero-meta${titled ? ' ck-book-hero-meta-gone' : ''}`}>
             {count(searchable.length, 'recipe')}
             {book.sections.length > 0 && ` · ${count(book.sections.length, 'section')}`}
           </p>

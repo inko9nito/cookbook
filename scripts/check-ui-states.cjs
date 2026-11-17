@@ -1585,6 +1585,7 @@ async function swipeLeft(ctx, page, locator) {
       barBg: getComputedStyle(bar.querySelector('.navbar-bg')).opacity,
       title: getComputedStyle(bar.querySelector('.title')).opacity,
       docked: getComputedStyle(bar.querySelector('.subnavbar')).visibility === 'visible',
+      metaShown: getComputedStyle(hero.querySelector('.ck-book-hero-meta')).visibility === 'visible',
       heroSearchShown: getComputedStyle(pg.querySelector('.ck-hero-search')).visibility === 'visible',
       platesOpacity: getComputedStyle(hero.querySelector('.ck-plates')).opacity,
       nameUnderBar: (() => { const b = bar.querySelector('.navbar-inner').getBoundingClientRect().bottom, n = hero.querySelector('.ck-book-hero-title').getBoundingClientRect(); return Math.max(0, Math.min(1, (b - n.top) / n.height)); })(),
@@ -1609,7 +1610,8 @@ async function swipeLeft(ctx, page, locator) {
     if (t.nameTop > 250) throw new Error(`the name starts ${t.nameTop}px down; the plates pushed it down`);
     if (t.heroSearchTop < t.nameBottom) throw new Error('the search bar isn’t under the name');
     if (t.barBg !== '0' || t.title !== '0' || t.docked) throw new Error(`the bar isn't bare over the header (${JSON.stringify(t)})`);
-    if (t.backBg !== 'rgba(0, 0, 0, 0.45)') throw new Error(`the back button over the header is ${t.backBg}`);
+    // the usual bar buttons over the header (the user found the switch from dark to grey distracting); + stays Tomato
+    if (t.backBg === 'rgba(0, 0, 0, 0.45)') throw new Error('the back button over the header is the dark one meant for photos');
     if (t.plusBg === 'rgba(0, 0, 0, 0.45)') throw new Error('+ lost its Tomato');
   });
   // the user's mockup, frame 2: scrolling, the plates and the colour fade out from the first pixel while the bar fills
@@ -1625,17 +1627,17 @@ async function swipeLeft(ctx, page, locator) {
     if (t.hidden) throw new Error('the bar’s buttons hid while the header was still on screen');
     if (t.platesOpacity !== '0' || t.barBg !== '1') throw new Error(`with the plates gone, plates ${t.platesOpacity}, bar ${t.barBg}`);
     if (t.title !== '0' || t.docked || !t.heroSearchShown) throw new Error(`with the name still showing, the bar is ${JSON.stringify({ title: t.title, docked: t.docked })}`);
-    if (t.backBg === 'rgba(0, 0, 0, 0.45)') throw new Error('the buttons are still the dark ones over a plain bar');
   });
-  // the bar is never empty: the title pops in once 40% of the name is under the bar
+  // as iOS does it: the title comes into the bar only once the name has gone all the way under it (never in both places),
+  // and the count under the name hides then
   await step('90c-cookbook-header-title', async () => {
     try {
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 9; i++) {
         await scrollBy(10);
         const t = await heroState();
         if (t.hidden) break; // the search has docked and the title row slid away
-        if (t.nameUnderBar >= 0.45 && t.title !== '1') throw new Error(`${Math.round(t.nameUnderBar * 100)}% of the name is under the bar and the bar has no title`);
-        if (t.nameUnderBar < 0.35 && t.title !== '0') throw new Error(`the title is in the bar with only ${Math.round(t.nameUnderBar * 100)}% of the name under it`);
+        if (t.nameUnderBar >= 1 && (t.title !== '1' || t.metaShown)) throw new Error(`the name is under the bar but the bar has no title (${t.title}) or the count still shows (${t.metaShown})`);
+        if (t.nameUnderBar < 0.97 && t.title !== '0') throw new Error(`the title is in the bar with ${Math.round(t.nameUnderBar * 100)}% of the name still showing`);
       }
     } finally {
       // back to the top for the steps after, whatever happened

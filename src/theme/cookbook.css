@@ -13,7 +13,7 @@
   --ck-photo-dark: #000000; /* behind a photo being cropped */
   --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
   --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
-  --ck-overlay-button: rgba(0, 0, 0, 0.45); /* round bar buttons over a picture (recipe photo, cookbook header), white icons (issue #90) */
+  --ck-overlay-button: rgba(0, 0, 0, 0.45); /* round bar buttons over a recipe photo, white icons (issue #90) */
   --ck-plate-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); /* a cookbook's plates (round recipe photos) on its card */
   --ck-bar-shadow: 0 4px 10px rgba(0, 0, 0, 0.07); /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
   /* a cookbook card's soft colours (issue #25): pale and muted, one per cookbook */
@@ -310,13 +310,11 @@ html.ios .navbar .link.back {
    top of the screen (under the status bar) instead of below a bar */
 html.ios .navbar.ck-float-bar .navbar-bg { display: none; }
 .page.ck-recipe-page > .page-content { padding-top: 0; }
-/* Bar buttons over a picture (issue #90, from the user's Uber Eats reference): dark see-through circles with white
-   icons, instead of white ones that jumped out of the photo. No blur (see "No glass blur" above). The cookbook's +
-   stays Tomato. */
+/* Bar buttons over a recipe's photo (issue #90, from the user's Uber Eats reference): dark see-through circles with
+   white icons, instead of white ones that jumped out of the photo. No blur (see "No glass blur" above). A cookbook's
+   header keeps the usual bar buttons (the switch from dark to grey while scrolling was too distracting). */
 html.ios .navbar.ck-float-bar .left .link,
-html.ios .navbar.ck-float-bar .right .link,
-html.ios .navbar.ck-hero-bar.ck-hero-over .left .link,
-html.ios .navbar.ck-hero-bar.ck-hero-over .right .link:not(.ck-nav-primary) {
+html.ios .navbar.ck-float-bar .right .link {
   background-color: var(--ck-overlay-button);
   color: var(--ck-surface);
 }
@@ -326,9 +324,8 @@ html.ios .navbar.ck-hero-bar.ck-hero-over .right .link:not(.ck-nav-primary) {
    its plates big, its name large and its counts, then its search bar. It scrolls away with the page, and the page's
    one scroll listener (CookbookPage) sets --ck-hero-p from 0 at the top to 1 once the plates are under the bar: the
    plates and the colour fade out with it, the bar staying see-through until they've gone (.ck-hero-solid), then the
-   page colour, by the time the name reaches it. Its classes: .ck-hero-over (dark
-   see-through buttons, the first half of the fade), .ck-hero-titled (the title, once 40% of the name is under the bar:
-   the bar is never empty), .ck-hero-docked (the bar's docked search bar, exactly where the header's was; the header's
+   page colour, by the time the name reaches it. Its classes: .ck-hero-titled (the title, once the name has gone all
+   the way under the bar, as in iOS: never in both places; the count under the name hides then), .ck-hero-docked (the bar's docked search bar, exactly where the header's was; the header's
    is hidden, so there's only ever one). */
 .page.ck-book-hero-page { --ck-hero-p: 0; }
 .page.ck-book-hero-page > .page-content { padding-top: 0; }
@@ -354,6 +351,7 @@ html.ios .navbar.ck-hero-bar:not(.ck-hero-docked) .subnavbar { visibility: hidde
 .ck-book-hero .ck-plates .ck-plate-right { margin-left: -34px; }
 .ck-book-hero-title { margin: 12px 0 0; font-family: var(--ck-font-display); font-size: 32px; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; color: var(--ck-fg); text-wrap: balance; }
 .ck-book-hero-meta { margin: 6px 0 0; font-size: 14px; color: var(--ck-fg2); }
+.ck-book-hero-meta.ck-book-hero-meta-gone { visibility: hidden; }
 /* the header's search bar: the same height and insets as the docked one (4px above, 12px below), so they line up */
 .ck-hero-search { height: var(--f7-subnavbar-height); box-sizing: border-box; padding-top: 4px; }
 html.ios .ck-hero-search .searchbar { margin: 0 16px; }

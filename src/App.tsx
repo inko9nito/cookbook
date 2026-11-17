@@ -1,11 +1,13 @@
-import { App, Views, View, Toolbar, ToolbarPane, Link, f7 } from 'framework7-react';
+import { useEffect, useRef } from 'react';
+import { App, Views, View, Toolbar, ToolbarPane, Link, f7, f7ready } from 'framework7-react';
 import { ChefHat, BookOpen, CalendarDays, ShoppingCart, Settings } from 'lucide-react';
 import routes from './routes';
 import { tabIcon } from './components/ui/icons';
-import { AuthProvider } from './data/auth';
-import { SessionGuard, StoreProvider } from './data/store';
+import { AuthProvider, useAuth } from './data/auth';
+import { SessionGuard, StoreProvider, useStore } from './data/store';
 import SignInScreen from './components/SignInScreen';
 import { takeStartTab } from './data/startTab';
+import { cookToResume, dropPendingCook } from './data/cookSession';
 
 const f7params = {
   name: 'Cookbook',
@@ -48,9 +50,45 @@ const viewHistory = {
   onTabHide: backToFirstPage,
 };
 
-// Recipes, unless the app reloaded itself from another tab (issue #48: Settings → Version's refresh comes back to Settings).
-// Read once, as the app loads.
-const startTab = takeStartTab();
+// Recipes, unless the app reloaded itself from another tab (issue #48: Settings → Version's refresh comes back to Settings),
+// or it was left in cook mode (issue #85: the tab cook mode was in). Read once, as the app loads.
+const reloadTab = takeStartTab();
+const startTab = cookToResume()?.tab ?? reloadTab;
+
+/**
+ * Issue #85: the app was left in cook mode and iOS reloaded it (it often does with a home-screen app you switch away
+ * from). Once the recipes are there, open the recipe in the tab it was in, with no slide, and the recipe page goes back
+ * into cook mode where it was. Back goes to that tab's first page.
+ */
+function ResumeCooking() {
+  const { status } = useAuth();
+  const { recipes, loading, loadError } = useStore();
+  const done = useRef(false);
+  useEffect(() => {
+    const s = cookToResume();
+    if (done.current || !s || status !== 'signedIn' || loading) return;
+    if (!recipes.some((r) => r.id === s.recipeId)) {
+      // no recipes to look in (offline, nothing kept): leave it for the next time the app opens
+      if (loadError) return;
+      // the recipe was deleted meanwhile
+      done.current = true;
+      dropPendingCook();
+      return;
+    }
+    done.current = true;
+    f7ready(() => {
+      // the tab's view is set up as the app starts; give it a few frames if it isn't yet
+      let tries = 0;
+      const open = () => {
+        const view = f7.views.get(`#view-${s.tab}`);
+        if (view?.router) view.router.navigate(`/recipe/${s.recipeId}/`, { animate: false });
+        else if (tries++ < 30) requestAnimationFrame(open);
+      };
+      open();
+    });
+  }, [status, loading, loadError, recipes]);
+  return null;
+}
 
 export default function CookbookApp() {
   return (
@@ -86,6 +124,7 @@ export default function CookbookApp() {
         </Views>
         <SignInScreen />
         <SessionGuard />
+        <ResumeCooking />
       </App>
       </StoreProvider>
     </AuthProvider>

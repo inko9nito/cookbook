@@ -15,6 +15,8 @@ import { useStore } from '../data/store';
 import ScaleSheet from './ScaleSheet';
 import { ConvertibleAmount, toggleTarget, withPick, type ConvertTarget } from './UnitChoices';
 import UnitSheet from './UnitSheet';
+import { forgetCook, saveCook, type PaneScroll, type SavedCook } from '../data/cookSession';
+import type { TabId } from '../data/startTab';
 
 type Props = {
   recipe: Recipe;
@@ -24,6 +26,10 @@ type Props = {
   onPick: (ingredientId: string, unit: string | null) => void;
   onFactor: (f: number) => void;
   onClose: () => void;
+  /** the tab the recipe page is in, kept so the app reopens cook mode there (issue #85) */
+  tab: TabId;
+  /** cook mode as it was when the app was left (issue #85): it opens where it was */
+  resume?: SavedCook | null;
 };
 type RunningTimer = { id: number; recipeId: string; label: string; step: number; endsAt: number };
 type WakeLock = { release: () => Promise<void> };
@@ -53,6 +59,10 @@ const saveSplit = (n: number) => {
   }
 };
 const noTicks = (): Ticks => ({ ing: new Set(), steps: new Set() });
+const ticksFrom = (saved: SavedCook['ticks']) =>
+  Object.fromEntries(Object.entries(saved).map(([id, t]) => [id, { ing: new Set(t.ing), steps: new Set(t.steps) }]));
+const ticksTo = (ticks: Record<string, Ticks>): SavedCook['ticks'] =>
+  Object.fromEntries(Object.entries(ticks).map(([id, t]) => [id, { ing: [...t.ing], steps: [...t.steps] }]));
 const stepCount = (r: Recipe) => r.steps.filter((s) => s.kind !== 'header').length;
 
 /**
@@ -85,14 +95,17 @@ function useStripThemeColor(on: boolean) {
  * switches to it at once (Framework7 Tabs; nothing slides over anything). X closes the shown recipe's tab (the
  * last one leaves cook mode). Every recipe keeps what's ticked and its amounts until cook mode closes, even when its
  * tab is closed and opened again, and the timers run and ring whichever recipe is shown.
+ *
+ * Issue #85: all of that is kept on the phone as it changes (src/data/cookSession.ts), so when iOS reloads the app
+ * after you've been in another one, it comes back into cook mode as you left it. Closing cook mode forgets it.
  */
-export default function CookMode({ recipe, factor, picks, onPick, onFactor, onClose }: Props) {
+export default function CookMode({ recipe, factor, picks, onPick, onFactor, onClose, tab, resume }: Props) {
   const { recipes, saveRecipe } = useStore();
   const latest = (id: string) => (id === recipe.id ? recipe : recipes.find((r) => r.id === id));
 
   // what's ticked, per recipe, and the linked recipes' amounts
-  const [ticks, setTicks] = useState<Record<string, Ticks>>({});
-  const [amounts, setAmounts] = useState<Record<string, Amounts>>({});
+  const [ticks, setTicks] = useState<Record<string, Ticks>>(() => (resume ? ticksFrom(resume.ticks) : {}));
+  const [amounts, setAmounts] = useState<Record<string, Amounts>>(() => resume?.amounts ?? {});
   const toggleTick = (recipeId: string, kind: keyof Ticks, id: string) =>
     setTicks((all) => {
       const cur = all[recipeId] ?? noTicks();
@@ -104,8 +117,8 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
 
   // the recipes open in cook mode, a tab each in the order they were opened (the main recipe first), and the one shown.
   // X closes the shown one; a closed recipe keeps its ticks and amounts, so opening it again picks up where it was.
-  const [open, setOpen] = useState<string[]>([recipe.id]);
-  const [shown, setShown] = useState(recipe.id);
+  const [open, setOpen] = useState<string[]>(() => (resume?.open.length ? resume.open : [recipe.id]));
+  const [shown, setShown] = useState(() => resume?.shown ?? recipe.id);
   const show = (id: string) => {
     if (id !== recipe.id) setAmounts((a) => (a[id] ? a : { ...a, [id]: { factor: 1, picks: {} } }));
     setOpen((o) => (o.includes(id) ? o : [...o, id]));
@@ -120,11 +133,12 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
   }, [shown, open.length]);
 
   // ── timers, for every recipe in cook mode ──
-  const [timers, setTimers] = useState<RunningTimer[]>([]);
+  // timers kept from before the app was left go on counting to the same moment (one that ended meanwhile rings at once)
+  const [timers, setTimers] = useState<RunningTimer[]>(() => (resume?.timers ?? []).map((t, i) => ({ ...t, id: i + 1 })));
   const [timersOpen, setTimersOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
   const audio = useRef<AudioContext | null>(null);
-  const nextTimerId = useRef(1);
+  const nextTimerId = useRef(timers.length + 1);
   const timerName = (t: RunningTimer) => `${t.recipeId === recipe.id ? '' : `${latest(t.recipeId)?.title ?? 'Recipe'} · `}Step ${t.step}: ${t.label}`;
 
   // keep the screen on while cooking (Screen Wake Lock)
@@ -180,13 +194,23 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
     });
   };
 
-  const startTimer = (recipeId: string, step: number, label: string, seconds: number) => {
-    // created on a tap so iPhone Safari allows the sound later
+  // the sound is set up on a tap, so iPhone Safari allows it later
+  const allowSound = () => {
     if (!audio.current) {
       const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       audio.current = Ctx ? new Ctx() : null;
     }
     audio.current?.resume().catch(() => {});
+  };
+  // timers kept from before the app was left: the first tap anywhere sets up their sound
+  useEffect(() => {
+    if (!resume?.timers.length) return;
+    document.addEventListener('click', allowSound, { capture: true, once: true });
+    return () => document.removeEventListener('click', allowSound, { capture: true });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const startTimer = (recipeId: string, step: number, label: string, seconds: number) => {
+    allowSound();
     setNow(Date.now());
     setTimers((cur) => [...cur, { id: nextTimerId.current++, recipeId, label, step, endsAt: Date.now() + seconds * 1000 }]);
   };
@@ -194,6 +218,40 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
   const soonest = [...timers].sort((a, b) => a.endsAt - b.endsAt)[0];
 
   const [split, setSplit] = useState(readSplit);
+
+  // ── issue #85: keep all of this on the phone, so cook mode reopens as it was if iOS reloads the app ──
+  // where each recipe's halves are scrolled to (kept as you scroll, without redrawing anything)
+  const scroll = useRef<Record<string, PaneScroll>>(resume?.scroll ?? {});
+  const session = () => ({
+    tab,
+    recipeId: recipe.id,
+    factor,
+    picks,
+    open,
+    shown,
+    ticks: ticksTo(ticks),
+    amounts,
+    timers: timers.map(({ id: _id, ...t }) => t),
+    scroll: scroll.current,
+  });
+  const latestSession = useRef(session);
+  latestSession.current = session;
+  useEffect(() => {
+    saveCook(session());
+  }, [factor, picks, open, shown, ticks, amounts, timers]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // the scroll positions too, as the app goes to the background (switching apps, locking the phone)
+    const keep = () => saveCook(latestSession.current());
+    const onHidden = () => document.visibilityState === 'hidden' && keep();
+    document.addEventListener('visibilitychange', onHidden);
+    window.addEventListener('pagehide', keep);
+    return () => {
+      document.removeEventListener('visibilitychange', onHidden);
+      window.removeEventListener('pagehide', keep);
+      // cook mode closed (or its recipe page went away): next time the app opens, it doesn't come back
+      forgetCook();
+    };
+  }, []);
 
   const shut = () => f7.popup.close('.popup.ck-cook');
   const shownRecipe = tabs.find((r) => r.id === shown) ?? tabs[0] ?? recipe;
@@ -308,6 +366,10 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
                   onShow={show}
                   split={split}
                   setSplit={setSplit}
+                  scroll={resume?.scroll[r.id]}
+                  onScroll={(at) => {
+                    scroll.current = { ...scroll.current, [r.id]: at };
+                  }}
                 />
               );
             })}
@@ -360,12 +422,15 @@ type TabProps = {
   onShow: (recipeId: string) => void;
   split: number;
   setSplit: Dispatch<SetStateAction<number>>;
+  /** issue #85: where the halves were scrolled to before the app was left */
+  scroll?: PaneScroll;
+  onScroll: (at: PaneScroll) => void;
 };
 
 /** One recipe in cook mode: the split screen, as a Framework7 tab. */
 function RecipeTab({
   recipe, active, factor, picks, onPick, onFactor, doneIng, doneSteps, onTick,
-  timers, now, onStartTimer, onStopTimer, onShow, split, setSplit,
+  timers, now, onStartTimer, onStopTimer, onShow, split, setSplit, scroll, onScroll,
 }: TabProps) {
   const { recipes } = useStore();
   // issue #6: the tapped amount, while its unit sheet is open
@@ -389,6 +454,36 @@ function RecipeTab({
   useEffect(() => {
     if (!active) setConverting(null);
   }, [active]);
+
+  // issue #85: back where it was scrolled to, the first time it shows (a hidden tab, or the popup before it opens, has
+  // no height yet to scroll, so it waits a few frames for one)
+  const ingPane = useRef<HTMLDivElement>(null);
+  const stepsPane = useRef<HTMLDivElement>(null);
+  const scrolledBack = useRef(!scroll);
+  useEffect(() => {
+    if (!active || scrolledBack.current || !scroll) return;
+    let frame = 0;
+    let tries = 0;
+    const apply = () => {
+      const ing = ingPane.current;
+      const steps = stepsPane.current;
+      if (!ing || !steps) return;
+      if (!steps.clientHeight && tries++ < 60) {
+        frame = requestAnimationFrame(apply);
+        return;
+      }
+      ing.scrollTop = scroll.ing;
+      steps.scrollTop = scroll.steps;
+      scrolledBack.current = true;
+    };
+    apply();
+    return () => cancelAnimationFrame(frame);
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+  const keepScroll = () => {
+    if (ingPane.current && stepsPane.current) onScroll({ ing: ingPane.current.scrollTop, steps: stepsPane.current.scrollTop });
+  };
+  // steps ticked before the app was left start with their ingredients and timers folded away, as ticking left them
+  const [foldedAtStart] = useState(() => new Set(doneSteps));
 
   const steps = useMemo(() => {
     let n = 0;
@@ -450,7 +545,7 @@ function RecipeTab({
     <Tab className="page-content ck-split" tabActive={active}>
       <div className={`ck-split-body${holding ? ' ck-split-body-holding' : ''}`} ref={splitBox}>
         {/* top half: ingredients */}
-        <div className="ck-pane ck-pane-ingredients" style={{ flexBasis: `${split * 100}%` }}>
+        <div className="ck-pane ck-pane-ingredients" style={{ flexBasis: `${split * 100}%` }} ref={ingPane} onScroll={keepScroll}>
           <div className="ck-pane-head">
             <h2>Ingredients</h2>
             {/* same pill as the recipe page: tap to change servings without leaving cook mode */}
@@ -485,7 +580,7 @@ function RecipeTab({
         </div>
 
         {/* bottom half: directions */}
-        <div className="ck-pane ck-pane-steps">
+        <div className="ck-pane ck-pane-steps" ref={stepsPane} onScroll={keepScroll}>
           <div className="ck-pane-head">
             <h2>Directions</h2>
           </div>
@@ -510,7 +605,7 @@ function RecipeTab({
                     {(uses.length > 0 || stepTimerList.length > 0) && (
                       // a Framework7 accordion item, so ticking the step slides this up (Framework7's own collapse) instead of
                       // it vanishing. The class string never changes, so React leaves the open/closed state to Framework7.
-                      <div className="accordion-item accordion-item-opened ck-step-extra">
+                      <div className={`accordion-item ck-step-extra${foldedAtStart.has(s.id) ? '' : ' accordion-item-opened'}`}>
                         <div className="accordion-item-content">
                           <div className="ck-step-extra-inner">
                             {uses.length > 0 && (

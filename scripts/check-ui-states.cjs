@@ -1927,6 +1927,38 @@ async function swipeLeft(ctx, page, locator) {
     if (new Set(look.gaps).size !== 1) throw new Error(`the thumbnail's gaps (left, top, bottom) are ${look.gaps}`);
   });
 
+  // Issue #85: iOS often reloads the home-screen app after you've been in another app. Cook mode comes back as it was:
+  // the same recipe, ticks, a running timer and where Directions was scrolled to; closing it forgets it.
+  await step('36a-cook-resumed-after-reload', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(900);
+    await page.locator('#view-recipes .page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    await page.locator('.ck-cook .ck-pane-steps .ck-timer-button').first().tap(); await page.waitForTimeout(300);
+    await page.locator('.ck-cook .ck-pane-ingredients li').first().locator('label').tap(); await page.waitForTimeout(300);
+    await page.locator('.ck-cook .ck-pane-steps li:has(label)').first().locator('label').tap(); await page.waitForTimeout(700);
+    await page.locator('.ck-cook .ck-pane-steps').evaluate((el) => el.scrollTo(0, 160)); await page.waitForTimeout(300);
+    const scrolled = await page.locator('.ck-cook .ck-pane-steps').evaluate((el) => el.scrollTop);
+    await page.reload(); await page.waitForTimeout(2000);
+    if (!(await page.locator('.popup.ck-cook.modal-in').count())) throw new Error('after a reload the app didn’t go back into cook mode');
+    const title = await page.locator('.ck-cook .navbar .title').textContent();
+    if (!title.includes('Kebabs')) throw new Error(`cook mode came back on "${title}"`);
+    if ((await page.locator('.ck-cook .ck-pane-ingredients li.ck-done').count()) !== 1) throw new Error('the ticked ingredient wasn’t kept');
+    if ((await page.locator('.ck-cook .ck-pane-steps li.ck-done').count()) !== 1) throw new Error('the ticked step wasn’t kept');
+    if (!(await page.locator('.ck-cook .ck-timer-pill').count())) throw new Error('the running timer wasn’t kept');
+    const folded = await page.locator('.ck-cook .ck-pane-steps li.ck-done .accordion-item-content').first().evaluate((e) => e.getBoundingClientRect().height).catch(() => 0);
+    if (folded !== 0) throw new Error(`the ticked step’s ingredients and timers are open again (${Math.round(folded)}px)`);
+    const at = await page.locator('.ck-cook .ck-pane-steps').evaluate((el) => el.scrollTop);
+    if (Math.abs(at - scrolled) > 4) throw new Error(`Directions came back scrolled to ${at}px, not ${scrolled}px`);
+    // the recipe page is under it, in Recipes, and back from it goes to the list
+    if (!(await page.locator('#view-recipes .page-current .ck-cta-button').count())) throw new Error('the recipe page isn’t under cook mode');
+  });
+  await step('36b-cook-closed-not-resumed', async () => {
+    await page.locator('.ck-cook a[aria-label="Close cook mode"]').tap(); await page.waitForTimeout(900);
+    await page.reload(); await page.waitForTimeout(2000);
+    if (await page.locator('.popup.ck-cook.modal-in').count()) throw new Error('cook mode came back after it was closed');
+    if (await page.locator('#view-recipes .page-current .ck-cta-button').count()) throw new Error('the app reopened the recipe after cook mode was closed');
+  });
+
   // Issue #35: while the recipes and cookbooks first load, grey placeholders in their shape: no lone "All" chip, no
   // "0 recipes", no small spinner. ?loading makes the demo's recipes and cookbooks never arrive.
   const noLoadingTells = async (where) => {

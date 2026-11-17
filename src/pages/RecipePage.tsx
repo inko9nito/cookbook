@@ -3,7 +3,7 @@ import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   Actions, ActionsGroup, ActionsButton, f7,
 } from 'framework7-react';
-import { BookOpen, CalendarDays, Ellipsis, Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { BookOpen, CalendarDays, ChefHat, Ellipsis, Plus, Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
 import RecipePhotos from '../components/RecipePhotos';
 import AddToCookbookPopup from '../components/AddToCookbookPopup';
@@ -97,6 +97,8 @@ export default function RecipePage({ f7route, f7router }: Props) {
   // issue #85: while the recipe is open in cook mode (on screen or tucked away), the page shows and changes cook mode's
   // amounts, so both read the same
   const cooked = recipe ? cook.amountsOf(recipe.id) : undefined;
+  // other recipes open in cook mode, while this one isn't
+  const othersCooking = cooked ? 0 : (cook.session?.open.filter((id) => recipes.some((r) => r.id === id)).length ?? 0);
   const factor = cooked?.factor ?? ownFactor;
   const picks = cooked?.picks ?? ownPicks;
   const setFactor = (f: number) => (cooked && recipe ? cook.setFactor(recipe.id, f) : setOwnFactor(f));
@@ -159,7 +161,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
   let stepNo = 0;
 
   return (
-    <Page name="recipe" className={`ck-recipe-page${cooked ? ' ck-recipe-cooking' : ''}`} hideNavbarOnScroll onPageBeforeIn={hideTabbar}>
+    <Page name="recipe" className="ck-recipe-page" hideNavbarOnScroll onPageBeforeIn={hideTabbar}>
       {/* App controls stay out of the content: back and ••• float over the photo with no bar behind them (issue #7; they
           slide away while scrolling down and come back on scroll up, like Prepear), Start cooking in the footer */}
       <Navbar backLink className="ck-float-bar">
@@ -171,10 +173,18 @@ export default function RecipePage({ f7route, f7router }: Props) {
       </Navbar>
 
       <Toolbar bottom className="ck-cta">
-        {/* Start cooking adds the recipe to cook mode (a tab of its own if something else is cooking); once it's there,
-            this brings cook mode back */}
+        {/* issue #85: while other recipes are cooking, a dark round chef-hat button (how many are cooking) goes back to cook
+            mode beside "Add to cooking", which adds this one as a tab (the floating Cooking pill hides on recipe pages) */}
+        {othersCooking > 0 && (
+          <Link className="ck-cta-back" onClick={() => cook.expand()} aria-label={`Back to cook mode, ${othersCooking} ${othersCooking === 1 ? 'recipe' : 'recipes'} cooking`}>
+            <ChefHat {...navIcon} />
+            <span>{othersCooking}</span>
+          </Link>
+        )}
+        {/* Start cooking opens cook mode on this recipe; once it's there, this brings cook mode back */}
         <Button fill large className="ck-cta-button" onClick={() => cook.start(recipe.id, { factor, picks })}>
-          {cooked ? 'Resume cooking' : 'Start cooking'}
+          {othersCooking > 0 && <Plus {...navIcon} />}
+          {cooked ? 'Resume cooking' : othersCooking > 0 ? 'Add to cooking' : 'Start cooking'}
         </Button>
       </Toolbar>
 

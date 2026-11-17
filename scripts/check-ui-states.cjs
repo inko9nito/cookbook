@@ -28,10 +28,9 @@ async function audit(page, name) {
   await page.addScriptTag({ content: AXE });
   const contrast = await page.evaluate(async () => {
     // below AA on purpose (DESIGN.md): ticked rows in cook mode fade (--ck-done-ink), and the orange buttons' 600-weight
-    // white label on bright Tomato (3.7:1, the user's choice in issue #21; also today's filled date in the Planner and the
-    // Cooking bar, #85). Loading placeholders (issue #35) are grey bars
+    // white label on bright Tomato (3.7:1, the user's choice in issue #21; also today's filled date in the Planner). Loading placeholders (issue #35) are grey bars
     // drawn with a font, not text to read. Everything else must pass.
-    const r = await window.axe.run({ include: [document], exclude: [['.skeleton-text'], ['.ck-cook li.ck-done'], ['.button.ck-main'], ['.button.ck-cta-button'], ['.ck-cooking-fab'], ['.link.ck-nav-primary'], ['.ck-week-selected.ck-week-today .ck-week-num'], ['.ck-calendar .calendar-day-today.calendar-day-selected'], ['.dialog .button.button-fill']] }, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
+    const r = await window.axe.run({ include: [document], exclude: [['.skeleton-text'], ['.ck-cook li.ck-done'], ['.button.ck-main'], ['.button.ck-cta-button'], ['.link.ck-nav-primary'], ['.ck-week-selected.ck-week-today .ck-week-num'], ['.ck-calendar .calendar-day-today.calendar-day-selected'], ['.dialog .button.button-fill']] }, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
     return r.violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(' ')}: ${n.any[0]?.message ?? v.help}`));
   });
   const overlaps = await page.evaluate(() => {
@@ -1961,27 +1960,29 @@ async function swipeLeft(ctx, page, locator) {
     const bar = await page.locator('.views > .toolbar.tabbar').boundingBox();
     if (f.y + f.height > bar.y) throw new Error('the Cooking bar covers the tab bar');
     if (Math.abs(f.x + f.width / 2 - 393 / 2) > 1) throw new Error('the Cooking bar isn’t centred');
-    const text = await page.locator(fab).innerText();
-    if (!text.includes('Middle Eastern Chicken Kebabs') || !/Timer \d+:\d\d/.test(text)) throw new Error(`the Cooking bar reads "${text}"`);
-    if ((await page.locator(`${fab} .ck-cooking-fab-count`).innerText()).trim()) throw new Error('a count shows with one recipe cooking');
-    // flat bright Tomato, like every orange button: no iOS 26 glass edge or glow
+    // small: just "Cooking" (a count only with more than one recipe), flat dark, no iOS 26 glass edge or glow
+    const text = (await page.locator(fab).innerText()).trim();
+    if (text !== 'Cooking') throw new Error(`the Cooking pill reads "${text}"`);
+    if (f.width > 180 || f.height > 48) throw new Error(`the Cooking pill is ${Math.round(f.width)}×${Math.round(f.height)}px, not small`);
     const look = await page.locator(`${fab} > a`).evaluate((a) => ({ bg: getComputedStyle(a).backgroundColor, shadow: getComputedStyle(a).boxShadow }));
-    if (look.bg !== 'rgb(228, 87, 46)' || look.shadow !== 'none') throw new Error(`the Cooking bar is ${look.bg} with shadow ${look.shadow}`);
+    if (look.bg !== 'rgb(38, 38, 40)' || look.shadow !== 'none') throw new Error(`the Cooking pill is ${look.bg} with shadow ${look.shadow}`);
   });
   await step('36c-cook-second-recipe', async () => {
     await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Corn' }).tap(); await page.waitForTimeout(900);
-    // on another recipe the bar sits above its Start cooking button
-    const f = await page.locator(`${fab} > a`).boundingBox();
-    const bar = await page.locator('#view-recipes .page-current .toolbar.ck-cta .toolbar-inner').boundingBox();
-    if (!f || f.y + f.height > bar.y) throw new Error('the Cooking bar covers the Start cooking bar');
-    // Start cooking on another recipe adds it as a tab
+    // another recipe's footer: a dark chef-hat button with how many are cooking (back to cook mode) beside "Add to
+    // cooking"; no floating pill on top of it
+    if (await page.locator(fab).isVisible()) throw new Error('the Cooking pill shows on a recipe page');
+    const back = (await page.locator('#view-recipes .page-current .ck-cta-back').innerText().catch(() => '')).trim();
+    const add = (await page.locator('#view-recipes .page-current .ck-cta-button').innerText()).trim();
+    if (back !== '1' || add !== 'Add to cooking') throw new Error(`the footer reads "${back}" and "${add}"`);
+    // Add to cooking adds it as a tab
     await page.locator('#view-recipes .page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
     const tabs = await page.locator('.ck-cook .ck-cook-recipe').allTextContents();
     if (tabs.length !== 2 || !(await page.locator('.ck-cook .ck-cook-recipe-on').textContent()).includes('Corn')) throw new Error(`cook mode has the tabs ${JSON.stringify(tabs)}`);
     await page.locator('.ck-cook a[aria-label="Minimize cook mode"]').tap(); await page.waitForTimeout(1000);
     await page.goBack(); await page.waitForTimeout(1000);
-    const count = (await page.locator(`${fab} .ck-cooking-fab-count`).innerText()).trim();
-    if (count !== '2') throw new Error(`the Cooking bar shows "${count}", not 2 recipes`);
+    const text = (await page.locator(fab).innerText()).replace(/\s+/g, ' ').trim();
+    if (text !== 'Cooking • 2') throw new Error(`the Cooking pill reads "${text}", not 2 recipes`);
   });
   await step('36d-cook-resumed', async () => {
     await page.locator(`${fab} > a`).tap(); await page.waitForTimeout(1000);

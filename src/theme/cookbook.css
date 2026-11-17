@@ -686,29 +686,23 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
   height: 36px; padding: 0 12px; gap: 6px; border-radius: 9999px;
   background-color: var(--ck-soft); color: var(--ck-accent-ink); font-weight: 600; font-variant-numeric: tabular-nums;
 }
-/* Cooking bar (issue #85), like Instacart's cart bar: Framework7's extended FAB as a wide flat pill at the bottom centre
-   while cook mode is tucked away (Framework7 places it above the tab bar). Bright Tomato like every orange button (the
-   same deliberate contrast exception as .button.ck-main), no shadow or glass: the recipe's name (Fredoka 17px 600) over
-   the next timer or the steps done (Nunito 13px), and a chef hat with the number of recipes on the right */
+/* Cooking pill (issue #85), like Uber Eats' "View cart • 1": Framework7's extended FAB, small and flat dark at the bottom
+   centre while cook mode is tucked away (Framework7 places it above the tab bar). No shadow or iOS 26 glass. A chef hat
+   and "Cooking" (Fredoka 17px 600), with "• 2" when more than one recipe is open */
 html.ios .fab.ck-cooking-fab {
-  --f7-fab-bg-color: var(--ck-accent);
-  --f7-fab-pressed-bg-color: var(--ck-accent-press);
+  --f7-fab-bg-color: var(--ck-fg);
+  --f7-fab-pressed-bg-color: var(--ck-fg2);
   --f7-fab-text-color: var(--ck-surface);
-  --f7-fab-extended-size: 56px;
+  --f7-fab-extended-size: 48px;
   --f7-fab-extended-text-transform: none;
-  --f7-fab-extended-text-padding: 0 20px 0 22px;
+  --f7-fab-extended-text-padding: 0 22px 0 18px;
   --f7-fab-box-shadow: none;
   --f7-glass-shadow-fab: none; /* Framework7 v9's iOS 26 glass edge and glow */
-  width: min(calc(100% - 48px), 440px);
 }
-html.ios .fab.ck-cooking-fab .fab-text { width: 100%; }
-.ck-cooking-fab-body { display: flex; align-items: center; gap: 12px; }
-.ck-cooking-fab-lines { display: grid; flex: 1; min-width: 0; text-align: left; line-height: 1.2; }
-.ck-cooking-fab-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; }
-.ck-cooking-fab-detail { font-family: var(--ck-font); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.ck-cooking-fab-count { display: flex; align-items: center; gap: 6px; flex: none; font-family: var(--ck-font-display); font-size: 20px; font-weight: 600; }
-/* a recipe page that's cooking has its own Resume cooking button */
-.view:has(> .page-current.ck-recipe-cooking) > .ck-cooking-fab { display: none; }
+.ck-cooking-fab-body { display: flex; align-items: center; gap: 8px; white-space: nowrap; font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; }
+.ck-cooking-fab-count { font-variant-numeric: tabular-nums; }
+/* recipe pages have their own way back in the footer (Resume cooking, or the chef-hat button beside Add to cooking) */
+.view:has(> .page-current.ck-recipe-page) > .ck-cooking-fab { display: none; }
 
 /* Adjust amounts: the result line with a Reset link, under the mode toggle */
 .ck-scale-result { flex-wrap: nowrap; justify-content: space-between; align-items: baseline; gap: 12px; }
@@ -728,7 +722,14 @@ html.ios .toolbar.ck-cta .toolbar-inner {
   border-top: 1px solid var(--ck-line);
 }
 /* servings pill next to "Ingredients" (opens Adjust amounts); the footer is just Start cooking, full width */
-.button.ck-cta-button { flex: 1; }
+.button.ck-cta-button { flex: 1; gap: 6px; }
+/* issue #85: while other recipes are cooking, a dark round chef-hat button with how many, beside Add to cooking: back
+   to cook mode (the same dark as the floating Cooking pill) */
+.toolbar.ck-cta .link.ck-cta-back {
+  flex: none; gap: 6px; height: 48px; padding: 0 18px 0 16px; margin-right: 10px; border-radius: 9999px;
+  background-color: var(--ck-fg); color: var(--ck-surface);
+  font-family: var(--ck-font-display); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
 .ck-sec .link.ck-scale-button { font-size: 14px; }
 .link.ck-scale-button {
   height: 36px;

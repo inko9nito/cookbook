@@ -29,28 +29,21 @@ export default function SettingsPage() {
       })
       .open();
 
-  // the home-screen app keeps running the version it has until it's reloaded with a new one. The refresh icon checks:
-  // it spins meanwhile; a new version reloads the app, back on Settings (issue #48), otherwise the icon just stops.
-  // No dialogs.
-  const [checking, setChecking] = useState(false);
-  const checkForUpdates = async () => {
-    if (checking) return;
-    setChecking(true);
-    // spin for at least a moment, so a quick answer still reads as "checked"
+  // the home-screen app keeps running the version it has until it's reloaded, and has no pull-to-refresh. The refresh
+  // icon spins while it brings in a new version if there is one, then reloads the app either way (issue #91), back on
+  // Settings (issue #48). No dialogs.
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshApp = () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    // spin for at least a moment, so a quick reload still reads as "refreshed"
     const shortest = new Promise((r) => setTimeout(r, 700));
-    const reload = () => {
-      reopenOnTab('settings');
-      window.location.reload();
-    };
-    try {
-      const result = await updateApp({ beforeReload: () => reopenOnTab('settings') });
-      // no service worker here (a plain browser tab, or local): a reload is the update
-      if (result === 'unsupported') reload();
-    } catch {
-      /* offline, or the check failed: the icon stops, nothing changes */
-    }
-    await shortest;
-    setChecking(false);
+    updateApp({
+      beforeReload: async () => {
+        reopenOnTab('settings');
+        await shortest;
+      },
+    });
   };
 
   // issue #48: tapping the version itself copies it (for a bug report), with a toast to say so
@@ -84,7 +77,8 @@ export default function SettingsPage() {
       <List strongIos insetIos dividersIos>
         <ListItem link="/settings/prepear/" title="From Prepear" />
       </List>
-      {/* the build running: tapping it copies it; its refresh icon checks for a newer one (issue #48) */}
+      {/* the build running: tapping it copies it; its refresh icon brings in a newer one
+          and reloads the app (issues #48, #91) */}
       <BlockTitle>Version</BlockTitle>
       <List strongIos insetIos dividersIos>
         <ListItem title={appVersion()} onClick={copyVersion} className="ck-version-row">
@@ -92,13 +86,13 @@ export default function SettingsPage() {
             slot="after"
             iconOnly
             className="ck-refresh-link"
-            aria-label="Check for updates"
+            aria-label="Refresh the app"
             onClick={(e: Event) => {
-              e.stopPropagation(); // the row copies; this checks
-              checkForUpdates();
+              e.stopPropagation(); // the row copies; this refreshes
+              refreshApp();
             }}
           >
-            <RefreshCw {...inlineIcon} className={`ck-icon ck-refresh ${checking ? 'ck-spinning' : ''}`} aria-hidden="true" />
+            <RefreshCw {...inlineIcon} className={`ck-icon ck-refresh ${refreshing ? 'ck-spinning' : ''}`} aria-hidden="true" />
           </Link>
         </ListItem>
       </List>

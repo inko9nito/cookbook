@@ -1305,7 +1305,6 @@ html.ios .navbar .right .link.ck-plan-today { font-weight: 500; }
 .calendar.ck-calendar.calendar-sheet { height: calc(var(--f7-calendar-height) + var(--ck-sheet-inset) + var(--f7-safe-area-bottom)); padding-bottom: calc(var(--ck-sheet-inset) + var(--f7-safe-area-bottom)); }
 .calendar.ck-calendar .calendar-day.active-state .calendar-day-number,
 .calendar.ck-calendar .calendar-day:active .calendar-day-number { background-color: var(--ck-soft); }
-.calendar.ck-calendar .calendar-day-selected .calendar-day-number { font-weight: 600; }
 /* the month in full (issue #67: Framework7 squeezes its selector into half the bar, which cut "November" short) */
 html.ios .calendar.ck-calendar .toolbar .calendar-month-selector { width: auto; max-width: none; gap: 12px; }
 html.ios .calendar.ck-calendar .toolbar .calendar-month-selector .current-month-value { overflow: visible; text-overflow: clip; min-width: 7.5em; text-align: center; }

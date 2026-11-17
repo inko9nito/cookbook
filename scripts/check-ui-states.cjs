@@ -1830,19 +1830,29 @@ async function swipeLeft(ctx, page, locator) {
     const month = await page.locator('.calendar.modal-in .current-month-value').evaluate((e) => ({ text: e.textContent, cut: e.scrollWidth > e.clientWidth + 1 }));
     if (month.cut) throw new Error(`the month "${month.text}" is cut short`);
     if ((await page.locator('.calendar.modal-in .calendar-month-current .calendar-day-event').count()) < 2) throw new Error('no dots on planned days');
-    // a day looks the same here as in the week strip: the circle's size, the number's font, and the dot's size and its
-    // gap under the circle (they differed: 36px circles in a lighter font, dots tucked 1px under them)
+    // a day looks the same here as in the week strip, in every state: plain, today, picked, and today picked. The
+    // circle's size and fill, the number's font, weight and colour, and the dot's size and gap under the circle.
+    // (They differed: 36px circles in a lighter font, dots 1px under them, and a picked day bolder in the calendar.)
+    // Each state is set on a plain day with a dot in each, by its own classes, measured, then put back.
     const looks = await page.evaluate(() => {
-      const of = (num, dot) => {
+      const strip = document.querySelector('.ck-week-day.ck-week-busy:not(.ck-week-today):not(.ck-week-selected)');
+      const cal = [...document.querySelectorAll('.calendar.modal-in .calendar-month-current .calendar-day:not(.calendar-day-today):not(.calendar-day-selected)')].find((d) => d.querySelector('.calendar-day-event'));
+      const look = (num, dot) => {
         const n = num.getBoundingClientRect(), d = dot.getBoundingClientRect(), cs = getComputedStyle(num);
-        return { circle: Math.round(n.width), font: `${cs.fontFamily.split(',')[0]} ${cs.fontSize} ${cs.fontWeight}`, dot: Math.round(d.width), gap: Math.round(d.top - n.bottom) };
+        return { circle: Math.round(n.width), fill: cs.backgroundColor, font: `${cs.fontFamily.split(',')[0]} ${cs.fontSize} ${cs.fontWeight}`, color: cs.color, dot: Math.round(d.width), gap: Math.round(d.top - n.bottom) };
       };
-      const strip = document.querySelector('.ck-week-busy');
-      const cal = document.querySelector('.calendar.modal-in .calendar-month-current .calendar-day:not(.calendar-day-today):not(.calendar-day-selected) .calendar-day-event')?.closest('.calendar-day');
-      const plain = document.querySelector('.ck-week-day.ck-week-busy:not(.ck-week-today):not(.ck-week-selected)') ?? strip;
-      return { strip: of(plain.querySelector('.ck-week-num'), plain.querySelector('.ck-week-dot')), calendar: of(cal.querySelector('.calendar-day-number'), cal.querySelector('.calendar-day-event')) };
+      const out = [];
+      for (const state of [[], ['today'], ['selected'], ['today', 'selected']]) {
+        const sc = state.map((x) => `ck-week-${x}`), cc = state.map((x) => `calendar-day-${x}`);
+        strip.classList.add(...sc); cal.classList.add(...cc);
+        const a = look(strip.querySelector('.ck-week-num'), strip.querySelector('.ck-week-dot'));
+        const b = look(cal.querySelector('.calendar-day-number'), cal.querySelector('.calendar-day-event'));
+        strip.classList.remove(...sc); cal.classList.remove(...cc);
+        if (JSON.stringify(a) !== JSON.stringify(b)) out.push(`${state.join(' + ') || 'plain'}: strip ${JSON.stringify(a)} vs calendar ${JSON.stringify(b)}`);
+      }
+      return out;
     });
-    if (JSON.stringify(looks.strip) !== JSON.stringify(looks.calendar)) throw new Error(`a day in the strip ${JSON.stringify(looks.strip)} differs from one in the calendar ${JSON.stringify(looks.calendar)}`);
+    if (looks.length) throw new Error(`a day in the strip and in the calendar differ: ${looks.join('; ')}`);
   });
   await step('62i-planner-moved', async () => {
     await pickInCalendar(today1);

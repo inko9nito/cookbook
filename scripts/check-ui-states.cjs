@@ -1209,6 +1209,21 @@ async function swipeLeft(ctx, page, locator) {
     if (!String(t.fade).includes('gradient')) throw new Error('ingredients scrolling under the top bar do not fade');
     if (t.ticked) throw new Error('tapping the linked name ticked the ingredient');
   });
+  // #65: in the installed app the tabs once ran up under the iPhone's status bar (clock and battery over them). With an
+  // iPhone's insets (59px status bar, 34px home indicator), the top bar's buttons sit below the status bar and the tabs
+  // end above the home indicator
+  await step('25c2-cook-linked-safe-areas', async () => {
+    await page.addStyleTag({ content: 'html { --f7-safe-area-top: 59px !important; --f7-safe-area-bottom: 34px !important; }' });
+    await page.waitForTimeout(300);
+    const t = await page.evaluate(() => {
+      const close = document.querySelector('.ck-cook .navbar .right a').getBoundingClientRect();
+      const tab = document.querySelector('.ck-cook .ck-cook-recipe-on').getBoundingClientRect();
+      return { closeTop: close.top, tabBottom: tab.bottom, screen: innerHeight };
+    });
+    if (t.closeTop < 59) throw new Error(`cook mode's X is under the status bar (${Math.round(t.closeTop)}px from the top)`);
+    if (t.tabBottom > t.screen - 34) throw new Error(`the recipe tabs run into the home indicator (${Math.round(t.tabBottom - (t.screen - 34))}px)`);
+  });
+  await page.evaluate(() => document.querySelectorAll('style').forEach((el) => el.textContent.includes('--f7-safe-area-top: 59px') && el.remove()));
   await step('25d-cook-linked-units', async () => {
     // the sauce's unit sheet opens over cook mode
     await page.locator('.ck-cook .tab-active .ck-pane-ingredients li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);

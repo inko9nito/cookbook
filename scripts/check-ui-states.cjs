@@ -1244,8 +1244,11 @@ async function swipeLeft(ctx, page, locator) {
       const hero = document.querySelector('.view.tab-active .page-current .ck-hero, .view.tab-active .page-current .ck-hero-wrap').getBoundingClientRect();
       const nav = document.querySelector('.navbar-current, .view.tab-active .page-current .navbar');
       const back = nav.querySelector('.link.back').getBoundingClientRect();
-      return { heroTop: Math.round(hero.top), bg: getComputedStyle(nav.querySelector('.navbar-bg')).display, backInPhoto: back.top >= hero.top && back.bottom <= hero.bottom };
+      const ink = getComputedStyle(nav.querySelector('.link.back'));
+      return { heroTop: Math.round(hero.top), bg: getComputedStyle(nav.querySelector('.navbar-bg')).display, backInPhoto: back.top >= hero.top && back.bottom <= hero.bottom, backBg: ink.backgroundColor, backInk: ink.color };
     });
+    // issue #90: dark see-through circles with white icons over the photo (Uber Eats), not white ones
+    if (t.backBg !== 'rgba(0, 0, 0, 0.45)' || t.backInk !== 'rgb(255, 255, 255)') throw new Error(`the back button over the photo is ${t.backInk} on ${t.backBg}`);
     if (t.heroTop !== 0) throw new Error(`photo starts ${t.heroTop}px down, not at the top`);
     if (t.bg !== 'none') throw new Error('the top bar still has a background');
     if (!t.backInPhoto) throw new Error('back button is not over the photo');
@@ -1640,8 +1643,94 @@ async function swipeLeft(ctx, page, locator) {
     const unc = await page.locator(`${CUR} .ck-shelf`, { hasText: 'Uncategorized' }).locator('.ck-card-title').allTextContents();
     if (unc.join(',') !== 'Corn pudding,Tahini Sauce') throw new Error(`the Uncategorized shelf shows ${JSON.stringify(unc)}`);
     if ((await cards()).length) throw new Error('a grid shows under the shelves');
-    const count = await page.locator(`${CUR} .ck-count`).textContent();
+    // issue #90: the header counts them, under the cookbook's name, on the cookbook's colour; no count line besides
+    const count = await page.locator(`${CUR} .ck-book-hero-meta`).textContent();
     if (!count.includes('6 recipes · 2 sections')) throw new Error(`the count reads "${count}"`);
+    if (await page.locator(`${CUR} .ck-count`).count()) throw new Error('a count line shows under the header too');
+  });
+  // Issue #90: the cookbook's header, from the user's Spotify reference and mockup: page content from the top of the
+  // screen in the cookbook's colour, its plates big, its name large, its counts, then its search bar; the bar over it
+  // has no background, title or search bar of its own, and its buttons are dark see-through circles (Uber Eats)
+  const heroState = () => page.evaluate((cur) => {
+    const pg = document.querySelector(cur);
+    const bar = pg.querySelector(':scope > .navbar');
+    const hero = pg.querySelector('.ck-book-hero');
+    return {
+      heroTop: Math.round(hero.getBoundingClientRect().top),
+      middlePlate: Math.round(hero.querySelector('.ck-plate-middle').getBoundingClientRect().width),
+      nameTop: Math.round(hero.querySelector('.ck-book-hero-title').getBoundingClientRect().top),
+      heroBg: getComputedStyle(hero).backgroundImage,
+      name: hero.querySelector('.ck-book-hero-title').textContent,
+      nameSize: getComputedStyle(hero.querySelector('.ck-book-hero-title')).fontSize,
+      nameBottom: hero.querySelector('.ck-book-hero-meta').getBoundingClientRect().bottom,
+      heroSearchTop: pg.querySelector('.ck-hero-search .searchbar').getBoundingClientRect().top,
+      plates: hero.querySelectorAll('.ck-plate.ck-photo').length,
+      hidden: bar.classList.contains('navbar-hidden'),
+      barBg: getComputedStyle(bar.querySelector('.navbar-bg')).opacity,
+      title: getComputedStyle(bar.querySelector('.title')).opacity,
+      docked: getComputedStyle(bar.querySelector('.subnavbar')).visibility === 'visible',
+      metaShown: getComputedStyle(hero.querySelector('.ck-book-hero-meta')).visibility === 'visible',
+      heroSearchShown: getComputedStyle(pg.querySelector('.ck-hero-search')).visibility === 'visible',
+      platesOpacity: getComputedStyle(hero.querySelector('.ck-plates')).opacity,
+      nameUnderBar: (() => { const b = bar.querySelector('.navbar-inner').getBoundingClientRect().bottom, n = hero.querySelector('.ck-book-hero-title').getBoundingClientRect(); return Math.max(0, Math.min(1, (b - n.top) / n.height)); })(),
+      backBg: getComputedStyle(bar.querySelector('.left .link')).backgroundColor,
+      plusBg: getComputedStyle(bar.querySelector('.ck-nav-primary')).backgroundColor,
+    };
+  }, CUR);
+  const scrollBy = async (px) => {
+    const pc = await page.locator(`${CUR} > .page-content`).boundingBox();
+    await page.mouse.move(pc.x + pc.width / 2, pc.y + 400);
+    const step = Math.sign(px) * Math.min(20, Math.abs(px));
+    for (let d = 0; Math.abs(d) < Math.abs(px); d += step) { await page.mouse.wheel(0, step); await page.waitForTimeout(30); }
+    await page.waitForTimeout(600);
+  };
+  await step('90a-cookbook-header', async () => {
+    const t = await heroState();
+    if (t.heroTop !== 0 || !t.heroBg.startsWith('linear-gradient')) throw new Error(`the header starts ${t.heroTop}px down (${t.heroBg})`);
+    if (t.name !== 'Everything else' || t.nameSize !== '32px') throw new Error(`the header's name is "${t.name}" at ${t.nameSize}`);
+    if (t.plates !== 3) throw new Error(`the header shows ${t.plates} plates with photos`);
+    // big plates (150px in the middle) in the same space: the name stays where it was
+    if (t.middlePlate !== 150) throw new Error(`the middle plate is ${t.middlePlate}px, not 150`);
+    if (t.nameTop > 250) throw new Error(`the name starts ${t.nameTop}px down; the plates pushed it down`);
+    if (t.heroSearchTop < t.nameBottom) throw new Error('the search bar isn’t under the name');
+    if (t.barBg !== '0' || t.title !== '0' || t.docked) throw new Error(`the bar isn't bare over the header (${JSON.stringify(t)})`);
+    // frosted white back and ⋯ over the pastel header (the grey looked muddy there); + stays Tomato
+    if (t.backBg !== 'rgba(255, 255, 255, 0.6)') throw new Error(`the back button over the header is ${t.backBg}, not frosted white`);
+    if (t.plusBg === 'rgba(255, 255, 255, 0.6)') throw new Error('+ lost its Tomato');
+  });
+  // the user's mockup, frame 2: scrolling, the plates and the colour fade out from the first pixel while the bar fills
+  // in; with them gone, the bar is plain with its usual buttons, still no title while the name shows under it
+  await step('90b-cookbook-header-scrolling', async () => {
+    await scrollBy(60);
+    const early = await heroState();
+    if (!(Number(early.platesOpacity) < 1 && Number(early.platesOpacity) > 0)) throw new Error(`60px down, the plates' opacity is ${early.platesOpacity}`);
+    // the bar stays fully see-through over the fading header (the user's mockup), then solid once it has gone
+    if (early.barBg !== '0') throw new Error(`60px down, the bar's background is ${early.barBg}, not see-through`);
+    await scrollBy(120);
+    const t = await heroState();
+    if (t.hidden) throw new Error('the bar’s buttons hid while the header was still on screen');
+    if (t.platesOpacity !== '0' || t.barBg !== '1') throw new Error(`with the plates gone, plates ${t.platesOpacity}, bar ${t.barBg}`);
+    if (t.title !== '0' || t.docked || !t.heroSearchShown) throw new Error(`with the name still showing, the bar is ${JSON.stringify({ title: t.title, docked: t.docked })}`);
+    // on the solid bar, the usual bar buttons
+    if (t.backBg === 'rgba(255, 255, 255, 0.6)') throw new Error('on the solid bar, the back button is still frosted');
+  });
+  // as iOS does it: the title comes into the bar only once the name has gone all the way under it (never in both places),
+  // and the count under the name hides then
+  await step('90c-cookbook-header-title', async () => {
+    try {
+      for (let i = 0; i < 9; i++) {
+        await scrollBy(10);
+        const t = await heroState();
+        if (t.hidden) break; // the search has docked and the title row slid away
+        if (t.nameUnderBar >= 1 && (t.title !== '1' || t.metaShown)) throw new Error(`the name is under the bar but the bar has no title (${t.title}) or the count still shows (${t.metaShown})`);
+        if (t.nameUnderBar < 0.97 && t.title !== '0') throw new Error(`the title is in the bar with ${Math.round(t.nameUnderBar * 100)}% of the name still showing`);
+      }
+    } finally {
+      // back to the top for the steps after, whatever happened
+      await scrollBy(-300);
+      await page.evaluate((cur) => document.querySelector(`${cur} > .page-content`).scrollTo(0, 0), CUR);
+      await page.waitForTimeout(600);
+    }
   });
   // Uncategorized's See all opens its own page, like a section's (no Rename or Delete)
   await step('26b2-uncategorized-page', async () => {
@@ -1750,24 +1839,40 @@ async function swipeLeft(ctx, page, locator) {
     await tile.tap(); await page.waitForTimeout(1000);
   });
   // issue #63: a cookbook's search bar stays under its title too
+  // scrolled past the header (issue #90), it's the bar as on Recipes: the header's search bar hands over to the docked
+  // one, the title row slides away on scrolling down (the buttons back to grey) and comes back on scrolling up
   await step('26c0-cookbook-search-sticky', async () => {
     const top = () => page.evaluate((cur) => Math.round(document.querySelector(`${cur} .subnavbar .searchbar`)?.getBoundingClientRect().top ?? -1), CUR);
-    const before = await top();
-    if (before < 0) throw new Error('the search bar is not in the bar under the title');
-    await page.evaluate((cur) => document.querySelector(`${cur} .page-content`).scrollTo(0, 400), CUR);
-    await page.waitForTimeout(400);
+    if ((await top()) < 0) throw new Error('the search bar is not in the bar under the title');
+    const pc = await page.locator(`${CUR} > .page-content`).boundingBox();
+    await page.mouse.move(pc.x + pc.width / 2, pc.y + 400);
+    for (let i = 0; i < 12; i++) { await page.mouse.wheel(0, 40); await page.waitForTimeout(50); }
+    await page.waitForTimeout(600);
     const after = await top();
-    await page.evaluate((cur) => document.querySelector(`${cur} .page-content`).scrollTo(0, 0), CUR);
-    if (after !== before) throw new Error(`scrolling moved the search bar from ${before} to ${after}`);
+    const bar = await heroState();
+    if (after < 0 || after > 60) throw new Error(`scrolled, the search bar is at ${after}px, not at the top`);
+    if (!bar.docked || bar.barBg !== '1' || !bar.hidden) throw new Error(`scrolled, the bar isn't today's (search docked, title row hidden): ${JSON.stringify(bar)}`);
+    // only ever one search bar: the header's is hidden once the bar's has taken over (it showed under it on the phone)
+    if (bar.heroSearchShown) throw new Error('two search bars: the header’s still shows under the docked one');
+    // scrolling back up a little brings the title row back with the title
+    await scrollBy(-60);
+    const up = await heroState();
+    if (up.hidden || up.title !== '1' || !up.docked) throw new Error(`scrolling up, the title row didn't come back: ${JSON.stringify(up)}`);
+    if (bar.back === 'rgba(0, 0, 0, 0.45)') throw new Error('scrolled, the buttons are still the dark ones for over a picture');
   });
+  await page.evaluate((cur) => document.querySelector(`${cur} > .page-content`).scrollTo(0, 0), CUR);
+  await page.waitForTimeout(600);
   await step('26c-cookbook-search', async () => {
-    await page.locator(`${CUR} .ck-search-bar input`).fill('chick'); await page.waitForTimeout(500);
+    // at the top of a cookbook, the search bar is the header's (issue #90); the bar's docked one shows the same search
+    const field = page.locator(`${CUR} .ck-hero-search input`);
+    await field.fill('chick'); await page.waitForTimeout(500);
+    if ((await page.locator(`${CUR} .ck-search-bar input`).inputValue()) !== 'chick') throw new Error('the docked search bar doesn’t show the same search');
     const found = await cards();
     const count = await page.locator(`${CUR} .ck-count`).textContent();
     // the search covers the sections too
     if (found.length !== 2 || !count.includes('2 of 6 recipes')) throw new Error(`searching shows ${JSON.stringify(found)} with "${count}"`);
     if (await page.locator(`${CUR} .ck-shelf`).count()) throw new Error('the shelves stay while searching');
-    await page.locator(`${CUR} .ck-search-bar input`).fill(''); await page.locator(`${CUR} .ck-search-bar input`).blur(); await page.waitForTimeout(500);
+    await field.fill(''); await field.blur(); await page.waitForTimeout(500);
   });
   await step('26d-section-page', async () => {
     await page.locator(`${CUR} .ck-shelf`, { hasText: 'Meat' }).locator('.ck-shelf-all').tap(); await page.waitForTimeout(1000);

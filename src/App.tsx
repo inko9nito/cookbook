@@ -14,9 +14,7 @@ const f7params = {
   colors: { primary: '#c4421c', red: '#d1291f' }, // Tomato ink (--ck-accent-ink): links and text. Fills use bright Tomato via --ck-accent
   routes,
   // Titles sit on the left in the same row as the buttons (the agreed design, not iOS 26 centered titles)
-  // snapPageScrollToLargeTitle off: a cookbook's header is Framework7's large title (issue #90), much taller than a
-  // title, and snapping it open or shut whenever a scroll stops mid-way fought the finger
-  navbar: { iosCenterTitle: false, snapPageScrollToLargeTitle: false },
+  navbar: { iosCenterTitle: false },
   // Long-press to start dragging a row (sortableTapHold) needs tap-hold events.
   // touchHighlight off: it's iOS 26's press effect (the tab bar, round bar buttons and toasts swell and glow under
   // the finger), which read as a bounce and isn't part of the agreed design.

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   Page, Navbar, NavRight, Subnavbar, Link, Searchbar, Block, BlockFooter, Button,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
@@ -41,6 +41,13 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const { recipes } = useStore();
   const { cookbooks, loading, saveCookbook, deleteCookbook } = useCookbooks();
   const [query, setQuery] = useState('');
+  // issue #90 (the cookbook's header): `docked` once the header's search bar has scrolled up to the bar, which then
+  // shows its own (Framework7's subnavbar, docked) with the title and its background; `overHeader` while the bar's
+  // buttons are over the header's colour (dark see-through buttons)
+  const [docked, setDocked] = useState(false);
+  const [overHeader, setOverHeader] = useState(true);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const headerSearchRef = useRef<HTMLDivElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [choosingCover, setChoosingCover] = useState(false);
@@ -58,6 +65,38 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         : book.sections.find((s) => s.id === sectionId)
       : undefined;
   const byId = new Map(recipes.map((r) => [r.id, r]));
+  const hasHeader = !!book && !sectionId;
+
+  // issue #90: the header and its search bar scroll with the page like the rest of it (no animation of our own). This
+  // listener only notices where they are: once the header's name has gone under the bar, the bar gets its background
+  // (`overHeader` off); once the header's search bar reaches the bar, it swaps for the bar's docked one, which sits
+  // exactly there (`docked`). From then on the title row hides on scrolling down and comes back on scrolling up, as
+  // Framework7's hideNavbarOnScroll does elsewhere, by calling Framework7's own navbar.hide()/show(): that option starts
+  // hiding after 44px, which would take the buttons away while the header is still on screen. The user approved this
+  // one listener (Nov 2026) because Framework7 has no header that scrolls away like this.
+  useEffect(() => {
+    const header = headerRef.current;
+    const search = headerSearchRef.current;
+    const content = header?.closest<HTMLElement>('.page-content');
+    const pageEl = header?.closest<HTMLElement>('.page');
+    const navbar = pageEl?.querySelector<HTMLElement>(':scope > .navbar');
+    if (!header || !search || !content || !pageEl || !navbar) return;
+    let previous = content.scrollTop;
+    const check = () => {
+      // where the bar ends when it's showing (its height ignores the slide when Framework7 hides it)
+      const barBottom = pageEl.getBoundingClientRect().top + navbar.offsetHeight;
+      const isDocked = search.getBoundingClientRect().top <= barBottom;
+      setDocked(isDocked);
+      setOverHeader(header.querySelector('.ck-book-hero-title')!.getBoundingClientRect().top > barBottom);
+      const now = content.scrollTop;
+      if (isDocked && now > previous) f7.navbar.hide(navbar, true);
+      else if (now < previous || !isDocked) f7.navbar.show(navbar, true);
+      previous = now;
+    };
+    check();
+    content.addEventListener('scroll', check, { passive: true });
+    return () => content.removeEventListener('scroll', check);
+  }, [hasHeader]);
 
   // Not there (yet, or any more). Same page and the same header (key "navbar") as below, so if the cookbook turns up a
   // moment later, React keeps the header Framework7 set up instead of building a new one. Still loading (issue #35):
@@ -155,13 +194,32 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   // issue #90: a cookbook's page opens with its card's look, a header in its colour with its plates and its name large
   // (from the user's Spotify reference); a section's page keeps the plain bar
   const hero = !section;
+  // the search bar: the bar's own (docked), and on a cookbook's page the header's too, showing the same search
+  const searchbar = (
+    <Searchbar
+      customSearch
+      backdrop={false}
+      disableButton={false}
+      value={query}
+      placeholder={section ? 'Search this section' : 'Search this cookbook'}
+      onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
+      onSearchbarClear={() => setQuery('')}
+    />
+  );
   const tint = hero ? ({ '--ck-tint': `var(--ck-book-${colorOf(book)})` } as CSSProperties) : undefined;
 
   return (
     // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays.
-    // With the header (issue #90), the bar is Framework7's large-title navbar: the header collapses into it first.
-    <Page name="cookbook" className={`ck-cookbook-page${hero ? ' ck-book-hero-page' : ''}`} style={tint} hideNavbarOnScroll onPageAfterIn={showTabbar}>
-      <Navbar key="navbar" backLink title={name} subtitle={section ? book.name : undefined} large={hero} titleLarge={hero ? ' ' : undefined} className={hero ? 'ck-hero-bar' : undefined}>
+    // With the header (issue #90), the bar has no background over the header, and no title or search bar of its own until
+    // the header's search bar reaches it; the title row's hiding is done by the header's scroll listener (above).
+    <Page name="cookbook" className={`ck-cookbook-page${hero ? ' ck-book-hero-page' : ''}`} style={tint} hideNavbarOnScroll={!hero} onPageAfterIn={showTabbar}>
+      <Navbar
+        key="navbar"
+        backLink
+        title={name}
+        subtitle={section ? book.name : undefined}
+        className={hero ? `ck-hero-bar${docked ? ' ck-hero-docked' : ''}${overHeader ? ' ck-hero-over' : ''}` : undefined}
+      >
         <NavRight>
           <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes" className="ck-nav-primary">
             <Plus {...navIcon} />
@@ -170,32 +228,29 @@ export default function CookbookPage({ f7route, f7router }: Props) {
             <Ellipsis {...navIcon} />
           </Link>
         </NavRight>
-        {/* issue #90: the header, in Framework7's large-title area: the cookbook's plates big, its name and counts. It
-            scrolls up under the bar (Framework7 collapses it), taking the cookbook's colour with it, and the search bar
-            under it docks under the bar. */}
-        {hero && (
-          <div slot="title-large" className="ck-book-hero">
-            <CookbookPlates photos={platePhotos(book, byId)} />
-            <h1 className="ck-book-hero-title">{name}</h1>
-            <p className="ck-book-hero-meta">
-              {count(searchable.length, 'recipe')}
-              {book.sections.length > 0 && ` · ${count(book.sections.length, 'section')}`}
-            </p>
-          </div>
-        )}
         {/* issue #63: the search bar stays under the title while the shelves scroll (Framework7's subnavbar, as on
             Recipes). It's always there, even with nothing to search yet, so the page keeps its shape. */}
-        <Subnavbar className="ck-docked-bar ck-search-bar">
-          <Searchbar
-            customSearch
-            backdrop={false}
-            disableButton={false}
-            placeholder={section ? 'Search this section' : 'Search this cookbook'}
-            onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
-            onSearchbarClear={() => setQuery('')}
-          />
-        </Subnavbar>
+        <Subnavbar className="ck-docked-bar ck-search-bar">{searchbar}</Subnavbar>
       </Navbar>
+
+      {/* issue #90: the header, from the user's Spotify reference and their mockup: the cookbook's colour fading into the
+          page, its plates big, its name and counts, then its search bar; it all scrolls away with the page, and the
+          search bar hands over to the bar's own once it gets there */}
+      {hero && (
+        <div key="header" className="ck-book-hero" ref={headerRef}>
+          <CookbookPlates photos={platePhotos(book, byId)} />
+          <h1 className="ck-book-hero-title">{name}</h1>
+          <p className="ck-book-hero-meta">
+            {count(searchable.length, 'recipe')}
+            {book.sections.length > 0 && ` · ${count(book.sections.length, 'section')}`}
+          </p>
+        </div>
+      )}
+      {hero && (
+        <div key="header-search" className="ck-hero-search" ref={headerSearchRef} aria-hidden={docked || undefined}>
+          {searchbar}
+        </div>
+      )}
 
       {/* keys: Page leaves out the blocks that aren't shown and lists the rest by position (see RecipesPage). The
           header already counts a cookbook's recipes, so its count line shows only while searching. */}

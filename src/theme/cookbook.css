@@ -315,33 +315,29 @@ html.ios .navbar.ck-float-bar .navbar-bg { display: none; }
    stays Tomato. */
 html.ios .navbar.ck-float-bar .left .link,
 html.ios .navbar.ck-float-bar .right .link,
-html.ios .navbar.ck-hero-bar:not(.navbar-large-collapsed) .left .link,
-html.ios .navbar.ck-hero-bar:not(.navbar-large-collapsed) .right .link:not(.ck-nav-primary) {
+html.ios .navbar.ck-hero-bar.ck-hero-over .left .link,
+html.ios .navbar.ck-hero-bar.ck-hero-over .right .link:not(.ck-nav-primary) {
   background-color: var(--ck-overlay-button);
   color: var(--ck-surface);
 }
 
-/* A cookbook's header (issue #90, from the user's Spotify reference), in Framework7's large-title navbar: the bar's
-   background is the cookbook's colour (--ck-tint, set on the page) fading into the page colour, behind the buttons
-   and the large-title area, which holds the plates big, then the name large and the counts; the search bar comes
-   under it on the page colour. Scrolling, Framework7 slides the header and the background up together (the large
-   title collapsing), so the bar left is the page colour with the small title, and the search bar docks under it;
-   then the title row slides away as before (hideNavbarOnScroll). */
-/* the header's height: on the page, so Framework7 sets the content (and the search bar) below it */
-html.ios .page.ck-book-hero-page { --f7-navbar-large-title-height: 246px; }
-/* the bar behind the buttons blends from the cookbook's colour to the page colour as the header collapses (Framework7
-   sets the progress); the header itself is clipped at the bar, so it slides up under it */
-html.ios .navbar.ck-hero-bar .navbar-bg::after {
-  background-image: none;
-  background-color: color-mix(in srgb, var(--ck-bg) calc(var(--f7-navbar-large-collapse-progress) * 100%), var(--ck-tint));
+/* A cookbook's header (issue #90, from the user's Spotify reference and their mockup): page content, starting at the top
+   of the screen under the bar, in the cookbook's colour (--ck-tint, set on the page) fading into the page colour, with
+   its plates big, its name large and its counts, then its search bar. It all scrolls away like the rest of the page.
+   While the header's name is below the bar (.ck-hero-over), the bar has no background and its buttons are dark
+   see-through circles over the colour; then it's the page colour with the usual buttons, still without a title. Once
+   the header's search bar reaches the bar (.ck-hero-docked), it's the bar as everywhere else: the title, the docked
+   search bar exactly where the header's was, and the title row sliding away on scrolling down. Both classes are set by
+   the page's one scroll listener (CookbookPage). */
+.page.ck-book-hero-page > .page-content { padding-top: 0; }
+html.ios .navbar.ck-hero-bar.ck-hero-over .navbar-bg,
+html.ios .navbar.ck-hero-bar:not(.ck-hero-docked) .title { opacity: 0; }
+html.ios .navbar.ck-hero-bar:not(.ck-hero-docked) .subnavbar { visibility: hidden; }
+.ck-book-hero {
+  background-image: linear-gradient(var(--ck-tint) 0%, var(--ck-tint) 62%, var(--ck-bg) 100%);
+  padding: calc(var(--f7-safe-area-top) + var(--f7-navbar-height) + 8px) 16px 4px;
+  overflow: hidden;
 }
-html.ios .navbar.ck-hero-bar .title-large { overflow: hidden; }
-html.ios .navbar.ck-hero-bar .title-large-text {
-  display: block; white-space: normal; font-size: inherit; font-weight: inherit; letter-spacing: normal; line-height: normal;
-  padding-top: 0; padding-bottom: 0; align-self: stretch;
-  background-image: linear-gradient(var(--ck-tint) 0%, var(--ck-tint) 55%, var(--ck-bg) 100%);
-}
-.ck-book-hero { overflow: hidden; padding-top: 14px; }
 .ck-book-hero .ck-plates { height: 156px; margin: 0 -16px; }
 .ck-book-hero .ck-plate { border-width: 4px; }
 .ck-book-hero .ck-plate-middle { width: 150px; height: 150px; }
@@ -349,8 +345,11 @@ html.ios .navbar.ck-hero-bar .title-large-text {
 .ck-book-hero .ck-plate-right { width: 108px; height: 108px; }
 .ck-book-hero .ck-plate-left { margin-right: -34px; }
 .ck-book-hero .ck-plate-right { margin-left: -34px; }
-.ck-book-hero-title { margin: 8px 0 0; font-family: var(--ck-font-display); font-size: 32px; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; color: var(--ck-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ck-book-hero-meta { margin: 6px 0 0; font-size: 14px; font-weight: 400; color: var(--ck-fg2); }
+.ck-book-hero-title { margin: 12px 0 0; font-family: var(--ck-font-display); font-size: 32px; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; color: var(--ck-fg); text-wrap: balance; }
+.ck-book-hero-meta { margin: 6px 0 0; font-size: 14px; color: var(--ck-fg2); }
+/* the header's search bar: the same height and insets as the docked one (4px above, 12px below), so they line up */
+.ck-hero-search { height: var(--f7-subnavbar-height); box-sizing: border-box; padding-top: 4px; }
+html.ios .ck-hero-search .searchbar { margin: 0 16px; }
 
 /* Tab bar (DoorDash): docked full width, flat white, hairline on top, no active bubble */
 html.ios {

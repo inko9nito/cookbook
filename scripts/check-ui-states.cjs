@@ -1564,44 +1564,54 @@ async function swipeLeft(ctx, page, locator) {
     if (!count.includes('6 recipes · 2 sections')) throw new Error(`the count reads "${count}"`);
     if (await page.locator(`${CUR} .ck-count`).count()) throw new Error('a count line shows under the header too');
   });
-  // Issue #90: the cookbook's header, from the user's Spotify reference, in Framework7's large-title bar: the cookbook's
-  // colour behind the buttons and the header (its plates big, its name large, its counts), then the search bar under
-  // the name; the buttons over it are dark see-through circles (Uber Eats), + stays Tomato
+  // Issue #90: the cookbook's header, from the user's Spotify reference and mockup: page content from the top of the
+  // screen in the cookbook's colour, its plates big, its name large, its counts, then its search bar; the bar over it
+  // has no background, title or search bar of its own, and its buttons are dark see-through circles (Uber Eats)
+  const heroState = () => page.evaluate((cur) => {
+    const pg = document.querySelector(cur);
+    const bar = pg.querySelector(':scope > .navbar');
+    const hero = pg.querySelector('.ck-book-hero');
+    return {
+      heroTop: Math.round(hero.getBoundingClientRect().top),
+      heroBg: getComputedStyle(hero).backgroundImage,
+      name: hero.querySelector('.ck-book-hero-title').textContent,
+      nameSize: getComputedStyle(hero.querySelector('.ck-book-hero-title')).fontSize,
+      nameBottom: hero.querySelector('.ck-book-hero-meta').getBoundingClientRect().bottom,
+      heroSearchTop: pg.querySelector('.ck-hero-search .searchbar').getBoundingClientRect().top,
+      plates: hero.querySelectorAll('.ck-plate.ck-photo').length,
+      hidden: bar.classList.contains('navbar-hidden'),
+      barBg: getComputedStyle(bar.querySelector('.navbar-bg')).opacity,
+      title: getComputedStyle(bar.querySelector('.title')).opacity,
+      docked: getComputedStyle(bar.querySelector('.subnavbar')).visibility === 'visible',
+      backBg: getComputedStyle(bar.querySelector('.left .link')).backgroundColor,
+      plusBg: getComputedStyle(bar.querySelector('.ck-nav-primary')).backgroundColor,
+    };
+  }, CUR);
+  const scrollBy = async (px) => {
+    const pc = await page.locator(`${CUR} > .page-content`).boundingBox();
+    await page.mouse.move(pc.x + pc.width / 2, pc.y + 400);
+    const step = px > 0 ? 20 : -20;
+    for (let d = 0; Math.abs(d) < Math.abs(px); d += step) { await page.mouse.wheel(0, step); await page.waitForTimeout(30); }
+    await page.waitForTimeout(600);
+  };
   await step('90a-cookbook-header', async () => {
-    const t = await page.evaluate((cur) => {
-      const pg = document.querySelector(cur);
-      const bar = pg.querySelector(':scope > .navbar');
-      const hero = bar.querySelector('.ck-book-hero');
-      const big = bar.querySelector('.title-large-text');
-      // a colour blended with color-mix() reads as color(srgb r g b); as rgb() to compare
-      const srgb = (c) => { const m = c.match(/^color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)\)$/); return m ? `rgb(${m.slice(1).map((x) => Math.round(x * 255)).join(', ')})` : c; };
-      const tint = getComputedStyle(pg).getPropertyValue('--ck-tint').trim();
-      const probe = document.createElement('div'); probe.style.color = tint; document.body.append(probe);
-      const tintRgb = getComputedStyle(probe).color; probe.remove();
-      return {
-        tintRgb,
-        behindButtons: srgb(getComputedStyle(bar.querySelector('.navbar-bg'), '::after').backgroundColor),
-        headerBg: getComputedStyle(big).backgroundImage,
-        headerTop: Math.round(big.getBoundingClientRect().top), barBottom: Math.round(bar.querySelector('.navbar-inner').getBoundingClientRect().bottom),
-        name: hero.querySelector('.ck-book-hero-title').textContent,
-        nameSize: getComputedStyle(hero.querySelector('.ck-book-hero-title')).fontSize,
-        nameBottom: hero.querySelector('.ck-book-hero-meta').getBoundingClientRect().bottom,
-        searchTop: bar.querySelector('.subnavbar .searchbar').getBoundingClientRect().top,
-        plates: hero.querySelectorAll('.ck-plate.ck-photo').length,
-        smallTitle: getComputedStyle(bar.querySelector('.title')).opacity,
-        backBg: getComputedStyle(bar.querySelector('.left .link')).backgroundColor,
-        plusBg: getComputedStyle(bar.querySelector('.ck-nav-primary')).backgroundColor,
-      };
-    }, CUR);
-    if (t.behindButtons !== t.tintRgb) throw new Error(`behind the buttons is ${t.behindButtons}, not the cookbook's colour ${t.tintRgb}`);
-    if (!t.headerBg.startsWith('linear-gradient') || !t.headerBg.includes(t.tintRgb)) throw new Error(`the header isn't in the cookbook's colour (${t.headerBg})`);
-    if (t.headerTop !== t.barBottom) throw new Error(`a ${t.headerTop - t.barBottom}px gap between the buttons and the header`);
+    const t = await heroState();
+    if (t.heroTop !== 0 || !t.heroBg.startsWith('linear-gradient')) throw new Error(`the header starts ${t.heroTop}px down (${t.heroBg})`);
     if (t.name !== 'Everything else' || t.nameSize !== '32px') throw new Error(`the header's name is "${t.name}" at ${t.nameSize}`);
     if (t.plates !== 3) throw new Error(`the header shows ${t.plates} plates with photos`);
-    if (t.searchTop < t.nameBottom) throw new Error('the search bar isn’t under the name');
-    if (t.smallTitle !== '0') throw new Error('the small title shows over the header');
+    if (t.heroSearchTop < t.nameBottom) throw new Error('the search bar isn’t under the name');
+    if (t.barBg !== '0' || t.title !== '0' || t.docked) throw new Error(`the bar isn't bare over the header (${JSON.stringify(t)})`);
     if (t.backBg !== 'rgba(0, 0, 0, 0.45)') throw new Error(`the back button over the header is ${t.backBg}`);
     if (t.plusBg === 'rgba(0, 0, 0, 0.45)') throw new Error('+ lost its Tomato');
+  });
+  // the user's frame 2: the plates have gone, the name is going under a plain bar with its usual buttons and no title yet
+  await step('90b-cookbook-header-scrolling', async () => {
+    await scrollBy(220);
+    const t = await heroState();
+    if (t.hidden) throw new Error('the bar’s buttons hid while the header was still on screen');
+    if (t.barBg !== '1' || t.title !== '0' || t.docked) throw new Error(`mid-header, the bar is ${JSON.stringify({ bg: t.barBg, title: t.title, docked: t.docked })}`);
+    if (t.backBg === 'rgba(0, 0, 0, 0.45)') throw new Error('the buttons are still the dark ones over a plain bar');
+    await scrollBy(-220);
   });
   // Uncategorized's See all opens its own page, like a section's (no Rename or Delete)
   await step('26b2-uncategorized-page', async () => {
@@ -1710,8 +1720,8 @@ async function swipeLeft(ctx, page, locator) {
     await tile.tap(); await page.waitForTimeout(1000);
   });
   // issue #63: a cookbook's search bar stays under its title too
-  // scrolled, it's the bar as on Recipes (issue #90): the header folds away into a plain bar in the page colour with its
-  // usual grey buttons, the title row slides away and the search bar stays at the top
+  // scrolled past the header (issue #90), it's the bar as on Recipes: the header's search bar hands over to the docked
+  // one, the title row slides away on scrolling down (the buttons back to grey) and comes back on scrolling up
   await step('26c0-cookbook-search-sticky', async () => {
     const top = () => page.evaluate((cur) => Math.round(document.querySelector(`${cur} .subnavbar .searchbar`)?.getBoundingClientRect().top ?? -1), CUR);
     if ((await top()) < 0) throw new Error('the search bar is not in the bar under the title');
@@ -1720,25 +1730,28 @@ async function swipeLeft(ctx, page, locator) {
     for (let i = 0; i < 12; i++) { await page.mouse.wheel(0, 40); await page.waitForTimeout(50); }
     await page.waitForTimeout(600);
     const after = await top();
-    const bar = await page.evaluate((cur) => {
-      const nb = document.querySelector(`${cur} > .navbar`);
-      const srgb = (c) => { const m = c.match(/^color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)\)$/); return m ? `rgb(${m.slice(1).map((x) => Math.round(x * 255)).join(', ')})` : c; };
-      return { collapsed: nb.classList.contains('navbar-large-collapsed'), bg: srgb(getComputedStyle(nb.querySelector('.navbar-bg'), '::after').backgroundColor), back: getComputedStyle(nb.querySelector('.left .link')).backgroundColor };
-    }, CUR);
+    const bar = await heroState();
     if (after < 0 || after > 60) throw new Error(`scrolled, the search bar is at ${after}px, not at the top`);
-    if (!bar.collapsed || bar.bg !== 'rgb(245, 245, 245)') throw new Error(`scrolled, the header didn't fold into a plain bar (${JSON.stringify(bar)})`);
+    if (!bar.docked || bar.barBg !== '1' || !bar.hidden) throw new Error(`scrolled, the bar isn't today's (search docked, title row hidden): ${JSON.stringify(bar)}`);
+    // scrolling back up a little brings the title row back with the title
+    await scrollBy(-60);
+    const up = await heroState();
+    if (up.hidden || up.title !== '1' || !up.docked) throw new Error(`scrolling up, the title row didn't come back: ${JSON.stringify(up)}`);
     if (bar.back === 'rgba(0, 0, 0, 0.45)') throw new Error('scrolled, the buttons are still the dark ones for over a picture');
   });
   await page.evaluate((cur) => document.querySelector(`${cur} > .page-content`).scrollTo(0, 0), CUR);
   await page.waitForTimeout(600);
   await step('26c-cookbook-search', async () => {
-    await page.locator(`${CUR} .ck-search-bar input`).fill('chick'); await page.waitForTimeout(500);
+    // at the top of a cookbook, the search bar is the header's (issue #90); the bar's docked one shows the same search
+    const field = page.locator(`${CUR} .ck-hero-search input`);
+    await field.fill('chick'); await page.waitForTimeout(500);
+    if ((await page.locator(`${CUR} .ck-search-bar input`).inputValue()) !== 'chick') throw new Error('the docked search bar doesn’t show the same search');
     const found = await cards();
     const count = await page.locator(`${CUR} .ck-count`).textContent();
     // the search covers the sections too
     if (found.length !== 2 || !count.includes('2 of 6 recipes')) throw new Error(`searching shows ${JSON.stringify(found)} with "${count}"`);
     if (await page.locator(`${CUR} .ck-shelf`).count()) throw new Error('the shelves stay while searching');
-    await page.locator(`${CUR} .ck-search-bar input`).fill(''); await page.locator(`${CUR} .ck-search-bar input`).blur(); await page.waitForTimeout(500);
+    await field.fill(''); await field.blur(); await page.waitForTimeout(500);
   });
   await step('26d-section-page', async () => {
     await page.locator(`${CUR} .ck-shelf`, { hasText: 'Meat' }).locator('.ck-shelf-all').tap(); await page.waitForTimeout(1000);

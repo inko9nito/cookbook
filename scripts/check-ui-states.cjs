@@ -260,6 +260,18 @@ async function swipeLeft(ctx, page, locator) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   let total = 0;
+  // cook mode's X closes the shown recipe (the last one ends cooking); the chevron only tucks it away (issue #85)
+  const cookClose = async () => {
+    await page.locator('.ck-cook .navbar a[aria-label^="Close"]').tap(); await page.waitForTimeout(1000);
+  };
+  // end cooking: X on every recipe (Not now to Mark as made), or the next page load comes back into cook mode
+  const cookEnd = async () => {
+    for (let i = 0; i < 8 && (await page.locator('.popup.ck-cook.modal-in').count()); i++) {
+      await cookClose();
+      await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Not now' }).tap({ timeout: 500 }).catch(() => {});
+      await page.waitForTimeout(500);
+    }
+  };
   const step = async (name, fn) => {
     try {
       await fn();
@@ -561,8 +573,7 @@ async function swipeLeft(ctx, page, locator) {
     }
   });
   await step('16g-cook-mark-as-made', async () => {
-    await page.locator('.ck-cook a[aria-label="Close cook mode"]').tap();
-    await page.waitForTimeout(600);
+    await cookClose();
     if (!(await page.locator('.dialog.modal-in', { hasText: 'Mark as made' }).count())) throw new Error('no Mark as made prompt after ticking every step');
   });
   await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Not now' }).tap().catch(() => {});
@@ -1296,7 +1307,7 @@ async function swipeLeft(ctx, page, locator) {
     if (!t.onTop) throw new Error('the unit sheet is not shown over cook mode');
     if (t.ticked) throw new Error('tapping the amount ticked the ingredient');
     await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(700);
-    await page.locator('.ck-cook .navbar a').first().tap(); await page.waitForTimeout(1000);
+    await cookEnd();
   });
 
   // issue #11: an ingredient made from another recipe (the demo kebabs use the Tahini Sauce recipe): its name is a link
@@ -1315,9 +1326,8 @@ async function swipeLeft(ctx, page, locator) {
     const title = await page.locator('.view.tab-active .page-current .ck-recipe-title').textContent();
     if (title !== 'Tahini Sauce') throw new Error(`tapping the linked ingredient opened "${title}"`);
   });
-  // the sauce opens in a tab, not a layer: one cook mode, the top bar becomes a grey strip of recipe tabs in place of
-  // the title (running up under the status bar, and Safari's strip turns grey too), and switching tabs keeps each
-  // recipe's ticks
+  // the sauce opens in a tab, not a layer: one cook mode, with browser-like tabs along the bottom (issue #65: photo and
+  // name; the shown one runs into the page), the top bar keeping the shown recipe's name; switching keeps each one's ticks
   await step('25c-cook-linked', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
     await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
@@ -1327,35 +1337,57 @@ async function swipeLeft(ctx, page, locator) {
     await row.locator('.ck-ing-linked').tap(); await page.waitForTimeout(800);
     const t = await page.evaluate(() => {
       const cook = document.querySelector('.popup.ck-cook.modal-in');
-      const nav = cook.querySelector('.navbar'); const bar = nav.getBoundingClientRect();
+      const bar = cook.querySelector('.toolbar.ck-cook-recipes'); const barBox = bar?.getBoundingClientRect();
       const shown = [...cook.querySelectorAll('.ck-cook-tabs > .tab')].filter((x) => getComputedStyle(x).display !== 'none');
       const li = [...cook.querySelectorAll('.ck-cook-tabs > .tab')][0].querySelector('.ck-pane-ingredients li:has(.ck-ing-linked)');
-      const on = nav.querySelector('.ck-tab-on'); const onBox = on?.getBoundingClientRect();
-      const first = shown[0]?.querySelector('.ck-pane-head')?.getBoundingClientRect();
-      const soft = getComputedStyle(document.documentElement).getPropertyValue('--ck-soft').trim();
+      const on = bar?.querySelector('.ck-cook-recipe-on');
+      const steps = shown[0]?.querySelector('.ck-pane-steps')?.getBoundingClientRect();
       return {
         popups: document.querySelectorAll('.popup.modal-in').length, behind: !!document.querySelector('.popup-behind'), shown: shown.length,
-        title: on?.textContent, tabs: [...nav.querySelectorAll('.ck-tab')].map((c) => c.textContent), repeated: !!nav.querySelector('.title'),
-        barTop: bar.top, barBg: getComputedStyle(nav.querySelector('.navbar-bg'), '::after').backgroundColor,
-        joined: !!on && getComputedStyle(on).backgroundColor === getComputedStyle(cook.querySelector('.page')).backgroundColor && Math.abs(onBox.bottom - bar.bottom) < 1,
-        clear: !!first && first.top >= bar.bottom, ticked: li.querySelector('input').checked,
-        theme: document.querySelector('meta[name="theme-color"][media*="light"]').content === soft,
-        thumbs: [...nav.querySelectorAll('.ck-tab')].map((c) => { const th = c.querySelector('.ck-tab-thumb'); return !!th && (getComputedStyle(th).backgroundImage !== 'none' || !!th.querySelector('svg')); }),
+        on: on?.textContent, title: cook.querySelector('.navbar .title')?.textContent,
+        tabs: [...(bar?.querySelectorAll('.ck-cook-recipe') ?? [])].map((c) => c.textContent),
+        atBottom: !!barBox && Math.abs(barBox.bottom - innerHeight) < 1, clear: !!steps && !!barBox && steps.bottom <= barBox.top + 1,
+        // a browser-like tab: the strip is soft grey, the shown tab is the page colour and starts at the strip's top edge
+        strip: getComputedStyle(bar.querySelector('.toolbar-inner')).backgroundColor,
+        bold: on && getComputedStyle(on).fontWeight, shadow: on && getComputedStyle(on).boxShadow,
+        stepsFade: (() => { const st = getComputedStyle(shown[0].querySelector('.ck-pane-steps')); return String(st.webkitMaskImage || st.maskImage); })(),
+        titleSize: getComputedStyle(cook.querySelector('.navbar .title')).fontSize,
+        joined: !!on && getComputedStyle(on).backgroundColor === getComputedStyle(cook.querySelector('.page')).backgroundColor && Math.abs(on.getBoundingClientRect().top - barBox.top) < 1,
+        ticked: li.querySelector('input').checked,
+        thumbs: [...(bar?.querySelectorAll('.ck-cook-recipe') ?? [])].map((c) => { const th = c.querySelector('.ck-tab-thumb'); return !!th && (getComputedStyle(th).backgroundImage !== 'none' || !!th.querySelector('svg')); }),
         fade: getComputedStyle(shown[0].querySelector('.ck-pane-ingredients')).webkitMaskImage || getComputedStyle(shown[0].querySelector('.ck-pane-ingredients')).maskImage,
       };
     });
     if (t.popups !== 1 || t.behind) throw new Error(`the sauce opened as a layer (${t.popups} popups open)`);
-    if (t.shown !== 1 || t.title !== 'Tahini Sauce') throw new Error(`the shown tab is "${t.title}" (${t.shown} recipes displayed)`);
+    if (t.shown !== 1 || t.on !== 'Tahini Sauce') throw new Error(`the shown tab is "${t.on}" (${t.shown} recipes displayed)`);
+    if (t.title !== 'Tahini Sauce') throw new Error(`the top bar reads "${t.title}", not the shown recipe`);
     if (t.tabs.length !== 2 || !t.tabs[0].includes('Kebabs')) throw new Error(`the recipe tabs read ${JSON.stringify(t.tabs)}`);
-    if (t.repeated) throw new Error('the recipe title still shows above its tab');
-    if (t.barTop !== 0 || t.barBg !== 'rgb(236, 236, 238)') throw new Error(`the tab bar starts at ${t.barTop}px in ${t.barBg}, not grey from the top`);
-    if (!t.theme) throw new Error('the status bar strip (theme colour) is not the tab strip grey');
+    if (!t.atBottom) throw new Error('the recipe tabs aren’t along the bottom');
+    if (!t.clear) throw new Error('Directions runs under the recipe tabs');
+    if (t.strip !== 'rgb(236, 236, 238)') throw new Error(`the tab strip is ${t.strip}, not soft grey`);
+    if (!t.joined) throw new Error("the shown tab isn't joined to the page in the page colour");
+    if (t.bold !== '700' || !t.shadow || t.shadow === 'none') throw new Error(`the shown tab is weight ${t.bold} with shadow ${t.shadow}, not bold and lifted`);
+    if (!t.stepsFade.includes('gradient')) throw new Error('Directions doesn’t fade where it meets the tabs');
+    if (t.titleSize !== '21px') throw new Error(`cook mode's title is ${t.titleSize}, not 21px`);
     if (t.thumbs.length !== 2 || !t.thumbs.every(Boolean)) throw new Error('every recipe tab should show its photo (or the chef hat)');
     if (!String(t.fade).includes('gradient')) throw new Error('ingredients scrolling under the top bar do not fade');
-    if (!t.joined) throw new Error("the shown tab isn't joined to the page in the page colour");
-    if (!t.clear) throw new Error('the tabs cover the Ingredients heading');
     if (t.ticked) throw new Error('tapping the linked name ticked the ingredient');
   });
+  // #65: in the installed app the tabs once ran up under the iPhone's status bar (clock and battery over them). With an
+  // iPhone's insets (59px status bar, 34px home indicator), the top bar's buttons sit below the status bar and the tabs
+  // end above the home indicator
+  await step('25c2-cook-linked-safe-areas', async () => {
+    await page.addStyleTag({ content: 'html { --f7-safe-area-top: 59px !important; --f7-safe-area-bottom: 34px !important; }' });
+    await page.waitForTimeout(300);
+    const t = await page.evaluate(() => {
+      const close = document.querySelector('.ck-cook .navbar .right a').getBoundingClientRect();
+      const tab = document.querySelector('.ck-cook .ck-cook-recipe-on').getBoundingClientRect();
+      return { closeTop: close.top, tabBottom: tab.bottom, screen: innerHeight };
+    });
+    if (t.closeTop < 59) throw new Error(`cook mode's X is under the status bar (${Math.round(t.closeTop)}px from the top)`);
+    if (t.tabBottom > t.screen - 34) throw new Error(`the recipe tabs run into the home indicator (${Math.round(t.tabBottom - (t.screen - 34))}px)`);
+  });
+  await page.evaluate(() => document.querySelectorAll('style').forEach((el) => el.textContent.includes('--f7-safe-area-top: 59px') && el.remove()));
   await step('25d-cook-linked-units', async () => {
     // the sauce's unit sheet opens over cook mode
     await page.locator('.ck-cook .tab-active .ck-pane-ingredients li', { hasText: 'lemon juice' }).locator('.ck-convertible').tap(); await page.waitForTimeout(1000);
@@ -1371,32 +1403,31 @@ async function swipeLeft(ctx, page, locator) {
     const tab = page.locator('.ck-cook .tab-active');
     await tab.locator('.ck-pane-ingredients li', { hasText: 'ice water' }).locator('label').tap({ position: { x: 330, y: 12 } }); await page.waitForTimeout(400);
     await tab.locator('.ck-pane-steps li:has(label)').first().locator('label').tap({ position: { x: 330, y: 12 } }); await page.waitForTimeout(600);
-    await page.locator('.ck-cook .navbar .ck-tab', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(500);
-    const on = await page.locator('.ck-cook .ck-tab-on').textContent();
+    await page.locator('.ck-cook .ck-cook-recipe', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(500);
+    const on = await page.locator('.ck-cook .ck-cook-recipe-on').textContent();
     if (!on.includes('Kebabs')) throw new Error(`the Kebabs tab shows "${on}"`);
     if (await page.locator('.ck-cook .tab-active .ck-pane-ingredients li.ck-done').count()) throw new Error('the sauce’s ticks show in the kebabs');
   });
   await step('25d3-cook-progress-kept', async () => {
-    await page.locator('.ck-cook .navbar .ck-tab', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(500);
+    await page.locator('.ck-cook .ck-cook-recipe', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(500);
     const tab = page.locator('.ck-cook .tab-active');
     const ing = await tab.locator('.ck-pane-ingredients li.ck-done').allTextContents();
     const steps = await tab.locator('.ck-pane-steps li.ck-done').count();
     if (ing.length !== 1 || !ing[0].includes('ice water') || steps !== 1) throw new Error(`back on the sauce, ${ing.length} ingredients and ${steps} steps are ticked, expected the ice water and step 1`);
-    // X closes only the shown recipe's tab: back to the kebabs alone, with the usual title bar
-    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(800);
+    // X closes only the shown recipe's tab: back to the kebabs alone, with no tabs
+    await cookClose();
     if (!(await page.locator('.popup.ck-cook.modal-in').count())) throw new Error('X closed cook mode instead of the sauce’s tab');
     const title = await page.locator('.ck-cook .navbar .title').textContent().catch(() => '');
-    if (!title.includes('Kebabs') || (await page.locator('.ck-cook .ck-tab').count())) throw new Error(`after closing the sauce's tab the bar shows "${title}" and ${await page.locator('.ck-cook .ck-tab').count()} tabs`);
+    if (!title.includes('Kebabs') || (await page.locator('.ck-cook .ck-cook-recipe').count())) throw new Error(`after closing the sauce's tab the bar shows "${title}" and ${await page.locator('.ck-cook .ck-cook-recipe').count()} tabs`);
     // opening the sauce again picks up where it was
     await page.locator('.ck-cook .tab-active .ck-pane-ingredients .ck-ing-linked', { hasText: 'tahini sauce' }).tap(); await page.waitForTimeout(700);
     const again = await page.locator('.ck-cook .tab-active .ck-pane-ingredients li.ck-done').count();
     if (again !== 1) throw new Error(`the reopened sauce has ${again} ingredients ticked, expected the ice water`);
-    // closing every tab leaves cook mode, and Safari's strip goes back to the page colour
-    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(800);
-    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(1200);
-    if (await page.locator('.popup.ck-cook.modal-in').count()) throw new Error('closing the last tab did not leave cook mode');
-    const theme = await page.evaluate(() => document.querySelector('meta[name="theme-color"][media*="light"]').content);
-    if (theme !== '#f7f7f8') throw new Error(`the theme colour stayed ${theme} after cook mode closed`);
+    // closing every recipe's tab leaves cook mode, with no Cooking bar left behind
+    await cookClose();
+    await cookClose(); await page.waitForTimeout(300);
+    if (await page.locator('.popup.ck-cook.modal-in').count()) throw new Error('closing the last recipe did not leave cook mode');
+    if (await page.locator('.ck-cooking-fab').count()) throw new Error('the Cooking bar stayed after cook mode closed');
   });
   // the editor: a linked row reads "Recipe: …" under it; the ingredient sheet's Recipe row opens a searchable list of
   // recipes stacked over the page and the sheet (Framework7 popup push) to link one; a pasted line named like a recipe
@@ -1465,24 +1496,24 @@ async function swipeLeft(ctx, page, locator) {
     // straight from the kebabs page the save returned to (reloading would reset the demo's recipes)
     await page.locator('.view.tab-active .page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
     for (const name of ['tahini sauce', 'warm pitas', 'fresh parsley', 'lemon']) {
-      const main = page.locator('.ck-cook .navbar .ck-tab', { hasText: 'Middle' });
+      const main = page.locator('.ck-cook .ck-cook-recipe', { hasText: 'Middle' });
       if (await main.count()) { await main.tap(); await page.waitForTimeout(500); }
       await page.locator('.ck-cook .tab-active .ck-pane-ingredients .ck-ing-linked', { hasText: new RegExp(`^${name}$`) }).scrollIntoViewIfNeeded();
       await page.locator('.ck-cook .tab-active .ck-pane-ingredients .ck-ing-linked', { hasText: new RegExp(`^${name}$`) }).tap(); await page.waitForTimeout(700);
     }
     const t = await page.evaluate(() => {
-      const row = document.querySelector('.ck-cook .ck-tabs'); const r = row.getBoundingClientRect();
-      const on = row.querySelector('.ck-tab-on').getBoundingClientRect();
-      return { tabs: row.querySelectorAll('.ck-tab').length, scrolls: row.scrollWidth > row.clientWidth + 1, onText: row.querySelector('.ck-tab-on').textContent,
-        inView: on.left >= r.left - 1 && on.right <= r.right + 1, narrowest: Math.min(...[...row.querySelectorAll('.ck-tab')].map((x) => x.getBoundingClientRect().width)) };
+      const row = document.querySelector('.ck-cook .ck-cook-recipes .toolbar-inner'); const r = row.getBoundingClientRect();
+      const on = row.querySelector('.ck-cook-recipe-on').getBoundingClientRect();
+      return { tabs: row.querySelectorAll('.ck-cook-recipe').length, scrolls: row.scrollWidth > row.clientWidth + 1, onText: row.querySelector('.ck-cook-recipe-on').textContent,
+        inView: on.left >= r.left - 1 && on.right <= r.right + 1, narrowest: Math.min(...[...row.querySelectorAll('.ck-cook-recipe')].map((x) => x.getBoundingClientRect().width)) };
     });
     if (t.tabs !== 5) throw new Error(`${t.tabs} recipe tabs, expected 5`);
     if (!t.scrolls) throw new Error('five tabs squeeze into the bar instead of scrolling');
-    if (t.narrowest < 95) throw new Error(`a tab is only ${Math.round(t.narrowest)}px wide`);
+    if (t.narrowest < 110) throw new Error(`a tab is only ${Math.round(t.narrowest)}px wide`);
     if (!t.onText.includes('Pulled Beef') || !t.inView) throw new Error(`the tab just opened (${t.onText}) is not scrolled into view`);
   });
   await step('25i2-cook-tabs-swiped', async () => {
-    const row = page.locator('.ck-cook .ck-tabs');
+    const row = page.locator('.ck-cook .ck-cook-recipes .toolbar-inner');
     const before = await row.evaluate((e) => e.scrollLeft);
     const box = await row.boundingBox();
     const cdp = await ctx.newCDPSession(page);
@@ -1496,11 +1527,13 @@ async function swipeLeft(ctx, page, locator) {
     const after = await row.evaluate((e) => e.scrollLeft);
     if (!(after < before - 50)) throw new Error(`swiping the tabs moved them from ${before}px to ${after}px`);
     // X closes just the shown tab (Pulled Beef), showing the one before it
-    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(800);
-    const left = await page.locator('.ck-cook .ck-tab').allTextContents();
-    const on = await page.locator('.ck-cook .ck-tab-on').textContent();
-    if (left.length !== 4 || left.some((x) => x.includes('Pulled')) || !on.includes('Mustard')) throw new Error(`after X the tabs are ${JSON.stringify(left)}, showing "${on}"`);
+    await cookClose();
+    const left = await page.locator('.ck-cook .ck-cook-recipe').allTextContents();
+    const on = await page.locator('.ck-cook .ck-cook-recipe-on').textContent();
+    if (left.length !== 4 || left.some((x) => x.includes('Pulled')) || !on.includes('Mustard')) throw new Error(`after Close the tabs are ${JSON.stringify(left)}, showing "${on}"`);
   });
+  // end cooking, or the next page load comes back into cook mode (issue #85)
+  await cookEnd();
   await step('25h-delete-used-recipe', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
     await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(1000);
@@ -2212,6 +2245,155 @@ async function swipeLeft(ctx, page, locator) {
   });
   await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Not now' }).tap().catch(() => {});
   await page.waitForTimeout(800);
+
+  // Issue #85: cook mode stays while you look at other recipes. The chevron tucks it away behind the Cooking bar
+  // (bottom centre, above the tab bar, like Instacart's cart bar), which brings it back as it was; Start cooking on
+  // another recipe adds a tab; X closes the shown recipe. It's also kept on the phone, so it comes back after iOS reloads
+  // the app.
+  const cookOpen = () => page.locator('.popup.ck-cook.modal-in').count();
+  const fab = '.view.tab-active .page-current .ck-cooking-fab';
+  await step('36a-cook-minimized', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(900);
+    await page.locator('#view-recipes .page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
+    await page.locator('.ck-cook .ck-pane-steps .ck-timer-button').first().tap(); await page.waitForTimeout(300);
+    await page.locator('.ck-cook .ck-pane-ingredients li').first().locator('label').tap(); await page.waitForTimeout(300);
+    await page.locator('.ck-cook a[aria-label="Minimize cook mode"]').tap(); await page.waitForTimeout(1000);
+    if (await cookOpen()) throw new Error('the chevron didn’t tuck cook mode away');
+    const cta = await page.locator('#view-recipes .page-current .ck-cta-button').textContent();
+    if (cta.trim() !== 'Resume cooking') throw new Error(`the recipe’s button reads "${cta.trim()}" while it’s cooking`);
+    // its own Resume cooking button does it here, so no Cooking bar on top of it
+    if (await page.locator(fab).isVisible()) throw new Error('the Cooking bar shows over the recipe that’s cooking');
+    // iOS's back gesture (the browser's back) with cook mode open tucks it away and leaves the recipe page where it is
+    await page.locator('#view-recipes .page-current .ck-cta-button').tap(); await page.waitForTimeout(1000);
+    await page.goBack(); await page.waitForTimeout(1000);
+    if (await cookOpen()) throw new Error('back didn’t tuck cook mode away');
+    if (!page.url().startsWith(BASE)) throw new Error(`back left the app for ${page.url()}`);
+    const still = (await page.locator('#view-recipes .page-current .ck-cta-button').textContent().catch(() => '')).trim();
+    if (still !== 'Resume cooking') throw new Error('back with cook mode open also left the recipe page');
+  });
+  await step('36b-cook-minimized-list', async () => {
+    await page.goBack(); await page.waitForTimeout(1000);
+    if (!(await page.locator(fab).isVisible())) throw new Error('no Cooking bar with cook mode tucked away');
+    const f = await page.locator(`${fab} > a`).boundingBox();
+    const bar = await page.locator('.views > .toolbar.tabbar').boundingBox();
+    if (f.y + f.height > bar.y) throw new Error('the Cooking bar covers the tab bar');
+    if (Math.abs(f.x + f.width / 2 - 393 / 2) > 1) throw new Error('the Cooking bar isn’t centred');
+    // small: "Cooking • 1" (the dot as far from the word as from the number), flat dark, no iOS 26 glass edge or glow,
+    // 10px above the tab bar
+    const text = (await page.locator(fab).textContent()).replace(/\s+/g, '');
+    if (text !== 'Cooking•1') throw new Error(`the Cooking pill reads "${text}"`);
+    const gaps = await page.locator(`${fab} .ck-cooking-fab-dot`).evaluate((d) => {
+      const r = d.getBoundingClientRect(), a = d.previousElementSibling.getBoundingClientRect(), b = d.nextElementSibling.getBoundingClientRect();
+      return [Math.round(r.left - a.right), Math.round(b.left - r.right)];
+    });
+    if (gaps[0] !== gaps[1]) throw new Error(`the dot is ${gaps[0]}px from "Cooking" and ${gaps[1]}px from the number`);
+    if (Math.round(bar.y - (f.y + f.height)) !== 10) throw new Error(`the Cooking pill is ${Math.round(bar.y - (f.y + f.height))}px above the tab bar, not 10`);
+    if (f.width > 200 || f.height > 48) throw new Error(`the Cooking pill is ${Math.round(f.width)}×${Math.round(f.height)}px, not small`);
+    const look = await page.locator(`${fab} > a`).evaluate((a) => ({ bg: getComputedStyle(a).backgroundColor, shadow: getComputedStyle(a).boxShadow }));
+    if (look.bg !== 'rgb(38, 38, 40)' || look.shadow !== 'none') throw new Error(`the Cooking pill is ${look.bg} with shadow ${look.shadow}`);
+  });
+  // the pill isn't in Settings
+  await step('36b2-cook-pill-not-in-settings', async () => {
+    await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(800);
+    if (await page.locator(fab).count()) throw new Error('the Cooking pill shows in Settings');
+    await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
+    if (!(await page.locator(fab).isVisible())) throw new Error('the Cooking pill didn’t come back on Recipes');
+  });
+  await step('36c-cook-second-recipe', async () => {
+    await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Corn' }).tap(); await page.waitForTimeout(900);
+    // another recipe's footer: a dark chef-hat button with how many are cooking (back to cook mode) beside "Add to
+    // cooking"; no floating pill on top of it
+    if (await page.locator(fab).isVisible()) throw new Error('the Cooking pill shows on a recipe page');
+    const back = (await page.locator('#view-recipes .page-current .ck-cta-back').innerText().catch(() => '')).trim();
+    const add = (await page.locator('#view-recipes .page-current .ck-cta-button').innerText()).trim();
+    if (back !== '1' || add !== 'Add to cooking') throw new Error(`the footer reads "${back}" and "${add}"`);
+    // Add to cooking adds it as a tab. Cook mode slides up whole: scrolling the new tab into view once pulled all of it
+    // up mid-slide, its top bar cut off and blank underneath
+    await page.locator('#view-recipes .page-current .ck-cta-button').tap(); await page.waitForTimeout(150);
+    const midTop = await page.evaluate(() => document.querySelector('.popup.ck-cook .navbar').getBoundingClientRect().top);
+    if (midTop < -1) throw new Error(`cook mode's top bar is ${Math.round(-midTop)}px above the screen while it slides up`);
+    await page.waitForTimeout(1050);
+    const tabs = await page.locator('.ck-cook .ck-cook-recipe').allTextContents();
+    if (tabs.length !== 2 || !(await page.locator('.ck-cook .ck-cook-recipe-on').textContent()).includes('Corn')) throw new Error(`cook mode has the tabs ${JSON.stringify(tabs)}`);
+    await page.locator('.ck-cook a[aria-label="Minimize cook mode"]').tap(); await page.waitForTimeout(1000);
+    await page.goBack(); await page.waitForTimeout(1000);
+    const text = (await page.locator(fab).textContent()).replace(/\s+/g, '');
+    if (text !== 'Cooking•2') throw new Error(`the Cooking pill reads "${text}", not 2 recipes`);
+  });
+  // no pill over the recipe editor either
+  await step('36c2-cook-pill-not-in-editor', async () => {
+    await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Corn' }).tap(); await page.waitForTimeout(900);
+    await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(600);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1000);
+    if (await page.locator(fab).isVisible()) throw new Error('the Cooking pill shows over the recipe editor');
+    await page.goBack(); await page.waitForTimeout(900);
+    await page.goBack(); await page.waitForTimeout(900);
+    if (!(await page.locator(fab).isVisible())) throw new Error('the Cooking pill didn’t come back on the recipe list');
+  });
+  await step('36d-cook-resumed', async () => {
+    await page.locator(`${fab} > a`).tap(); await page.waitForTimeout(1000);
+    if (!(await cookOpen())) throw new Error('the Cooking bar didn’t bring cook mode back');
+    // the pill waits behind open cook mode, so tucking it away uncovers it rather than it popping up afterwards
+    if (!(await page.locator(fab).count())) throw new Error('the Cooking pill isn’t behind open cook mode');
+    await page.locator('.ck-cook .ck-cook-recipe', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(500);
+    if ((await page.locator('.ck-cook .tab-active .ck-pane-ingredients li.ck-done').count()) !== 1) throw new Error('the kebabs’ tick wasn’t kept');
+    if (!(await page.locator('.ck-cook .ck-timer-pill').count())) throw new Error('the timer wasn’t kept');
+  });
+  // swiping the top bar down tucks cook mode away too (Framework7's swipe to close)
+  await step('36d2-cook-swiped-down', async () => {
+    const nav = await page.locator('.ck-cook .navbar .title').boundingBox();
+    const cdp = await ctx.newCDPSession(page);
+    const x = nav.x + nav.width / 2, y = nav.y + nav.height / 2;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 15; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + 20 * i }] }); await page.waitForTimeout(16); }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await cdp.detach(); await page.waitForTimeout(1000);
+    if (await cookOpen()) throw new Error('swiping the top bar down didn’t tuck cook mode away');
+    if (!(await page.locator(fab).isVisible())) throw new Error('no Cooking pill after swiping cook mode away');
+    await page.locator(`${fab} > a`).tap(); await page.waitForTimeout(1000);
+    if (!(await cookOpen())) throw new Error('the Cooking pill didn’t bring cook mode back after the swipe');
+  });
+  // on a tab's first page too, iOS's back gesture (the browser's back) tucks cook mode away, and the list stays put
+  await step('36d3-cook-back-on-list', async () => {
+    await page.goBack(); await page.waitForTimeout(1000);
+    if (await cookOpen()) throw new Error('back on the recipe list didn’t tuck cook mode away');
+    if (!page.url().startsWith(BASE)) throw new Error(`back left the app for ${page.url()}`);
+    if (!(await page.locator('#view-recipes .page-current .ck-card').count())) throw new Error('back moved the page under cook mode');
+    if (!(await page.locator(fab).isVisible())) throw new Error('no Cooking pill after back');
+    await page.locator(`${fab} > a`).tap(); await page.waitForTimeout(1000);
+    if (!(await cookOpen())) throw new Error('the Cooking pill didn’t bring cook mode back after back');
+  });
+  // iOS often reloads the home-screen app after you've been in another app: cook mode comes back as it was (the same
+  // recipes, ticks, a running timer and where Directions was scrolled to)
+  await step('36e-cook-after-reload', async () => {
+    await page.locator('.ck-cook .tab-active .ck-pane-steps li:has(label)').first().locator('label').tap(); await page.waitForTimeout(700);
+    await page.locator('.ck-cook .tab-active .ck-pane-steps').evaluate((el) => el.scrollTo(0, 160)); await page.waitForTimeout(300);
+    const scrolled = await page.locator('.ck-cook .tab-active .ck-pane-steps').evaluate((el) => el.scrollTop);
+    await page.reload(); await page.waitForTimeout(2000);
+    if (!(await cookOpen())) throw new Error('after a reload the app didn’t come back into cook mode');
+    const on = await page.locator('.ck-cook .ck-cook-recipe-on').textContent();
+    if (!on.includes('Kebabs') || (await page.locator('.ck-cook .ck-cook-recipe').count()) !== 2) throw new Error(`cook mode came back on "${on}"`);
+    if ((await page.locator('.ck-cook .tab-active .ck-pane-ingredients li.ck-done').count()) !== 1) throw new Error('the ticked ingredient wasn’t kept');
+    if ((await page.locator('.ck-cook .tab-active .ck-pane-steps li.ck-done').count()) !== 1) throw new Error('the ticked step wasn’t kept');
+    if (!(await page.locator('.ck-cook .ck-timer-pill').count())) throw new Error('the running timer wasn’t kept');
+    const folded = await page.locator('.ck-cook .tab-active .ck-pane-steps li.ck-done .accordion-item-content').first().evaluate((e) => e.getBoundingClientRect().height).catch(() => 0);
+    if (folded !== 0) throw new Error(`the ticked step’s ingredients and timers are open again (${Math.round(folded)}px)`);
+    const at = await page.locator('.ck-cook .tab-active .ck-pane-steps').evaluate((el) => el.scrollTop);
+    if (Math.abs(at - scrolled) > 4) throw new Error(`Directions came back scrolled to ${at}px, not ${scrolled}px`);
+  });
+  await step('36f-cook-x-closes-recipe', async () => {
+    await cookClose();
+    if (!(await cookOpen())) throw new Error('X closed cook mode with two recipes open');
+    const title = await page.locator('.ck-cook .navbar .title').textContent();
+    if (!title.includes('Corn') || (await page.locator('.ck-cook .ck-cook-recipes').count())) throw new Error(`after X the top bar reads "${title}" with the tabs still there`);
+  });
+  await step('36g-cook-closed-not-resumed', async () => {
+    await cookClose();
+    if (await cookOpen()) throw new Error('X on the last recipe didn’t close cook mode');
+    if (await page.locator('.ck-cooking-fab').count()) throw new Error('the Cooking bar stayed after cook mode closed');
+    await page.reload(); await page.waitForTimeout(2000);
+    if ((await cookOpen()) || (await page.locator('.ck-cooking-fab').count())) throw new Error('cook mode came back after it was closed');
+  });
 
   // Issue #35: while the recipes and cookbooks first load, grey placeholders in their shape: no lone "All" chip, no
   // "0 recipes", no small spinner. ?loading makes the demo's recipes and cookbooks never arrive.

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, KeyboardEvent, PointerEvent, SetStateAction } from 'react';
 import {
-  Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Button, List, ListItem, Tabs, Tab,
+  Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Button, List, ListItem, Tabs, Tab, Toolbar,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
-import { X, GripHorizontal, ChevronDown, ChevronRight, ChefHat, Timer as TimerIcon } from 'lucide-react';
+import { ChevronDown, Minimize2, X, GripHorizontal, ChevronRight, ChefHat, Timer as TimerIcon } from 'lucide-react';
 import { coverPhoto, linkedRecipe, type Ingredient, type Recipe } from '../lib/recipe';
 import { photoStyle } from './ui/photo';
 import { friendly } from '../lib/ingredients';
@@ -12,25 +12,11 @@ import { amountText, footerText, type UnitPicks } from './ui/ingredientLine';
 import { stepTimers, stepIngredients, clock } from '../lib/cook';
 import { navIcon, inlineIcon } from './ui/icons';
 import { useStore } from '../data/store';
+import { useCook, useNow, type RunningTimer, type Ticks } from '../data/cook';
+import type { PaneScroll } from '../data/cookSession';
 import ScaleSheet from './ScaleSheet';
-import { ConvertibleAmount, toggleTarget, withPick, type ConvertTarget } from './UnitChoices';
+import { ConvertibleAmount, toggleTarget, type ConvertTarget } from './UnitChoices';
 import UnitSheet from './UnitSheet';
-
-type Props = {
-  recipe: Recipe;
-  factor: number;
-  /** units picked for some ingredients (issue #6), shared with the recipe page */
-  picks: UnitPicks;
-  onPick: (ingredientId: string, unit: string | null) => void;
-  onFactor: (f: number) => void;
-  onClose: () => void;
-};
-type RunningTimer = { id: number; recipeId: string; label: string; step: number; endsAt: number };
-type WakeLock = { release: () => Promise<void> };
-/** what's ticked in one recipe */
-type Ticks = { ing: Set<string>; steps: Set<string> };
-/** a linked recipe's own scale and unit picks (the main recipe's live on the recipe page) */
-type Amounts = { factor: number; picks: UnitPicks };
 
 const SPLIT_KEY = 'cookbook.cookSplit';
 const MIN_SPLIT = 0.18;
@@ -52,26 +38,9 @@ const saveSplit = (n: number) => {
     /* private mode: the split just isn't remembered */
   }
 };
-const noTicks = (): Ticks => ({ ing: new Set(), steps: new Set() });
+const NO_TICKS: Ticks = { ing: new Set(), steps: new Set() };
 const stepCount = (r: Recipe) => r.steps.filter((s) => s.kind !== 'header').length;
 const ingredientCount = (r: Recipe) => r.ingredients.filter((i) => i.kind !== 'header').length;
-
-/**
- * While the recipe tabs show, Safari's status bar strip takes the tab strip's grey (it follows the page's theme
- * colour); the installed app's bar already runs under the status bar.
- */
-function useStripThemeColor(on: boolean) {
-  useEffect(() => {
-    if (!on) return;
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"][media*="light"]');
-    if (!meta) return;
-    const was = meta.content;
-    meta.content = getComputedStyle(document.documentElement).getPropertyValue('--ck-soft').trim() || was;
-    return () => {
-      meta.content = was;
-    };
-  }, [on]);
-}
 
 /**
  * Cook mode, laid out like Prepear's: Ingredients on top, Directions below, each half scrolling on its own,
@@ -79,242 +48,203 @@ function useStripThemeColor(on: boolean) {
  * - Tick ingredients and steps as you go; ticked rows are crossed out.
  * - Steps show the ingredients they mention (at the current scale) and timer buttons for the times they mention.
  * - Timers keep running; the soonest counts down in the top bar.
- * - The screen stays on. Closing after ticking every step offers "Mark as made" (every ingredient, for a recipe
- *   without directions).
+ * - The screen stays on. Closing a recipe after ticking every step offers "Mark as made" (every ingredient, for a
+ *   recipe without directions).
  * - A recipe with only ingredients (or only directions) shows that half alone, with no divider (issue #82).
  *
  * Issue #11, cooking several recipes at once: an ingredient made from another recipe (the sauce, the pie crust) opens
- * that recipe in a new tab: the top bar becomes a strip of recipe tabs (in place of the title), and tapping one
- * switches to it at once (Framework7 Tabs; nothing slides over anything). X closes the shown recipe's tab (the
- * last one leaves cook mode). Every recipe keeps what's ticked and its amounts until cook mode closes, even when its
- * tab is closed and opened again, and the timers run and ring whichever recipe is shown.
+ * that recipe in a new tab. Issue #65: the tabs run along the bottom (a Framework7 tab bar, each with the recipe's photo
+ * and name), so the top bar keeps the shown recipe's name; tapping one switches to it at once (Framework7 Tabs).
+ * Every recipe keeps what's ticked and its amounts until cooking is done, even when its tab is closed and opened
+ * again, and the timers run and ring whichever recipe is shown.
+ *
+ * Issue #85: it lives with the app, not the recipe page (its state is in src/data/cook.tsx). Minimize (top right, or
+ * swiping the top bar down) tucks it away to look at other recipes (the Cooking pill at the bottom of the tabs brings it
+ * back as it was); X, next to the name, closes the shown recipe (the last one ends cooking). Start cooking on another
+ * recipe adds it as a tab.
  */
-export default function CookMode({ recipe, factor, picks, onPick, onFactor, onClose }: Props) {
-  const { recipes, saveRecipe } = useStore();
-  const latest = (id: string) => (id === recipe.id ? recipe : recipes.find((r) => r.id === id));
+export default function CookMode() {
+  const cook = useCook();
+  const { recipes } = useStore();
+  const s = cook.session;
+  const tabs = (s?.open ?? []).map((id) => recipes.find((r) => r.id === id)).filter((r): r is Recipe => !!r);
+  // nothing to show until the recipes are there (after a reload, cook mode comes back once they've loaded)
+  return s && tabs.length ? <CookScreen tabs={tabs} /> : null;
+}
 
-  // what's ticked, per recipe, and the linked recipes' amounts
-  const [ticks, setTicks] = useState<Record<string, Ticks>>({});
-  const [amounts, setAmounts] = useState<Record<string, Amounts>>({});
-  const toggleTick = (recipeId: string, kind: keyof Ticks, id: string) =>
-    setTicks((all) => {
-      const cur = all[recipeId] ?? noTicks();
-      const next = new Set(cur[kind]);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return { ...all, [recipeId]: { ...cur, [kind]: next } };
-    });
-
-  // the recipes open in cook mode, a tab each in the order they were opened (the main recipe first), and the one shown.
-  // X closes the shown one; a closed recipe keeps its ticks and amounts, so opening it again picks up where it was.
-  const [open, setOpen] = useState<string[]>([recipe.id]);
-  const [shown, setShown] = useState(recipe.id);
-  const show = (id: string) => {
-    if (id !== recipe.id) setAmounts((a) => (a[id] ? a : { ...a, [id]: { factor: 1, picks: {} } }));
-    setOpen((o) => (o.includes(id) ? o : [...o, id]));
-    setShown(id);
-  };
-  const tabs = open.map(latest).filter((r): r is Recipe => !!r);
+function CookScreen({ tabs }: { tabs: Recipe[] }) {
+  const cook = useCook();
+  const { saveRecipe } = useStore();
+  const s = cook.session!;
   const tabbed = tabs.length > 1;
-  useStripThemeColor(tabbed);
-  // the shown recipe's tab scrolls into view in the tab row (a new recipe's tab is added at the end)
+  const shownRecipe = tabs.find((r) => r.id === s.shown) ?? tabs[0];
+  // the shown recipe's tab scrolls into view in the tab bar (a new recipe's tab is added at the end). Only the strip
+  // scrolls, sideways: scrollIntoView also scrolled the boxes around it, and while cook mode was sliding up from below the
+  // screen (Start cooking, Add to cooking, Resume) that pulled the whole of it up, top bar cut off and blank underneath
   useEffect(() => {
-    document.querySelector('.popup.ck-cook .ck-tab-on')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-  }, [shown, open.length]);
+    const strip = document.querySelector<HTMLElement>('.popup.ck-cook .ck-cook-recipes .toolbar-inner');
+    const tab = strip?.querySelector<HTMLElement>('.ck-cook-recipe-on');
+    if (!strip || !tab) return;
+    const left = tab.offsetLeft - strip.offsetLeft;
+    const target = left < strip.scrollLeft ? left - 14 : left + tab.offsetWidth > strip.scrollLeft + strip.clientWidth ? left + tab.offsetWidth - strip.clientWidth + 14 : null;
+    if (target !== null) strip.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+  }, [s.shown, tabs.length]);
 
-  // ── timers, for every recipe in cook mode ──
-  const [timers, setTimers] = useState<RunningTimer[]>([]);
   const [timersOpen, setTimersOpen] = useState(false);
-  const [now, setNow] = useState(Date.now());
-  const audio = useRef<AudioContext | null>(null);
-  const nextTimerId = useRef(1);
-  const timerName = (t: RunningTimer) => `${t.recipeId === recipe.id ? '' : `${latest(t.recipeId)?.title ?? 'Recipe'} · `}Step ${t.step}: ${t.label}`;
-
-  // keep the screen on while cooking (Screen Wake Lock)
-  useEffect(() => {
-    let lock: WakeLock | null = null;
-    let done = false;
-    const request = async () => {
-      try {
-        const wl = (navigator as unknown as { wakeLock?: { request: (t: 'screen') => Promise<WakeLock> } }).wakeLock;
-        if (wl && !done) lock = await wl.request('screen');
-      } catch {
-        /* not supported or not allowed: the screen just follows auto-lock */
-      }
-    };
-    request();
-    const onVisible = () => document.visibilityState === 'visible' && request();
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      done = true;
-      document.removeEventListener('visibilitychange', onVisible);
-      lock?.release().catch(() => {});
-    };
-  }, []);
-
-  // tick once a second while a timer runs; ring and remove finished ones
-  useEffect(() => {
-    if (!timers.length) return;
-    const t = setInterval(() => {
-      const n = Date.now();
-      setNow(n);
-      const finished = timers.filter((x) => x.endsAt <= n);
-      if (finished.length) {
-        setTimers((cur) => cur.filter((x) => x.endsAt > n));
-        ring();
-        f7.dialog.alert(finished.map((x) => `${timerName(x)} is up.`).join('\n'), 'Timer done');
-      }
-    }, 1000);
-    return () => clearInterval(t);
-  }, [timers]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const ring = () => {
-    const ctx = audio.current;
-    if (!ctx) return;
-    [0, 0.35, 0.7].forEach((at) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.25, ctx.currentTime + at);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + at + 0.3);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime + at);
-      osc.stop(ctx.currentTime + at + 0.3);
-    });
-  };
-
-  const startTimer = (recipeId: string, step: number, label: string, seconds: number) => {
-    // created on a tap so iPhone Safari allows the sound later
-    if (!audio.current) {
-      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      audio.current = Ctx ? new Ctx() : null;
-    }
-    audio.current?.resume().catch(() => {});
-    setNow(Date.now());
-    setTimers((cur) => [...cur, { id: nextTimerId.current++, recipeId, label, step, endsAt: Date.now() + seconds * 1000 }]);
-  };
-  const stopTimer = (id: number) => setTimers((cur) => cur.filter((x) => x.id !== id));
-  const soonest = [...timers].sort((a, b) => a.endsAt - b.endsAt)[0];
-
+  const now = useNow(s.expanded && s.timers.length > 0);
+  const soonest = [...s.timers].sort((a, b) => a.endsAt - b.endsAt)[0];
   const [split, setSplit] = useState(readSplit);
 
-  const shut = () => f7.popup.close('.popup.ck-cook');
-  const shownRecipe = tabs.find((r) => r.id === shown) ?? tabs[0] ?? recipe;
-  // X closes the shown recipe's tab, showing the one before it (or the next, for the first); closing the last tab
-  // leaves cook mode
-  const closeTab = (id: string) => {
-    const left = open.filter((x) => x !== id);
-    if (!left.length) return shut();
-    const at = open.indexOf(id);
-    setShown(left[Math.max(0, at - 1)]);
-    setOpen(left);
+  // ── iOS's back gesture tucks cook mode away (issue #85) ──
+  // Open cook mode is a step in the browser history of its own: the same state as the page under it, marked. iOS's back
+  // swipe (Safari and the home-screen app both have one) goes back to the unmarked entry, which tucks cook mode away and
+  // shows the page under it; Framework7's router sees the same pages and doesn't move. Without it the swipe did nothing
+  // on a tab's first page, and otherwise took the page under cook mode back while cook mode stayed open. Tucked away by
+  // other means (minimize, swiping the bar down, closing), the step is taken back so no empty one is left behind. Here
+  // rather than in the provider: after a reload into open cook mode, this screen only comes once the recipes are there,
+  // well after Framework7 has set up its views (which rewrites the history entry it starts on).
+  useEffect(() => {
+    if (!s.expanded) return;
+    const marked = () => !!(window.history.state as { ckCook?: boolean } | null)?.ckCook;
+    if (!marked()) window.history.pushState({ ...(window.history.state ?? {}), ckCook: true }, '');
+    // iOS has already slid cook mode away under the finger, so it closes at once: Framework7's slide down after it
+    // showed cook mode leave, come back and slide down again
+    const onBack = () => {
+      if (!marked()) f7.popup.close('.popup.ck-cook', false);
+    };
+    window.addEventListener('popstate', onBack);
+    return () => {
+      window.removeEventListener('popstate', onBack);
+      if (marked()) window.history.back();
+    };
+  }, [s.expanded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Done cooking (or closing the last recipe): cook mode slides down first, then it's forgotten
+  const ending = useRef(false);
+  const endCooking = () => {
+    ending.current = true;
+    f7.popup.close('.popup.ck-cook');
   };
-  // closing a recipe with all its steps ticked offers "Mark as made" first; after marking, it starts fresh if reopened
-  const close = () => {
-    const r = shownRecipe;
-    // a recipe without directions (a dressing, issue #82) is done when every ingredient is ticked
-    const done =
-      stepCount(r) > 0
-        ? (ticks[r.id]?.steps.size ?? 0) >= stepCount(r)
-        : ingredientCount(r) > 0 && (ticks[r.id]?.ing.size ?? 0) >= ingredientCount(r);
-    if (!done) return closeTab(r.id);
-    f7.dialog
-      .create({
-        title: 'Done cooking?',
-        text: `Mark ${r.title} as made? You’ve made it ${r.timesMade}× so far.`,
-        // "Mark as made" doesn't fit a half-width button, so they stack (as iOS alerts do with long labels): the action on top, Not now under it
-        verticalButtons: true,
-        buttons: [
-          {
-            text: 'Mark as made',
-            strong: true,
-            onClick: () => {
-              saveRecipe({ ...r, timesMade: r.timesMade + 1, lastMadeAt: new Date().toISOString() });
-              f7.toast.show({ text: `Marked as made · ${r.timesMade + 1}×`, closeTimeout: 1800 });
-              setTicks((all) => ({ ...all, [r.id]: noTicks() }));
-              closeTab(r.id);
+  const onClosed = () => {
+    if (ending.current) cook.end();
+    else cook.minimize();
+  };
+
+  // a recipe with all its steps ticked offers "Mark as made" as it's closed; after marking, it starts fresh if reopened
+  const offerMade = (r: Recipe) =>
+    new Promise<void>((resolve) => {
+      // a recipe without directions (a dressing, issue #82) is done when every ingredient is ticked
+      const done =
+        stepCount(r) > 0
+          ? (s.ticks[r.id]?.steps.size ?? 0) >= stepCount(r)
+          : ingredientCount(r) > 0 && (s.ticks[r.id]?.ing.size ?? 0) >= ingredientCount(r);
+      if (!done) return resolve();
+      f7.dialog
+        .create({
+          title: 'Done cooking?',
+          text: `Mark ${r.title} as made? You’ve made it ${r.timesMade}× so far.`,
+          // "Mark as made" doesn't fit a half-width button, so they stack (as iOS alerts do with long labels): the action on top, Not now under it
+          verticalButtons: true,
+          buttons: [
+            {
+              text: 'Mark as made',
+              strong: true,
+              onClick: () => {
+                saveRecipe({ ...r, timesMade: r.timesMade + 1, lastMadeAt: new Date().toISOString() });
+                f7.toast.show({ text: `Marked as made · ${r.timesMade + 1}×`, closeTimeout: 1800 });
+                cook.clearTicks(r.id);
+                resolve();
+              },
             },
-          },
-          { text: 'Not now', onClick: () => closeTab(r.id) },
-        ],
-      })
-      .open();
+            { text: 'Not now', onClick: () => resolve() },
+          ],
+        })
+        .open();
+    });
+  // X closes the shown recipe: its tab goes, showing the one before it; the last one ends cooking
+  const closeShown = async () => {
+    await offerMade(shownRecipe);
+    if (tabs.length === 1) endCooking();
+    else cook.closeRecipe(shownRecipe.id);
   };
 
   return (
     <>
-      <Popup className="ck-cook" opened onPopupClosed={onClose}>
+      {/* swiping the top bar down tucks cook mode away too (Framework7's swipe to close, on the bar only: the halves scroll) */}
+      <Popup className="ck-cook" opened={s.expanded} onPopupClosed={onClosed} swipeToClose="to-bottom" swipeHandler=".ck-cook .navbar">
         <Page pageContent={false}>
-          <Navbar className={tabbed ? 'ck-cook-tabbed' : ''}>
+          <Navbar>
+            {/* X sits next to the recipe's name, so it reads as closing that recipe */}
             <NavLeft>
-              <Link iconOnly onClick={close} aria-label={tabbed ? `Close ${shownRecipe.title}` : 'Close cook mode'}>
+              <Link iconOnly onClick={closeShown} aria-label={tabbed ? `Close ${shownRecipe.title}` : 'Close cook mode'}>
                 <X {...navIcon} />
               </Link>
             </NavLeft>
-            {/* issue #11: once a linked recipe is open, the bar holds a tab for each recipe in cook mode instead of the
-                title (the shown tab is the title), and the shown tab runs into the page below */}
-            {tabbed ? (
-              <div className="ck-tabs" role="tablist" aria-label="Recipes in cook mode">
-                {tabs.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={t.id === shownRecipe.id}
-                    className={`ck-tab ${t.id === shownRecipe.id ? 'ck-tab-on' : ''}`}
-                    onClick={() => show(t.id)}
-                  >
-                    {/* a little cover photo, so a recipe is found by sight (a recipe without one shows the chef hat) */}
-                    <span className={`ck-tab-thumb ck-photo ${coverPhoto(t) ? '' : 'ck-photo-empty'}`} style={photoStyle(coverPhoto(t))} aria-hidden="true">
-                      {!coverPhoto(t) && <ChefHat size={14} strokeWidth={1.75} />}
-                    </span>
-                    <span className="ck-tab-name">{t.title}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <NavTitle>{shownRecipe.title}</NavTitle>
-            )}
-            {/* only while a timer runs: an empty right slot still draws the bar's faint button background */}
-            {soonest && (
-              <NavRight>
+            <NavTitle>{shownRecipe.title}</NavTitle>
+            <NavRight>
+              {soonest && (
                 <Link className="ck-timer-pill" onClick={() => setTimersOpen(true)} aria-label={`Timers, next in ${clock((soonest.endsAt - now) / 1000)}`}>
                   <TimerIcon {...inlineIcon} />
                   <span>{clock((soonest.endsAt - now) / 1000)}</span>
                 </Link>
-              </NavRight>
-            )}
+              )}
+              {/* tucks cook mode away, everything kept: the Cooking pill brings it back */}
+              <Link iconOnly onClick={() => cook.minimize()} aria-label="Minimize cook mode">
+                <Minimize2 {...navIcon} />
+              </Link>
+            </NavRight>
           </Navbar>
 
+          {/* issue #65: with more than one recipe, a tab for each along the bottom (photo and name), the shown one in Tomato */}
+          {tabbed && (
+            <Toolbar tabbar bottom scrollable className="ck-cook-recipes">
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`ck-cook-recipe ${t.id === shownRecipe.id ? 'ck-cook-recipe-on' : ''}`}
+                  onClick={() => cook.show(t.id)}
+                  aria-pressed={t.id === shownRecipe.id}
+                >
+                  {/* a little cover photo, so a recipe is found by sight (a recipe without one shows the chef hat) */}
+                  <span className={`ck-tab-thumb ck-photo ${coverPhoto(t) ? '' : 'ck-photo-empty'}`} style={photoStyle(coverPhoto(t))} aria-hidden="true">
+                    {!coverPhoto(t) && <ChefHat size={14} strokeWidth={1.75} />}
+                  </span>
+                  <span className="ck-tab-name">{t.title}</span>
+                </button>
+              ))}
+            </Toolbar>
+          )}
+
           {/* one tab per recipe, all kept (ticks, scroll); only the shown one is displayed */}
-          <Tabs className="ck-cook-tabs">
+          <Tabs className={`ck-cook-tabs${tabbed ? ' ck-cook-tabs-with-bar' : ''}`}>
             {tabs.map((r) => {
-              const main = r.id === recipe.id;
-              const own = main ? { factor, picks } : (amounts[r.id] ?? { factor: 1, picks: {} });
-              const t = ticks[r.id] ?? noTicks();
+              const own = s.amounts[r.id] ?? { factor: 1, picks: {} };
+              const t = s.ticks[r.id] ?? NO_TICKS;
               return (
                 <RecipeTab
                   key={r.id}
                   recipe={r}
                   active={r.id === shownRecipe.id}
+                  onScreen={s.expanded}
                   factor={own.factor}
                   picks={own.picks}
-                  onPick={
-                    main
-                      ? onPick
-                      : (ingId, unit) => setAmounts((a) => ({ ...a, [r.id]: { factor: a[r.id]?.factor ?? 1, picks: withPick(a[r.id]?.picks ?? {}, ingId, unit) } }))
-                  }
-                  onFactor={main ? onFactor : (f) => setAmounts((a) => ({ ...a, [r.id]: { factor: f, picks: a[r.id]?.picks ?? {} } }))}
+                  onPick={(ingId, unit) => cook.setPick(r.id, ingId, unit)}
+                  onFactor={(f) => cook.setFactor(r.id, f)}
                   doneIng={t.ing}
                   doneSteps={t.steps}
-                  onTick={(kind, id) => toggleTick(r.id, kind, id)}
-                  timers={timers.filter((x) => x.recipeId === r.id)}
+                  onTick={(kind, id) => cook.toggleTick(r.id, kind, id)}
+                  timers={s.timers.filter((x) => x.recipeId === r.id)}
                   now={now}
-                  onStartTimer={(step, label, seconds) => startTimer(r.id, step, label, seconds)}
-                  onStopTimer={stopTimer}
-                  onShow={show}
+                  onStartTimer={(step, label, seconds) => cook.startTimer(r.id, step, label, seconds)}
+                  onStopTimer={cook.stopTimer}
+                  onShow={cook.show}
                   split={split}
                   setSplit={setSplit}
+                  scroll={cook.restoredScroll[r.id]}
+                  onScroll={(at) => {
+                    cook.scroll.current = { ...cook.scroll.current, [r.id]: at };
+                  }}
                 />
               );
             })}
@@ -327,15 +257,15 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
       <Actions opened={timersOpen} onActionsClosed={() => setTimersOpen(false)}>
         <ActionsGroup>
           <ActionsLabel>Timers</ActionsLabel>
-          {timers.map((t) => (
+          {s.timers.map((t) => (
             <ActionsButton key={t.id}>
-              {timerName(t).replace(': ', ' · ')} · {clock((t.endsAt - now) / 1000)} left
+              {cook.timerName(t).replace(': ', ' · ')} · {clock((t.endsAt - now) / 1000)} left
             </ActionsButton>
           ))}
         </ActionsGroup>
-        {timers.length > 0 && (
+        {s.timers.length > 0 && (
           <ActionsGroup>
-            <ActionsButton color="red" onClick={() => setTimers([])}>
+            <ActionsButton color="red" onClick={cook.stopAllTimers}>
               Stop all timers
             </ActionsButton>
           </ActionsGroup>
@@ -351,6 +281,8 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
 type TabProps = {
   recipe: Recipe;
   active: boolean;
+  /** cook mode is on screen (not tucked away) */
+  onScreen: boolean;
   factor: number;
   picks: UnitPicks;
   onPick: (ingredientId: string, unit: string | null) => void;
@@ -367,12 +299,15 @@ type TabProps = {
   onShow: (recipeId: string) => void;
   split: number;
   setSplit: Dispatch<SetStateAction<number>>;
+  /** issue #85: where the halves were scrolled to before the app was left */
+  scroll?: PaneScroll;
+  onScroll: (at: PaneScroll) => void;
 };
 
 /** One recipe in cook mode: the split screen, as a Framework7 tab. */
 function RecipeTab({
-  recipe, active, factor, picks, onPick, onFactor, doneIng, doneSteps, onTick,
-  timers, now, onStartTimer, onStopTimer, onShow, split, setSplit,
+  recipe, active, onScreen, factor, picks, onPick, onFactor, doneIng, doneSteps, onTick,
+  timers, now, onStartTimer, onStopTimer, onShow, split, setSplit, scroll, onScroll,
 }: TabProps) {
   const { recipes } = useStore();
   // issue #82: a recipe with only ingredients (or only directions) shows that half alone, filling the screen, with no
@@ -402,6 +337,37 @@ function RecipeTab({
   useEffect(() => {
     if (!active) setConverting(null);
   }, [active]);
+
+  // issue #85: back where it was scrolled to, the first time it shows (a hidden tab, or the popup before it opens, has
+  // no height yet to scroll, so it waits a few frames for one)
+  const ingPane = useRef<HTMLDivElement>(null);
+  const stepsPane = useRef<HTMLDivElement>(null);
+  const scrolledBack = useRef(!scroll);
+  useEffect(() => {
+    if (!active || !onScreen || scrolledBack.current || !scroll) return;
+    let frame = 0;
+    let tries = 0;
+    const apply = () => {
+      const ing = ingPane.current;
+      const steps = stepsPane.current;
+      const pane = steps ?? ing;
+      if (!pane) return;
+      if (!pane.clientHeight && tries++ < 60) {
+        frame = requestAnimationFrame(apply);
+        return;
+      }
+      if (ing) ing.scrollTop = scroll.ing;
+      if (steps) steps.scrollTop = scroll.steps;
+      scrolledBack.current = true;
+    };
+    apply();
+    return () => cancelAnimationFrame(frame);
+  }, [active, onScreen]); // eslint-disable-line react-hooks/exhaustive-deps
+  const keepScroll = () => {
+    onScroll({ ing: ingPane.current?.scrollTop ?? 0, steps: stepsPane.current?.scrollTop ?? 0 });
+  };
+  // steps ticked before the app was left start with their ingredients and timers folded away, as ticking left them
+  const [foldedAtStart] = useState(() => new Set(doneSteps));
 
   const steps = useMemo(() => {
     let n = 0;
@@ -464,7 +430,12 @@ function RecipeTab({
       <div className={`ck-split-body${holding ? ' ck-split-body-holding' : ''}`} ref={splitBox}>
         {/* top half: ingredients */}
         {(hasIngredients || !hasSteps) && (
-          <div className={`ck-pane ck-pane-ingredients${halves ? '' : ' ck-pane-alone'}`} style={halves ? { flexBasis: `${split * 100}%` } : undefined}>
+          <div
+            className={`ck-pane ck-pane-ingredients${halves ? '' : ' ck-pane-alone'}`}
+            style={halves ? { flexBasis: `${split * 100}%` } : undefined}
+            ref={ingPane}
+            onScroll={keepScroll}
+          >
             <div className="ck-pane-head">
               <h2>Ingredients</h2>
               {/* same pill as the recipe page: tap to change servings without leaving cook mode */}
@@ -502,7 +473,7 @@ function RecipeTab({
 
         {/* bottom half: directions */}
         {hasSteps && (
-          <div className={`ck-pane ck-pane-steps${halves ? '' : ' ck-pane-alone'}`}>
+          <div className={`ck-pane ck-pane-steps${halves ? '' : ' ck-pane-alone'}`} ref={stepsPane} onScroll={keepScroll}>
             <div className="ck-pane-head">
               <h2>Directions</h2>
             </div>
@@ -527,7 +498,7 @@ function RecipeTab({
                       {(uses.length > 0 || stepTimerList.length > 0) && (
                         // a Framework7 accordion item, so ticking the step slides this up (Framework7's own collapse) instead of
                         // it vanishing. The class string never changes, so React leaves the open/closed state to Framework7.
-                        <div className="accordion-item accordion-item-opened ck-step-extra">
+                        <div className={`accordion-item ck-step-extra${foldedAtStart.has(s.id) ? '' : ' accordion-item-opened'}`}>
                           <div className="accordion-item-content">
                             <div className="ck-step-extra-inner">
                               {uses.length > 0 && (

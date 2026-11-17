@@ -28,9 +28,9 @@ async function audit(page, name) {
   await page.addScriptTag({ content: AXE });
   const contrast = await page.evaluate(async () => {
     // below AA on purpose (DESIGN.md): ticked rows in cook mode fade (--ck-done-ink), and the orange buttons' 600-weight
-    // white label on bright Tomato (3.7:1, the user's choice in issue #21). Loading placeholders (issue #35) are grey bars
+    // white label on bright Tomato (3.7:1, the user's choice in issue #21; also today's filled date in the Planner). Loading placeholders (issue #35) are grey bars
     // drawn with a font, not text to read. Everything else must pass.
-    const r = await window.axe.run({ include: [document], exclude: [['.skeleton-text'], ['.ck-cook li.ck-done'], ['.button.ck-main'], ['.button.ck-cta-button'], ['.link.ck-nav-primary'], ['.dialog .button.button-fill']] }, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
+    const r = await window.axe.run({ include: [document], exclude: [['.skeleton-text'], ['.ck-cook li.ck-done'], ['.button.ck-main'], ['.button.ck-cta-button'], ['.link.ck-nav-primary'], ['.ck-week-selected.ck-week-today .ck-week-num'], ['.ck-calendar .calendar-day-today.calendar-day-selected'], ['.dialog .button.button-fill']] }, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
     return r.violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(' ')}: ${n.any[0]?.message ?? v.help}`));
   });
   const overlaps = await page.evaluate(() => {
@@ -1546,7 +1546,7 @@ async function swipeLeft(ctx, page, locator) {
     const sel = page.locator(`${PLAN} .swiper-slide-active .ck-week-day.ck-week-selected`);
     if ((await sel.count()) !== 1 || !(await sel.getAttribute('class')).includes('ck-week-today')) throw new Error('today isn’t the picked day');
     const fill = await sel.locator('.ck-week-num').evaluate((e) => getComputedStyle(e).backgroundColor);
-    if (fill !== 'rgb(196, 66, 28)') throw new Error(`today picked is filled ${fill}, not Tomato ink`);
+    if (fill !== 'rgb(228, 87, 46)') throw new Error(`today picked is filled ${fill}, not bright Tomato like the +`);
     // the other days' dates are dark (a day is a link: it once took the links' Tomato)
     const plain = await page.locator(`${PLAN} .swiper-slide-active .ck-week-day:not(.ck-week-today):not(.ck-week-selected) .ck-week-num`).first().evaluate((e) => getComputedStyle(e).color);
     if (plain !== 'rgb(38, 38, 40)') throw new Error(`another day's date is ${plain}, not dark`);
@@ -1754,6 +1754,34 @@ async function swipeLeft(ctx, page, locator) {
     const last = await page.locator(`${PLAN} .ck-plan-day`).last().getAttribute('data-day');
     const picked = await page.locator(`${PLAN} .swiper-slide-active .ck-week-day.ck-week-selected`).getAttribute('aria-label');
     if (!picked.includes(await shortLabel(last))) throw new Error(`at the end, the strip picked "${picked}"`);
+  });
+  // follow-up to #67: one Tomato for today's filled date and the +, recipe names in semibold, empty days muted, lighter
+  // day names, the thumbnail as far from the card's edge on the left as above and below, no line under a card's last row
+  await step('67j-planner-look', async () => {
+    // Today scrolls the agenda back to today (scrolling to the top instead would pick Monday)
+    await page.locator(`${PLAN} .navbar a.ck-plan-today`).tap(); await page.waitForTimeout(1200);
+    const look = await page.locator(PLAN).evaluate((pg) => {
+      const css = (sel, prop) => { const e = pg.querySelector(sel); return e && getComputedStyle(e)[prop]; };
+      const li = pg.querySelector('.ck-plan-list li:not(.ck-plan-note)');
+      const c = li.querySelector('.item-content').getBoundingClientRect(), m = li.querySelector('.ck-picker-thumb').getBoundingClientRect();
+      return {
+        todayFill: css('.swiper-slide-active .ck-week-today.ck-week-selected .ck-week-num', 'backgroundColor'),
+        plus: css('.navbar .ck-nav-primary', 'backgroundColor'),
+        title: css('.ck-plan-list li:not(.ck-plan-note) .item-title', 'fontWeight'),
+        dayName: css('.ck-plan-day-head h2', 'fontWeight'),
+        empty: css('.ck-plan-day-empty:not(.ck-plan-day-today) h2', 'color'),
+        busy: css('.ck-plan-day:not(.ck-plan-day-empty):not(.ck-plan-day-today) h2', 'color'),
+        gaps: [m.left - c.left, m.top - c.top, c.bottom - m.bottom].map(Math.round),
+        lastLine: getComputedStyle(pg.querySelector('.ck-plan-list li:last-child .item-inner'), '::after').display,
+      };
+    });
+    if (look.todayFill !== look.plus) throw new Error(`today's date is ${look.todayFill}, the + is ${look.plus}`);
+    if (look.title !== '600') throw new Error(`a recipe's name is weight ${look.title}`);
+    if (look.dayName !== '500') throw new Error(`a day's name is weight ${look.dayName}`);
+    if (look.empty !== 'rgb(110, 110, 115)') throw new Error(`an empty day's name is ${look.empty}, not muted`);
+    if (look.busy === look.empty) throw new Error('a day with plans is as dim as an empty one');
+    if (look.lastLine !== 'none') throw new Error('a hairline under the last row of a card');
+    if (new Set(look.gaps).size !== 1) throw new Error(`the thumbnail's gaps (left, top, bottom) are ${look.gaps}`);
   });
 
   // Issue #35: while the recipes and cookbooks first load, grey placeholders in their shape: no lone "All" chip, no

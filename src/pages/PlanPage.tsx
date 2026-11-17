@@ -243,7 +243,7 @@ export default function PlanPage() {
             const name = dayName(day, now);
             const near = Math.abs(daysBetween(now, day)) <= 1;
             return (
-              <section key={day} data-day={day} className={`ck-plan-day${day === selected ? ' ck-plan-day-on' : ''}${day === now ? ' ck-plan-day-today' : ''}`}>
+              <section key={day} data-day={day} className={`ck-plan-day${day === selected ? ' ck-plan-day-on' : ''}${day === now ? ' ck-plan-day-today' : ''}${!loading && !slots.length ? ' ck-plan-day-empty' : ''}`}>
                 <div className="ck-plan-day-head">
                   <h2>
                     {name} <span className="ck-plan-day-date">{near ? mediumDate(day) : shortDate(day)}</span>

@@ -204,7 +204,7 @@ async function swipeLeft(ctx, page, locator) {
   let total = 0;
   // cook mode's X closes the shown recipe (the last one ends cooking); the chevron only tucks it away (issue #85)
   const cookClose = async () => {
-    await page.locator('.ck-cook .navbar .right a[aria-label^="Close"]').tap(); await page.waitForTimeout(1000);
+    await page.locator('.ck-cook .navbar a[aria-label^="Close"]').tap(); await page.waitForTimeout(1000);
   };
   // end cooking: X on every recipe (Not now to Mark as made), or the next page load comes back into cook mode
   const cookEnd = async () => {
@@ -1191,6 +1191,9 @@ async function swipeLeft(ctx, page, locator) {
         atBottom: !!barBox && Math.abs(barBox.bottom - innerHeight) < 1, clear: !!steps && !!barBox && steps.bottom <= barBox.top + 1,
         // a browser-like tab: the strip is soft grey, the shown tab is the page colour and starts at the strip's top edge
         strip: getComputedStyle(bar.querySelector('.toolbar-inner')).backgroundColor,
+        bold: on && getComputedStyle(on).fontWeight, shadow: on && getComputedStyle(on).boxShadow,
+        stepsFade: (() => { const st = getComputedStyle(shown[0].querySelector('.ck-pane-steps')); return String(st.webkitMaskImage || st.maskImage); })(),
+        titleSize: getComputedStyle(cook.querySelector('.navbar .title')).fontSize,
         joined: !!on && getComputedStyle(on).backgroundColor === getComputedStyle(cook.querySelector('.page')).backgroundColor && Math.abs(on.getBoundingClientRect().top - barBox.top) < 1,
         ticked: li.querySelector('input').checked,
         thumbs: [...(bar?.querySelectorAll('.ck-cook-recipe') ?? [])].map((c) => { const th = c.querySelector('.ck-tab-thumb'); return !!th && (getComputedStyle(th).backgroundImage !== 'none' || !!th.querySelector('svg')); }),
@@ -1205,6 +1208,9 @@ async function swipeLeft(ctx, page, locator) {
     if (!t.clear) throw new Error('Directions runs under the recipe tabs');
     if (t.strip !== 'rgb(236, 236, 238)') throw new Error(`the tab strip is ${t.strip}, not soft grey`);
     if (!t.joined) throw new Error("the shown tab isn't joined to the page in the page colour");
+    if (t.bold !== '700' || !t.shadow || t.shadow === 'none') throw new Error(`the shown tab is weight ${t.bold} with shadow ${t.shadow}, not bold and lifted`);
+    if (!t.stepsFade.includes('gradient')) throw new Error('Directions doesn’t fade where it meets the tabs');
+    if (t.titleSize !== '21px') throw new Error(`cook mode's title is ${t.titleSize}, not 21px`);
     if (t.thumbs.length !== 2 || !t.thumbs.every(Boolean)) throw new Error('every recipe tab should show its photo (or the chef hat)');
     if (!String(t.fade).includes('gradient')) throw new Error('ingredients scrolling under the top bar do not fade');
     if (t.ticked) throw new Error('tapping the linked name ticked the ingredient');
@@ -1980,10 +1986,17 @@ async function swipeLeft(ctx, page, locator) {
     const bar = await page.locator('.views > .toolbar.tabbar').boundingBox();
     if (f.y + f.height > bar.y) throw new Error('the Cooking bar covers the tab bar');
     if (Math.abs(f.x + f.width / 2 - 393 / 2) > 1) throw new Error('the Cooking bar isn’t centred');
-    // small: just "Cooking" (a count only with more than one recipe), flat dark, no iOS 26 glass edge or glow
-    const text = (await page.locator(fab).innerText()).trim();
-    if (text !== 'Cooking') throw new Error(`the Cooking pill reads "${text}"`);
-    if (f.width > 180 || f.height > 48) throw new Error(`the Cooking pill is ${Math.round(f.width)}×${Math.round(f.height)}px, not small`);
+    // small: "Cooking • 1" (the dot as far from the word as from the number), flat dark, no iOS 26 glass edge or glow,
+    // 10px above the tab bar
+    const text = (await page.locator(fab).textContent()).replace(/\s+/g, '');
+    if (text !== 'Cooking•1') throw new Error(`the Cooking pill reads "${text}"`);
+    const gaps = await page.locator(`${fab} .ck-cooking-fab-dot`).evaluate((d) => {
+      const r = d.getBoundingClientRect(), a = d.previousElementSibling.getBoundingClientRect(), b = d.nextElementSibling.getBoundingClientRect();
+      return [Math.round(r.left - a.right), Math.round(b.left - r.right)];
+    });
+    if (gaps[0] !== gaps[1]) throw new Error(`the dot is ${gaps[0]}px from "Cooking" and ${gaps[1]}px from the number`);
+    if (Math.round(bar.y - (f.y + f.height)) !== 10) throw new Error(`the Cooking pill is ${Math.round(bar.y - (f.y + f.height))}px above the tab bar, not 10`);
+    if (f.width > 200 || f.height > 48) throw new Error(`the Cooking pill is ${Math.round(f.width)}×${Math.round(f.height)}px, not small`);
     const look = await page.locator(`${fab} > a`).evaluate((a) => ({ bg: getComputedStyle(a).backgroundColor, shadow: getComputedStyle(a).boxShadow }));
     if (look.bg !== 'rgb(38, 38, 40)' || look.shadow !== 'none') throw new Error(`the Cooking pill is ${look.bg} with shadow ${look.shadow}`);
   });
@@ -2001,8 +2014,18 @@ async function swipeLeft(ctx, page, locator) {
     if (tabs.length !== 2 || !(await page.locator('.ck-cook .ck-cook-recipe-on').textContent()).includes('Corn')) throw new Error(`cook mode has the tabs ${JSON.stringify(tabs)}`);
     await page.locator('.ck-cook a[aria-label="Minimize cook mode"]').tap(); await page.waitForTimeout(1000);
     await page.goBack(); await page.waitForTimeout(1000);
-    const text = (await page.locator(fab).innerText()).replace(/\s+/g, ' ').trim();
-    if (text !== 'Cooking • 2') throw new Error(`the Cooking pill reads "${text}", not 2 recipes`);
+    const text = (await page.locator(fab).textContent()).replace(/\s+/g, '');
+    if (text !== 'Cooking•2') throw new Error(`the Cooking pill reads "${text}", not 2 recipes`);
+  });
+  // no pill over the recipe editor either
+  await step('36c2-cook-pill-not-in-editor', async () => {
+    await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Corn' }).tap(); await page.waitForTimeout(900);
+    await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(600);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1000);
+    if (await page.locator(fab).isVisible()) throw new Error('the Cooking pill shows over the recipe editor');
+    await page.goBack(); await page.waitForTimeout(900);
+    await page.goBack(); await page.waitForTimeout(900);
+    if (!(await page.locator(fab).isVisible())) throw new Error('the Cooking pill didn’t come back on the recipe list');
   });
   await step('36d-cook-resumed', async () => {
     await page.locator(`${fab} > a`).tap(); await page.waitForTimeout(1000);
@@ -2010,6 +2033,19 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.ck-cook .ck-cook-recipe', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(500);
     if ((await page.locator('.ck-cook .tab-active .ck-pane-ingredients li.ck-done').count()) !== 1) throw new Error('the kebabs’ tick wasn’t kept');
     if (!(await page.locator('.ck-cook .ck-timer-pill').count())) throw new Error('the timer wasn’t kept');
+  });
+  // swiping the top bar down tucks cook mode away too (Framework7's swipe to close)
+  await step('36d2-cook-swiped-down', async () => {
+    const nav = await page.locator('.ck-cook .navbar .title').boundingBox();
+    const cdp = await ctx.newCDPSession(page);
+    const x = nav.x + nav.width / 2, y = nav.y + nav.height / 2;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 15; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + 20 * i }] }); await page.waitForTimeout(16); }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await cdp.detach(); await page.waitForTimeout(1000);
+    if (await cookOpen()) throw new Error('swiping the top bar down didn’t tuck cook mode away');
+    if (!(await page.locator(fab).isVisible())) throw new Error('no Cooking pill after swiping cook mode away');
+    await page.locator(`${fab} > a`).tap(); await page.waitForTimeout(1000);
+    if (!(await cookOpen())) throw new Error('the Cooking pill didn’t bring cook mode back after the swipe');
   });
   // iOS often reloads the home-screen app after you've been in another app: cook mode comes back as it was (the same
   // recipes, ticks, a running timer and where Directions was scrolled to)

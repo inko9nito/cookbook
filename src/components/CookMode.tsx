@@ -4,7 +4,7 @@ import {
   Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Button, List, ListItem, Tabs, Tab, Toolbar,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
-import { ChevronDown, X, GripHorizontal, ChevronRight, ChefHat, Timer as TimerIcon } from 'lucide-react';
+import { ChevronDown, Minimize2, X, GripHorizontal, ChevronRight, ChefHat, Timer as TimerIcon } from 'lucide-react';
 import { coverPhoto, linkedRecipe, type Ingredient, type Recipe } from '../lib/recipe';
 import { photoStyle } from './ui/photo';
 import { friendly } from '../lib/ingredients';
@@ -55,9 +55,10 @@ const stepCount = (r: Recipe) => r.steps.filter((s) => s.kind !== 'header').leng
  * Every recipe keeps what's ticked and its amounts until cooking is done, even when its tab is closed and opened
  * again, and the timers run and ring whichever recipe is shown.
  *
- * Issue #85: it lives with the app, not the recipe page (its state is in src/data/cook.tsx). The chevron tucks it away
- * to look at other recipes (the Cooking button at the bottom of every screen brings it back as it was); X closes the
- * shown recipe (the last one ends cooking). Start cooking on another recipe adds it as a tab.
+ * Issue #85: it lives with the app, not the recipe page (its state is in src/data/cook.tsx). Minimize (top right, or
+ * swiping the top bar down) tucks it away to look at other recipes (the Cooking pill at the bottom of the tabs brings it
+ * back as it was); X, next to the name, closes the shown recipe (the last one ends cooking). Start cooking on another
+ * recipe adds it as a tab.
  */
 export default function CookMode() {
   const cook = useCook();
@@ -131,13 +132,14 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
 
   return (
     <>
-      <Popup className="ck-cook" opened={s.expanded} onPopupClosed={onClosed}>
+      {/* swiping the top bar down tucks cook mode away too (Framework7's swipe to close, on the bar only: the halves scroll) */}
+      <Popup className="ck-cook" opened={s.expanded} onPopupClosed={onClosed} swipeToClose="to-bottom" swipeHandler=".ck-cook .navbar">
         <Page pageContent={false}>
           <Navbar>
+            {/* X sits next to the recipe's name, so it reads as closing that recipe */}
             <NavLeft>
-              {/* tucks cook mode away, everything kept: the Cooking button brings it back */}
-              <Link iconOnly onClick={() => cook.minimize()} aria-label="Minimize cook mode">
-                <ChevronDown {...navIcon} />
+              <Link iconOnly onClick={closeShown} aria-label={tabbed ? `Close ${shownRecipe.title}` : 'Close cook mode'}>
+                <X {...navIcon} />
               </Link>
             </NavLeft>
             <NavTitle>{shownRecipe.title}</NavTitle>
@@ -148,8 +150,9 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
                   <span>{clock((soonest.endsAt - now) / 1000)}</span>
                 </Link>
               )}
-              <Link iconOnly onClick={closeShown} aria-label={tabbed ? `Close ${shownRecipe.title}` : 'Close cook mode'}>
-                <X {...navIcon} />
+              {/* tucks cook mode away, everything kept: the Cooking pill brings it back */}
+              <Link iconOnly onClick={() => cook.minimize()} aria-label="Minimize cook mode">
+                <Minimize2 {...navIcon} />
               </Link>
             </NavRight>
           </Navbar>

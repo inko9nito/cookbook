@@ -14,7 +14,8 @@
   --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
   --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
   --ck-plate-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); /* a cookbook's plates (round recipe photos) on its card */
-  --ck-bar-shadow: 0 4px 10px rgba(0, 0, 0, 0.07); /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
+  --ck-bar-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
+  --ck-tab-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.12); /* the recipe tab shown in cook mode, lifted off the grey strip (#85) */ /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
   /* a cookbook card's soft colours (issue #25): pale and muted, one per cookbook */
   --ck-book-blush: #f6e4dd;
   --ck-book-sage: #e3ebdf;
@@ -687,8 +688,8 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
   background-color: var(--ck-soft); color: var(--ck-accent-ink); font-weight: 600; font-variant-numeric: tabular-nums;
 }
 /* Cooking pill (issue #85), like Uber Eats' "View cart • 1": Framework7's extended FAB, small and flat dark at the bottom
-   centre while cook mode is tucked away (Framework7 places it above the tab bar). No shadow or iOS 26 glass. A chef hat
-   and "Cooking" (Fredoka 17px 600), with "• 2" when more than one recipe is open */
+   centre while cook mode is tucked away (Framework7 places it above the tab bar; 10px above it). No shadow or iOS 26
+   glass. A chef hat, "Cooking", a dot at 60% and how many recipes are open (Fredoka 17px 500), evenly spaced */
 html.ios .fab.ck-cooking-fab {
   --f7-fab-bg-color: var(--ck-fg);
   --f7-fab-pressed-bg-color: var(--ck-fg2);
@@ -698,11 +699,17 @@ html.ios .fab.ck-cooking-fab {
   --f7-fab-extended-text-padding: 0 22px 0 18px;
   --f7-fab-box-shadow: none;
   --f7-glass-shadow-fab: none; /* Framework7 v9's iOS 26 glass edge and glow */
+  --f7-fab-margin: 10px;
 }
-.ck-cooking-fab-body { display: flex; align-items: center; gap: 8px; white-space: nowrap; font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; }
+.ck-cooking-fab-body { display: flex; align-items: center; gap: 8px; white-space: nowrap; font-family: var(--ck-font-display); font-size: 17px; font-weight: 500; }
+.ck-cooking-fab-dot { opacity: 0.6; }
 .ck-cooking-fab-count { font-variant-numeric: tabular-nums; }
-/* recipe pages have their own way back in the footer (Resume cooking, or the chef-hat button beside Add to cooking) */
-.view:has(> .page-current.ck-recipe-page) > .ck-cooking-fab { display: none; }
+/* not over a recipe page (its footer has its own way back: Resume cooking, or the chef-hat button beside Add to
+   cooking) or the recipe editor */
+.view:has(> .page-current:is(.ck-recipe-page, .ck-edit)) > .ck-cooking-fab { display: none; }
+
+/* cook mode's top bar: the recipe's name larger than an ordinary bar title */
+html.ios .popup.ck-cook .navbar { --f7-navbar-title-font-size: 21px; --f7-navbar-title-font-weight: 600; }
 
 /* Adjust amounts: the result line with a Reset link, under the mode toggle */
 .ck-scale-result { flex-wrap: nowrap; justify-content: space-between; align-items: baseline; gap: 12px; }
@@ -1070,12 +1077,17 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
 }
 .ck-cook-recipe .ck-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ck-cook-recipe .ck-tab-thumb { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; }
-.ck-cook-recipe.ck-cook-recipe-on { flex-grow: 1.6; min-width: 132px; background-color: var(--ck-bg); color: var(--ck-fg); }
+/* the shown one: bold, lifted off the strip by a soft shadow */
+.ck-cook-recipe.ck-cook-recipe-on { flex-grow: 1.6; min-width: 132px; background-color: var(--ck-bg); color: var(--ck-fg); font-weight: 700; box-shadow: var(--ck-tab-shadow); }
 /* the shown tab flares into the page with small inward curves at its top corners, so it reads as one piece with it */
 .ck-cook-recipe.ck-cook-recipe-on::before,
 .ck-cook-recipe.ck-cook-recipe-on::after { content: ''; position: absolute; top: 0; width: 14px; height: 14px; pointer-events: none; }
 .ck-cook-recipe.ck-cook-recipe-on::before { left: -14px; background: radial-gradient(circle at 0 100%, transparent 13.5px, var(--ck-bg) 14px); }
 .ck-cook-recipe.ck-cook-recipe-on::after { right: -14px; background: radial-gradient(circle at 100% 100%, transparent 13.5px, var(--ck-bg) 14px); }
+/* Directions fades into the page colour over its last 16px where it meets the tabs, as both halves do at the divider
+   (DESIGN.md: scrolling content fades at a bar's edge), with room at the end so the last step can scroll clear */
+.tabs.ck-cook-tabs-with-bar .ck-pane-steps { -webkit-mask-image: linear-gradient(#000 calc(100% - 16px), transparent); mask-image: linear-gradient(#000 calc(100% - 16px), transparent); }
+.tabs.ck-cook-tabs-with-bar .ck-pane-steps::after { content: ''; display: block; height: 16px; }
 /* the split screen ends above the bar */
 .tabs.ck-cook-tabs-with-bar > .page-content.ck-split { padding-bottom: calc(var(--ck-cook-bar) + var(--f7-safe-area-bottom)); }
 

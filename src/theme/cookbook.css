@@ -14,6 +14,7 @@
   --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
   --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
   --ck-overlay-button: rgba(0, 0, 0, 0.45); /* round bar buttons over a recipe photo, white icons (issue #90) */
+  --ck-frosted-button: rgba(255, 255, 255, 0.6); /* round bar buttons over a cookbook's pastel header, dark icons (issue #90) */
   --ck-plate-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); /* a cookbook's plates (round recipe photos) on its card */
   --ck-bar-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
   --ck-tab-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.12); /* the recipe tab shown in cook mode, lifted off the grey strip (#85) */ /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
@@ -312,12 +313,17 @@ html.ios .navbar .link.back {
 html.ios .navbar.ck-float-bar .navbar-bg { display: none; }
 .page.ck-recipe-page > .page-content { padding-top: 0; }
 /* Bar buttons over a recipe's photo (issue #90, from the user's Uber Eats reference): dark see-through circles with
-   white icons, instead of white ones that jumped out of the photo. No blur (see "No glass blur" above). A cookbook's
-   header keeps the usual bar buttons (the switch from dark to grey while scrolling was too distracting). */
+   white icons, instead of white ones that jumped out of the photo. No blur (see "No glass blur" above). */
 html.ios .navbar.ck-float-bar .left .link,
 html.ios .navbar.ck-float-bar .right .link {
   background-color: var(--ck-overlay-button);
   color: var(--ck-surface);
+}
+/* Over a cookbook's pastel header, back and ⋯ are frosted white (the soft grey looked muddy on the pastels); once the
+   bar is solid (.ck-hero-solid) they're the usual bar buttons. + stays Tomato. */
+html.ios .navbar.ck-hero-bar:not(.ck-hero-solid) .left .link,
+html.ios .navbar.ck-hero-bar:not(.ck-hero-solid) .right .link:not(.ck-nav-primary) {
+  background-color: var(--ck-frosted-button);
 }
 
 /* A cookbook's header (issue #90, from the user's Spotify reference and their mockup): page content, starting at the top

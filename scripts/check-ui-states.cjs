@@ -1669,9 +1669,9 @@ async function swipeLeft(ctx, page, locator) {
     if (t.nameTop > 250) throw new Error(`the name starts ${t.nameTop}px down; the plates pushed it down`);
     if (t.heroSearchTop < t.nameBottom) throw new Error('the search bar isn’t under the name');
     if (t.barBg !== '0' || t.title !== '0' || t.docked) throw new Error(`the bar isn't bare over the header (${JSON.stringify(t)})`);
-    // the usual bar buttons over the header (the user found the switch from dark to grey distracting); + stays Tomato
-    if (t.backBg === 'rgba(0, 0, 0, 0.45)') throw new Error('the back button over the header is the dark one meant for photos');
-    if (t.plusBg === 'rgba(0, 0, 0, 0.45)') throw new Error('+ lost its Tomato');
+    // frosted white back and ⋯ over the pastel header (the grey looked muddy there); + stays Tomato
+    if (t.backBg !== 'rgba(255, 255, 255, 0.6)') throw new Error(`the back button over the header is ${t.backBg}, not frosted white`);
+    if (t.plusBg === 'rgba(255, 255, 255, 0.6)') throw new Error('+ lost its Tomato');
   });
   // the user's mockup, frame 2: scrolling, the plates and the colour fade out from the first pixel while the bar fills
   // in; with them gone, the bar is plain with its usual buttons, still no title while the name shows under it
@@ -1686,6 +1686,8 @@ async function swipeLeft(ctx, page, locator) {
     if (t.hidden) throw new Error('the bar’s buttons hid while the header was still on screen');
     if (t.platesOpacity !== '0' || t.barBg !== '1') throw new Error(`with the plates gone, plates ${t.platesOpacity}, bar ${t.barBg}`);
     if (t.title !== '0' || t.docked || !t.heroSearchShown) throw new Error(`with the name still showing, the bar is ${JSON.stringify({ title: t.title, docked: t.docked })}`);
+    // on the solid bar, the usual bar buttons
+    if (t.backBg === 'rgba(255, 255, 255, 0.6)') throw new Error('on the solid bar, the back button is still frosted');
   });
   // as iOS does it: the title comes into the bar only once the name has gone all the way under it (never in both places),
   // and the count under the name hides then

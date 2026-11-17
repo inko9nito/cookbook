@@ -159,7 +159,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
     <Page name="cookbook" className="ck-cookbook-page" onPageAfterIn={showTabbar}>
       <Navbar key="navbar" backLink title={name} subtitle={section ? book.name : undefined}>
         <NavRight>
-          <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes">
+          <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes" className="ck-nav-primary">
             <Plus {...navIcon} />
           </Link>
           <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">

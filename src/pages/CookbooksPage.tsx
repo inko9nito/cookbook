@@ -46,7 +46,7 @@ export default function CookbooksPage({ f7router }: Props) {
       <Navbar key="navbar" className="ck-navbar-root">
         <NavTitle>Cookbooks</NavTitle>
         <NavRight>
-          <Link iconOnly onClick={add} aria-label="New cookbook">
+          <Link iconOnly onClick={add} aria-label="New cookbook" className="ck-nav-primary">
             <Plus {...navIcon} />
           </Link>
           {/* shows the other view: the list icon while tiles show, the grid icon while the list shows */}

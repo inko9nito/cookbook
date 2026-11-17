@@ -3,7 +3,7 @@ import {
   Page, Navbar, NavTitle, NavRight, Link, Searchbar,
   Block, BlockFooter, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton, Button,
 } from 'framework7-react';
-import { Settings, ArrowUpDown, Plus } from 'lucide-react';
+import { ArrowUpDown, Plus } from 'lucide-react';
 import { useStore, type SortKey } from '../data/store';
 import { COURSES } from '../lib/recipe';
 import { navIcon } from '../components/ui/icons';
@@ -48,14 +48,12 @@ export default function RecipesPage({ f7router }: Props) {
       <Navbar key="navbar" className="ck-navbar-root">
         <NavTitle>Recipes</NavTitle>
         <NavRight>
-          <Link iconOnly onClick={() => f7router?.navigate('/recipe/new/')} aria-label="New recipe">
+          {/* issue #27: the plus is the screen's main action, a filled Tomato button */}
+          <Link iconOnly onClick={() => f7router?.navigate('/recipe/new/')} aria-label="New recipe" className="ck-nav-primary">
             <Plus {...navIcon} />
           </Link>
           <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
             <ArrowUpDown {...navIcon} />
-          </Link>
-          <Link iconOnly href="/settings/" aria-label="Settings">
-            <Settings {...navIcon} />
           </Link>
         </NavRight>
       </Navbar>

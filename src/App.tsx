@@ -1,5 +1,5 @@
 import { App, Views, View, Toolbar, ToolbarPane, Link, f7 } from 'framework7-react';
-import { ChefHat, BookOpen, CalendarDays, ShoppingCart } from 'lucide-react';
+import { ChefHat, BookOpen, CalendarDays, ShoppingCart, Settings } from 'lucide-react';
 import routes from './routes';
 import { tabIcon } from './components/ui/icons';
 import { AuthProvider } from './data/auth';
@@ -30,7 +30,7 @@ const f7params = {
 // each tab, as before (browserHistoryOnLoad off), and the page under iOS's swipe doesn't animate a second time.
 //
 // The browser has one history for all the tabs, and Framework7 keeps each tab's place in it, which only works while one
-// tab at a time is more than a page deep: with a cookbook open in Cookbooks and Settings open in Recipes, one back moved
+// tab at a time is more than a page deep: with a cookbook open in Cookbooks and the Style Guide open in Settings, one back moved
 // both. So leaving a tab takes it back to its first page (issue #25), and coming back to it starts there.
 const backToFirstPage = (el?: HTMLElement) => {
   const view = el && f7.views.get(el);
@@ -67,12 +67,17 @@ export default function CookbookApp() {
               <Link tabLink="#view-groceries" aria-label="Groceries">
                 <ShoppingCart {...tabIcon} />
               </Link>
+              {/* issue #27: Settings is a tab of its own, the last one (it was a button on Recipes) */}
+              <Link tabLink="#view-settings" aria-label="Settings">
+                <Settings {...tabIcon} />
+              </Link>
             </ToolbarPane>
           </Toolbar>
           <View id="view-recipes" main tab tabActive url="/" {...viewHistory} />
           <View id="view-cookbooks" name="cookbooks" tab url="/cookbooks/" {...viewHistory} />
           <View id="view-plan" name="plan" tab url="/plan/" {...viewHistory} />
           <View id="view-groceries" name="groceries" tab url="/groceries/" {...viewHistory} />
+          <View id="view-settings" name="settings" tab url="/settings/" {...viewHistory} />
         </Views>
         <SignInScreen />
         <SessionGuard />

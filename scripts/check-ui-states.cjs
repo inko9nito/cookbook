@@ -214,6 +214,15 @@ async function swipeLeft(ctx, page, locator) {
   await step('01-recipes', async () => {});
   // No backdrop blur on the bars that stay on screen (#25): iPhone Safari left those layers blank, so the header, its
   // buttons and the search field vanished a moment after the app opened
+  // issue #27: the plus is the main action, a filled Tomato button with a white icon; Sort stays a soft grey one
+  await step('01-plus-primary', async () => {
+    const c = await page.evaluate(() => {
+      const st = (sel) => { const e = document.querySelector(sel); return e && [getComputedStyle(e).backgroundColor, getComputedStyle(e).color]; };
+      return { plus: st('#view-recipes .navbar a[aria-label="New recipe"]'), sort: st('#view-recipes .navbar a[aria-label="Sort recipes"]') };
+    });
+    if (c.plus?.join() !== 'rgb(228, 87, 46),rgb(255, 255, 255)') throw new Error(`the plus is ${JSON.stringify(c.plus)}, not filled Tomato with a white icon`);
+    if (c.sort?.[0] === 'rgb(228, 87, 46)') throw new Error('Sort is filled Tomato too');
+  });
   await step('01a-no-blur-on-bars', async () => {
     const blurred = await page.evaluate(() => {
       const els = [...document.querySelectorAll('.navbar, .navbar *, .toolbar, .toolbar *, .searchbar, .searchbar *')];
@@ -668,7 +677,16 @@ async function swipeLeft(ctx, page, locator) {
 
   await page.goto(BASE);
   await page.waitForTimeout(900);
-  await step('13-settings', async () => { await page.locator('.view-main .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700); });
+  // issue #27: Settings is the last tab (no Settings button on Recipes any more), and its first page has no back button
+  await step('13-settings', async () => {
+    const tabs = await page.locator('.tabbar a').evaluateAll((as) => as.map((a) => a.getAttribute('aria-label')));
+    if (tabs.join() !== 'Recipes,Cookbooks,Plan,Groceries,Settings') throw new Error(`the tabs are ${JSON.stringify(tabs)}`);
+    if (await page.locator('#view-recipes .navbar a[aria-label="Settings"]').count()) throw new Error('Recipes still has a Settings button');
+    await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
+    if (await page.locator('#view-settings .page-current .navbar .link.back').count()) throw new Error('the Settings tab has a back button');
+    const title = await page.locator('#view-settings .page-current .navbar .title').textContent();
+    if (title.trim() !== 'Settings') throw new Error(`the Settings tab is titled "${title}"`);
+  });
   // the App group: which version is running; tapping it checks for updates, its refresh icon spinning meanwhile, with
   // no dialog or toast (the service worker finds no newer version here, so the icon just stops)
   await step('13b-settings-check-updates', async () => {
@@ -765,7 +783,7 @@ async function swipeLeft(ctx, page, locator) {
   // #14 feedback, on the imported recipes (the demo backend keeps them until the page reloads): a lower-case title got
   // a capital; a card shows its time but not its source, and nothing when no time is set; a card without a photo has
   // its chef hat centred; the recipe page shows a dash for no time
-  await page.locator('.view.tab-active .page-current .navbar .back').tap(); await page.waitForTimeout(800);
+  await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
   await step('13h-imported-cards', async () => {
     const salad = page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Sample green salad' });
     await salad.scrollIntoViewIfNeeded();
@@ -789,7 +807,7 @@ async function swipeLeft(ctx, page, locator) {
     if (time !== '–') throw new Error(`no time set reads "${time}" on the recipe page, expected a dash`);
   });
   await page.locator('.navbar-current .link.back, .view.tab-active .page-current .navbar .link.back').first().tap(); await page.waitForTimeout(900);
-  await page.locator('.view-main .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
+  await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
   await step('14-style-guide', async () => { await page.locator('.view.tab-active .page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {
     await step(`15-tab-${tab.toLowerCase()}`, async () => {
@@ -1360,11 +1378,12 @@ async function swipeLeft(ctx, page, locator) {
   // it back to its first page, so back only ever moves the tab shown.
   await step('26l-tabs-back', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
-    await page.locator('#view-recipes .navbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(900);
+    await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(800);
+    await page.locator('#view-settings .page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(900);
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(800);
     await page.locator('#view-cookbooks .page-current .ck-book-tile', { hasText: 'Everything else' }).tap(); await page.waitForTimeout(900);
-    const recipesPages = await page.locator('#view-recipes .page').count();
-    if (recipesPages !== 1) throw new Error(`leaving Recipes left ${recipesPages} pages in it, not its first page`);
+    const settingsPages = await page.locator('#view-settings .page').count();
+    if (settingsPages !== 1) throw new Error(`leaving Settings left ${settingsPages} pages in it, not its first page`);
     await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(800);
     // coming back, Cookbooks starts at its first page
@@ -1374,7 +1393,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.goBack(); await page.waitForTimeout(900);
     if (!page.url().startsWith(BASE)) throw new Error(`back left the app for ${page.url()}`);
     if ((await page.locator('#view-cookbooks .page-current .ck-book-tile').count()) !== 3) throw new Error('back from a cookbook didn’t return to the cookbooks');
-    if ((await page.locator('#view-recipes .page').count()) !== 1) throw new Error('back in Cookbooks moved Recipes');
+    if ((await page.locator('#view-settings .page').count()) !== 1) throw new Error('back in Cookbooks moved Settings');
   });
 
   // A cookbook or section just made stays, even when the list is reloaded from the server before the save lands (#25: on

@@ -1048,6 +1048,26 @@ async function swipeLeft(ctx, page, locator) {
     if (later !== 'view-recipes') throw new Error(`opening the app again started on ${later}, not Recipes`);
     await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
   });
+  // issue #91: on the iPhone the icon spun forever and nothing happened, as if the service worker never answered.
+  // Its calls are made to hang (looking for a new version, then asking for the registration at all): the app must
+  // still reload, back on Settings, within the time limits in src/lib/appUpdate.ts.
+  for (const [name, hang] of [
+    ['13b4-settings-refresh-update-hangs', () => { ServiceWorkerRegistration.prototype.update = () => new Promise(() => {}); }],
+    ['13b5-settings-refresh-registration-hangs', () => { navigator.serviceWorker.getRegistration = () => new Promise(() => {}); }],
+  ]) {
+    await step(name, async () => {
+      const row = page.locator('.view.tab-active .page-current li.ck-version-row');
+      await page.evaluate(hang);
+      await page.evaluate(() => { window.__ckNotReloaded = true; });
+      const loaded = page.waitForEvent('load', { timeout: 12000 });
+      await row.locator('.ck-refresh-link').tap();
+      await loaded.catch(() => { throw new Error('with the service worker not answering, the refresh icon never reloaded the app'); });
+      await page.waitForTimeout(1200);
+      if (await page.evaluate(() => window.__ckNotReloaded)) throw new Error('the app was not reloaded');
+      const active = await page.evaluate(() => document.querySelector('.view.tab-active')?.id);
+      if (active !== 'view-settings') throw new Error(`after the refresh the app opened on ${active}`);
+    });
+  }
   // every Settings group is a white card under its own title (rows outside the card once sat on the grey page)
   await step('13c-settings-groups', async () => {
     const t = await page.evaluate(() => {

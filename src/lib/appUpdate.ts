@@ -19,27 +19,41 @@ export const appVersion = () => {
   return `${__APP_VERSION__} · ${when}`;
 };
 
-/** Wait for a service worker that's installing to take over (Workbox skipWaiting); give up after 20 seconds. */
+/** `promise`, or undefined once `ms` have passed without an answer. */
+const within = <T>(promise: Promise<T>, ms: number): Promise<T | undefined> =>
+  Promise.race([promise, new Promise<undefined>((resolve) => setTimeout(resolve, ms))]);
+
+/** Wait for a service worker that's installing to take over (Workbox skipWaiting); give up after 10 seconds. */
 function takeOver(incoming: ServiceWorker): Promise<void> {
   return new Promise<void>((resolve) => {
     const settle = () => incoming.state === 'activated' || incoming.state === 'redundant';
     if (settle()) return resolve();
     incoming.addEventListener('statechange', () => settle() && resolve());
     navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), { once: true });
-    setTimeout(resolve, 20000);
+    setTimeout(resolve, 10000);
   });
+}
+
+/** Reload the app. If the page is still here a few seconds later (a reload that didn't go through), open it afresh. */
+function reload() {
+  window.location.reload();
+  setTimeout(() => window.location.replace(window.location.pathname + window.location.search), 4000);
 }
 
 /**
  * Bring the service worker up to date (if a newer version is live, it installs and takes over), then reload the app.
  * Never returns. `beforeReload` runs just before the reload (Settings uses it to come back to Settings, issue #48,
  * and to let the icon spin for a moment).
+ *
+ * Every wait has a limit (#91: on the iPhone the icon spun forever and nothing happened, so one of these never
+ * answered): asking for the registration 3s, looking for a new version 5s, a new version taking over 10s. Whatever
+ * happens, the app reloads; a version still installing then shows on the next refresh.
  */
 export async function updateApp({ beforeReload }: { beforeReload?: () => void | Promise<void> } = {}): Promise<never> {
   try {
-    const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
+    const reg = 'serviceWorker' in navigator ? await within(navigator.serviceWorker.getRegistration(), 3000) : undefined;
     if (reg) {
-      await reg.update().catch(() => undefined); // offline: nothing newer to get, the reload still happens
+      await within(reg.update().catch(() => undefined), 5000); // offline: nothing newer to get, the reload still happens
       const incoming = reg.installing ?? reg.waiting;
       if (incoming) await takeOver(incoming);
     }
@@ -47,6 +61,6 @@ export async function updateApp({ beforeReload }: { beforeReload?: () => void | 
     /* no service worker to ask: a reload is all there is */
   }
   await beforeReload?.();
-  window.location.reload();
+  reload();
   return new Promise<never>(() => {});
 }

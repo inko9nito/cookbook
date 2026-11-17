@@ -38,6 +38,8 @@ export default function SettingsPage() {
     setRefreshing(true);
     // spin for at least a moment, so a quick reload still reads as "refreshed"
     const shortest = new Promise((r) => setTimeout(r, 700));
+    // the app reloads well before this; if it's somehow still here, stop rather than spin forever (#91)
+    setTimeout(() => setRefreshing(false), 30000);
     updateApp({
       beforeReload: async () => {
         reopenOnTab('settings');

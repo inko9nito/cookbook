@@ -1048,8 +1048,8 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 
 /* Cook mode with several recipes open (issues #11, #65): a tab for each along the bottom, a Framework7 tab bar like the
    app's (flat white, hairline on top), so the top bar keeps the shown recipe's name, the chevron and X. Each tab is the
-   recipe's photo (28px, 8px corners; the chef hat on soft grey without one) and its name; the shown one is Tomato ink on
-   pale Tomato. They share the width (up to 240px each); with more than fit (each keeps at least 112px) the bar scrolls
+   recipe's photo (28px, 8px corners; the chef hat on soft grey without one) and its name; the shown one is Tomato ink, like
+   the app's tab bar. They share the width (up to 240px each); with more than fit (each keeps at least 112px) the bar scrolls
    sideways with a swipe, no scrollbar, and long names end in … */
 .popup.ck-cook { --ck-cook-bar: 60px; }
 html.ios .toolbar.ck-cook-recipes { --f7-toolbar-height: var(--ck-cook-bar); }
@@ -1065,7 +1065,7 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
 }
 .ck-cook-recipe .ck-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ck-cook-recipe .ck-tab-thumb { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; }
-.ck-cook-recipe.ck-cook-recipe-on { background-color: var(--ck-accent-tint); color: var(--ck-accent-ink); }
+.ck-cook-recipe.ck-cook-recipe-on { color: var(--ck-accent-ink); } /* like the app's tab bar: Tomato ink, no bubble (ink on pale Tomato was 4.3:1) */
 /* the split screen ends above the bar */
 .tabs.ck-cook-tabs-with-bar > .page-content.ck-split { padding-bottom: calc(var(--ck-cook-bar) + var(--f7-safe-area-bottom)); }
 

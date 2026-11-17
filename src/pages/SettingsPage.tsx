@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { Page, Navbar, List, ListItem, Link, BlockTitle, f7 } from 'framework7-react';
+import { Page, Navbar, NavTitle, List, ListItem, Link, BlockTitle, f7 } from 'framework7-react';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAuth } from '../data/auth';
 import { clearCache } from '../data/store';
@@ -49,7 +49,10 @@ export default function SettingsPage() {
 
   return (
     <Page name="settings" onPageAfterIn={showTabbar}>
-      <Navbar title="Settings" backLink />
+      {/* issue #27: Settings is a tab now, so its first page has a tab title and no back button */}
+      <Navbar key="navbar" className="ck-navbar-root">
+        <NavTitle>Settings</NavTitle>
+      </Navbar>
       <BlockTitle>Account</BlockTitle>
       <List strongIos insetIos dividersIos>
         {/* one row: who's signed in, and Sign Out beside it (the local demo signs in as demo@example.com) */}

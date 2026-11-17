@@ -704,9 +704,6 @@ html.ios .fab.ck-cooking-fab {
 .ck-cooking-fab-body { display: flex; align-items: center; gap: 8px; white-space: nowrap; font-family: var(--ck-font-display); font-size: 17px; font-weight: 500; }
 .ck-cooking-fab-dot { opacity: 0.6; }
 .ck-cooking-fab-count { font-variant-numeric: tabular-nums; }
-/* not over a recipe page (its footer has its own way back: Resume cooking, or the cooking-pot button beside Add to
-   cooking) or the recipe editor */
-.view:has(> .page-current:is(.ck-recipe-page, .ck-edit)) > .ck-cooking-fab { display: none; }
 
 /* cook mode's top bar: the recipe's name larger than an ordinary bar title */
 html.ios .popup.ck-cook .navbar { --f7-navbar-title-font-size: 21px; --f7-navbar-title-font-weight: 600; }

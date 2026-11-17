@@ -4,6 +4,7 @@ import {
 } from 'framework7-react';
 import RecipeCard from '../components/ui/RecipeCard';
 import { sampleRecipes } from '../demo/data';
+import CookingFab from '../components/CookingFab';
 
 const SWATCHES: [string, string][] = [
   ['Background', '--ck-bg'], ['Surface', '--ck-surface'], ['Soft', '--ck-soft'], ['Text', '--ck-fg'],
@@ -19,6 +20,8 @@ export default function StyleGuidePage() {
 
   return (
     <Page name="style-guide">
+      {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
+      <CookingFab slot="fixed" />
       <Navbar title="Style Guide" backLink />
 
       <BlockTitle medium>Colors</BlockTitle>

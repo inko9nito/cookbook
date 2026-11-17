@@ -6,7 +6,6 @@ import { AuthProvider } from './data/auth';
 import { SessionGuard, StoreProvider } from './data/store';
 import { CookProvider } from './data/cook';
 import CookMode from './components/CookMode';
-import CookingFab from './components/CookingFab';
 import SignInScreen from './components/SignInScreen';
 import { takeStartTab } from './data/startTab';
 
@@ -82,23 +81,11 @@ export default function CookbookApp() {
               </Link>
             </ToolbarPane>
           </Toolbar>
-          {/* issue #85: each tab holds the Cooking button that brings tucked-away cook mode back (Framework7 places a FAB
-              inside a view, above the tab bar) */}
-          <View id="view-recipes" main tab tabActive={startTab === 'recipes'} url="/" {...viewHistory}>
-            <CookingFab />
-          </View>
-          <View id="view-cookbooks" name="cookbooks" tab tabActive={startTab === 'cookbooks'} url="/cookbooks/" {...viewHistory}>
-            <CookingFab />
-          </View>
-          <View id="view-plan" name="plan" tab tabActive={startTab === 'plan'} url="/plan/" {...viewHistory}>
-            <CookingFab />
-          </View>
-          <View id="view-groceries" name="groceries" tab tabActive={startTab === 'groceries'} url="/groceries/" {...viewHistory}>
-            <CookingFab />
-          </View>
-          <View id="view-settings" name="settings" tab tabActive={startTab === 'settings'} url="/settings/" {...viewHistory}>
-            <CookingFab />
-          </View>
+          <View id="view-recipes" main tab tabActive={startTab === 'recipes'} url="/" {...viewHistory} />
+          <View id="view-cookbooks" name="cookbooks" tab tabActive={startTab === 'cookbooks'} url="/cookbooks/" {...viewHistory} />
+          <View id="view-plan" name="plan" tab tabActive={startTab === 'plan'} url="/plan/" {...viewHistory} />
+          <View id="view-groceries" name="groceries" tab tabActive={startTab === 'groceries'} url="/groceries/" {...viewHistory} />
+          <View id="view-settings" name="settings" tab tabActive={startTab === 'settings'} url="/settings/" {...viewHistory} />
         </Views>
         <SignInScreen />
         <SessionGuard />

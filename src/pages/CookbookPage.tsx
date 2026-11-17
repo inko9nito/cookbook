@@ -14,6 +14,7 @@ import { useCookbooks, useStore } from '../data/store';
 import { BOOK_COLORS, colorOf, cookbookRecipeIds, coversOf, existing, recipeIdsOf, withRecipeIds, type BookColor, type Cookbook } from '../lib/cookbook';
 import { coverPhoto, newId, type Recipe } from '../lib/recipe';
 import { searchByTitle, searchWords } from '../lib/search';
+import CookingFab from '../components/CookingFab';
 
 type Props = {
   f7route?: { params: Record<string, string> };
@@ -68,6 +69,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
     return (
       // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays
     <Page name="cookbook" className="ck-cookbook-page" hideNavbarOnScroll onPageAfterIn={showTabbar}>
+      {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
+      <CookingFab slot="fixed" />
         <Navbar key="navbar" backLink title={loading ? '' : 'Not found'} />
         {loading ? (
           [
@@ -159,6 +162,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   return (
     // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays
     <Page name="cookbook" className="ck-cookbook-page" hideNavbarOnScroll onPageAfterIn={showTabbar}>
+      {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
+      <CookingFab slot="fixed" />
       <Navbar key="navbar" backLink title={name} subtitle={section ? book.name : undefined}>
         <NavRight>
           <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes" className="ck-nav-primary">

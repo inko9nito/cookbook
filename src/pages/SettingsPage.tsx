@@ -7,6 +7,7 @@ import { clearCache } from '../data/store';
 import { inlineIcon } from '../components/ui/icons';
 import { appVersion, updateApp } from '../lib/appUpdate';
 import { reopenOnTab } from '../data/startTab';
+import CookingFab from '../components/CookingFab';
 
 export default function SettingsPage() {
   const { email, signOut } = useAuth();
@@ -66,6 +67,8 @@ export default function SettingsPage() {
 
   return (
     <Page name="settings" onPageAfterIn={showTabbar}>
+      {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
+      <CookingFab slot="fixed" />
       {/* issue #27: Settings is a tab now, so its first page has a tab title and no back button */}
       <Navbar key="navbar" className="ck-navbar-root">
         <NavTitle>Settings</NavTitle>

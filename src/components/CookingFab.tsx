@@ -6,11 +6,13 @@ import { navIcon } from './ui/icons';
 
 /**
  * Issue #85: while cook mode is tucked away, this small pill brings it back as it was (like Uber Eats' "View cart • 1"
- * while you keep browsing). Framework7's extended FAB, one per tab (Framework7 places a FAB inside a view above its tab
- * bar), flat dark at the bottom centre, just above the tab bar: a cooking pot, "Cooking", a faded dot and how many recipes
- * are open. Recipe pages and the editor don't show it (a recipe page's footer has its own way back).
+ * while you keep browsing). Framework7's extended FAB, flat dark at the bottom centre, just above the tab bar (Framework7
+ * places it there): a cooking pot, "Cooking", a faded dot and how many recipes are open. Each page in the tabs has its
+ * own, so it slides with its page: pushing a recipe or the editor (which don't have one; a recipe page's footer has its
+ * own way back) slides it away with the list, and back brings it back the same way. Pages give it `slot="fixed"`, so
+ * Framework7's Page puts it outside the scrolling content.
  */
-export default function CookingFab() {
+export default function CookingFab(_: { slot?: 'fixed' }) {
   const cook = useCook();
   const { recipes } = useStore();
   const s = cook.session;

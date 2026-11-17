@@ -10,6 +10,7 @@ import type { Cookbook } from '../lib/cookbook';
 import { newId } from '../lib/recipe';
 import { ApiError, backend } from '../data/api';
 import { useCookbooks, useStore } from '../data/store';
+import CookingFab from '../components/CookingFab';
 
 /*
   Settings → Import from Prepear (issue #14, docs/PLAN.md §6). Prepear has no export, so the recipes come out
@@ -131,6 +132,8 @@ export default function PrepearImportPage() {
 
   return (
     <Page name="prepear-import">
+      {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
+      <CookingFab slot="fixed" />
       <Navbar title="Import from Prepear" backLink />
       <Block className="ck-import-intro">
         <p>

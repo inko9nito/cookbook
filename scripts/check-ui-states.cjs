@@ -1965,7 +1965,7 @@ async function swipeLeft(ctx, page, locator) {
   // another recipe adds a tab; X closes the shown recipe. It's also kept on the phone, so it comes back after iOS reloads
   // the app.
   const cookOpen = () => page.locator('.popup.ck-cook.modal-in').count();
-  const fab = '.view.tab-active .ck-cooking-fab';
+  const fab = '.view.tab-active .page-current .ck-cooking-fab';
   await step('36a-cook-minimized', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
     await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(900);

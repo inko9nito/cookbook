@@ -12,6 +12,7 @@ import RecipeCard from '../components/ui/RecipeCard';
 import { ChipsSkeleton, CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import { searchByTitle, searchWords } from '../lib/search';
 import { MAX_READ_IMAGES } from '../lib/read-recipe';
+import CookingFab from '../components/CookingFab';
 
 const SORT_LABELS: Record<SortKey, string> = { newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
 const label = (t: string) => t[0].toUpperCase() + t.slice(1);
@@ -51,6 +52,8 @@ export default function RecipesPage({ f7router }: Props) {
     // the title row slides away while scrolling down and comes back on scrolling up; the search bar and chips under it
     // stay (Framework7's hideNavbarOnScroll moves the navbar up by its own height, leaving the subnavbar showing)
     <Page name="recipes" className={`ck-recipes-page ${loadError ? 'ck-no-chips' : ''}`} hideNavbarOnScroll onPageAfterIn={showTabbar}>
+      {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
+      <CookingFab slot="fixed" />
       <Navbar key="navbar" className="ck-navbar-root">
         <NavTitle>Recipes</NavTitle>
         <NavRight>

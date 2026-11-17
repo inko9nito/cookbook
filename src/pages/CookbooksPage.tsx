@@ -7,6 +7,7 @@ import { CookbookGridSkeleton, CookbookListSkeleton, CountSkeleton } from '../co
 import { useCookbooks, useStore } from '../data/store';
 import { byName, colorOf, cookbookRecipeIds, coverPhotos, coversOf, emptyCookbook, existing, type Cookbook } from '../lib/cookbook';
 import { newId } from '../lib/recipe';
+import CookingFab from '../components/CookingFab';
 
 type Props = { f7router?: { navigate: (url: string) => void } };
 
@@ -43,6 +44,8 @@ export default function CookbooksPage({ f7router }: Props) {
 
   return (
     <Page name="cookbooks" onPageAfterIn={showTabbar}>
+      {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
+      <CookingFab slot="fixed" />
       <Navbar key="navbar" className="ck-navbar-root">
         <NavTitle>Cookbooks</NavTitle>
         <NavRight>

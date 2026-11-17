@@ -743,10 +743,26 @@ async function swipeLeft(ctx, page, locator) {
   const LINK = 'https://www.example.com/weeknight-chickpea-curry/';
   await page.goto(BASE);
   await page.waitForTimeout(900);
+  // a link just copied fills the field (iOS asks with its own Paste button; Chromium is given the permission)
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+  const copy = (text) => page.evaluate((t) => navigator.clipboard.writeText(t), text);
+  await step('12l0-link-from-clipboard', async () => {
+    await copy(`Saw this on Instagram ${LINK}`);
+    await askLink();
+    const value = await page.locator('.dialog.modal-in input').inputValue();
+    if (value !== LINK) throw new Error(`with a link copied, the field holds "${value}"`);
+    const text = await page.locator('.dialog.modal-in .dialog-text').textContent();
+    if (!/link you copied/.test(text)) throw new Error(`the dialog says "${text}"`);
+  });
+  await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(500);
+  // nothing to use in the clipboard: an empty field, already focused (the keyboard is up without tapping into it)
   await step('12l-link-dialog', async () => {
+    await copy('chicken curry');
     await askLink();
     const input = page.locator('.dialog.modal-in input');
     if ((await input.getAttribute('type')) !== 'url') throw new Error('the link field has no URL keyboard');
+    if (await input.inputValue()) throw new Error(`with no link copied, the field holds "${await input.inputValue()}"`);
+    if (!(await input.evaluate((el) => el === document.activeElement))) throw new Error('the link field isn’t focused');
     const title = await page.locator('.dialog.modal-in .dialog-title').textContent();
     if (title.trim() !== 'From a Link') throw new Error(`the dialog is titled "${title}"`);
   });
@@ -775,6 +791,9 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator('.view.tab-active .page-current .ck-edit-photo.ck-photo').count())) throw new Error('the page’s photo was not added');
     const source = await page.locator('.view.tab-active .page-current input[placeholder="Website or person"]').inputValue();
     if (source !== 'Sample Kitchen') throw new Error(`the source is "${source}"`);
+    // the full address of the page, not only its site
+    const link = await page.locator('.view.tab-active .page-current textarea[inputmode=url]').inputValue();
+    if (link !== LINK) throw new Error(`the source link is "${link}"`);
   });
   await step('12n2-link-saved', async () => {
     await page.locator('.view.tab-active .page-current .navbar a', { hasText: 'Save' }).tap(); await page.waitForTimeout(900);

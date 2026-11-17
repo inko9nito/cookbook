@@ -30,8 +30,12 @@ export default function RecipesPage({ f7router }: Props) {
 
   // issue #15: + → From a link asks for the link (Framework7's prompt dialog, a URL keyboard), then the editor reads it.
   // A link already imported (the same page) offers that recipe first.
+  // Opened by a tap (`fromTap`), it also reads the clipboard: iOS shows its own Paste button for that, and a copied
+  // link fills the field. Both have to start in the tap itself: iOS only raises the keyboard for a field focused
+  // during a tap (Framework7 focuses it once the dialog has opened, too late), and only reads the clipboard then.
   const readLink = (url: string) => f7router?.navigate('/recipe/new/', { props: { scanUrl: url } });
-  const askLink = (typed = '') => {
+  const askLink = (typed = '', fromTap = false) => {
+    const copied = fromTap ? navigator.clipboard?.readText?.().catch(() => '') : undefined;
     const dialog = f7.dialog.prompt(
       'Paste the address of the recipe’s page.',
       'From a Link',
@@ -58,6 +62,15 @@ export default function RecipesPage({ f7router }: Props) {
       typed,
     );
     dialog.$el.find('input').attr({ type: 'url', inputmode: 'url', placeholder: 'https://', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'go', 'aria-label': 'Link to the recipe' });
+    const input = dialog.$el.find('input')[0] as HTMLInputElement | undefined;
+    input?.focus();
+    void copied?.then((text) => {
+      const link = text ? linkIn(text) : null;
+      // only into the field still open and empty (nothing typed or pasted meanwhile)
+      if (!link || !input?.isConnected || input.value.trim()) return;
+      input.value = link;
+      dialog.$el.find('.dialog-text').text('Use the link you copied, or paste another.');
+    });
   };
 
   // R2: a chip for every tag in use, the course types first (in meal order), then the rest A–Z
@@ -168,7 +181,7 @@ export default function RecipesPage({ f7router }: Props) {
         <ActionsGroup>
           <ActionsLabel>New recipe</ActionsLabel>
           {/* the picker has to open in the tap itself (iOS only lets a tap open it) */}
-          <ActionsButton onClick={() => askLink()}>From a link</ActionsButton>
+          <ActionsButton onClick={() => askLink('', true)}>From a link</ActionsButton>
           <ActionsButton onClick={() => scanRef.current?.click()}>From photos or screenshots</ActionsButton>
           <ActionsButton onClick={() => f7router?.navigate('/recipe/new/')}>Type it in</ActionsButton>
         </ActionsGroup>

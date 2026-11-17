@@ -284,7 +284,9 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
   };
 
   const save = () => {
-    saveRecipe({ ...draft, title: draft.title.trim() || 'Untitled recipe', minutes: draft.prepMinutes + draft.cookMinutes });
+    const { sourceUrl, ...rest } = draft;
+    const link = sourceUrl?.trim().slice(0, 2000);
+    saveRecipe({ ...rest, ...(link ? { sourceUrl: link } : {}), title: draft.title.trim() || 'Untitled recipe', minutes: draft.prepMinutes + draft.cookMinutes });
     f7router?.back();
   };
   const cancel = () => (dirty ? setDiscardOpen(true) : f7router?.back());
@@ -651,6 +653,21 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
       </div>
       <List className="ck-fields">
         <ListInput label="Source" type="text" placeholder="Website or person" value={draft.source} onInput={(e) => set({ source: e.target.value })} clearButton />
+        {/* issue #15: the full address of the recipe's page (the recipe page shows only the site, linked to it), wrapped
+            onto as many lines as it takes so all of it shows; a line break can't get into it */}
+        <ListInput
+          label="Source link"
+          type="textarea"
+          resizable
+          inputmode="url"
+          placeholder="https://"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          value={draft.sourceUrl ?? ''}
+          onInput={(e) => set({ sourceUrl: e.target.value.replace(/[\r\n]+/g, '') })}
+          clearButton
+        />
       </List>
 
       <PhotoCropper photo={cropping} onDone={(box) => void applyCrop(box)} onClose={() => setCropping(null)} />

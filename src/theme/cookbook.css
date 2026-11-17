@@ -689,7 +689,7 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 }
 /* Cooking pill (issue #85), like Uber Eats' "View cart • 1": Framework7's extended FAB, small and flat dark at the bottom
    centre while cook mode is tucked away (Framework7 places it above the tab bar; 10px above it). No shadow or iOS 26
-   glass. A chef hat, "Cooking", a dot at 60% and how many recipes are open (Fredoka 17px 500), evenly spaced */
+   glass. A cooking pot, "Cooking", a dot at 60% and how many recipes are open (Fredoka 17px 500), evenly spaced */
 html.ios .fab.ck-cooking-fab {
   --f7-fab-bg-color: var(--ck-fg);
   --f7-fab-pressed-bg-color: var(--ck-fg2);
@@ -704,7 +704,7 @@ html.ios .fab.ck-cooking-fab {
 .ck-cooking-fab-body { display: flex; align-items: center; gap: 8px; white-space: nowrap; font-family: var(--ck-font-display); font-size: 17px; font-weight: 500; }
 .ck-cooking-fab-dot { opacity: 0.6; }
 .ck-cooking-fab-count { font-variant-numeric: tabular-nums; }
-/* not over a recipe page (its footer has its own way back: Resume cooking, or the chef-hat button beside Add to
+/* not over a recipe page (its footer has its own way back: Resume cooking, or the cooking-pot button beside Add to
    cooking) or the recipe editor */
 .view:has(> .page-current:is(.ck-recipe-page, .ck-edit)) > .ck-cooking-fab { display: none; }
 
@@ -730,7 +730,7 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 }
 /* servings pill next to "Ingredients" (opens Adjust amounts); the footer is just Start cooking, full width */
 .button.ck-cta-button { flex: 1; gap: 6px; }
-/* issue #85: while other recipes are cooking, a dark round chef-hat button with how many, beside Add to cooking: back
+/* issue #85: while other recipes are cooking, a dark round cooking-pot button with how many, beside Add to cooking: back
    to cook mode (the same dark as the floating Cooking pill) */
 .toolbar.ck-cta .link.ck-cta-back {
   flex: none; gap: 6px; height: 48px; padding: 0 18px 0 16px; margin-right: 10px; border-radius: 9999px;

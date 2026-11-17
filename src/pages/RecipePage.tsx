@@ -3,7 +3,7 @@ import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   Actions, ActionsGroup, ActionsButton, f7,
 } from 'framework7-react';
-import { BookOpen, CalendarDays, ChefHat, Ellipsis, Plus, Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { BookOpen, CalendarDays, CookingPot, Ellipsis, Plus, Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
 import RecipePhotos from '../components/RecipePhotos';
 import AddToCookbookPopup from '../components/AddToCookbookPopup';
@@ -173,11 +173,11 @@ export default function RecipePage({ f7route, f7router }: Props) {
       </Navbar>
 
       <Toolbar bottom className="ck-cta">
-        {/* issue #85: while other recipes are cooking, a dark round chef-hat button (how many are cooking) goes back to cook
+        {/* issue #85: while other recipes are cooking, a dark round cooking-pot button (how many are cooking) goes back to cook
             mode beside "Add to cooking", which adds this one as a tab (the floating Cooking pill hides on recipe pages) */}
         {othersCooking > 0 && (
           <Link className="ck-cta-back" onClick={() => cook.expand()} aria-label={`Back to cook mode, ${othersCooking} ${othersCooking === 1 ? 'recipe' : 'recipes'} cooking`}>
-            <ChefHat {...navIcon} />
+            <CookingPot {...navIcon} />
             <span>{othersCooking}</span>
           </Link>
         )}

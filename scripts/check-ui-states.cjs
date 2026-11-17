@@ -644,12 +644,64 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.view.tab-active .page-current .button', { hasText: 'Add 3 lines' }).tap();
     await page.waitForTimeout(500);
   });
-  await step('12c-edit-step-sheet', async () => {
-    await page.locator('.view.tab-active .page-current .ck-edit-list').nth(1).locator('li.swipeout:not(.ck-group-row)').first().locator('.item-content').first().tap();
-    await page.waitForTimeout(800);
+  // issue #71: steps are typed right in their rows (no sheet). Return starts a new step, Backspace at the start of one
+  // joins it to the step above, and several lines pasted into a step become several steps
+  const steps = () => page.locator('.view.tab-active .page-current .ck-edit-list').nth(1).locator('textarea.ck-step-input');
+  const stepValues = () => steps().evaluateAll((ts) => ts.map((t) => t.value));
+  const focusedStep = () => page.evaluate(() => { const a = document.activeElement; return a?.classList.contains('ck-step-input') ? { i: [...a.closest('.ck-edit-list').querySelectorAll('textarea.ck-step-input')].indexOf(a), value: a.value, at: a.selectionStart } : null; });
+  let before = [];
+  await step('12c-edit-step-inline', async () => {
+    before = await stepValues();
+    if (before.length < 2) throw new Error(`expected steps to edit, found ${before.length}`);
+    // every step shows in full: Framework7 grows each field to its text
+    const cut = await steps().evaluateAll((ts) => ts.filter((t) => t.scrollHeight > t.clientHeight + 1).map((t) => t.value.slice(0, 24)));
+    if (cut.length) throw new Error(`steps cut off: ${cut.join(', ')}`);
+    const field = steps().first();
+    await field.scrollIntoViewIfNeeded();
+    await field.tap(); await page.waitForTimeout(400);
+    if (await page.locator('.sheet-modal.modal-in').count()) throw new Error('a sheet opened for the step');
+    if ((await focusedStep())?.i !== 0) throw new Error('tapping a step did not put the cursor in it');
+    await field.evaluate((t) => t.setSelectionRange(t.value.length, t.value.length));
+    await page.keyboard.press('Enter'); await page.waitForTimeout(300);
+    const f = await focusedStep();
+    if (!f || f.i !== 1 || f.value !== '') throw new Error(`Return didn't start a new step with the cursor in it (${JSON.stringify(f)})`);
+    await page.keyboard.type('Let it rest for 5 minutes.'); await page.waitForTimeout(200);
+    const after = await stepValues();
+    if (after.length !== before.length + 1 || after[0] !== before[0] || after[1] !== 'Let it rest for 5 minutes.') throw new Error(`steps after Return: ${JSON.stringify(after.map((v) => v.slice(0, 24)))}`);
   });
-  await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap().catch(() => {});
-  await page.waitForTimeout(600);
+  await step('12c2-edit-step-joined', async () => {
+    // Backspace at the start of the new step joins it back onto the first
+    await page.evaluate(() => document.activeElement.setSelectionRange(0, 0));
+    await page.keyboard.press('Backspace'); await page.waitForTimeout(300);
+    const after = await stepValues();
+    if (after.length !== before.length || after[0] !== `${before[0]} Let it rest for 5 minutes.`) throw new Error(`steps after Backspace: ${JSON.stringify(after.map((v) => v.slice(-30)))}`);
+    const f = await focusedStep();
+    if (!f || f.i !== 0 || f.at !== before[0].length + 1) throw new Error(`cursor not at the join (${JSON.stringify(f)})`);
+  });
+  await step('12c3-edit-steps-pasted-inline', async () => {
+    // Return at the end of the last step, then a whole list pasted into the empty step it made
+    const last = steps().last();
+    await last.tap(); await last.evaluate((t) => t.setSelectionRange(t.value.length, t.value.length));
+    await page.keyboard.press('Enter'); await page.waitForTimeout(300);
+    await steps().last().fill('For the glaze:\n\n1. Whisk the sugar and lemon juice.\nStep 2\nDrizzle it over the top.');
+    await page.waitForTimeout(400);
+    const groups = await page.locator('.view.tab-active .page-current .ck-edit-list').nth(1).locator('input.ck-group-input').evaluateAll((is) => is.map((i) => i.value));
+    const after = await stepValues();
+    if (groups[groups.length - 1] !== 'For the glaze') throw new Error(`the heading didn't become a group (${JSON.stringify(groups)})`);
+    if (after.slice(-2).join('|') !== 'Whisk the sugar and lemon juice.|Drizzle it over the top.') throw new Error(`pasted steps: ${JSON.stringify(after.slice(-3))}`);
+    const f = await focusedStep();
+    if (!f || f.value !== 'Drizzle it over the top.') throw new Error('cursor is not in the last pasted step');
+  });
+  await page.evaluate(() => document.activeElement?.blur());
+  await step('12c4-step-row-swiped', async () => {
+    // a step row still swipes open to Delete, though the swipe starts on its text field
+    const li = page.locator('.view.tab-active .page-current .ck-edit-list').nth(1).locator('li.ck-step-row').first();
+    await li.scrollIntoViewIfNeeded();
+    await swipeLeft(ctx, page, li); await page.waitForTimeout(600);
+    if (!(await li.evaluate((e) => e.classList.contains('swipeout-opened')))) throw new Error('swiping a step did not show Delete');
+  });
+  await page.locator('.view.tab-active .page-current .navbar .title').tap().catch(() => {});
+  await page.waitForTimeout(500);
   await step('12d-edit-recipe-info', async () => {
     await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 99999));
     const layout = await page.evaluate(() => {

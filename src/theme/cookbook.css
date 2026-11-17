@@ -765,7 +765,7 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 .list.ck-edit-list .item-inner { align-items: flex-start; }
 .list.ck-edit-list .item-title { line-height: 20px; }
 .list.ck-edit-list .ck-step-no,
-.list.ck-edit-list .ck-step-text { line-height: 20px; }
+.list.ck-edit-list .ck-step-input { line-height: 20px; }
 .list.ck-edit-list .ck-group-input { height: 22px; line-height: 22px; font-size: 17px; }
 /* the handle's 20px icon centred on that first line: row padding + half a line - half the icon */
 .list.ck-edit-list .sortable-handler { align-items: flex-start; padding-top: calc(var(--f7-list-item-padding-vertical) + 10px - 10px); box-sizing: border-box; }
@@ -800,9 +800,30 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 .ck-group-input::placeholder { color: var(--ck-fg2); font-weight: 600; }
 .ck-group-input:focus { outline: none; box-shadow: inset 0 -1.5px 0 var(--ck-accent); }
 .list.ck-edit-list .ck-group-row .item-inner { cursor: text; }
+/* issue #71: a step is typed right in its row. It reads as plain text until tapped (no box; Framework7 grows it a
+   line at a time), then gets the group name's Tomato underline */
+.list.ck-edit-list textarea.ck-step-input {
+  width: 100%;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-family: inherit;
+  font-weight: inherit;
+  color: var(--ck-fg);
+  resize: none;
+  overflow: hidden;
+}
+.list.ck-edit-list textarea.ck-step-input::placeholder { color: var(--ck-fg2); }
+.list.ck-edit-list textarea.ck-step-input:focus { outline: none; box-shadow: inset 0 -1.5px 0 var(--ck-accent); }
+.list.ck-edit-list .ck-step-row .item-inner { cursor: text; }
+/* the title fills the row (a textarea is otherwise only 20 characters wide) */
+.list.ck-edit-list .ck-step-row .item-title { flex: 1; min-width: 0; }
 /* small text inside the soft cards uses the darker secondary grey (muted grey on soft fill is only 4.3:1) */
 .list.ck-edit-list { --f7-list-item-footer-text-color: var(--ck-fg2); --f7-list-item-header-text-color: var(--ck-fg2); }
-.list.ck-edit-list .ck-step-text { font-size: 14px; }
+.list.ck-edit-list .ck-step-input { font-size: 14px; }
 .list.ck-edit-list .ck-step-no { font-size: 14px; }
 .list.ck-edit-list .ck-step { grid-template-columns: 22px minmax(0, 1fr); }
 .button.ck-dashed {

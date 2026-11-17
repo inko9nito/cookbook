@@ -12,6 +12,7 @@ import RecipeCard from '../components/ui/RecipeCard';
 import { ChipsSkeleton, CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import { searchByTitle, searchWords } from '../lib/search';
 import { MAX_READ_IMAGES } from '../lib/read-recipe';
+import FromLinkPopup, { openFromLink } from '../components/FromLinkPopup';
 
 const SORT_LABELS: Record<SortKey, string> = { newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
 const label = (t: string) => t[0].toUpperCase() + t.slice(1);
@@ -21,10 +22,13 @@ type Props = { f7router?: { navigate: (url: string, options?: { props?: Record<s
 export default function RecipesPage({ f7router }: Props) {
   const { recipes, loading, loadError, reload, sort, setSort, settings, setFilter } = useStore();
   const [sortOpen, setSortOpen] = useState(false);
-  // issue #17: + asks how: type it in, or read it from photos or screenshots (picked here, read in the editor)
+  // issue #17: + asks how: from a link (#15), from photos or screenshots (picked here, read in the editor), or type it in
   const [newOpen, setNewOpen] = useState(false);
   const scanRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
+
+  // issue #15: + → From a link opens its own screen (FromLinkPopup): paste the copied link there, or type one in
+  const readLink = (url: string) => f7router?.navigate('/recipe/new/', { props: { scanUrl: url } });
 
   // R2: a chip for every tag in use, the course types first (in meal order), then the rest A–Z
   const used = new Set(recipes.flatMap((r) => r.tags));
@@ -137,6 +141,8 @@ export default function RecipesPage({ f7router }: Props) {
         <ActionsGroup>
           <ActionsLabel>New recipe</ActionsLabel>
           {/* the picker has to open in the tap itself (iOS only lets a tap open it) */}
+          {/* opened in the tap itself, so its field can be focused (iOS only raises the keyboard then) */}
+          <ActionsButton onClick={openFromLink}>From a link</ActionsButton>
           <ActionsButton onClick={() => scanRef.current?.click()}>From photos or screenshots</ActionsButton>
           <ActionsButton onClick={() => f7router?.navigate('/recipe/new/')}>Type it in</ActionsButton>
         </ActionsGroup>
@@ -145,6 +151,7 @@ export default function RecipesPage({ f7router }: Props) {
         </ActionsGroup>
       </Actions>
       {/* iOS offers the photo library, the camera (a cookbook page) and files */}
+      <FromLinkPopup key="from-link" onImport={readLink} onOpenRecipe={(id) => f7router?.navigate(`/recipe/${id}/`)} />
       <input
         key="scan-input"
         ref={scanRef}

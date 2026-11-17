@@ -1088,7 +1088,7 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 /* Cook mode with several recipes open (issues #11, #65): browser-like tabs along the bottom, so the top bar keeps the
    shown recipe's name, the chevron and X. A Framework7 tab bar turned into a soft grey strip; the recipe shown is a tab
    in the page colour with 14px bottom corners, running up into the page above it with small inward curves where they
-   meet, edged by a hairline that runs along the strip's top and around the shown tab (#96); the others are semibold grey text on the strip. Each tab is the recipe's photo (24px, 7px corners; the chef hat
+   meet, edged by a thin --ck-strong line along the strip's top and around the shown tab (#96); the others are semibold grey text on the strip. Each tab is the recipe's photo (24px, 7px corners; the chef hat
    on soft grey without one) and its name. Tabs share the width (up to 240px each, the shown one a bigger share); with
    more than fit (each keeps at least 112px, the shown one 132px) the strip scrolls sideways with a swipe, no
    scrollbar, and long names end in … */
@@ -1097,9 +1097,9 @@ html.ios .toolbar.ck-cook-recipes { --f7-toolbar-height: var(--ck-cook-bar); }
 html.ios .toolbar.ck-cook-recipes .toolbar-inner {
   justify-content: flex-start; align-items: flex-start; gap: 2px; padding: 0 14px var(--f7-safe-area-bottom);
   background-color: var(--ck-soft); border-top: 0;
-  /* a hairline where the page meets the strip (#96); the shown tab, inside the strip, covers it where it runs up into
+  /* a thin line (--ck-strong) where the page meets the strip (#96); the shown tab, inside the strip, covers it where it runs up into
      the page. An inset shadow, not a border, so the tab starts at the strip's very top and can cover it */
-  box-shadow: inset 0 1px 0 var(--ck-line);
+  box-shadow: inset 0 1px 0 var(--ck-strong);
   overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none;
 }
 html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: none; }
@@ -1112,14 +1112,14 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
 .ck-cook-recipe .ck-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ck-cook-recipe .ck-tab-thumb { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; }
 /* the shown one: bold, lifted off the strip by a soft shadow */
-.ck-cook-recipe.ck-cook-recipe-on { flex-grow: 1.6; min-width: 132px; background-color: var(--ck-bg); color: var(--ck-fg); font-weight: 700; box-shadow: 0 0 0 1px var(--ck-line), var(--ck-tab-shadow); }
+.ck-cook-recipe.ck-cook-recipe-on { flex-grow: 1.6; min-width: 132px; background-color: var(--ck-bg); color: var(--ck-fg); font-weight: 700; box-shadow: 0 0 0 1px var(--ck-strong), var(--ck-tab-shadow); }
 /* the shown tab flares into the page with small inward curves at its top corners, so it reads as one piece with it;
-   the hairline (#96) follows the curves, from the strip's top edge down into the tab's sides (1px outside the tab, as
+   the line (#96) follows the curves, from the strip's top edge down into the tab's sides (1px outside the tab, as
    its ring is) */
 .ck-cook-recipe.ck-cook-recipe-on::before,
 .ck-cook-recipe.ck-cook-recipe-on::after { content: ''; position: absolute; top: 0; width: 15px; height: 14px; pointer-events: none; }
-.ck-cook-recipe.ck-cook-recipe-on::before { left: -15px; background: radial-gradient(circle at 0 100%, transparent 13.6px, var(--ck-line) 14.1px, var(--ck-line) 14.9px, var(--ck-bg) 15.4px); }
-.ck-cook-recipe.ck-cook-recipe-on::after { right: -15px; background: radial-gradient(circle at 100% 100%, transparent 13.6px, var(--ck-line) 14.1px, var(--ck-line) 14.9px, var(--ck-bg) 15.4px); }
+.ck-cook-recipe.ck-cook-recipe-on::before { left: -15px; background: radial-gradient(circle at 0 100%, transparent 13.6px, var(--ck-strong) 14.1px, var(--ck-strong) 14.9px, var(--ck-bg) 15.4px); }
+.ck-cook-recipe.ck-cook-recipe-on::after { right: -15px; background: radial-gradient(circle at 100% 100%, transparent 13.6px, var(--ck-strong) 14.1px, var(--ck-strong) 14.9px, var(--ck-bg) 15.4px); }
 /* Directions fades into the page colour over its last 16px where it meets the tabs, as both halves do at the divider
    (DESIGN.md: scrolling content fades at a bar's edge), with room at the end so the last step can scroll clear */
 .tabs.ck-cook-tabs-with-bar .ck-pane-steps { -webkit-mask-image: linear-gradient(#000 calc(100% - 16px), transparent); mask-image: linear-gradient(#000 calc(100% - 16px), transparent); }

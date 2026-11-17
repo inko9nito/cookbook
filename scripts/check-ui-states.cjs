@@ -1415,9 +1415,9 @@ async function swipeLeft(ctx, page, locator) {
     if (t.strip !== 'rgb(236, 236, 238)') throw new Error(`the tab strip is ${t.strip}, not soft grey`);
     if (!t.joined) throw new Error("the shown tab isn't joined to the page in the page colour");
     if (t.bold !== '700' || !t.shadow || t.shadow === 'none') throw new Error(`the shown tab is weight ${t.bold} with shadow ${t.shadow}, not bold and lifted`);
-    // #96: a hairline (--ck-line) where the page meets the strip and around the shown tab
-    if (!t.stripLine.includes('rgb(230, 230, 233)') || !t.stripLine.includes('inset')) throw new Error(`the tab strip's top edge is ${t.stripLine}, not a hairline`);
-    if (!/rgb\(230, 230, 233\) 0px 0px 0px 1px/.test(t.shadow)) throw new Error(`the shown tab has no hairline around it (${t.shadow})`);
+    // #96: a thin line (--ck-strong) where the page meets the strip and around the shown tab
+    if (!t.stripLine.includes('rgb(201, 201, 206)') || !t.stripLine.includes('inset')) throw new Error(`the tab strip's top edge is ${t.stripLine}, not a hairline`);
+    if (!/rgb\(201, 201, 206\) 0px 0px 0px 1px/.test(t.shadow)) throw new Error(`the shown tab has no hairline around it (${t.shadow})`);
     if (!t.stepsFade.includes('gradient')) throw new Error('Directions doesn’t fade where it meets the tabs');
     if (t.titleSize !== '21px') throw new Error(`cook mode's title is ${t.titleSize}, not 21px`);
     if (t.thumbs.length !== 2 || !t.thumbs.every(Boolean)) throw new Error('every recipe tab should show its photo (or the chef hat)');

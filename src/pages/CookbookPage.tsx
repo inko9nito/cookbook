@@ -159,9 +159,9 @@ export default function CookbookPage({ f7route, f7router }: Props) {
 
   return (
     // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays.
-    // With the header (issue #90) the bar is see-through over it, then fills in (Framework7's transparent navbar).
+    // With the header (issue #90), the bar is Framework7's large-title navbar: the header collapses into it first.
     <Page name="cookbook" className={`ck-cookbook-page${hero ? ' ck-book-hero-page' : ''}`} style={tint} hideNavbarOnScroll onPageAfterIn={showTabbar}>
-      <Navbar key="navbar" backLink title={name} subtitle={section ? book.name : undefined} transparent={hero} className={hero ? 'ck-hero-bar' : undefined}>
+      <Navbar key="navbar" backLink title={name} subtitle={section ? book.name : undefined} large={hero} titleLarge={hero ? ' ' : undefined} className={hero ? 'ck-hero-bar' : undefined}>
         <NavRight>
           <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes" className="ck-nav-primary">
             <Plus {...navIcon} />
@@ -170,6 +170,19 @@ export default function CookbookPage({ f7route, f7router }: Props) {
             <Ellipsis {...navIcon} />
           </Link>
         </NavRight>
+        {/* issue #90: the header, in Framework7's large-title area: the cookbook's plates big, its name and counts. It
+            scrolls up under the bar (Framework7 collapses it), taking the cookbook's colour with it, and the search bar
+            under it docks under the bar. */}
+        {hero && (
+          <div slot="title-large" className="ck-book-hero">
+            <CookbookPlates photos={platePhotos(book, byId)} />
+            <h1 className="ck-book-hero-title">{name}</h1>
+            <p className="ck-book-hero-meta">
+              {count(searchable.length, 'recipe')}
+              {book.sections.length > 0 && ` · ${count(book.sections.length, 'section')}`}
+            </p>
+          </div>
+        )}
         {/* issue #63: the search bar stays under the title while the shelves scroll (Framework7's subnavbar, as on
             Recipes). It's always there, even with nothing to search yet, so the page keeps its shape. */}
         <Subnavbar className="ck-docked-bar ck-search-bar">
@@ -183,18 +196,6 @@ export default function CookbookPage({ f7route, f7router }: Props) {
           />
         </Subnavbar>
       </Navbar>
-
-      {/* issue #90: the cookbook's colour fading into the page, its plates big, its name and counts */}
-      {hero && (
-        <div key="hero" className="ck-book-hero">
-          <CookbookPlates photos={platePhotos(book, byId)} />
-          <h1 className="ck-book-hero-title">{name}</h1>
-          <p className="ck-book-hero-meta">
-            {count(searchable.length, 'recipe')}
-            {book.sections.length > 0 && ` · ${count(book.sections.length, 'section')}`}
-          </p>
-        </div>
-      )}
 
       {/* keys: Page leaves out the blocks that aren't shown and lists the rest by position (see RecipesPage). The
           header already counts a cookbook's recipes, so its count line shows only while searching. */}

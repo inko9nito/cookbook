@@ -166,8 +166,10 @@ async function audit(page, name) {
       })
       .map((b) => `"${b.textContent.trim()}"`),
   );
-  // Edge inset (DESIGN.md, issue #55): a popup's or sheet's header content sits as far from the container's top edge as
-  // from its sides (16px). Round buttons are measured by their edges, text by its line box.
+  // Edges (DESIGN.md, issue #55). A popup's header buttons (round, pill) sit as far from its top as from its sides. A
+  // sheet's header is plain text: it lines up with the content's 16px gutter (title left, Done's text right) and its
+  // line starts well below the top (28px, at least 26), never crowded against it. Buttons are measured by their edges,
+  // text by its line box.
   const edges = await page.evaluate(() => {
     const textBox = (el) => {
       let box = null;
@@ -199,7 +201,12 @@ async function audit(page, name) {
       // a side counts only when something sits at it (a header with only a right-hand button has nothing on the left)
       const mid = edge.left + edge.width / 2;
       const sides = [first.left < mid ? left : null, last.right > mid ? right : null].filter((x) => x !== null);
-      if (sides.some((x) => Math.abs(top - x) > 2)) out.push(`${c.classList.contains('popup') ? 'popup' : 'sheet'} header is ${top}px from the top but ${left}px / ${right}px from the sides`);
+      if (c.classList.contains('popup')) {
+        if (sides.some((x) => Math.abs(top - x) > 2)) out.push(`popup header buttons are ${top}px from the top but ${left}px / ${right}px from the sides`);
+      } else {
+        if (sides.some((x) => Math.abs(x - 16) > 2)) out.push(`sheet header text is ${left}px / ${right}px from the sides, not lined up with the 16px gutter`);
+        if (top < 26) out.push(`sheet header text starts ${top}px from the top, crowding it (28px)`);
+      }
     }
     return out;
   });

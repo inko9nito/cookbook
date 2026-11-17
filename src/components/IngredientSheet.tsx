@@ -35,7 +35,7 @@ export default function IngredientSheet({ ingredient, linkedTitle, onLink, conta
     >
       <Toolbar>
         <div className="left">
-          <b>&nbsp;&nbsp;Edit Ingredient</b>
+          <b>Edit Ingredient</b>
         </div>
         <div className="right">
           <Link sheetClose>

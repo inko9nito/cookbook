@@ -31,7 +31,7 @@
   --ck-section-gap: 44px;     /* space above a section heading such as Directions (text to text) */
   --ck-group-gap: 24px;       /* space above a group label (text to text) */
   --ck-group-label-gap: 8px;  /* group label to its first row's text */
-  --ck-edge-inset: 16px;      /* a popup's or sheet's header content: as far from the top edge as from the sides (#55) */
+  --ck-edge-inset: 16px;      /* a button with a shape at a container's edge: as far from the top as from the sides (#55) */
   --ck-accent-ink: #c4421c; /* Tomato for text: passes 4.5:1 on white and on the grey page */
   --ck-accent-tint: color-mix(in srgb, var(--ck-accent) 13%, var(--ck-surface));
   --ck-error: #d1291f; /* also the destructive red (Delete, Discard): 5.2:1 on white, 4.8:1 on the grey page */
@@ -890,15 +890,14 @@ html.ios .photo-browser-page .navbar-bg::after { background-color: var(--ck-phot
 html.ios .navbar-inner-centered-title.navbar-inner-left-title { justify-content: space-between; }
 html.ios .navbar-inner-centered-title.navbar-inner-left-title .right { margin-left: 0; }
 html.ios .navbar-inner-centered-title.navbar-inner-left-title .title { text-align: center; margin-left: 0; margin-right: 0; }
-/* Edge inset (issue #55): a popup's or sheet's header content sits as far from the container's top edge as from its
-   sides (--ck-edge-inset, 16px), never less above than beside. Popups that slide up over the screen (Organize, Add
-   Recipes, Add to Cookbook, Link a Recipe): 16px + the 40px buttons + 16px. Sheets: 16px + the title's 24px line + 16px
-   and Done's text 16px from the right edge (Framework7 pads a toolbar link 12px each side; the tap area keeps it). */
+/* Edges (issue #55). A button with a shape (round, pill) at a container's edge sits as far from the top as from the
+   sides (--ck-edge-inset, 16px): popups that slide up over the screen (Organize, Add Recipes, Add to Cookbook, Link a
+   Recipe) have a 72px header, 16px + the 40px buttons + 16px. Plain text at an edge (a sheet's title, its Done) has
+   nothing around it, so it needs more room: it lines up with the content below (the 16px gutter: the title with the
+   fields' left edge, Done's text with their right edge) and its line starts 28px under the sheet's top (Framework7's
+   64px header, its row padded 16px at the top). Framework7 pads a toolbar link 12px each side; Done keeps that tap
+   area, pulled out so its text meets the gutter. */
 html.ios .popup.popup-push { --f7-navbar-height: calc(var(--ck-edge-inset) + 40px + var(--ck-edge-inset)); }
-html.ios .sheet-modal { --f7-toolbar-height: calc(var(--ck-edge-inset) + 24px + var(--ck-edge-inset)); }
-/* Framework7 v9 pads a top toolbar's row 16px at the top (room for iOS 26's fade); on a sheet's flat header it only
-   pushed the title down */
-html.ios .sheet-modal .toolbar .toolbar-inner { padding-top: 0; }
 html.ios .sheet-modal .toolbar .right .link:last-child { margin-right: -12px; }
 /* Save: filled bright Tomato pill with white text, like every orange button (the same contrast exception as
    .button.ck-main); Tomato text on the soft grey circle was 4.3:1 */

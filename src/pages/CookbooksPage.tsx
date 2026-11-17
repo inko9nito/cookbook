@@ -1,8 +1,9 @@
-import { Page, Navbar, NavTitle, NavRight, Link, Block, Button, Preloader, List, ListItem, f7 } from 'framework7-react';
+import { Page, Navbar, NavTitle, NavRight, Link, Block, Button, List, ListItem, f7 } from 'framework7-react';
 import { LayoutGrid, List as ListIcon, Plus } from 'lucide-react';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import CookbookTile, { CookbookThumb } from '../components/ui/CookbookTile';
+import { CookbookGridSkeleton, CookbookListSkeleton, CountSkeleton } from '../components/ui/Skeletons';
 import { useCookbooks, useStore } from '../data/store';
 import { byName, colorOf, cookbookRecipeIds, coverPhotos, coversOf, emptyCookbook, existing, type Cookbook } from '../lib/cookbook';
 import { newId } from '../lib/recipe';
@@ -25,9 +26,11 @@ export function promptNewCookbook(onMade: (id: string) => void, save: ReturnType
  * recipe sort. + makes a new cookbook. With none yet, a note and the way to bring in Prepear's.
  */
 export default function CookbooksPage({ f7router }: Props) {
-  const { recipes, settings, setCookbookView } = useStore();
+  const { recipes, loading: recipesLoading, settings, setCookbookView } = useStore();
   const asList = settings.cookbookView === 'list';
-  const { cookbooks, loading, loadError, reload, saveCookbook } = useCookbooks();
+  const { cookbooks, loading: booksLoading, loadError, reload, saveCookbook } = useCookbooks();
+  // issue #35: a cookbook's card counts its recipes, so the page waits for both (placeholders meanwhile, not "0 recipes")
+  const loading = (booksLoading || recipesLoading) && !loadError;
   const byId = new Map(recipes.map((r) => [r.id, r]));
   const sorted = [...cookbooks].sort(byName);
   const add = () => promptNewCookbook((id) => f7router?.navigate(`/cookbook/${id}/`), saveCookbook);
@@ -54,16 +57,13 @@ export default function CookbooksPage({ f7router }: Props) {
       </Navbar>
 
       {/* keys: Page leaves out the blocks that aren't shown and lists the rest by position (see RecipesPage) */}
-      {sorted.length > 0 && (
+      {(loading || sorted.length > 0) && (
         <Block key="count" className="ck-count">
-          <span className="ck-note">{sorted.length === 1 ? '1 cookbook' : `${sorted.length} cookbooks`}</span>
+          {loading ? <CountSkeleton text="6 cookbooks" /> : <span className="ck-note">{sorted.length === 1 ? '1 cookbook' : `${sorted.length} cookbooks`}</span>}
         </Block>
       )}
-      {loading && (
-        <Block key="loading" className="ck-list-state">
-          <Preloader />
-        </Block>
-      )}
+      {loading && !asList && <CookbookGridSkeleton key="grid-loading" />}
+      {loading && asList && <CookbookListSkeleton key="list-loading" />}
       {loadError && (
         <Block key="error" className="ck-list-state">
           <p className="ck-note">Couldn’t load your cookbooks. {loadError}</p>
@@ -83,7 +83,7 @@ export default function CookbooksPage({ f7router }: Props) {
           </Button>
         </Block>
       )}
-      {!asList && sorted.length > 0 && (
+      {!loading && !asList && sorted.length > 0 && (
         <Block key="grid" className="ck-card-grid ck-book-grid">
           <div className="grid grid-cols-2 grid-gap">
             {sorted.map((c) => {
@@ -93,7 +93,7 @@ export default function CookbooksPage({ f7router }: Props) {
           </div>
         </Block>
       )}
-      {asList && sorted.length > 0 && (
+      {!loading && asList && sorted.length > 0 && (
         <List key="list" strongIos insetIos dividersIos className="ck-book-list">
           {sorted.map((c) => {
             const { meta, photos } = about(c);

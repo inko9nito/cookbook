@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { addToNote, BOOK_COLORS, changeNote, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, placeName, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
+import { addToNote, BOOK_COLORS, changeNote, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, placeName, placesOfRecipe, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
 import { emptyRecipe, type Recipe } from './recipe';
 
 const book: Cookbook = {
@@ -111,5 +111,24 @@ describe('toast wording', () => {
     expect(addToNote('r', [a, b], [{ ...b, recipeIds: [], sections: [{ ...b.sections[0], recipeIds: ['r'] }] }])).toBe('Added to Meat in Dinners · Taken out of Uncategorized in Dinners');
     // a new cookbook isn't in "before"
     expect(addToNote('r', [a, b, c, d], [{ ...a, recipeIds: ['r'] }, { ...c, recipeIds: ['r'] }, { ...d, recipeIds: ['r'] }, { ...c, id: 'new', name: 'Brunch', recipeIds: ['r'] }])).toBe('Added to Grilling, Soups and 2 more');
+  });
+});
+
+describe('where a recipe is (issue #41)', () => {
+  test('cookbooks A–Z; in each, Uncategorized first, then sections in order', () => {
+    const dinners: Cookbook = { ...book, id: 'd', name: 'dinners', recipeIds: ['r'], sections: [
+      { id: 'm', name: 'Meat', coverRecipeId: null, recipeIds: ['r'] },
+      { id: 'f', name: 'Fish', coverRecipeId: null, recipeIds: [] },
+      { id: 'o', name: 'Other', coverRecipeId: null, recipeIds: ['x', 'r'] },
+    ] };
+    const bread: Cookbook = { ...book, id: 'b', name: 'Bread', recipeIds: ['r'], sections: [] };
+    const none: Cookbook = { ...book, id: 'n', name: 'Apples', recipeIds: ['x'], sections: [] };
+    expect(placesOfRecipe([dinners, none, bread], 'r').map((p) => [p.label, p.href])).toEqual([
+      ['Bread', '/cookbook/b/'],
+      ['dinners', '/cookbook/d/'],
+      ['dinners · Meat', '/cookbook/d/section/m/'],
+      ['dinners · Other', '/cookbook/d/section/o/'],
+    ]);
+    expect(placesOfRecipe([none], 'r')).toEqual([]);
   });
 });

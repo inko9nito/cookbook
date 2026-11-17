@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Page, Navbar, NavRight, Link, Searchbar, Block, BlockFooter, Button, Preloader,
+  Page, Navbar, NavRight, Link, Searchbar, Block, BlockFooter, Button,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, Sheet, Toolbar, PageContent, f7,
 } from 'framework7-react';
 import { Check, Ellipsis, Plus } from 'lucide-react';
@@ -8,6 +8,7 @@ import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import { say } from '../components/ui/toast';
 import RecipeCard from '../components/ui/RecipeCard';
+import { CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import RecipePickerPopup from '../components/RecipePickerPopup';
 import OrganizePopup from '../components/OrganizePopup';
 import { useCookbooks, useStore } from '../data/store';
@@ -62,14 +63,24 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const byId = new Map(recipes.map((r) => [r.id, r]));
 
   // Not there (yet, or any more). Same page and the same header (key "navbar") as below, so if the cookbook turns up a
-  // moment later, React keeps the header Framework7 set up instead of building a new one.
+  // moment later, React keeps the header Framework7 set up instead of building a new one. Still loading (issue #35):
+  // grey placeholders in the page's shape, the count and the recipe tiles.
   if (!book || (sectionId && !section)) {
     return (
       <Page name="cookbook" className="ck-cookbook-page" onPageAfterIn={showTabbar}>
         <Navbar key="navbar" backLink title={loading ? '' : 'Not found'} />
-        <Block key="missing" className="ck-list-state">
-          {loading ? <Preloader /> : <p className="ck-note">{sectionId ? 'This section isn’t here any more.' : 'This cookbook isn’t here any more.'}</p>}
-        </Block>
+        {loading ? (
+          [
+            <Block key="count" className="ck-count">
+              <CountSkeleton text="12 recipes · 3 sections" />
+            </Block>,
+            <RecipeGridSkeleton key="grid-loading" />,
+          ]
+        ) : (
+          <Block key="missing" className="ck-list-state">
+            <p className="ck-note">{sectionId ? 'This section isn’t here any more.' : 'This cookbook isn’t here any more.'}</p>
+          </Block>
+        )}
       </Page>
     );
   }

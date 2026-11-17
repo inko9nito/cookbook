@@ -3,12 +3,13 @@ import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   Actions, ActionsGroup, ActionsButton, f7,
 } from 'framework7-react';
-import { Ellipsis, Star, ChevronDown, ChevronRight } from 'lucide-react';
+import { BookOpen, Ellipsis, Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
 import CookMode from '../components/CookMode';
 import RecipePhotos from '../components/RecipePhotos';
 import AddToCookbookPopup from '../components/AddToCookbookPopup';
-import { useStore } from '../data/store';
+import { useCookbooks, useStore } from '../data/store';
+import { colorOf, placesOfRecipe } from '../lib/cookbook';
 import { titleCase, linkedRecipe, usedIn, type Ingredient } from '../lib/recipe';
 import { friendly } from '../lib/ingredients';
 import { footerText, type UnitPicks } from '../components/ui/ingredientLine';
@@ -50,16 +51,32 @@ const deleteText = (title: string, users: string[]) =>
     ? `Delete “${title}”? It’s an ingredient in ${users.map((t) => `“${t}”`).join(', ')}. That line stays, without the link.`
     : `Delete “${title}”?`;
 
-type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void; navigate: (url: string) => void } };
+type Router = {
+  back: (url?: string, options?: { force?: boolean }) => void;
+  navigate: (url: string) => void;
+  history: string[];
+  view: { el: HTMLElement };
+};
+type Props = { f7route?: { params: Record<string, string> }; f7router?: Router };
+
+/** The source's web address as a short name ("seriouseats.com"), for a source with an address and no name. */
+const siteOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+};
 
 /**
  * Recipe page (Airbnb listing layout, solid top bar like Prepear), reading like a plain recipe: photo, title, info, ingredients,
- * directions, notes. App controls stay out of the content: back and ••• (edit, cookbook, plan, groceries,
+ * directions, notes, then where it belongs (labels, cookbooks; meal plans with #26) and its source (issue #41). App controls stay out of the content: back and ••• (edit, cookbook, plan, groceries,
  * share, duplicate, delete) on top; the servings button next to Ingredients opens Adjust amounts; the footer holds Start cooking.
  * The tab bar is hidden here.
  */
 export default function RecipePage({ f7route, f7router }: Props) {
-  const { recipes, deleteRecipe } = useStore();
+  const { recipes, deleteRecipe, setFilter } = useStore();
+  const { cookbooks } = useCookbooks();
   const recipe = recipes.find((r) => r.id === f7route?.params.id);
   const [factor, setFactor] = useState(1);
   const [scaleOpen, setScaleOpen] = useState(false);
@@ -82,7 +99,13 @@ export default function RecipePage({ f7route, f7router }: Props) {
   }
 
   const soon = (what: string) => tell(`${what} comes in a later phase`, 1500);
-  const courses = recipe.tags.map(titleCase).join(' · ');
+  const places = placesOfRecipe(cookbooks, recipe.id);
+  // a label opens Recipes showing just that label (R2's filter): back to the list in the Recipes tab, or over to it
+  const showLabel = (tag: string) => {
+    setFilter([tag]);
+    if (f7router?.view.el.id === 'view-recipes') f7router.back(f7router.history[0], { force: true });
+    else f7.tab.show('#view-recipes');
+  };
   const scaled = Math.abs(factor - 1) > 0.001;
   const servingsLabel = `${friendly(recipe.servings * factor)} servings`;
   let stepNo = 0;
@@ -110,7 +133,6 @@ export default function RecipePage({ f7route, f7router }: Props) {
       <div className="ck-panel">
         <div className="ck-panel-head">
           <h1 className="ck-recipe-title">{recipe.title}</h1>
-          <span className="ck-note">{[recipe.source, courses].filter(Boolean).join(' · ')}</span>
         </div>
 
         <div className="ck-stats">
@@ -194,6 +216,53 @@ export default function RecipePage({ f7route, f7router }: Props) {
               <h2>Notes</h2>
             </div>
             <div className="ck-notes">{recipe.notes}</div>
+          </>
+        )}
+
+        {/* issue #41: where it belongs, as chips that open it. Labels open Recipes filtered by that label; each cookbook
+            (or section) it's in is a chip in the cookbook's colour. Meal plans (#26) will follow, with a clipboard icon. */}
+        {recipe.tags.length > 0 && (
+          <>
+            <div className="ck-sec">
+              <h2>Labels</h2>
+            </div>
+            <div className="ck-chips ck-belongs">
+              {recipe.tags.map((t) => (
+                <Link key={t} noLinkClass className="chip ck-chip" onClick={() => showLabel(t)}>
+                  <span className="chip-label">{titleCase(t)}</span>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+        {places.length > 0 && (
+          <>
+            <div className="ck-sec">
+              <h2>Cookbooks</h2>
+            </div>
+            <div className="ck-chips ck-belongs">
+              {places.map((p) => (
+                <Link key={p.key} href={p.href} noLinkClass className={`chip ck-chip ck-book-chip ck-tint-${colorOf(p.cookbook)}`}>
+                  <BookOpen {...inlineIcon} aria-hidden="true" />
+                  <span className="chip-label">{p.label}</span>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+        {(recipe.source || recipe.sourceUrl) && (
+          <>
+            <div className="ck-sec">
+              <h2>Source</h2>
+            </div>
+            {recipe.sourceUrl ? (
+              <Link href={recipe.sourceUrl} external target="_blank" className="ck-source ck-source-link">
+                {recipe.source || siteOf(recipe.sourceUrl)}
+                <ExternalLink {...inlineIcon} aria-hidden="true" />
+              </Link>
+            ) : (
+              <p className="ck-source">{recipe.source}</p>
+            )}
           </>
         )}
       </div>

@@ -1343,6 +1343,11 @@ async function swipeLeft(ctx, page, locator) {
     const on = await page.locator('.ck-cook .ck-tab-on').textContent();
     if (left.length !== 4 || left.some((x) => x.includes('Pulled')) || !on.includes('Mustard')) throw new Error(`after X the tabs are ${JSON.stringify(left)}, showing "${on}"`);
   });
+  // leave cook mode (X on each recipe's tab), or the next page load goes back into it (issue #85)
+  for (let i = 0; i < 6 && (await page.locator('.popup.ck-cook.modal-in').count()); i++) {
+    await page.locator('.ck-cook .navbar .left a').first().tap(); await page.waitForTimeout(700);
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Not now' }).tap({ timeout: 300 }).catch(() => {});
+  }
   await step('25h-delete-used-recipe', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
     await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(1000);

@@ -26,8 +26,11 @@ export const Cookbook = z.object({
   name: z.string().trim().min(1).max(120),
   /** the first cover recipe (kept for older copies; `coverRecipeIds` is what the collage uses) */
   coverRecipeId: id.nullable().optional(),
-  /** up to three recipes whose photos make the collage cover, in order: the first goes across the top */
-  coverRecipeIds: z.array(id).max(3).optional(),
+  /**
+   * the collage cover's plates, middle first, then left and right: a recipe whose photo is on that plate, or '' for a
+   * plate filled automatically (issue #80)
+   */
+  coverRecipeIds: z.array(z.union([id, z.literal('')])).max(3).optional(),
   /** the recipes in no section ("Uncategorized"), in order */
   recipeIds,
   /** in order. A recipe can be in several sections, and in a section and Uncategorized too, as in Prepear. */
@@ -84,17 +87,71 @@ export const coversOf = (c: Pick<Cookbook, 'coverRecipeId' | 'coverRecipeIds'>):
   c.coverRecipeIds?.length ? c.coverRecipeIds : c.coverRecipeId ? [c.coverRecipeId] : [];
 
 /**
- * Up to `n` different photos for a collage cover: the chosen cover recipes' first, in order, then the other recipes'.
- * Fewer when fewer recipes have one.
+ * The recipes whose photos make a collage cover, up to `n` with different photos: the chosen cover recipes first, in
+ * order, then the other recipes'. Fewer when fewer recipes have one. `taken` photos are skipped.
  */
-export function coverPhotos(covers: string[], ids: string[], byId: Map<string, Recipe>, n = 3): string[] {
+export function coverRecipeIds(covers: string[], ids: string[], byId: Map<string, Recipe>, n = 3, taken: string[] = []): string[] {
   const out: string[] = [];
+  const seen = new Set(taken);
   for (const id of [...covers, ...ids]) {
     const src = byId.get(id) && coverPhoto(byId.get(id)!);
-    if (src && !out.includes(src)) out.push(src);
+    if (!src || seen.has(src) || out.includes(id)) continue;
+    seen.add(src);
+    out.push(id);
     if (out.length === n) break;
   }
   return out;
+}
+
+/** Up to `n` different photos for a collage cover (see `coverRecipeIds`). */
+export const coverPhotos = (covers: string[], ids: string[], byId: Map<string, Recipe>, n = 3): string[] =>
+  coverRecipeIds(covers, ids, byId, n).map((id) => coverPhoto(byId.get(id)!)!);
+
+/**
+ * Issue #80: the cover editor numbers the plates left to right, 1 (left), 2 (the big one in the middle), 3 (right),
+ * while a cookbook keeps its covers middle first (`coverRecipeIds`: [middle, left, right]). A plate is either chosen
+ * (a recipe id) or automatic (null here, '' when kept): an automatic plate shows the cookbook's next photo not already
+ * on the cover, so it follows the cookbook as recipes come and go.
+ */
+export type CoverSpots = [string | null, string | null, string | null];
+
+const hasPhoto = (id: string | null | undefined, byId: Map<string, Recipe>): id is string => !!id && !!byId.get(id) && !!coverPhoto(byId.get(id)!);
+
+/** The plates chosen for a cookbook, left to right (null: automatic). An older copy's single cover is the middle one. */
+export function spotsOf(c: Pick<Cookbook, 'coverRecipeId' | 'coverRecipeIds'>, byId: Map<string, Recipe>): CoverSpots {
+  const [middle, left, right] = coversOf(c).map((id) => (hasPhoto(id, byId) ? id : null));
+  return [left ?? null, middle ?? null, right ?? null];
+}
+
+/** What to keep for chosen plates: middle first, '' for an automatic plate, nothing when all are automatic. */
+export function coversFromSpots([left, middle, right]: CoverSpots): string[] {
+  const kept = [middle ?? '', left ?? '', right ?? ''];
+  while (kept.length && !kept[kept.length - 1]) kept.pop();
+  return kept;
+}
+
+/**
+ * The plates as shown, left to right: each one's recipe and whether it was chosen. Automatic plates take the cookbook's
+ * first recipes with a photo not already on the cover, the middle plate first. With too few photos, a plate stays
+ * empty, but never the middle one while a side plate has a photo.
+ */
+export function platesOf(spots: CoverSpots, c: Cookbook, byId: Map<string, Recipe>): { id: string | null; chosen: boolean }[] {
+  const chosen = spots.map((id) => (hasPhoto(id, byId) ? id : null));
+  const taken = chosen.filter((id): id is string => !!id);
+  const fill = coverRecipeIds([], cookbookRecipeIds(c).filter((id) => !taken.includes(id)), byId, 3, taken.map((id) => coverPhoto(byId.get(id)!)!));
+  // automatic plates fill the middle first, then the left, then the right, as cards always have
+  const plates: { id: string | null; chosen: boolean }[] = chosen.map((id) => ({ id, chosen: !!id }));
+  for (const at of [1, 0, 2]) if (!plates[at].id) plates[at] = { id: fill.shift() ?? null, chosen: false };
+  // too few photos for three plates, and the middle one empty: a side plate's photo moves to the middle
+  const side = [0, 2].find((at) => plates[at].id);
+  if (!plates[1].id && side !== undefined) [plates[1], plates[side]] = [plates[side], { id: null, chosen: false }];
+  return plates;
+}
+
+/** The cover's photos for the plates, middle first (as `CookbookPlates` takes them), '' for an empty plate. */
+export function platePhotos(c: Cookbook, byId: Map<string, Recipe>): string[] {
+  const [left, middle, right] = platesOf(spotsOf(c, byId), c, byId);
+  return [middle, left, right].map((p) => (p.id ? coverPhoto(byId.get(p.id)!)! : ''));
 }
 
 export const recipeIdsOf = (c: Cookbook, sectionId: string | null): string[] =>

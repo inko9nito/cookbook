@@ -5,7 +5,7 @@ import { showTabbar } from '../components/ui/tabbar';
 import CookbookTile, { CookbookThumb } from '../components/ui/CookbookTile';
 import { CookbookGridSkeleton, CookbookListSkeleton, CountSkeleton } from '../components/ui/Skeletons';
 import { useCookbooks, useStore } from '../data/store';
-import { byName, colorOf, cookbookRecipeIds, coverPhotos, coversOf, emptyCookbook, existing, type Cookbook } from '../lib/cookbook';
+import { byName, colorOf, cookbookRecipeIds, emptyCookbook, existing, platePhotos, type Cookbook } from '../lib/cookbook';
 import { newId } from '../lib/recipe';
 
 type Props = { f7router?: { navigate: (url: string) => void } };
@@ -38,7 +38,7 @@ export default function CookbooksPage({ f7router }: Props) {
     const ids = cookbookRecipeIds(c);
     const n = existing(ids, byId).length;
     const meta = [`${n} ${n === 1 ? 'recipe' : 'recipes'}`, c.sections.length ? `${c.sections.length} ${c.sections.length === 1 ? 'section' : 'sections'}` : ''];
-    return { meta: meta.filter(Boolean).join(' · '), photos: coverPhotos(coversOf(c), ids, byId) };
+    return { meta: meta.filter(Boolean).join(' · '), photos: platePhotos(c, byId) };
   };
 
   return (

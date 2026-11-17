@@ -1,4 +1,4 @@
-import { Link } from 'framework7-react';
+import { Badge, Link } from 'framework7-react';
 import { BookOpen } from 'lucide-react';
 import type { BookColor } from '../../lib/cookbook';
 import { photoStyle } from './photo';
@@ -9,17 +9,46 @@ import { photoStyle } from './photo';
  * card's edges. Missing photos are empty grey plates; a cookbook with none shows a muted book on the middle one.
  * The middle plate comes last in the markup so it paints in front; `order` puts it in the middle.
  */
-export function CookbookPlates({ photos }: { photos: string[] }) {
-  const plate = (cls: string, src?: string, icon?: boolean) => (
-    <span className={`ck-plate ${cls}${src ? ' ck-photo' : ' ck-plate-empty'}`} style={photoStyle(src)}>
-      {icon && <BookOpen size={24} strokeWidth={1.5} />}
-    </span>
-  );
+/** A plate's number in the cover editor (issue #80): chosen (strong), filled in automatically (faint), or none. */
+export type PlateNumber = 'chosen' | 'auto' | 'none';
+
+type PlatesProps = {
+  /** middle first, then left and right ('' or missing: an empty plate) */
+  photos: string[];
+  /** the cover editor (issue #80), left to right: each plate's number, faint when filled in for you */
+  numbers?: PlateNumber[];
+  /** the cover editor: the plates are buttons; tapping one selects it, to put the next photo tapped on it */
+  onPlate?: (at: number) => void;
+  /** the selected plate (0 left, 1 middle, 2 right) */
+  selected?: number | null;
+  /** each plate's name for VoiceOver, left to right */
+  labels?: string[];
+};
+
+export function CookbookPlates({ photos, numbers, onPlate, selected, labels }: PlatesProps) {
+  const plate = (cls: string, at: number, src?: string, icon?: boolean) => {
+    const className = `ck-plate ${cls}${src ? ' ck-photo' : ' ck-plate-empty'}${selected === at ? ' ck-plate-selected' : ''}`;
+    const inside = (
+      <>
+        {icon && <BookOpen size={24} strokeWidth={1.5} />}
+        {numbers && numbers[at] !== 'none' && <Badge className={`ck-cover-no${numbers[at] === 'auto' ? ' ck-cover-no-auto' : ''}`}>{at + 1}</Badge>}
+      </>
+    );
+    return onPlate ? (
+      <button type="button" className={className} style={photoStyle(src)} aria-pressed={selected === at} aria-label={labels?.[at]} onClick={() => onPlate(at)}>
+        {inside}
+      </button>
+    ) : (
+      <span className={className} style={photoStyle(src)}>
+        {inside}
+      </span>
+    );
+  };
   return (
-    <span className="ck-plates" aria-hidden="true">
-      {plate('ck-plate-left', photos[1])}
-      {plate('ck-plate-right', photos[2])}
-      {plate('ck-plate-middle', photos[0], !photos.length)}
+    <span className={`ck-plates${numbers ? ' ck-plates-numbered' : ''}`} aria-hidden={onPlate ? undefined : true}>
+      {plate('ck-plate-left', 0, photos[1])}
+      {plate('ck-plate-right', 2, photos[2])}
+      {plate('ck-plate-middle', 1, photos[0], !photos.some(Boolean))}
     </span>
   );
 }

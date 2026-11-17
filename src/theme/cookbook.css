@@ -629,6 +629,13 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 /* step numbers are plain bold text, the same size as the step: no circles */
 .ck-step-no { font-size: 15px; line-height: 1.45; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ck-fg); }
 .ck-step-text { font-size: 15px; line-height: 1.45; white-space: normal; }
+/* a section with nothing in it yet (issue #82): a soft card like Notes, saying so, with a button to add it */
+.ck-sec-empty {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background-color: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 16px; padding: 12px 12px 12px 14px;
+}
+.ck-sec-empty p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ck-muted); }
+.ck-sec-empty .button { flex: none; width: auto; gap: 4px; padding: 0 14px; }
 .ck-notes { background-color: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 16px; padding: 12px 14px; font-size: 14px; line-height: 1.45; color: var(--ck-fg2); white-space: pre-line; overflow-wrap: anywhere; }
 /* where a recipe belongs (issue #41): label chips as on Recipes; a cookbook chip is the cookbook's soft colour with a book */
 .ck-chips.ck-belongs .chip { height: 34px; }
@@ -656,6 +663,10 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 /* room for the handle's fade: the last ingredient and the Directions heading can scroll clear of it */
 .ck-pane-ingredients::after,
 .ck-pane-steps::before { content: ''; display: block; height: var(--ck-split-half); }
+/* a recipe with only ingredients or only directions (issue #82): that half alone fills the screen, with no divider */
+.ck-pane.ck-pane-alone { flex: 1 1 0; -webkit-mask-image: linear-gradient(transparent, #000 16px); mask-image: linear-gradient(transparent, #000 16px); }
+.ck-pane.ck-pane-alone::before, .ck-pane.ck-pane-alone::after { display: none; }
+.ck-pane-alone .ck-pane-note { margin: 20px 16px 24px; font-size: 15px; line-height: 1.45; color: var(--ck-muted); }
 .ck-pane-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 16px 2px; }
 .ck-pane-head h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
 .ck-split-handle {
@@ -1148,6 +1159,38 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-plates .ck-plate-left { order: 1; width: 66px; height: 66px; margin-right: -22px; }
 .ck-plates .ck-plate-middle { order: 2; width: 92px; height: 92px; }
 .ck-plates .ck-plate-right { order: 3; width: 66px; height: 66px; margin-left: -22px; }
+/* Edit Cover (issue #80): the card as it will look, its colours, then the cookbook's photos as a grid of thumbnails. A
+   photo chosen for a plate has a Tomato ring (like the editor's picked photo) and its plate's number, 1 left, 2 middle,
+   3 right; one filled in automatically has a faint number and no ring. */
+.block.ck-cover-preview-block { margin: 16px 0 0; }
+.ck-cover-preview { border-radius: 20px; padding: 16px 12px; overflow: hidden; }
+.ck-cover-preview .ck-plates { margin: 0 -12px; }
+.ck-plates-numbered .ck-plate { position: relative; }
+.badge.ck-cover-no {
+  --f7-badge-size: 24px; --f7-badge-font-size: 13px; --f7-badge-font-weight: 700;
+  --f7-badge-bg-color: var(--ck-accent-ink); --f7-badge-text-color: var(--ck-surface);
+  position: absolute; min-width: 24px; box-sizing: border-box; border: 2px solid var(--ck-surface); font-variant-numeric: tabular-nums;
+}
+.ck-plates-numbered .badge.ck-cover-no { bottom: -6px; left: calc(50% - 12px); }
+/* a plate filled in automatically: a faint number (white, muted, a grey rim), so it reads as not picked */
+.badge.ck-cover-no.ck-cover-no-auto {
+  --f7-badge-bg-color: var(--ck-surface); --f7-badge-text-color: var(--ck-muted); --f7-badge-font-weight: 600;
+  border: 1.5px solid var(--ck-strong);
+}
+.ck-cover-hint { margin: 12px 0 0; }
+/* a plate tapped to change it: the hint turns dark and says which plate the next photo goes on */
+.ck-cover-hint.ck-cover-hint-on { color: var(--ck-fg); font-weight: 600; }
+/* the preview's plates are buttons in Edit Cover; the selected one gets a Tomato rim instead of the white one */
+.ck-plates button.ck-plate { padding: 0; margin-top: 0; margin-bottom: 0; font: inherit; appearance: none; -webkit-appearance: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ck-plate.ck-plate-selected { border-color: var(--ck-accent); }
+.block.ck-cover-grid { margin: 16px 0 24px; }
+.block.ck-cover-none { margin: 24px 0; text-align: center; }
+.ck-cover-cell {
+  position: relative; display: block; width: 100%; aspect-ratio: 1; padding: 0; border: 0; border-radius: 12px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.ck-cover-cell.ck-cover-on { box-shadow: 0 0 0 2px var(--ck-bg), 0 0 0 4px var(--ck-accent); }
+.ck-cover-cell .badge.ck-cover-no { top: 6px; left: 6px; }
 /* the card: its colour, the plates, then the name (title font, two lines at most) and the counts on the left (the user
    tried them centred under the big plate; left reads better) */
 .link.ck-book-tile, .ck-book-tile {
@@ -1163,13 +1206,13 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 /* the list's thumbnail: a rounded square in the cookbook's colour with its first plate */
 .ck-book-thumb { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 16px; flex: none; }
 .ck-book-thumb .ck-plate { width: 46px; height: 46px; border-width: 2.5px; }
-/* Change Colour: six round swatches in a row, the chosen one ringed in Tomato with a check */
-.ck-swatches { display: flex; justify-content: space-between; gap: 8px; padding: 16px var(--ck-sheet-inset) calc(var(--ck-sheet-inset) + var(--f7-safe-area-bottom)); }
-.ck-swatch {
-  width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--ck-line); padding: 0; margin: 0;
+/* Edit Cover's colours (issue #80): six round swatches in a row under the card, the chosen one ringed in Tomato with a check */
+.ck-cover-colors { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; }
+.ck-cover-colors .ck-swatch {
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--ck-line); padding: 0; margin: 0;
   display: grid; place-items: center; color: var(--ck-accent-ink); cursor: pointer; appearance: none;
 }
-.ck-swatch.ck-swatch-on { box-shadow: 0 0 0 2px var(--ck-surface), 0 0 0 4px var(--ck-accent); }
+.ck-cover-colors .ck-swatch.ck-swatch-on { box-shadow: 0 0 0 2px var(--ck-bg), 0 0 0 4px var(--ck-accent); }
 /* the list view: white inset card, the collage, the name in the title font, the counts muted */
 .list.ck-book-list {
   --f7-list-item-media-margin: 14px;

@@ -66,7 +66,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   // grey placeholders in the page's shape, the count and the recipe tiles.
   if (!book || (sectionId && !section)) {
     return (
-      <Page name="cookbook" className="ck-cookbook-page" onPageAfterIn={showTabbar}>
+      // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays
+    <Page name="cookbook" className="ck-cookbook-page" hideNavbarOnScroll onPageAfterIn={showTabbar}>
         <Navbar key="navbar" backLink title={loading ? '' : 'Not found'} />
         {loading ? (
           [
@@ -156,7 +157,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const hasAny = section ? here.length > 0 : searchable.length > 0 || book.sections.length > 0;
 
   return (
-    <Page name="cookbook" className="ck-cookbook-page" onPageAfterIn={showTabbar}>
+    // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays
+    <Page name="cookbook" className="ck-cookbook-page" hideNavbarOnScroll onPageAfterIn={showTabbar}>
       <Navbar key="navbar" backLink title={name} subtitle={section ? book.name : undefined}>
         <NavRight>
           <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes" className="ck-nav-primary">

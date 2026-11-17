@@ -48,7 +48,9 @@ export default function RecipesPage({ f7router }: Props) {
   const toggleTag = (t: string) => setFilter(tags.includes(t) ? tags.filter((x) => x !== t) : [...tags, t]);
 
   return (
-    <Page name="recipes" className={`ck-recipes-page ${loadError ? 'ck-no-chips' : ''}`} onPageAfterIn={showTabbar}>
+    // the title row slides away while scrolling down and comes back on scrolling up; the search bar and chips under it
+    // stay (Framework7's hideNavbarOnScroll moves the navbar up by its own height, leaving the subnavbar showing)
+    <Page name="recipes" className={`ck-recipes-page ${loadError ? 'ck-no-chips' : ''}`} hideNavbarOnScroll onPageAfterIn={showTabbar}>
       <Navbar key="navbar" className="ck-navbar-root">
         <NavTitle>Recipes</NavTitle>
         <NavRight>

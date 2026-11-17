@@ -273,6 +273,23 @@ async function swipeLeft(ctx, page, locator) {
     const chip = await page.locator('.view.tab-active .page-current .subnavbar .ck-chip').first().boundingBox();
     const onTop = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.ck-chip'), { x: chip.x + chip.width / 2, y: chip.y + chip.height / 2 });
     if (!onTop) throw new Error('the recipes scroll over the chips');
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0));
+    await page.waitForTimeout(400);
+    // scrolling down hides the title row (Framework7 hideNavbarOnScroll) and the search bar and chips move up to the
+    // top, still showing; scrolling up brings the title row back (the user's ask on #63)
+    const hidden = () => page.locator('.view.tab-active .page-current > .navbar').evaluate((n) => n.classList.contains('navbar-hidden'));
+    await page.mouse.move(200, 450);
+    for (let i = 0; i < 3; i++) { await page.mouse.wheel(0, 60); await page.waitForTimeout(120); }
+    await page.waitForTimeout(600);
+    if (!(await hidden())) throw new Error('the title row did not hide on scrolling down');
+    const up = await at();
+    if (!(up.search[1] >= 0 && up.search[1] < before.search[1])) throw new Error(`with the title row hidden the search bar is at ${up.search[1]}px (was ${before.search[1]}px)`);
+    const onScreen = await page.evaluate(() => { const s = document.querySelector('.view.tab-active .page-current .subnavbar .searchbar input'); const r = s.getBoundingClientRect(); return document.elementFromPoint(r.left + 40, r.top + r.height / 2) === s; });
+    if (!onScreen) throw new Error('the search bar is covered with the title row hidden');
+    await page.screenshot({ path: path.join(OUT, '01c2-recipes-title-hidden.png') });
+    for (let i = 0; i < 2; i++) { await page.mouse.wheel(0, -40); await page.waitForTimeout(120); }
+    await page.waitForTimeout(600);
+    if (await hidden()) throw new Error('the title row did not come back on scrolling up');
     // the first content (the count line) starts below the bar, not under it
     await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0));
     await page.waitForTimeout(300);

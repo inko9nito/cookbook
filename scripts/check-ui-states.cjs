@@ -166,7 +166,63 @@ async function audit(page, name) {
       })
       .map((b) => `"${b.textContent.trim()}"`),
   );
+  // Edges (DESIGN.md, issue #55). A popup's header buttons (round, pill) sit as far from its top as from its sides. A
+  // sheet keeps 24px from its edges (--ck-sheet-inset): its header text 24px from the top and the sides, and its content
+  // lined up with the header (nothing further out, the outermost content on the same lines). Buttons are measured by
+  // their edges, text by its line box.
+  const edges = await page.evaluate(() => {
+    const textBox = (el) => {
+      let box = null;
+      const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let n = w.nextNode(); n; n = w.nextNode()) {
+        if (!n.textContent.trim()) continue;
+        const r = document.createRange(); r.selectNodeContents(n);
+        for (const x of r.getClientRects()) box = box ? { left: Math.min(box.left, x.left), right: Math.max(box.right, x.right), top: Math.min(box.top, x.top) } : { left: x.left, right: x.right, top: x.top };
+      }
+      return box;
+    };
+    const out = [];
+    // only the container on top: a popup slid up over a sheet pushes the sheet back (scaled), and a dialog covers both
+    if (document.querySelector('.dialog.modal-in')) return out;
+    const pushed = document.querySelector('.popup.popup-push.modal-in');
+    for (const c of pushed ? [pushed] : document.querySelectorAll('.sheet-modal.modal-in')) {
+      const edge = c.getBoundingClientRect();
+      const items = c.classList.contains('popup')
+        ? [...c.querySelectorAll(':scope .page-current > .navbar .left .link, :scope .page-current > .navbar .right .link, :scope > .view > .page > .navbar .left .link, :scope > .view > .page > .navbar .right .link, :scope > .page > .navbar .left .link, :scope > .page > .navbar .right .link')].map((a) => a.getBoundingClientRect())
+        : [...c.querySelectorAll(':scope > .toolbar .left, :scope > .toolbar .right, :scope .sheet-modal-inner > .toolbar .left, :scope .sheet-modal-inner > .toolbar .right, :scope .calendar-header')].map(textBox);
+      const shown = items.filter((r) => r && r.right > r.left);
+      if (!shown.length) continue;
+      const first = shown.reduce((a, b) => (b.left < a.left ? b : a));
+      const last = shown.reduce((a, b) => (b.right > a.right ? b : a));
+      const top = Math.round(Math.min(...shown.map((r) => r.top)) - edge.top);
+      const left = Math.round(first.left - edge.left), right = Math.round(edge.right - last.right);
+      // a header scrolled out of its sheet (Chromium scrolls the scale sheet when the What I have dialog's field takes focus)
+      if (top < 0) continue;
+      // a side counts only when something sits at it (a header with only a right-hand button has nothing on the left)
+      const mid = edge.left + edge.width / 2;
+      const sides = [first.left < mid ? left : null, last.right > mid ? right : null].filter((x) => x !== null);
+      if (c.classList.contains('popup')) {
+        if (sides.some((x) => Math.abs(top - x) > 2)) out.push(`popup header buttons are ${top}px from the top but ${left}px / ${right}px from the sides`);
+      } else {
+        if (sides.some((x) => Math.abs(x - 24) > 2)) out.push(`sheet header text is ${left}px / ${right}px from the sides, not 24px`);
+        if (Math.abs(top - 24) > 3) out.push(`sheet header text starts ${top}px from the top, not 24px`);
+        // the content: fields, cards, segmented controls, chips, text blocks, swatches, day circles
+        // (boxes with a shape by their edges; text blocks and labels by their glyphs, since a block's box spans the sheet)
+        const seen = (el) => el.checkVisibility({ visibilityProperty: true, opacityProperty: true });
+        const shapes = [...c.querySelectorAll('.page-content .item-input-wrap, .page-content .list.inset ul, .page-content .segmented, .page-content .chip, .page-content .stepper, .ck-unit-sheet-list ul, .ck-swatch, .calendar-month-current .calendar-day-number')]
+          .filter(seen).map((el) => el.getBoundingClientRect());
+        const texts = [...c.querySelectorAll('.page-content .block, .page-content .item-label, .page-content .list:not(.ck-link-field) .item-title')].filter(seen).map(textBox).filter(Boolean);
+        const content = [...shapes, ...texts].filter((r) => r.right - r.left > 4 && (r.bottom ?? innerHeight) > edge.top && r.top < innerHeight);
+        if (content.length) {
+          const cl = Math.round(Math.min(...content.map((r) => r.left)) - edge.left), cr = Math.round(edge.right - Math.max(...content.map((r) => r.right)));
+          if (Math.abs(cl - 24) > 2 || Math.abs(cr - 24) > 2) out.push(`sheet content reaches ${cl}px / ${cr}px from the sides, not the header's 24px`);
+        }
+      }
+    }
+    return out;
+  });
   const issues = [
+    ...edges.map((e) => `edge inset: ${e}`),
     ...contrast.map((c) => `contrast: ${c}`),
     ...cramped.map((c) => `label doesn't fit its button: ${c}`),
     ...overlaps.map((o) => `overlap: ${o}`),
@@ -1600,12 +1656,6 @@ async function swipeLeft(ctx, page, locator) {
     const rows = await page.locator('.popup.modal-in .ck-organize-list li:not(.ck-organize-heading)').count();
     // Uncategorized 2, Meat 4 (Corn pudding is in both), Other 1
     if (rows !== 7) throw new Error(`Organize lists ${rows} recipe rows, expected 7`);
-    // issue #55: Cancel and Done sit clear of the popup's rounded top (they were 4px under it, crowding its corners)
-    const room = await page.evaluate(() => {
-      const pop = document.querySelector('.popup.modal-in').getBoundingClientRect();
-      return [...document.querySelectorAll('.popup.modal-in .navbar .left .link, .popup.modal-in .navbar .right .link')].map((a) => Math.round(a.getBoundingClientRect().top - pop.top));
-    });
-    if (!room.length || room.some((y) => y < 12)) throw new Error(`the header buttons are ${room.join(', ')}px under the popup's top`);
   });
   await step('26g2-organize-removed', async () => {
     // swipe a recipe out of Meat, then Done
@@ -1880,6 +1930,29 @@ async function swipeLeft(ctx, page, locator) {
     const month = await page.locator('.calendar.modal-in .current-month-value').evaluate((e) => ({ text: e.textContent, cut: e.scrollWidth > e.clientWidth + 1 }));
     if (month.cut) throw new Error(`the month "${month.text}" is cut short`);
     if ((await page.locator('.calendar.modal-in .calendar-month-current .calendar-day-event').count()) < 2) throw new Error('no dots on planned days');
+    // a day looks the same here as in the week strip, in every state: plain, today, picked, and today picked. The
+    // circle's size and fill, the number's font, weight and colour, and the dot's size and gap under the circle.
+    // (They differed: 36px circles in a lighter font, dots 1px under them, and a picked day bolder in the calendar.)
+    // Each state is set on a plain day with a dot in each, by its own classes, measured, then put back.
+    const looks = await page.evaluate(() => {
+      const strip = document.querySelector('.ck-week-day.ck-week-busy:not(.ck-week-today):not(.ck-week-selected)');
+      const cal = [...document.querySelectorAll('.calendar.modal-in .calendar-month-current .calendar-day:not(.calendar-day-today):not(.calendar-day-selected)')].find((d) => d.querySelector('.calendar-day-event'));
+      const look = (num, dot) => {
+        const n = num.getBoundingClientRect(), d = dot.getBoundingClientRect(), cs = getComputedStyle(num);
+        return { circle: Math.round(n.width), fill: cs.backgroundColor, font: `${cs.fontFamily.split(',')[0]} ${cs.fontSize} ${cs.fontWeight}`, color: cs.color, dot: Math.round(d.width), gap: Math.round(d.top - n.bottom) };
+      };
+      const out = [];
+      for (const state of [[], ['today'], ['selected'], ['today', 'selected']]) {
+        const sc = state.map((x) => `ck-week-${x}`), cc = state.map((x) => `calendar-day-${x}`);
+        strip.classList.add(...sc); cal.classList.add(...cc);
+        const a = look(strip.querySelector('.ck-week-num'), strip.querySelector('.ck-week-dot'));
+        const b = look(cal.querySelector('.calendar-day-number'), cal.querySelector('.calendar-day-event'));
+        strip.classList.remove(...sc); cal.classList.remove(...cc);
+        if (JSON.stringify(a) !== JSON.stringify(b)) out.push(`${state.join(' + ') || 'plain'}: strip ${JSON.stringify(a)} vs calendar ${JSON.stringify(b)}`);
+      }
+      return out;
+    });
+    if (looks.length) throw new Error(`a day in the strip and in the calendar differ: ${looks.join('; ')}`);
   });
   await step('62i-planner-moved', async () => {
     await pickInCalendar(today1);

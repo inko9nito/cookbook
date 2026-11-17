@@ -323,22 +323,26 @@ html.ios .navbar.ck-hero-bar.ck-hero-over .right .link:not(.ck-nav-primary) {
 
 /* A cookbook's header (issue #90, from the user's Spotify reference and their mockup): page content, starting at the top
    of the screen under the bar, in the cookbook's colour (--ck-tint, set on the page) fading into the page colour, with
-   its plates big, its name large and its counts, then its search bar. It all scrolls away like the rest of the page.
-   While the header's name is below the bar (.ck-hero-over), the bar has no background and its buttons are dark
-   see-through circles over the colour; then it's the page colour with the usual buttons, still without a title. Once
-   the header's search bar reaches the bar (.ck-hero-docked), it's the bar as everywhere else: the title, the docked
-   search bar exactly where the header's was, and the title row sliding away on scrolling down. Both classes are set by
-   the page's one scroll listener (CookbookPage). */
+   its plates big, its name large and its counts, then its search bar. It scrolls away with the page, and the page's
+   one scroll listener (CookbookPage) sets --ck-hero-p from 0 at the top to 1 once the plates are under the bar: the
+   plates and the colour fade out with it while the bar's background fades in (as Framework7's transparent navbar
+   does), so the bar is the plain page colour by the time the name reaches it. Its classes: .ck-hero-over (dark
+   see-through buttons, the first half of the fade), .ck-hero-titled (the title, once 40% of the name is under the bar:
+   the bar is never empty), .ck-hero-docked (the bar's docked search bar, exactly where the header's was; the header's
+   is hidden, so there's only ever one). */
+.page.ck-book-hero-page { --ck-hero-p: 0; }
 .page.ck-book-hero-page > .page-content { padding-top: 0; }
-html.ios .navbar.ck-hero-bar.ck-hero-over .navbar-bg,
-html.ios .navbar.ck-hero-bar:not(.ck-hero-docked) .title { opacity: 0; }
+html.ios .navbar.ck-hero-bar .navbar-bg { opacity: var(--ck-hero-p); }
+html.ios .navbar.ck-hero-bar:not(.ck-hero-titled) .title { opacity: 0; }
 html.ios .navbar.ck-hero-bar:not(.ck-hero-docked) .subnavbar { visibility: hidden; }
+.ck-hero-search.ck-hero-search-handed-over { visibility: hidden; }
 .ck-book-hero {
-  background-image: linear-gradient(var(--ck-tint) 0%, var(--ck-tint) 62%, var(--ck-bg) 100%);
+  --ck-hero-tint: color-mix(in srgb, var(--ck-bg) calc(var(--ck-hero-p) * 100%), var(--ck-tint));
+  background-image: linear-gradient(var(--ck-hero-tint) 0%, var(--ck-hero-tint) 62%, var(--ck-bg) 100%);
   padding: calc(var(--f7-safe-area-top) + var(--f7-navbar-height) + 8px) 16px 4px;
   overflow: hidden;
 }
-.ck-book-hero .ck-plates { height: 156px; margin: 0 -16px; }
+.ck-book-hero .ck-plates { height: 156px; margin: 0 -16px; opacity: calc(1 - var(--ck-hero-p)); }
 .ck-book-hero .ck-plate { border-width: 4px; }
 .ck-book-hero .ck-plate-middle { width: 150px; height: 150px; }
 .ck-book-hero .ck-plate-left,

@@ -1583,6 +1583,9 @@ async function swipeLeft(ctx, page, locator) {
       barBg: getComputedStyle(bar.querySelector('.navbar-bg')).opacity,
       title: getComputedStyle(bar.querySelector('.title')).opacity,
       docked: getComputedStyle(bar.querySelector('.subnavbar')).visibility === 'visible',
+      heroSearchShown: getComputedStyle(pg.querySelector('.ck-hero-search')).visibility === 'visible',
+      platesOpacity: getComputedStyle(hero.querySelector('.ck-plates')).opacity,
+      nameUnderBar: (() => { const b = bar.querySelector('.navbar-inner').getBoundingClientRect().bottom, n = hero.querySelector('.ck-book-hero-title').getBoundingClientRect(); return Math.max(0, Math.min(1, (b - n.top) / n.height)); })(),
       backBg: getComputedStyle(bar.querySelector('.left .link')).backgroundColor,
       plusBg: getComputedStyle(bar.querySelector('.ck-nav-primary')).backgroundColor,
     };
@@ -1604,14 +1607,29 @@ async function swipeLeft(ctx, page, locator) {
     if (t.backBg !== 'rgba(0, 0, 0, 0.45)') throw new Error(`the back button over the header is ${t.backBg}`);
     if (t.plusBg === 'rgba(0, 0, 0, 0.45)') throw new Error('+ lost its Tomato');
   });
-  // the user's frame 2: the plates have gone, the name is going under a plain bar with its usual buttons and no title yet
+  // the user's mockup, frame 2: scrolling, the plates and the colour fade out from the first pixel while the bar fills
+  // in; with them gone, the bar is plain with its usual buttons, still no title while the name shows under it
   await step('90b-cookbook-header-scrolling', async () => {
-    await scrollBy(220);
+    await scrollBy(60);
+    const early = await heroState();
+    if (!(Number(early.platesOpacity) < 1 && Number(early.platesOpacity) > 0)) throw new Error(`60px down, the plates' opacity is ${early.platesOpacity}`);
+    if (!(Number(early.barBg) > 0 && Number(early.barBg) < 1)) throw new Error(`60px down, the bar's background is ${early.barBg}, not filling in`);
+    await scrollBy(120);
     const t = await heroState();
     if (t.hidden) throw new Error('the bar’s buttons hid while the header was still on screen');
-    if (t.barBg !== '1' || t.title !== '0' || t.docked) throw new Error(`mid-header, the bar is ${JSON.stringify({ bg: t.barBg, title: t.title, docked: t.docked })}`);
+    if (t.platesOpacity !== '0' || t.barBg !== '1') throw new Error(`with the plates gone, plates ${t.platesOpacity}, bar ${t.barBg}`);
+    if (t.title !== '0' || t.docked || !t.heroSearchShown) throw new Error(`with the name still showing, the bar is ${JSON.stringify({ title: t.title, docked: t.docked })}`);
     if (t.backBg === 'rgba(0, 0, 0, 0.45)') throw new Error('the buttons are still the dark ones over a plain bar');
-    await scrollBy(-220);
+  });
+  // the bar is never empty: the title pops in once 40% of the name is under the bar
+  await step('90c-cookbook-header-title', async () => {
+    for (let i = 0; i < 6; i++) {
+      await scrollBy(10);
+      const t = await heroState();
+      if (t.nameUnderBar >= 0.45 && t.title !== '1') throw new Error(`${Math.round(t.nameUnderBar * 100)}% of the name is under the bar and the bar has no title`);
+      if (t.nameUnderBar < 0.35 && t.title !== '0') throw new Error(`the title is in the bar with only ${Math.round(t.nameUnderBar * 100)}% of the name under it`);
+    }
+    await scrollBy(-240);
   });
   // Uncategorized's See all opens its own page, like a section's (no Rename or Delete)
   await step('26b2-uncategorized-page', async () => {
@@ -1733,6 +1751,8 @@ async function swipeLeft(ctx, page, locator) {
     const bar = await heroState();
     if (after < 0 || after > 60) throw new Error(`scrolled, the search bar is at ${after}px, not at the top`);
     if (!bar.docked || bar.barBg !== '1' || !bar.hidden) throw new Error(`scrolled, the bar isn't today's (search docked, title row hidden): ${JSON.stringify(bar)}`);
+    // only ever one search bar: the header's is hidden once the bar's has taken over (it showed under it on the phone)
+    if (bar.heroSearchShown) throw new Error('two search bars: the header’s still shows under the docked one');
     // scrolling back up a little brings the title row back with the title
     await scrollBy(-60);
     const up = await heroState();

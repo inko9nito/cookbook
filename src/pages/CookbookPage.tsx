@@ -46,6 +46,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   // buttons are over the header's colour (dark see-through buttons)
   const [docked, setDocked] = useState(false);
   const [overHeader, setOverHeader] = useState(true);
+  const [titled, setTitled] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const headerSearchRef = useRef<HTMLDivElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -67,28 +68,39 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const byId = new Map(recipes.map((r) => [r.id, r]));
   const hasHeader = !!book && !sectionId;
 
-  // issue #90: the header and its search bar scroll with the page like the rest of it (no animation of our own). This
-  // listener only notices where they are: once the header's name has gone under the bar, the bar gets its background
-  // (`overHeader` off); once the header's search bar reaches the bar, it swaps for the bar's docked one, which sits
-  // exactly there (`docked`). From then on the title row hides on scrolling down and comes back on scrolling up, as
-  // Framework7's hideNavbarOnScroll does elsewhere, by calling Framework7's own navbar.hide()/show(): that option starts
-  // hiding after 44px, which would take the buttons away while the header is still on screen. The user approved this
-  // one listener (Nov 2026) because Framework7 has no header that scrolls away like this.
+  // issue #90 (the user's mockup): the header scrolls with the page, and as it does
+  // - its plates and colour fade out from the first pixel while the bar fills in (`--ck-hero-p`, 0 at the top to 1 once
+  //   the plates have gone under the bar, the way Framework7's transparent navbar fades in), its buttons turning from
+  //   dark see-through to the usual grey half way (`overHeader`);
+  // - the title pops into the bar once 40% of the header's name is under it (`titled`), so the bar is never empty;
+  // - once the header's search bar reaches the bar, the bar's docked one takes over exactly there and the header's is
+  //   hidden (`docked`), so there's only ever one; from then on the title row hides on scrolling down and comes back on
+  //   scrolling up with Framework7's own navbar.hide()/show() (its hideNavbarOnScroll would start after 44px, taking the
+  //   buttons away with the header still on screen).
+  // The user approved this one listener (Nov 2026) because Framework7 has no header that scrolls away like this.
   useEffect(() => {
     const header = headerRef.current;
     const search = headerSearchRef.current;
     const content = header?.closest<HTMLElement>('.page-content');
     const pageEl = header?.closest<HTMLElement>('.page');
     const navbar = pageEl?.querySelector<HTMLElement>(':scope > .navbar');
-    if (!header || !search || !content || !pageEl || !navbar) return;
+    const plates = header?.querySelector<HTMLElement>('.ck-plates');
+    const name = header?.querySelector<HTMLElement>('.ck-book-hero-title');
+    if (!header || !search || !content || !pageEl || !navbar || !plates || !name) return;
     let previous = content.scrollTop;
     const check = () => {
+      const now = content.scrollTop;
       // where the bar ends when it's showing (its height ignores the slide when Framework7 hides it)
       const barBottom = pageEl.getBoundingClientRect().top + navbar.offsetHeight;
+      // how far the page scrolls before the plates are under the bar
+      const fade = Math.max(1, plates.getBoundingClientRect().bottom + now - barBottom);
+      const progress = Math.min(1, Math.max(0, now / fade));
+      pageEl.style.setProperty('--ck-hero-p', String(progress));
+      setOverHeader(progress < 0.5);
+      const nameBox = name.getBoundingClientRect();
+      setTitled(barBottom - nameBox.top >= 0.4 * nameBox.height);
       const isDocked = search.getBoundingClientRect().top <= barBottom;
       setDocked(isDocked);
-      setOverHeader(header.querySelector('.ck-book-hero-title')!.getBoundingClientRect().top > barBottom);
-      const now = content.scrollTop;
       if (isDocked && now > previous) f7.navbar.hide(navbar, true);
       else if (now < previous || !isDocked) f7.navbar.show(navbar, true);
       previous = now;
@@ -218,7 +230,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         backLink
         title={name}
         subtitle={section ? book.name : undefined}
-        className={hero ? `ck-hero-bar${docked ? ' ck-hero-docked' : ''}${overHeader ? ' ck-hero-over' : ''}` : undefined}
+        className={hero ? `ck-hero-bar${docked ? ' ck-hero-docked' : ''}${titled ? ' ck-hero-titled' : ''}${overHeader ? ' ck-hero-over' : ''}` : undefined}
       >
         <NavRight>
           <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes" className="ck-nav-primary">
@@ -247,7 +259,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         </div>
       )}
       {hero && (
-        <div key="header-search" className="ck-hero-search" ref={headerSearchRef} aria-hidden={docked || undefined}>
+        <div key="header-search" className={`ck-hero-search${docked ? ' ck-hero-search-handed-over' : ''}`} ref={headerSearchRef} aria-hidden={docked || undefined}>
           {searchbar}
         </div>
       )}

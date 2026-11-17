@@ -67,20 +67,23 @@ export async function saveCookbook(db: Db, input: Cookbook): Promise<Cookbook> {
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
-    // the collage's cover recipes, in order, leaving out any that no longer exist; the first is also the single cover
-    const covers = c.coverRecipeIds?.length ? c.coverRecipeIds : c.coverRecipeId ? [c.coverRecipeId] : [];
+    // the collage's plates, middle first: a recipe, or '' for a plate filled in automatically (issue #80). A recipe that
+    // no longer exists (or is named twice) leaves its plate automatic; trailing automatic plates aren't kept. The middle
+    // plate's recipe is also the single cover, for older copies of the app.
+    const wanted = (c.coverRecipeIds?.length ? c.coverRecipeIds : c.coverRecipeId ? [c.coverRecipeId] : []).slice(0, 3);
+    const found = new Set(
+      ((await client.query('SELECT id FROM recipes WHERE id = ANY($1::text[])', [wanted.filter(Boolean)])) as { rows: { id: string }[] }).rows.map((r) => r.id),
+    );
+    const covers = wanted.map((id, i) => (found.has(id) && wanted.indexOf(id) === i ? id : ''));
+    while (covers.length && !covers[covers.length - 1]) covers.pop();
     await client.query(
-      `WITH covers AS (
-         SELECT coalesce(array_agg(t.id ORDER BY t.n), '{}') AS ids
-         FROM unnest($3::text[]) WITH ORDINALITY AS t(id, n) JOIN recipes r ON r.id = t.id
-       )
-       INSERT INTO cookbooks (id, name, cover_recipe_id, cover_recipe_ids, color, prepear_id, created_at, updated_at)
-       SELECT $1, $2, covers.ids[1], covers.ids, $6, $4, $5, now() FROM covers
+      `INSERT INTO cookbooks (id, name, cover_recipe_id, cover_recipe_ids, color, prepear_id, created_at, updated_at)
+       VALUES ($1, $2, $7, $3::text[], $6, $4, $5, now())
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name, cover_recipe_id = EXCLUDED.cover_recipe_id, cover_recipe_ids = EXCLUDED.cover_recipe_ids,
          color = EXCLUDED.color,
          prepear_id = COALESCE(EXCLUDED.prepear_id, cookbooks.prepear_id), updated_at = now()`,
-      [c.id, c.name, [...new Set(covers)].slice(0, 3), c.prepearId ?? null, c.createdAt, c.color ?? null],
+      [c.id, c.name, covers, c.prepearId ?? null, c.createdAt, c.color ?? null, covers[0] || null],
     );
     await client.query('DELETE FROM cookbook_recipes WHERE cookbook_id = $1', [c.id]);
     await client.query('DELETE FROM cookbook_sections WHERE cookbook_id = $1', [c.id]);

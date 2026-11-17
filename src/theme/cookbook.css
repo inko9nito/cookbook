@@ -1159,8 +1159,9 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-plates .ck-plate-left { order: 1; width: 66px; height: 66px; margin-right: -22px; }
 .ck-plates .ck-plate-middle { order: 2; width: 92px; height: 92px; }
 .ck-plates .ck-plate-right { order: 3; width: 66px; height: 66px; margin-left: -22px; }
-/* Cover Photos (issue #80): the cover as it will look, then the cookbook's photos as a grid of thumbnails. A photo on
-   the cover has a Tomato ring (like the editor's picked photo) and its plate's number, 1 left, 2 middle, 3 right. */
+/* Edit Cover (issue #80): the card as it will look, its colours, then the cookbook's photos as a grid of thumbnails. A
+   photo chosen for a plate has a Tomato ring (like the editor's picked photo) and its plate's number, 1 left, 2 middle,
+   3 right; one filled in automatically has a faint number and no ring. */
 .block.ck-cover-preview-block { margin: 16px 0 0; }
 .ck-cover-preview { border-radius: 20px; padding: 16px 12px; overflow: hidden; }
 .ck-cover-preview .ck-plates { margin: 0 -12px; }
@@ -1171,6 +1172,11 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
   position: absolute; min-width: 24px; box-sizing: border-box; border: 2px solid var(--ck-surface); font-variant-numeric: tabular-nums;
 }
 .ck-plates-numbered .badge.ck-cover-no { bottom: -6px; left: calc(50% - 12px); }
+/* a plate filled in automatically: a faint number (white, muted, a grey rim), so it reads as not picked */
+.badge.ck-cover-no.ck-cover-no-auto {
+  --f7-badge-bg-color: var(--ck-surface); --f7-badge-text-color: var(--ck-muted); --f7-badge-font-weight: 600;
+  border: 1.5px solid var(--ck-strong);
+}
 .ck-cover-hint { margin: 12px 0 0; }
 .block.ck-cover-grid { margin: 16px 0 24px; }
 .block.ck-cover-none { margin: 24px 0; text-align: center; }
@@ -1195,13 +1201,13 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 /* the list's thumbnail: a rounded square in the cookbook's colour with its first plate */
 .ck-book-thumb { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 16px; flex: none; }
 .ck-book-thumb .ck-plate { width: 46px; height: 46px; border-width: 2.5px; }
-/* Change Colour: six round swatches in a row, the chosen one ringed in Tomato with a check */
-.ck-swatches { display: flex; justify-content: space-between; gap: 8px; padding: 16px var(--ck-sheet-inset) calc(var(--ck-sheet-inset) + var(--f7-safe-area-bottom)); }
-.ck-swatch {
-  width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--ck-line); padding: 0; margin: 0;
+/* Edit Cover's colours (issue #80): six round swatches in a row under the card, the chosen one ringed in Tomato with a check */
+.ck-cover-colors { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; }
+.ck-cover-colors .ck-swatch {
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--ck-line); padding: 0; margin: 0;
   display: grid; place-items: center; color: var(--ck-accent-ink); cursor: pointer; appearance: none;
 }
-.ck-swatch.ck-swatch-on { box-shadow: 0 0 0 2px var(--ck-surface), 0 0 0 4px var(--ck-accent); }
+.ck-cover-colors .ck-swatch.ck-swatch-on { box-shadow: 0 0 0 2px var(--ck-bg), 0 0 0 4px var(--ck-accent); }
 /* the list view: white inset card, the collage, the name in the title font, the counts muted */
 .list.ck-book-list {
   --f7-list-item-media-margin: 14px;

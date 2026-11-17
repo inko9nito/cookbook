@@ -1569,62 +1569,69 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(600);
     await page.locator(`${CUR} > .navbar .link.back`).tap(); await page.waitForTimeout(900);
   });
-  // Change Cover (issue #80): the cover as it will look, then the photos as a grid. It opens with the three plates shown
-  // now numbered left to right (1 left, 2 the big middle one, 3 right), even those never chosen; tapping a numbered
-  // photo frees its plate, the next tap fills it
+  // Edit Cover (issue #80): the card as it will look, its six colours, then the photos as a grid. Plates are numbered
+  // left to right (1 left, 2 the big middle one, 3 right): a chosen plate's number is solid Tomato (and its photo ringed
+  // and numbered in the grid), a plate filled in automatically has a faint number on the preview only
   const coverNumbers = () => page.evaluate(() =>
-    [...document.querySelectorAll('.popup.modal-in .ck-cover-cell')].map((c) => `${c.getAttribute('aria-label').split(',')[0]}${c.querySelector('.ck-cover-no') ? `=${c.querySelector('.ck-cover-no').textContent}` : ''}`));
-  await step('26b3-cover-photos', async () => {
+    [...document.querySelectorAll('.popup.modal-in .ck-cover-cell')].filter((c) => c.querySelector('.ck-cover-no')).map((c) => `${c.getAttribute('aria-label').split(',')[0]}=${c.querySelector('.ck-cover-no').textContent}`));
+  const previewNumbers = () => page.evaluate(() =>
+    [...document.querySelectorAll('.popup.modal-in .ck-cover-preview .ck-plate')].sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)
+      .map((p) => { const n = p.querySelector('.ck-cover-no'); return n ? `${n.textContent}${n.classList.contains('ck-cover-no-auto') ? 'auto' : ''}` : '-'; }).join(' '));
+  await step('26b3-edit-cover', async () => {
     await page.locator(`${CUR} > .navbar a[aria-label="More actions"]`).tap(); await page.waitForTimeout(700);
-    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Change Cover' }).tap(); await page.waitForTimeout(1000);
-    // Pulled Beef is the chosen cover (the middle plate); the corn and the kebabs fill the sides
-    const cells = await coverNumbers();
-    if (cells.join('|') !== 'Corn pudding=1|Pulled Beef with Parsnip Purée=2|Middle Eastern Chicken Kebabs=3|Italian Turkey Zucchini Meatballs|Mustard Dill Chicken Thighs')
-      throw new Error(`the cover photos open as ${JSON.stringify(cells)}`);
-    // photos only, no names; the preview's plates are numbered left to right
-    if ((await page.locator('.popup.modal-in .ck-cover-cell').first().innerText()).trim() !== '1') throw new Error('a photo shows more than its number');
-    const plates = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-cover-preview .ck-plate')].sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map((p) => p.textContent).join(''));
-    if (plates !== '123') throw new Error(`the preview's plates read ${plates} from left to right`);
+    const items = await page.locator('.actions-modal.modal-in .actions-button').allTextContents();
+    if (items.some((t) => /Change (Cover|Colour)/.test(t)) || !items.includes('Edit Cover')) throw new Error(`the menu is ${JSON.stringify(items)}`);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Cover' }).tap(); await page.waitForTimeout(1000);
+    // Pulled Beef is the chosen cover (the middle plate); the corn and the kebabs are filled in either side
+    const order = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-cover-cell')].map((c) => c.getAttribute('aria-label').split(',')[0]));
+    if (order.slice(0, 3).join('|') !== 'Corn pudding|Pulled Beef with Parsnip Purée|Middle Eastern Chicken Kebabs') throw new Error(`the grid starts ${JSON.stringify(order)}`);
+    if ((await coverNumbers()).join('|') !== 'Pulled Beef with Parsnip Purée=2') throw new Error(`numbered in the grid: ${JSON.stringify(await coverNumbers())}`);
+    if ((await previewNumbers()) !== '1auto 2 3auto') throw new Error(`the preview's plates read ${await previewNumbers()}`);
+    // photos only, no names, square
+    if ((await page.locator('.popup.modal-in .ck-cover-cell').first().innerText()).trim()) throw new Error('an unpicked photo shows text');
     const cell = await page.locator('.popup.modal-in .ck-cover-cell').first().boundingBox();
     if (Math.abs(cell.width - cell.height) > 1 || cell.width < 90) throw new Error(`a photo is ${Math.round(cell.width)}×${Math.round(cell.height)}`);
+    // the six colours, the cookbook's own marked
+    if ((await page.locator('.popup.modal-in .ck-cover-colors .ck-swatch').count()) !== 6) throw new Error('the colours are missing');
+    if ((await page.locator('.popup.modal-in .ck-swatch-on').count()) !== 1) throw new Error('the cookbook’s colour isn’t marked');
   });
-  await step('26b3b-cover-photo-swapped', async () => {
-    // freeing the left plate and tapping the mustard chicken puts it there; the other two stay put
+  await step('26b3b-cover-nothing-chosen', async () => {
+    // tapping the chosen photo makes its plate automatic: no numbers in the grid, every plate's number faint
+    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Pulled Beef"]').tap(); await page.waitForTimeout(400);
+    if ((await coverNumbers()).length) throw new Error(`still numbered in the grid: ${JSON.stringify(await coverNumbers())}`);
+    if ((await previewNumbers()) !== '1auto 2auto 3auto') throw new Error(`the preview's plates read ${await previewNumbers()}`);
+  });
+  await step('26b3c-cover-picked-and-coloured', async () => {
+    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Mustard Dill"]').tap(); await page.waitForTimeout(250);
     await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Corn pudding"]').tap(); await page.waitForTimeout(250);
-    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Mustard Dill"]').tap(); await page.waitForTimeout(400);
-    const cells = (await coverNumbers()).filter((c) => c.includes('='));
-    if (cells.join('|') !== 'Pulled Beef with Parsnip Purée=2|Middle Eastern Chicken Kebabs=3|Mustard Dill Chicken Thighs=1') throw new Error(`after swapping: ${JSON.stringify(cells)}`);
+    await page.locator('.popup.modal-in .ck-swatch[aria-label="Lilac"]').tap(); await page.waitForTimeout(400);
+    if ((await coverNumbers()).join('|') !== 'Corn pudding=2|Mustard Dill Chicken Thighs=1') throw new Error(`numbered: ${JSON.stringify(await coverNumbers())}`);
+    if ((await previewNumbers()) !== '1 2 3auto') throw new Error(`the preview's plates read ${await previewNumbers()}`);
     const left = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-cover-preview .ck-plate')].sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)[0].style.backgroundImage);
     if (!left.includes('mustard')) throw new Error(`the preview's left plate is ${left}`);
+    if (!(await page.locator('.popup.modal-in .ck-cover-preview').getAttribute('class')).includes('ck-tint-lilac')) throw new Error('the preview didn’t turn lilac');
   });
-  await step('26b4-cover-photos-full', async () => {
-    // a fourth is refused while three plates are taken
+  await step('26b4-cover-full', async () => {
+    // a fourth is refused while three plates are chosen
+    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Middle Eastern"]').tap(); await page.waitForTimeout(250);
     await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Italian Turkey"]').tap(); await page.waitForTimeout(400);
-    if ((await page.locator('.popup.modal-in .ck-cover-cell .ck-cover-no').count()) !== 3) throw new Error('a fourth photo was numbered');
+    if ((await coverNumbers()).length !== 3) throw new Error(`numbered: ${JSON.stringify(await coverNumbers())}`);
     await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
+    // the right plate goes back to automatic, and stays so once saved
+    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Middle Eastern"]').tap(); await page.waitForTimeout(250);
     await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
-    // opened again, it shows the plates as saved
     await page.locator(`${CUR} > .navbar a[aria-label="More actions"]`).tap(); await page.waitForTimeout(700);
-    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Change Cover' }).tap(); await page.waitForTimeout(1000);
-    const cells = (await coverNumbers()).filter((c) => c.includes('='));
-    if (cells.join('|') !== 'Mustard Dill Chicken Thighs=1|Pulled Beef with Parsnip Purée=2|Middle Eastern Chicken Kebabs=3') throw new Error(`saved as ${JSON.stringify(cells)}`);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Cover' }).tap(); await page.waitForTimeout(1000);
+    if ((await coverNumbers()).join('|') !== 'Mustard Dill Chicken Thighs=1|Corn pudding=2') throw new Error(`saved as ${JSON.stringify(await coverNumbers())}`);
+    if ((await previewNumbers()) !== '1 2 3auto') throw new Error(`saved plates read ${await previewNumbers()}`);
     await page.locator('.popup.modal-in a', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(900);
   });
-  // Change Colour: six swatches; picking one recolours the card at once
-  await step('26b5-change-colour', async () => {
-    await page.locator(`${CUR} > .navbar a[aria-label="More actions"]`).tap(); await page.waitForTimeout(700);
-    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Change Colour' }).tap(); await page.waitForTimeout(900);
-    const swatches = await page.locator('.sheet-modal.modal-in .ck-swatch').count();
-    if (swatches !== 6) throw new Error(`the colour sheet has ${swatches} swatches`);
-    await page.locator('.sheet-modal.modal-in .ck-swatch[aria-label="Lilac"]').tap(); await page.waitForTimeout(400);
-    if ((await page.locator('.sheet-modal.modal-in .ck-swatch-on').getAttribute('aria-label')) !== 'Lilac') throw new Error('the picked colour isn’t marked');
-  });
   await step('26b6-colour-changed', async () => {
-    await page.locator('.sheet-modal.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(700);
     await page.locator(`${CUR} > .navbar .link.back`).tap(); await page.waitForTimeout(900);
-    const cls = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).getAttribute('class');
-    if (!cls.includes('ck-tint-lilac')) throw new Error(`the card isn't lilac: ${cls}`);
-    await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).tap(); await page.waitForTimeout(1000);
+    const tile = page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' });
+    if (!(await tile.getAttribute('class')).includes('ck-tint-lilac')) throw new Error(`the card isn't lilac: ${await tile.getAttribute('class')}`);
+    if ((await tile.locator('.ck-plate.ck-photo').count()) !== 3) throw new Error('the card doesn’t show three plates');
+    await tile.tap(); await page.waitForTimeout(1000);
   });
   // issue #63: a cookbook's search bar stays under its title too
   await step('26c0-cookbook-search-sticky', async () => {

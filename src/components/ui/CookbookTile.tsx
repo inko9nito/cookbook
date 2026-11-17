@@ -9,19 +9,22 @@ import { photoStyle } from './photo';
  * card's edges. Missing photos are empty grey plates; a cookbook with none shows a muted book on the middle one.
  * The middle plate comes last in the markup so it paints in front; `order` puts it in the middle.
  */
-export function CookbookPlates({ photos, numbered }: { photos: string[]; numbered?: boolean }) {
-  // `numbered` (the cover picker, issue #80): each plate shows its number, left to right
-  const plate = (cls: string, no: number, src?: string, icon?: boolean) => (
+/** A plate's number in the cover editor (issue #80): chosen (strong), filled in automatically (faint), or none. */
+export type PlateNumber = 'chosen' | 'auto' | 'none';
+
+export function CookbookPlates({ photos, numbers }: { photos: string[]; numbers?: PlateNumber[] }) {
+  // `numbers` (the cover editor, issue #80), left to right: each plate shows its number, faint when filled in for you
+  const plate = (cls: string, at: number, src?: string, icon?: boolean) => (
     <span className={`ck-plate ${cls}${src ? ' ck-photo' : ' ck-plate-empty'}`} style={photoStyle(src)}>
       {icon && <BookOpen size={24} strokeWidth={1.5} />}
-      {numbered && <Badge className="ck-cover-no">{no}</Badge>}
+      {numbers && numbers[at] !== 'none' && <Badge className={`ck-cover-no${numbers[at] === 'auto' ? ' ck-cover-no-auto' : ''}`}>{at + 1}</Badge>}
     </span>
   );
   return (
-    <span className={`ck-plates${numbered ? ' ck-plates-numbered' : ''}`} aria-hidden="true">
-      {plate('ck-plate-left', 1, photos[1])}
-      {plate('ck-plate-right', 3, photos[2])}
-      {plate('ck-plate-middle', 2, photos[0], !photos.length && !numbered)}
+    <span className={`ck-plates${numbers ? ' ck-plates-numbered' : ''}`} aria-hidden="true">
+      {plate('ck-plate-left', 0, photos[1])}
+      {plate('ck-plate-right', 2, photos[2])}
+      {plate('ck-plate-middle', 1, photos[0], !photos.some(Boolean))}
     </span>
   );
 }

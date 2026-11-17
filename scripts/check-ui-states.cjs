@@ -1837,14 +1837,16 @@ async function swipeLeft(ctx, page, locator) {
     // #83: a cookbook with sections is a closed accordion row; closed, it says where the recipe is
     const book = page.locator('.popup.modal-in .ck-addto-list li.ck-addto-book', { hasText: 'Everything else' });
     if (!(await book.evaluate((li) => li.classList.contains('accordion-item') && !li.classList.contains('accordion-item-opened')))) throw new Error('Everything else doesn’t start as a closed accordion row');
-    if (await page.locator('.popup.modal-in .ck-addto-list li.ck-addto-section:visible').count()) throw new Error('sections show before their cookbook is opened');
+    const folded = await page.locator('.popup.modal-in .ck-addto-list .accordion-item-content').evaluateAll((cs) => cs.every((c) => c.getBoundingClientRect().height === 0));
+    if (!folded) throw new Error('sections show before their cookbook is opened');
     const where = (await book.locator('.item-footer').first().textContent()).trim();
     if (where !== 'In Uncategorized, Meat') throw new Error(`the closed cookbook reads "${where}"`);
   });
   await step('26i0-add-to-cookbook-opened', async () => {
     const book = page.locator('.popup.modal-in .ck-addto-list li.ck-addto-book', { hasText: 'Everything else' });
     await book.locator('.item-link').first().tap(); await page.waitForTimeout(700);
-    const shown = await page.locator('.popup.modal-in .ck-addto-list li.ck-addto-section:visible .item-title').allTextContents();
+    if (!(await book.locator('.accordion-item-content').evaluate((c) => c.getBoundingClientRect().height > 100))) throw new Error('tapping Everything else didn’t open its sections');
+    const shown = await book.locator('li.ck-addto-section .item-title').allTextContents();
     if (shown.join(',') !== 'Uncategorized,Meat,Other,Fish') throw new Error(`opening Everything else shows ${JSON.stringify(shown)}`);
     // its last section keeps the hairline before the next cookbook
     const line = await book.locator('li.ck-addto-section').last().evaluate((li) => getComputedStyle(li.querySelector('.item-inner'), '::after').display);

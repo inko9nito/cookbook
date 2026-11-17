@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { ReadRecipe, dishCrop, readToRecipe, withReading } from './read-recipe';
+import { ReadRecipe, dishCrop, linkIn, readToRecipe, sameLink, withReading } from './read-recipe';
 import { emptyRecipe } from './recipe';
 
 // A made-up reading, in the shape the server returns.
@@ -104,5 +104,23 @@ describe('dishCrop', () => {
 
   test('a tiny box is no photo', () => {
     expect(dishCrop({ image: 0, left: 10, top: 10, width: 20, height: 20 }, 1000, 1000, 1000)).toBeNull();
+  });
+});
+
+describe('links (issue #15)', () => {
+  test('the link in what was pasted', () => {
+    expect(linkIn('https://example.com/pie/')).toBe('https://example.com/pie/');
+    expect(linkIn('  Look at this! https://www.example.com/pie?x=1. So good')).toBe('https://www.example.com/pie?x=1');
+    expect(linkIn('(https://example.com/a)')).toBe('https://example.com/a');
+    expect(linkIn('example.com/pie')).toBe('https://example.com/pie');
+    expect(linkIn('www.example.co.uk')).toBe('https://www.example.co.uk');
+    expect(linkIn('chicken pie')).toBeNull();
+    expect(linkIn('')).toBeNull();
+  });
+
+  test('the same page, whatever the scheme, www, tracking bits or trailing slash', () => {
+    expect(sameLink('https://www.example.com/pie/', 'http://example.com/pie?utm_source=ig#top')).toBe(true);
+    expect(sameLink('https://example.com/pie?id=2', 'https://example.com/pie?id=3')).toBe(false);
+    expect(sameLink('https://example.com/pie', 'https://example.com/tart')).toBe(false);
   });
 });

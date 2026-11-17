@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { BOOK_COLORS, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, placesOfRecipe, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
+import { BOOK_COLORS, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversFromSpots, coversOf, fromOrganizeRows, platePhotos, platesOf, spotsOf, organizeRows, placesOfRecipe, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
 import { emptyRecipe, type Recipe } from './recipe';
 
 const book: Cookbook = {
@@ -35,6 +35,48 @@ describe('cookbooks', () => {
     expect(coverPhotos(['f', 'c', 'e'], ['a', 'b', 'c', 'd', 'e', 'f'], byId)).toEqual(['/f.jpg', '/c.jpg', '/e.jpg']);
     expect(coverPhotos([], ['a', 'b', 'd'], byId)).toEqual(['/b.jpg']);
     expect(coverPhotos([], [], byId)).toEqual([]);
+  });
+
+  // issue #80: the cover editor numbers the plates left to right (1 left, 2 the big middle one, 3 right); covers are kept
+  // middle first, '' for a plate filled in automatically
+  describe('cover plates', () => {
+    const photos = new Map([recipe('a', '/a.jpg'), recipe('b', '/b.jpg'), recipe('c', '/c.jpg'), recipe('d', '/d.jpg'), recipe('n')].map((r) => [r.id, r]));
+    const four: Cookbook = { ...book, recipeIds: ['a', 'b', 'n'], sections: [{ id: 'm', name: 'Meat', recipeIds: ['c', 'd'] }] };
+    const ids = (plates: { id: string | null; chosen: boolean }[]) => plates.map((p) => `${p.id ?? '-'}${p.chosen ? '!' : ''}`).join(' ');
+
+    test('the chosen plates, left to right', () => {
+      expect(spotsOf(four, photos)).toEqual([null, null, null]);
+      // an older copy's single cover is the middle plate
+      expect(spotsOf({ ...four, coverRecipeId: 'd' }, photos)).toEqual([null, 'd', null]);
+      expect(spotsOf({ ...four, coverRecipeIds: ['c', 'd', 'a'] }, photos)).toEqual(['d', 'c', 'a']);
+      expect(spotsOf({ ...four, coverRecipeIds: ['', 'd'] }, photos)).toEqual(['d', null, null]);
+      // a recipe without a photo, or gone, is no choice
+      expect(spotsOf({ ...four, coverRecipeIds: ['n', 'gone', 'a'] }, photos)).toEqual([null, null, 'a']);
+    });
+
+    test('kept middle first, an automatic plate as an empty entry', () => {
+      expect(coversFromSpots(['d', 'c', 'a'])).toEqual(['c', 'd', 'a']);
+      expect(coversFromSpots(['d', null, null])).toEqual(['', 'd']);
+      expect(coversFromSpots([null, 'c', null])).toEqual(['c']);
+      expect(coversFromSpots([null, null, null])).toEqual([]);
+    });
+
+    test('automatic plates take the next photos not already on the cover', () => {
+      // nothing chosen: the cookbook's first three photos, the first in the middle
+      expect(ids(platesOf([null, null, null], four, photos))).toBe('b a c');
+      expect(ids(platesOf(['d', null, null], four, photos))).toBe('d! a b');
+      expect(ids(platesOf([null, 'c', 'a'], four, photos))).toBe('b c! a!');
+      // too few photos: a plate stays empty, but never the middle one while a side plate has a photo
+      const two: Cookbook = { ...four, recipeIds: ['a', 'b'], sections: [] };
+      expect(ids(platesOf([null, null, 'b'], two, photos))).toBe('- a b!');
+      expect(ids(platesOf(['b', null, null], { ...two, recipeIds: ['b'] }, photos))).toBe('- b! -');
+      expect(ids(platesOf([null, null, null], { ...four, recipeIds: ['n'], sections: [] }, photos))).toBe('- - -');
+    });
+
+    test('the photos for a cookbook’s card, middle first', () => {
+      expect(platePhotos({ ...four, coverRecipeIds: ['', 'd'] }, photos)).toEqual(['/a.jpg', '/d.jpg', '/b.jpg']);
+      expect(platePhotos({ ...four, recipeIds: ['a'], sections: [] }, photos)).toEqual(['/a.jpg', '', '']);
+    });
   });
 
   test('the chosen covers: the list, else the one older copies have', () => {

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Searchbar, List, ListItem, Block, f7 } from 'framework7-react';
+import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Searchbar, List, ListItem, Block } from 'framework7-react';
 import { ChefHat } from 'lucide-react';
 import { coverPhoto, type Recipe } from '../lib/recipe';
 import { searchByTitle, searchWords } from '../lib/search';
@@ -22,10 +22,6 @@ type Props =
       mode: 'several';
       selected: string[];
       onDone: (ids: string[]) => void;
-      /** at most this many (cover photos: 3) */
-      max?: number;
-      /** a label for each ticked row by its place in the order ("Across the top", "Bottom left", …) */
-      spots?: string[];
       /** a muted line above the list */
       hint?: string;
     })
@@ -38,8 +34,8 @@ type Props =
 
 /**
  * Issue #25: a full-screen Framework7 popup that stacks over the page like an iOS card, with a search bar and the
- * recipes as rows with a thumbnail. "several" ticks recipes (Add Recipes; Cover Photos, up to three, each labelled with
- * where it goes on the cover: Cancel, Done); "one" picks one.
+ * recipes as rows with a thumbnail. "several" ticks recipes (Add Recipes, the Planner's Add: Cancel, Done); "one" picks
+ * one. (A cookbook's cover photos have their own picker, CoverPickerPopup.)
  * The search only reports what's typed (customSearch) and the rows are filtered here, like the Recipes screen.
  */
 export default function RecipePickerPopup(props: Props) {
@@ -57,16 +53,7 @@ export default function RecipePickerPopup(props: Props) {
   }, [opened]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const shown = searchByTitle(recipes, searchWords(query));
-  const max = props.mode === 'several' ? props.max : undefined;
-  const toggle = (id: string, on: boolean) => {
-    if (on && max && !ticked.includes(id) && ticked.length >= max) {
-      f7.toast.show({ text: `Up to ${max}: untick one first`, closeTimeout: 1800 });
-      setTicked((t) => [...t]); // the box goes back to unticked
-      return;
-    }
-    setTicked((t) => (on ? [...t.filter((x) => x !== id), id] : t.filter((x) => x !== id)));
-  };
-  const spotOf = (id: string) => (props.mode === 'several' && props.spots && ticked.includes(id) ? props.spots[ticked.indexOf(id)] : undefined);
+  const toggle = (id: string, on: boolean) => setTicked((t) => (on ? [...t.filter((x) => x !== id), id] : t.filter((x) => x !== id)));
 
   return (
     <Popup
@@ -135,7 +122,7 @@ export default function RecipePickerPopup(props: Props) {
                   ? { checkbox: true, checked: ticked.includes(r.id), onChange: (e: { target: { checked: boolean } }) => toggle(r.id, e.target.checked) }
                   : { radio: true, radioIcon: 'start' as const, name: 'ck-pick', checked: props.current === r.id, onChange: () => props.onPick(r.id) })}
                 title={r.title}
-                footer={spotOf(r.id) ?? footer?.(r)}
+                footer={footer?.(r)}
               >
                 <span slot="media" className={`ck-picker-thumb ck-photo${coverPhoto(r) ? '' : ' ck-photo-empty'}`} style={photoStyle(coverPhoto(r))} aria-hidden="true">
                   {!coverPhoto(r) && <ChefHat size={16} strokeWidth={1.5} />}

@@ -1168,8 +1168,8 @@ async function swipeLeft(ctx, page, locator) {
     const title = await page.locator('.view.tab-active .page-current .ck-recipe-title').textContent();
     if (title !== 'Tahini Sauce') throw new Error(`tapping the linked ingredient opened "${title}"`);
   });
-  // the sauce opens in a tab, not a layer: one cook mode, with a tab per recipe along the bottom (issue #65: photo and
-  // name, the shown one in Tomato), the top bar keeping the shown recipe's name; switching tabs keeps each recipe's ticks
+  // the sauce opens in a tab, not a layer: one cook mode, with browser-like tabs along the bottom (issue #65: photo and
+  // name; the shown one runs into the page), the top bar keeping the shown recipe's name; switching keeps each one's ticks
   await step('25c-cook-linked', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
     await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
@@ -1189,6 +1189,9 @@ async function swipeLeft(ctx, page, locator) {
         on: on?.textContent, title: cook.querySelector('.navbar .title')?.textContent,
         tabs: [...(bar?.querySelectorAll('.ck-cook-recipe') ?? [])].map((c) => c.textContent),
         atBottom: !!barBox && Math.abs(barBox.bottom - innerHeight) < 1, clear: !!steps && !!barBox && steps.bottom <= barBox.top + 1,
+        // a browser-like tab: the strip is soft grey, the shown tab is the page colour and starts at the strip's top edge
+        strip: getComputedStyle(bar.querySelector('.toolbar-inner')).backgroundColor,
+        joined: !!on && getComputedStyle(on).backgroundColor === getComputedStyle(cook.querySelector('.page')).backgroundColor && Math.abs(on.getBoundingClientRect().top - barBox.top) < 1,
         ticked: li.querySelector('input').checked,
         thumbs: [...(bar?.querySelectorAll('.ck-cook-recipe') ?? [])].map((c) => { const th = c.querySelector('.ck-tab-thumb'); return !!th && (getComputedStyle(th).backgroundImage !== 'none' || !!th.querySelector('svg')); }),
         fade: getComputedStyle(shown[0].querySelector('.ck-pane-ingredients')).webkitMaskImage || getComputedStyle(shown[0].querySelector('.ck-pane-ingredients')).maskImage,
@@ -1200,6 +1203,8 @@ async function swipeLeft(ctx, page, locator) {
     if (t.tabs.length !== 2 || !t.tabs[0].includes('Kebabs')) throw new Error(`the recipe tabs read ${JSON.stringify(t.tabs)}`);
     if (!t.atBottom) throw new Error('the recipe tabs aren’t along the bottom');
     if (!t.clear) throw new Error('Directions runs under the recipe tabs');
+    if (t.strip !== 'rgb(236, 236, 238)') throw new Error(`the tab strip is ${t.strip}, not soft grey`);
+    if (!t.joined) throw new Error("the shown tab isn't joined to the page in the page colour");
     if (t.thumbs.length !== 2 || !t.thumbs.every(Boolean)) throw new Error('every recipe tab should show its photo (or the chef hat)');
     if (!String(t.fade).includes('gradient')) throw new Error('ingredients scrolling under the top bar do not fade');
     if (t.ticked) throw new Error('tapping the linked name ticked the ingredient');

@@ -1047,26 +1047,35 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
    bar doesn't apply inside it */
 .sheet-modal.ck-edit-sheet { --f7-page-toolbar-bottom-offset: 0px; }
 
-/* Cook mode with several recipes open (issues #11, #65): a tab for each along the bottom, a Framework7 tab bar like the
-   app's (flat white, hairline on top), so the top bar keeps the shown recipe's name, the chevron and X. Each tab is the
-   recipe's photo (28px, 8px corners; the chef hat on soft grey without one) and its name; the shown one is Tomato ink, like
-   the app's tab bar. They share the width (up to 240px each); with more than fit (each keeps at least 112px) the bar scrolls
-   sideways with a swipe, no scrollbar, and long names end in … */
-.popup.ck-cook { --ck-cook-bar: 60px; }
+/* Cook mode with several recipes open (issues #11, #65): browser-like tabs along the bottom, so the top bar keeps the
+   shown recipe's name, the chevron and X. A Framework7 tab bar turned into a soft grey strip; the recipe shown is a tab
+   in the page colour with 14px bottom corners, running up into the page above it with small inward curves where they
+   meet; the others are semibold grey text on the strip. Each tab is the recipe's photo (24px, 7px corners; the chef hat
+   on soft grey without one) and its name. Tabs share the width (up to 240px each, the shown one a bigger share); with
+   more than fit (each keeps at least 112px, the shown one 132px) the strip scrolls sideways with a swipe, no
+   scrollbar, and long names end in … */
+.popup.ck-cook { --ck-cook-bar: 56px; }
 html.ios .toolbar.ck-cook-recipes { --f7-toolbar-height: var(--ck-cook-bar); }
 html.ios .toolbar.ck-cook-recipes .toolbar-inner {
-  justify-content: flex-start; gap: 6px; padding: 0 12px var(--f7-safe-area-bottom);
+  justify-content: flex-start; align-items: flex-start; gap: 2px; padding: 0 14px var(--f7-safe-area-bottom);
+  background-color: var(--ck-soft); border-top: 0;
   overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none;
 }
 html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: none; }
 .ck-cook-recipe {
-  display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 112px; max-width: 240px; height: 44px;
-  margin: 8px 0 0; padding: 0 10px 0 8px; border: 0; border-radius: 12px; background: none; cursor: pointer;
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 8px;
+  flex: 1 1 0; min-width: 112px; max-width: 240px; height: 48px; margin: 0; padding: 0 10px; border: 0;
+  border-radius: 0 0 14px 14px; background: none; cursor: pointer;
   font: inherit; font-size: 14px; font-weight: 600; color: var(--ck-fg2);
 }
 .ck-cook-recipe .ck-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ck-cook-recipe .ck-tab-thumb { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; }
-.ck-cook-recipe.ck-cook-recipe-on { color: var(--ck-accent-ink); } /* like the app's tab bar: Tomato ink, no bubble (ink on pale Tomato was 4.3:1) */
+.ck-cook-recipe .ck-tab-thumb { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; }
+.ck-cook-recipe.ck-cook-recipe-on { flex-grow: 1.6; min-width: 132px; background-color: var(--ck-bg); color: var(--ck-fg); }
+/* the shown tab flares into the page with small inward curves at its top corners, so it reads as one piece with it */
+.ck-cook-recipe.ck-cook-recipe-on::before,
+.ck-cook-recipe.ck-cook-recipe-on::after { content: ''; position: absolute; top: 0; width: 14px; height: 14px; pointer-events: none; }
+.ck-cook-recipe.ck-cook-recipe-on::before { left: -14px; background: radial-gradient(circle at 0 100%, transparent 13.5px, var(--ck-bg) 14px); }
+.ck-cook-recipe.ck-cook-recipe-on::after { right: -14px; background: radial-gradient(circle at 100% 100%, transparent 13.5px, var(--ck-bg) 14px); }
 /* the split screen ends above the bar */
 .tabs.ck-cook-tabs-with-bar > .page-content.ck-split { padding-bottom: calc(var(--ck-cook-bar) + var(--f7-safe-area-bottom)); }
 

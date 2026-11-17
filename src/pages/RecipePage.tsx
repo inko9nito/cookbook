@@ -5,7 +5,6 @@ import {
 } from 'framework7-react';
 import { BookOpen, CalendarDays, Ellipsis, Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
-import CookMode from '../components/CookMode';
 import RecipePhotos from '../components/RecipePhotos';
 import AddToCookbookPopup from '../components/AddToCookbookPopup';
 import { useCookbooks, usePlanner, useStore } from '../data/store';
@@ -21,8 +20,7 @@ import UnitSheet from '../components/UnitSheet';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
-import { takeCookFor } from '../data/cookSession';
-import type { TabId } from '../data/startTab';
+import { useCook } from '../data/cook';
 
 /** Splits the ingredient list at group rows: [{ label, items }]. Rows before the first group get no label. */
 function groupIngredients(list: Ingredient[]) {
@@ -83,24 +81,26 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const { cookbooks } = useCookbooks();
   const { planned, savePlanned } = usePlanner();
   const recipe = recipes.find((r) => r.id === f7route?.params.id);
-  // issue #85: the app reopened in cook mode on this recipe (iOS reloaded it while you were in another app), at the
-  // amounts it was cooking at; given to cook mode once
-  const [resume, setResume] = useState(() => (f7route?.params.id ? takeCookFor(f7route.params.id) : null));
+  const cook = useCook();
   // issue #67: opened from the Planner, it starts at the servings it was planned with (?servings=6)
-  const [factor, setFactor] = useState(() => {
-    if (resume) return resume.factor;
+  const [ownFactor, setOwnFactor] = useState(() => {
     const planned = Number(f7route?.query?.servings);
     return recipe && planned > 0 ? planned / recipe.servings : 1;
   });
   const [scaleOpen, setScaleOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [addingToCookbook, setAddingToCookbook] = useState(false);
-  const [cooking, setCooking] = useState(!!resume);
   // issue #6: the tapped amount (its popover is open), and units picked for some ingredients until the recipe is
   // closed; cook mode shows and changes the same picks
   const [converting, setConverting] = useState<ConvertTarget | null>(null);
-  const [picks, setPicks] = useState<UnitPicks>(() => resume?.picks ?? {});
-  const pickUnit = (id: string, unit: string | null) => setPicks((p) => withPick(p, id, unit));
+  const [ownPicks, setOwnPicks] = useState<UnitPicks>({});
+  // issue #85: while the recipe is open in cook mode (on screen or tucked away), the page shows and changes cook mode's
+  // amounts, so both read the same
+  const cooked = recipe ? cook.amountsOf(recipe.id) : undefined;
+  const factor = cooked?.factor ?? ownFactor;
+  const picks = cooked?.picks ?? ownPicks;
+  const setFactor = (f: number) => (cooked && recipe ? cook.setFactor(recipe.id, f) : setOwnFactor(f));
+  const pickUnit = (id: string, unit: string | null) => (cooked && recipe ? cook.setPick(recipe.id, id, unit) : setOwnPicks((p) => withPick(p, id, unit)));
 
   if (!recipe) {
     return (
@@ -171,8 +171,10 @@ export default function RecipePage({ f7route, f7router }: Props) {
       </Navbar>
 
       <Toolbar bottom className="ck-cta">
-        <Button fill large className="ck-cta-button" onClick={() => setCooking(true)}>
-          Start cooking
+        {/* Start cooking adds the recipe to cook mode (a tab of its own if something else is cooking); once it's there,
+            this brings cook mode back */}
+        <Button fill large className="ck-cta-button" onClick={() => cook.start(recipe.id, { factor, picks })}>
+          {cooked ? 'Resume cooking' : 'Start cooking'}
         </Button>
       </Toolbar>
 
@@ -331,21 +333,6 @@ export default function RecipePage({ f7route, f7router }: Props) {
         )}
       </div>
 
-      {cooking && (
-        <CookMode
-          recipe={recipe}
-          factor={factor}
-          picks={picks}
-          onPick={pickUnit}
-          onFactor={setFactor}
-          tab={(f7router?.view.el.id.replace(/^view-/, '') ?? 'recipes') as TabId}
-          resume={resume}
-          onClose={() => {
-            setResume(null);
-            setCooking(false);
-          }}
-        />
-      )}
 
       <UnitSheet slot="fixed" target={converting} factor={factor} picks={picks} onPick={pickUnit} onClosed={() => setConverting(null)} />
       <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setScaleOpen(false)} />

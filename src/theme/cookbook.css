@@ -686,6 +686,27 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
   height: 36px; padding: 0 12px; gap: 6px; border-radius: 9999px;
   background-color: var(--ck-soft); color: var(--ck-accent-ink); font-weight: 600; font-variant-numeric: tabular-nums;
 }
+/* Cooking button (issue #85): Framework7's extended FAB, a Tomato pill at the bottom centre while cook mode is tucked
+   away (Framework7 places it above the tab bar). Chef hat, "Cooking", how many recipes when more than one, the next timer */
+html.ios .fab.ck-cooking-fab {
+  --f7-fab-bg-color: var(--ck-accent-ink); /* ink, not bright Tomato: white 15px text on it passes AA */
+  --f7-fab-text-color: var(--ck-surface);
+  --f7-fab-extended-size: 48px;
+  --f7-fab-extended-text-font-size: 16px;
+  --f7-fab-extended-text-transform: none;
+  --f7-fab-extended-text-padding: 0 18px 0 8px;
+  --f7-fab-box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+html.ios .fab.ck-cooking-fab > a { padding-left: 16px; font-family: var(--ck-font-display); }
+.ck-cooking-fab-text { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.ck-cooking-fab .badge.ck-cooking-count {
+  --f7-badge-bg-color: var(--ck-surface);
+  --f7-badge-text-color: var(--ck-accent-ink);
+  --f7-badge-size: 22px;
+  --f7-badge-font-size: 13px;
+  --f7-badge-font-weight: 700;
+}
+.ck-cooking-timer { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
 /* Adjust amounts: the result line with a Reset link, under the mode toggle */
 .ck-scale-result { flex-wrap: nowrap; justify-content: space-between; align-items: baseline; gap: 12px; }
 .ck-scale-result .ck-note { flex: 1; min-width: 0; }

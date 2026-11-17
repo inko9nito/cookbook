@@ -17,7 +17,9 @@ export default function CookingFab(_: { slot?: 'fixed' }) {
   const { recipes } = useStore();
   const s = cook.session;
   const count = s ? s.open.filter((id) => recipes.some((r) => r.id === id)).length : 0;
-  if (!s || s.expanded || !count) return null;
+  // there the whole time cook mode is going, open or not: open, cook mode covers it, so tucking cook mode away (the
+  // minimize button, or swiping it down) uncovers it where it already is, instead of it popping up afterwards
+  if (!s || !count) return null;
   return (
     <Fab
       position="center-bottom"

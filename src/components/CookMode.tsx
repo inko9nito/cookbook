@@ -85,6 +85,28 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
   const soonest = [...s.timers].sort((a, b) => a.endsAt - b.endsAt)[0];
   const [split, setSplit] = useState(readSplit);
 
+  // ── iOS's back gesture tucks cook mode away (issue #85) ──
+  // Open cook mode is a step in the browser history of its own: the same state as the page under it, marked. iOS's back
+  // swipe (Safari and the home-screen app both have one) goes back to the unmarked entry, which tucks cook mode away and
+  // shows the page under it; Framework7's router sees the same pages and doesn't move. Without it the swipe did nothing
+  // on a tab's first page, and otherwise took the page under cook mode back while cook mode stayed open. Tucked away by
+  // other means (minimize, swiping the bar down, closing), the step is taken back so no empty one is left behind. Here
+  // rather than in the provider: after a reload into open cook mode, this screen only comes once the recipes are there,
+  // well after Framework7 has set up its views (which rewrites the history entry it starts on).
+  useEffect(() => {
+    if (!s.expanded) return;
+    const marked = () => !!(window.history.state as { ckCook?: boolean } | null)?.ckCook;
+    if (!marked()) window.history.pushState({ ...(window.history.state ?? {}), ckCook: true }, '');
+    const onBack = () => {
+      if (!marked()) cook.minimize();
+    };
+    window.addEventListener('popstate', onBack);
+    return () => {
+      window.removeEventListener('popstate', onBack);
+      if (marked()) window.history.back();
+    };
+  }, [s.expanded]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Done cooking (or closing the last recipe): cook mode slides down first, then it's forgotten
   const ending = useRef(false);
   const endCooking = () => {

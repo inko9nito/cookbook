@@ -1978,6 +1978,13 @@ async function swipeLeft(ctx, page, locator) {
     if (cta.trim() !== 'Resume cooking') throw new Error(`the recipe’s button reads "${cta.trim()}" while it’s cooking`);
     // its own Resume cooking button does it here, so no Cooking bar on top of it
     if (await page.locator(fab).isVisible()) throw new Error('the Cooking bar shows over the recipe that’s cooking');
+    // iOS's back gesture (the browser's back) with cook mode open tucks it away and leaves the recipe page where it is
+    await page.locator('#view-recipes .page-current .ck-cta-button').tap(); await page.waitForTimeout(1000);
+    await page.goBack(); await page.waitForTimeout(1000);
+    if (await cookOpen()) throw new Error('back didn’t tuck cook mode away');
+    if (!page.url().startsWith(BASE)) throw new Error(`back left the app for ${page.url()}`);
+    const still = (await page.locator('#view-recipes .page-current .ck-cta-button').textContent().catch(() => '')).trim();
+    if (still !== 'Resume cooking') throw new Error('back with cook mode open also left the recipe page');
   });
   await step('36b-cook-minimized-list', async () => {
     await page.goBack(); await page.waitForTimeout(1000);
@@ -1999,6 +2006,13 @@ async function swipeLeft(ctx, page, locator) {
     if (f.width > 200 || f.height > 48) throw new Error(`the Cooking pill is ${Math.round(f.width)}×${Math.round(f.height)}px, not small`);
     const look = await page.locator(`${fab} > a`).evaluate((a) => ({ bg: getComputedStyle(a).backgroundColor, shadow: getComputedStyle(a).boxShadow }));
     if (look.bg !== 'rgb(38, 38, 40)' || look.shadow !== 'none') throw new Error(`the Cooking pill is ${look.bg} with shadow ${look.shadow}`);
+  });
+  // the pill isn't in Settings
+  await step('36b2-cook-pill-not-in-settings', async () => {
+    await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(800);
+    if (await page.locator(fab).count()) throw new Error('the Cooking pill shows in Settings');
+    await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
+    if (!(await page.locator(fab).isVisible())) throw new Error('the Cooking pill didn’t come back on Recipes');
   });
   await step('36c-cook-second-recipe', async () => {
     await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Corn' }).tap(); await page.waitForTimeout(900);
@@ -2030,6 +2044,8 @@ async function swipeLeft(ctx, page, locator) {
   await step('36d-cook-resumed', async () => {
     await page.locator(`${fab} > a`).tap(); await page.waitForTimeout(1000);
     if (!(await cookOpen())) throw new Error('the Cooking bar didn’t bring cook mode back');
+    // the pill waits behind open cook mode, so tucking it away uncovers it rather than it popping up afterwards
+    if (!(await page.locator(fab).count())) throw new Error('the Cooking pill isn’t behind open cook mode');
     await page.locator('.ck-cook .ck-cook-recipe', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(500);
     if ((await page.locator('.ck-cook .tab-active .ck-pane-ingredients li.ck-done').count()) !== 1) throw new Error('the kebabs’ tick wasn’t kept');
     if (!(await page.locator('.ck-cook .ck-timer-pill').count())) throw new Error('the timer wasn’t kept');
@@ -2046,6 +2062,16 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator(fab).isVisible())) throw new Error('no Cooking pill after swiping cook mode away');
     await page.locator(`${fab} > a`).tap(); await page.waitForTimeout(1000);
     if (!(await cookOpen())) throw new Error('the Cooking pill didn’t bring cook mode back after the swipe');
+  });
+  // on a tab's first page too, iOS's back gesture (the browser's back) tucks cook mode away, and the list stays put
+  await step('36d3-cook-back-on-list', async () => {
+    await page.goBack(); await page.waitForTimeout(1000);
+    if (await cookOpen()) throw new Error('back on the recipe list didn’t tuck cook mode away');
+    if (!page.url().startsWith(BASE)) throw new Error(`back left the app for ${page.url()}`);
+    if (!(await page.locator('#view-recipes .page-current .ck-card').count())) throw new Error('back moved the page under cook mode');
+    if (!(await page.locator(fab).isVisible())) throw new Error('no Cooking pill after back');
+    await page.locator(`${fab} > a`).tap(); await page.waitForTimeout(1000);
+    if (!(await cookOpen())) throw new Error('the Cooking pill didn’t bring cook mode back after back');
   });
   // iOS often reloads the home-screen app after you've been in another app: cook mode comes back as it was (the same
   // recipes, ticks, a running timer and where Directions was scrolled to)

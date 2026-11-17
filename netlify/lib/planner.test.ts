@@ -48,6 +48,19 @@ describe('the planner in the database', () => {
     await expect(savePlanned(db.sql, { id: 'p9', day: 'tomorrow', recipeId: 'r1', createdAt: '2026-11-17T10:00:00.000Z' })).rejects.toThrow();
   });
 
+  test('a slot, the servings, and a note instead of a recipe (#67)', async () => {
+    const dinner = await savePlanned(db.sql, { id: 'p4', day: '2026-11-19', recipeId: 'r2', meal: 'dinner', servings: 1.5, createdAt: '2026-11-17T12:00:00.000Z' });
+    expect(dinner).toEqual({ id: 'p4', day: '2026-11-19', recipeId: 'r2', meal: 'dinner', servings: 1.5, createdAt: '2026-11-17T12:00:00.000Z' });
+    const note = await savePlanned(db.sql, { id: 'p5', day: '2026-11-19', note: 'Eating out', meal: 'lunch', createdAt: '2026-11-17T12:00:01.000Z' });
+    expect(note).toEqual({ id: 'p5', day: '2026-11-19', note: 'Eating out', meal: 'lunch', createdAt: '2026-11-17T12:00:01.000Z' });
+    // out of its slot again, back to the recipe's own servings
+    const { meal: _m, servings: _s, ...plain } = dinner;
+    expect(await savePlanned(db.sql, plain)).toEqual(plain);
+    await expect(savePlanned(db.sql, { id: 'p6', day: '2026-11-19', createdAt: '2026-11-17T12:00:00.000Z' })).rejects.toThrow();
+    await deletePlanned(db.sql, 'p4');
+    await deletePlanned(db.sql, 'p5');
+  });
+
   test('taking one off its day, and deleting a recipe takes it off every day', async () => {
     expect(await deletePlanned(db.sql, 'p2')).toBe(true);
     expect(await deletePlanned(db.sql, 'p2')).toBe(false);

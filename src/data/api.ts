@@ -4,6 +4,7 @@
 
 import { Settings, type Recipe } from '../lib/recipe';
 import type { Cookbook } from '../lib/cookbook';
+import { ReadRecipe, type ReadRequest } from '../lib/read-recipe';
 import { demoCookbooks as demoCookbooksSeed, demoRecipes as demoRecipesSeed } from '../demo/data';
 import { accessToken, SignedOutError } from './identity';
 
@@ -25,6 +26,8 @@ export type Backend = {
   /** save a whole cookbook (its sections and recipe ids) */
   saveCookbook: (c: Cookbook) => Promise<Cookbook>;
   deleteCookbook: (id: string) => Promise<void>;
+  /** issue #17: read the recipe in photos or screenshots (shrunk on the phone); nothing is stored */
+  readRecipe: (images: ReadRequest['images']) => Promise<ReadRecipe>;
 };
 
 /** A refusal from the API, with its status (401 signed out, 403 not an admin). */
@@ -98,9 +101,55 @@ const http: Backend = {
   listCookbooks: () => call<Cookbook[]>('/api/cookbooks'),
   saveCookbook: (c) => call<Cookbook>(`/api/cookbooks/${encodeURIComponent(c.id)}`, jsonInit('PUT', c)),
   deleteCookbook: (id) => call<void>(`/api/cookbooks/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  // the reading runs in a background function (it can take longer than an ordinary call may); ask for it every 2s
+  readRecipe: async (images) => {
+    const { id } = await call<{ id?: unknown }>('/api/read-recipe', jsonInit('POST', { images }));
+    if (typeof id !== 'string') throw new ApiError(502, 'The app is out of date. Update it in Settings → Version, then try again.');
+    const until = Date.now() + 6 * 60_000;
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 2000));
+      let s: { status: 'reading' } | { status: 'done'; recipe: unknown } | { status: 'failed'; code: number; error: string };
+      try {
+        s = await call(`/api/read-recipe/${encodeURIComponent(id)}`);
+      } catch (e) {
+        // a lost answer on a bad connection: ask again; a refusal or a lost reading ends it
+        if (e instanceof ApiError && [401, 403, 404].includes(e.status)) throw e;
+        if (Date.now() > until) throw e;
+        continue;
+      }
+      if (s.status === 'done') {
+        const read = ReadRecipe.safeParse(s.recipe);
+        if (read.success) return read.data;
+        // the app on the phone and the server don't agree on the answer: one of them is a newer version
+        throw new ApiError(502, 'The app is out of date. Update it in Settings → Version, then try again.');
+      }
+      if (s.status === 'failed') throw new ApiError(s.code, s.error);
+      if (Date.now() > until) throw new ApiError(504, 'Reading the photo took too long. Try again.');
+    }
+  },
 };
 
 // ── the demo backend ──
+
+const demoReading = (first: { width: number; height: number }): ReadRecipe => ({
+  found: true,
+  title: 'Lemon Drizzle Loaf',
+  source: '@sample.kitchen',
+  servings: 8,
+  servingSize: '1 slice',
+  prepMinutes: 15,
+  cookMinutes: 50,
+  ingredients: [
+    { group: '', lines: ['225 g unsalted butter, softened', '225 g caster sugar', '4 eggs', '225 g self-raising flour', 'Zest of 1 lemon'] },
+    { group: 'For the drizzle', lines: ['Juice of 1½ lemons', '85 g caster sugar'] },
+  ],
+  directions: [
+    { group: '', steps: ['Heat the oven to 180C (160C fan) and line a 2 lb loaf tin.', 'Beat the butter and sugar until pale, then beat in the eggs one at a time.', 'Fold in the flour and lemon zest, spoon into the tin and bake for 45–50 minutes.'] },
+    { group: 'Drizzle', steps: ['Mix the lemon juice and sugar, prick the warm cake all over and pour it on.'] },
+  ],
+  notes: 'Keeps for 3 days in a tin.',
+  dishPhoto: { image: 0, left: 0, top: 0, width: first.width, height: Math.round(first.height * 0.45) },
+});
 
 const DEMO_SETTINGS = 'cookbook.demoSettings';
 const readDemoSettings = (): Settings => {
@@ -171,6 +220,13 @@ const demo: Backend = {
   },
   deleteCookbook: async (id) => {
     demoCookbooks = demoCookbooks.filter((x) => x.id !== id);
+  },
+  // no Claude locally: after a moment, the same made-up recipe for any photo, its dish photo the top of the first image.
+  // `?readfail` makes it fail instead, for the UI check.
+  readRecipe: async (images) => {
+    await new Promise((r) => setTimeout(r, 1500));
+    if (new URLSearchParams(location.search).has('readfail')) throw new ApiError(502, 'Claude is busy right now. Try again in a moment.');
+    return demoReading(images[0]);
   },
 };
 

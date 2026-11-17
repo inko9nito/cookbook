@@ -99,3 +99,18 @@ export function CookbookListSkeleton({ count = 5 }: { count?: number }) {
     </List>
   );
 }
+
+/** Issue #17: editor rows still being read from a photo (ingredients or steps), as grey lines in the editor's list. */
+export function EditRowsSkeleton({ rows }: { rows: string[] }) {
+  return (
+    <List className="ck-edit-list" strong inset dividers aria-hidden="true">
+      {rows.map((t, i) => (
+        <ListItem key={i}>
+          <span slot="title">
+            <SkeletonText effect={EFFECT}>{t}</SkeletonText>
+          </span>
+        </ListItem>
+      ))}
+    </List>
+  );
+}

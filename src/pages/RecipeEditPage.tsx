@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListInput, ListItem, BlockTitle, Block, Button, Chip, Stepper,
-  SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton,
+  SwipeoutActions, SwipeoutButton, Actions, ActionsGroup, ActionsButton, PhotoBrowser, Progressbar,
 } from 'framework7-react';
 import { Camera, ImagePlus, Trash2, Plus, ArrowUp, ArrowDown, Crop, Star } from 'lucide-react';
 import { useStore } from '../data/store';
@@ -11,11 +11,22 @@ import IngredientSheet from '../components/IngredientSheet';
 import RecipeLinkPopup from '../components/RecipeLinkPopup';
 import StepSheet from '../components/StepSheet';
 import { inlineIcon } from '../components/ui/icons';
-import { photoStyle, photoFromFile, recrop } from '../components/ui/photo';
+import { photoStyle, photoFromFile, recrop, imageForReading, photoCroppedTo } from '../components/ui/photo';
+import { READ_IMAGE_EDGE, dishCrop, withReading } from '../lib/read-recipe';
+import { ApiError, backend } from '../data/api';
 import PhotoCropper from '../components/PhotoCropper';
+import { EditRowsSkeleton } from '../components/ui/Skeletons';
 import { hideTabbar } from '../components/ui/tabbar';
 
-type Props = { f7route?: { params: Record<string, string> }; f7router?: { back: () => void } };
+type Props = {
+  f7route?: { params: Record<string, string> };
+  f7router?: { back: () => void };
+  /** issue #17: photos or screenshots picked with + → From photos or screenshots, to read the new recipe from */
+  scanFiles?: File[];
+};
+
+/** Reading a new recipe from photos (issue #17): under way, done, nothing found, or failed (with why). */
+type Scan = { status: 'reading' | 'read' | 'empty' } | { status: 'failed'; message: string };
 
 const move = <T,>(list: T[], from: number, to: number) => {
   const copy = [...list];
@@ -59,7 +70,7 @@ function GroupMove({ name, isFirst, isLast, onMove }: { slot: 'after'; name: str
  * photo, name, grouped ingredients and directions with paste boxes, notes, tags (courses included),
  * servings, serving size, prep and cook time, source. Style: Headspace edit screen, compact 14px text.
  */
-export default function RecipeEditPage({ f7route, f7router }: Props) {
+export default function RecipeEditPage({ f7route, f7router, scanFiles }: Props) {
   const { recipes, saveRecipe } = useStore();
   const id = f7route?.params.id;
   const original = useMemo<Recipe>(() => recipes.find((r) => r.id === id) ?? emptyRecipe(), []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -191,6 +202,54 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
     setPhotoIdx(0);
   };
 
+  // ── issue #17: a new recipe read from photos or screenshots. The editor opens at once and fills in when Claude has
+  // read them; the photos stay at the top to check the recipe against (tap one to see it full screen). ──
+  const [scan, setScan] = useState<Scan | null>(scanFiles?.length ? { status: 'reading' } : null);
+  const [sources] = useState(() => (scanFiles ?? []).map((f) => URL.createObjectURL(f)));
+  const several = sources.length > 1;
+  useEffect(() => () => sources.forEach((u) => URL.revokeObjectURL(u)), [sources]);
+  const sourceBrowser = useRef<{ f7PhotoBrowser: () => { open: (index?: number) => void } } | null>(null);
+  const readScan = async () => {
+    const files = scanFiles ?? [];
+    setScan({ status: 'reading' });
+    let images: Awaited<ReturnType<typeof imageForReading>>[];
+    try {
+      images = await Promise.all(files.map((f) => imageForReading(f, READ_IMAGE_EDGE)));
+    } catch {
+      return setScan({ status: 'failed', message: several ? 'One of those photos couldn’t be opened. Try others.' : 'That photo couldn’t be opened. Try another.' });
+    }
+    try {
+      const reading = await backend.readRecipe(images);
+      if (!reading.found) return setScan({ status: 'empty' });
+      // the photo of the dish in a screenshot or on the page, cropped to it, if Claude found one
+      const dish = reading.dishPhoto;
+      const sent = dish ? images[dish.image] : undefined;
+      const photo = dish && sent ? await photoCroppedTo(files[dish.image], newId(), (w, h) => dishCrop(dish, sent.width, w, h)) : null;
+      setDraft((d) => ({ ...withReading(d, reading, others), photos: photo ? [...d.photos, photo] : d.photos }));
+      setScan({ status: 'read' });
+    } catch (e) {
+      // the server's and the app's own messages are written for the person; anything else (a bug) isn't shown raw
+      console.error(e);
+      const message =
+        e instanceof ApiError
+          ? e.message
+          : e instanceof TypeError // fetch couldn't reach the server ("Load failed" on the iPhone)
+            ? 'Couldn’t reach the server. Check the connection and try again.'
+            : 'Something went wrong. Try again, or update the app in Settings → Version.';
+      setScan({ status: 'failed', message });
+    }
+  };
+  useEffect(() => {
+    if (scanFiles?.length) void readScan();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const reading = scan?.status === 'reading';
+  const scanTitle: Record<Scan['status'], string> = {
+    reading: 'Reading the recipe…',
+    read: 'Recipe read',
+    empty: 'No recipe found',
+    failed: 'Couldn’t read the recipe',
+  };
+
   const save = () => {
     saveRecipe({ ...draft, title: draft.title.trim() || 'Untitled recipe', minutes: draft.prepMinutes + draft.cookMinutes });
     f7router?.back();
@@ -214,6 +273,41 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
           </Link>
         </NavRight>
       </Navbar>
+
+      {scan && (
+        <Block strong inset className="ck-scan" aria-live="polite">
+          <div className="ck-scan-row">
+            <div className="ck-scan-sources">
+              {sources.map((u, i) => (
+                <Link
+                  key={u}
+                  noLinkClass
+                  className="ck-scan-source ck-photo"
+                  style={photoStyle(u)}
+                  onClick={() => sourceBrowser.current?.f7PhotoBrowser().open(i)}
+                  aria-label={sources.length > 1 ? `Your photo ${i + 1} of ${sources.length}. Open full screen` : 'Your photo. Open full screen'}
+                />
+              ))}
+            </div>
+            <div className="ck-scan-text">
+              <p className={`ck-scan-title ${scan.status === 'failed' ? 'ck-scan-failed' : ''}`}>{scanTitle[scan.status]}</p>
+              <p className="ck-scan-detail">
+                {scan.status === 'reading' && 'This takes about half a minute. You can type while you wait.'}
+                {scan.status === 'read' && `Check it against your ${several ? 'photos' : 'photo'} before saving.`}
+                {scan.status === 'empty' && `Type it in below, or try ${several ? 'other photos' : 'another photo'}.`}
+                {scan.status === 'failed' && scan.message}
+              </p>
+            </div>
+          </div>
+          {scan.status === 'reading' && <Progressbar infinite />}
+          {scan.status === 'failed' && (
+            <Button large fill round className="ck-main" onClick={() => void readScan()}>
+              Try again
+            </Button>
+          )}
+          <PhotoBrowser ref={sourceBrowser as never} photos={sources} type="popup" theme="dark" toolbar={false} swipeToClose popupCloseLinkText="Close" navbarOfText="of" />
+        </Block>
+      )}
 
       {/* Photos: the selected one large (crop, make cover, remove), then a strip of all of them with + to add more */}
       <Block>
@@ -278,6 +372,7 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
 
       {/* Ingredients */}
       <BlockTitle medium>Ingredients</BlockTitle>
+      {reading && <EditRowsSkeleton rows={['2 cups flour', '1 tsp baking soda', '3 large eggs, beaten', '1 cup milk']} />}
       {draft.ingredients.length > 0 && (
         <List
           className="ck-edit-list"
@@ -362,6 +457,7 @@ export default function RecipeEditPage({ f7route, f7router }: Props) {
 
       {/* Directions */}
       <BlockTitle medium>Directions</BlockTitle>
+      {reading && <EditRowsSkeleton rows={['Heat the oven and grease the tin.', 'Mix everything together until smooth and pour it in.', 'Bake until golden.']} />}
       {draft.steps.length > 0 && (
         <List
           className="ck-edit-list"

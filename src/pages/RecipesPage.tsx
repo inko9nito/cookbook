@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Page, Navbar, NavTitle, NavRight, Link, Searchbar,
   Block, BlockFooter, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton, Button,
@@ -11,15 +11,19 @@ import { showTabbar } from '../components/ui/tabbar';
 import RecipeCard from '../components/ui/RecipeCard';
 import { ChipsSkeleton, CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import { searchByTitle, searchWords } from '../lib/search';
+import { MAX_READ_IMAGES } from '../lib/read-recipe';
 
 const SORT_LABELS: Record<SortKey, string> = { newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
 const label = (t: string) => t[0].toUpperCase() + t.slice(1);
 
-type Props = { f7router?: { navigate: (url: string) => void } };
+type Props = { f7router?: { navigate: (url: string, options?: { props?: Record<string, unknown> }) => void } };
 
 export default function RecipesPage({ f7router }: Props) {
   const { recipes, loading, loadError, reload, sort, setSort, settings, setFilter } = useStore();
   const [sortOpen, setSortOpen] = useState(false);
+  // issue #17: + asks how: type it in, or read it from photos or screenshots (picked here, read in the editor)
+  const [newOpen, setNewOpen] = useState(false);
+  const scanRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
 
   // R2: a chip for every tag in use, the course types first (in meal order), then the rest A–Z
@@ -49,7 +53,7 @@ export default function RecipesPage({ f7router }: Props) {
         <NavTitle>Recipes</NavTitle>
         <NavRight>
           {/* issue #27: the plus is the screen's main action, a filled Tomato button */}
-          <Link iconOnly onClick={() => f7router?.navigate('/recipe/new/')} aria-label="New recipe" className="ck-nav-primary">
+          <Link iconOnly onClick={() => setNewOpen(true)} aria-label="New recipe" className="ck-nav-primary">
             <Plus {...navIcon} />
           </Link>
           <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
@@ -125,6 +129,32 @@ export default function RecipesPage({ f7router }: Props) {
           ))}
         </div>
       </Block>
+
+      <Actions key="new" opened={newOpen} onActionsClosed={() => setNewOpen(false)}>
+        <ActionsGroup>
+          <ActionsLabel>New recipe</ActionsLabel>
+          {/* the picker has to open in the tap itself (iOS only lets a tap open it) */}
+          <ActionsButton onClick={() => scanRef.current?.click()}>From photos or screenshots</ActionsButton>
+          <ActionsButton onClick={() => f7router?.navigate('/recipe/new/')}>Type it in</ActionsButton>
+        </ActionsGroup>
+        <ActionsGroup>
+          <ActionsButton strong>Cancel</ActionsButton>
+        </ActionsGroup>
+      </Actions>
+      {/* iOS offers the photo library, the camera (a cookbook page) and files */}
+      <input
+        key="scan-input"
+        ref={scanRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          const files = [...(e.target.files ?? [])].slice(0, MAX_READ_IMAGES);
+          e.target.value = ''; // picking the same photo again still fires
+          if (files.length) f7router?.navigate('/recipe/new/', { props: { scanFiles: files } });
+        }}
+      />
 
       <Actions key="sort" opened={sortOpen} onActionsClosed={() => setSortOpen(false)}>
         <ActionsGroup>

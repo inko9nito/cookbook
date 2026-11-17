@@ -12,11 +12,13 @@ import { ApiError, backend, demoSlow, isDemo } from './api';
 import { useAuth } from './auth';
 import { Settings, type Recipe, type SortKey } from '../lib/recipe';
 import type { Cookbook } from '../lib/cookbook';
+import type { Planned } from '../lib/planner';
 import { pendingChanges, upsert } from './pending';
 
 const RECIPES = ['recipes'] as const;
 const SETTINGS = ['settings'] as const;
 const COOKBOOKS = ['cookbooks'] as const;
+const PLANNER = ['planner'] as const;
 const DAY = 24 * 60 * 60 * 1000;
 
 const queryClient = new QueryClient({
@@ -44,8 +46,10 @@ const toast = (text: string) => f7.toast?.show({ text, closeTimeout: 3000 });
 // arriving the wrong way round would keep the older one. On screen they still show at once.
 const recipesUnderWay = pendingChanges<Recipe>();
 const cookbooksUnderWay = pendingChanges<Cookbook>();
+const plannedUnderWay = pendingChanges<Planned>();
 const fetchRecipes = async () => recipesUnderWay.overlay(await backend.listRecipes());
 const fetchCookbooks = async () => cookbooksUnderWay.overlay(await backend.listCookbooks());
+const fetchPlanned = async () => plannedUnderWay.overlay(await backend.listPlanned());
 
 /** Upload the photos picked on the phone (data URLs) and swap in their stored addresses. */
 async function withUploadedPhotos(r: Recipe): Promise<Recipe> {
@@ -125,8 +129,9 @@ export function useStore() {
     onSettled: (_r, e, id) => {
       recipesUnderWay.end(id);
       if (e) qc.invalidateQueries({ queryKey: RECIPES });
-      // the recipe also left every cookbook it was in (the database does that)
+      // the recipe also left every cookbook it was in, and every day it was planned for (the database does that)
       qc.invalidateQueries({ queryKey: COOKBOOKS });
+      qc.invalidateQueries({ queryKey: PLANNER });
     },
   });
 
@@ -219,5 +224,53 @@ export function useCookbooks() {
       return saved;
     },
     deleteCookbook: (id: string) => remove.mutate(id),
+  };
+}
+
+/**
+ * The Planner (issue #62): every recipe planned for a day, loaded like the recipes and kept offline too. Planning,
+ * moving and taking one off show at once and are sent in the background; if the server refuses, it's undone with a toast.
+ */
+export function usePlanner() {
+  const qc = useQueryClient();
+  const enabled = useAuth().status === 'signedIn';
+  const query = useQuery({ queryKey: PLANNER, queryFn: fetchPlanned, enabled });
+
+  const save = useMutation({
+    mutationFn: backend.savePlanned,
+    scope: { id: 'planner' },
+    onMutate: (p: Planned) => {
+      plannedUnderWay.start(p.id, p);
+      qc.setQueryData<Planned[]>(PLANNER, (list = []) => upsert(list, p));
+    },
+    onError: (e) => toast(`Couldn’t save that to the Planner. ${e instanceof Error ? e.message : ''}`.trim()),
+    onSettled: (_saved, e, p) => {
+      plannedUnderWay.end(p.id);
+      if (e) qc.invalidateQueries({ queryKey: PLANNER });
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: backend.deletePlanned,
+    scope: { id: 'planner' },
+    onMutate: (id: string) => {
+      plannedUnderWay.start(id, null);
+      qc.setQueryData<Planned[]>(PLANNER, (list = []) => list.filter((x) => x.id !== id));
+    },
+    onError: (e) => toast(`Couldn’t take that off the Planner. ${e instanceof Error ? e.message : ''}`.trim()),
+    onSettled: (_r, e, id) => {
+      plannedUnderWay.end(id);
+      if (e) qc.invalidateQueries({ queryKey: PLANNER });
+    },
+  });
+
+  return {
+    planned: query.data ?? [],
+    loading: query.isPending && enabled,
+    loadError: !query.data && query.error instanceof Error ? query.error.message : null,
+    reload: () => query.refetch(),
+    /** plan a recipe for a day, or move it (the same id, another day) */
+    savePlanned: (p: Planned) => save.mutate(p),
+    deletePlanned: (id: string) => remove.mutate(id),
   };
 }

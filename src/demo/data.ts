@@ -1,6 +1,7 @@
 // Sample recipes: the demo backend (local checks) starts with these, and the first database migration seeds them.
 
 import type { Ingredient, Recipe, Step } from '../lib/recipe';
+import { addDays, type Day, type Planned } from '../lib/planner';
 import type { Cookbook } from '../lib/cookbook';
 
 let nextRow = 1000;
@@ -285,5 +286,20 @@ export const demoRecipes = (): Recipe[] => {
       ingredients: r.ingredients.map((i) => (i.name === 'tahini sauce' ? { ...i, recipeId: sauce.id } : i)),
     })),
     sauce,
+  ];
+};
+
+/**
+ * The demo backend's Planner (issue #62), around today so the screen always has something to show: two recipes
+ * today, one tomorrow, one in two days, and one a week from today (always next week). Recipes by id only.
+ */
+export const demoPlanned = (now: Day): Planned[] => {
+  const at = (day: Day, recipeId: string, n: number): Planned => ({ id: `pl-${n}`, day, recipeId, createdAt: `2026-11-1${n}T10:00:00.000Z` });
+  return [
+    at(now, '5', 0),
+    at(now, '1', 1),
+    at(addDays(now, 1), '2', 2),
+    at(addDays(now, 2), '4', 3),
+    at(addDays(now, 7), '3', 4),
   ];
 };

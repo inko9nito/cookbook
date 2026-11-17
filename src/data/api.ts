@@ -4,8 +4,9 @@
 
 import { Settings, type Recipe } from '../lib/recipe';
 import type { Cookbook } from '../lib/cookbook';
+import { today, type Planned } from '../lib/planner';
 import { ReadRecipe, type ReadRequest } from '../lib/read-recipe';
-import { demoCookbooks as demoCookbooksSeed, demoRecipes as demoRecipesSeed } from '../demo/data';
+import { demoCookbooks as demoCookbooksSeed, demoPlanned as demoPlannedSeed, demoRecipes as demoRecipesSeed } from '../demo/data';
 import { accessToken, SignedOutError } from './identity';
 
 export type Backend = {
@@ -28,6 +29,11 @@ export type Backend = {
   deleteCookbook: (id: string) => Promise<void>;
   /** issue #17: read the recipe in photos or screenshots (shrunk on the phone); nothing is stored */
   readRecipe: (images: ReadRequest['images']) => Promise<ReadRecipe>;
+  /** issue #62: the Planner, every recipe planned for a day */
+  listPlanned: () => Promise<Planned[]>;
+  /** plan a recipe for a day, or move it to another day (the same id) */
+  savePlanned: (p: Planned) => Promise<Planned>;
+  deletePlanned: (id: string) => Promise<void>;
 };
 
 /** A refusal from the API, with its status (401 signed out, 403 not an admin). */
@@ -101,6 +107,9 @@ const http: Backend = {
   listCookbooks: () => call<Cookbook[]>('/api/cookbooks'),
   saveCookbook: (c) => call<Cookbook>(`/api/cookbooks/${encodeURIComponent(c.id)}`, jsonInit('PUT', c)),
   deleteCookbook: (id) => call<void>(`/api/cookbooks/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  listPlanned: () => call<Planned[]>('/api/planner'),
+  savePlanned: (p) => call<Planned>(`/api/planner/${encodeURIComponent(p.id)}`, jsonInit('PUT', p)),
+  deletePlanned: (id) => call<void>(`/api/planner/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   // the reading runs in a background function (it can take longer than an ordinary call may); ask for it every 2s
   readRecipe: async (images) => {
     const { id } = await call<{ id?: unknown }>('/api/read-recipe', jsonInit('POST', { images }));
@@ -162,6 +171,7 @@ const readDemoSettings = (): Settings => {
 
 let demoRecipes: Recipe[] = demoRecipesSeed();
 let demoCookbooks: Cookbook[] = demoCookbooksSeed();
+let demoPlanned: Planned[] = demoPlannedSeed(today());
 // the Prepear export kept by an import on this page (locally: the sample file, until the page reloads)
 let demoKeptExport: string | null = null;
 const demoKnown = (ids: string[]) => [...new Set(ids)].filter((i) => demoRecipes.some((r) => r.id === i));
@@ -184,6 +194,8 @@ const demo: Backend = {
       recipeIds: out(c.recipeIds),
       sections: c.sections.map((s) => ({ ...s, coverRecipeId: cover(s.coverRecipeId), recipeIds: out(s.recipeIds) })),
     }));
+    // and every day it was planned for
+    demoPlanned = demoPlanned.filter((p) => p.recipeId !== id);
   },
   getSettings: async () => readDemoSettings(),
   saveSettings: async (patch) => {
@@ -228,6 +240,15 @@ const demo: Backend = {
     if (new URLSearchParams(location.search).has('readfail')) throw new ApiError(502, 'Claude is busy right now. Try again in a moment.');
     return demoReading(images[0]);
   },
+  listPlanned: async () => structuredClone(demoPlanned),
+  savePlanned: async (p) => {
+    if (!demoRecipes.some((r) => r.id === p.recipeId)) throw new ApiError(409, 'That recipe was deleted.');
+    demoPlanned = demoPlanned.some((x) => x.id === p.id) ? demoPlanned.map((x) => (x.id === p.id ? p : x)) : [...demoPlanned, p];
+    return structuredClone(p);
+  },
+  deletePlanned: async (id) => {
+    demoPlanned = demoPlanned.filter((x) => x.id !== id);
+  },
 };
 
 /**
@@ -246,10 +267,15 @@ const slowly = (b: Backend): Backend =>
   ) as Backend;
 
 /**
- * `?loading` (the demo only, for the UI check, issue #35): the recipes and cookbooks never arrive, so the screens stay in
+ * `?loading` (the demo only, for the UI check, issue #35): the recipes, cookbooks and Planner never arrive, so the screens stay in
  * their loading state (the grey placeholders) long enough to look at.
  */
 const demoLoading = isDemo && typeof location !== 'undefined' && new URLSearchParams(location.search).has('loading');
-const neverLoading = (b: Backend): Backend => ({ ...b, listRecipes: () => new Promise(() => {}), listCookbooks: () => new Promise(() => {}) });
+const neverLoading = (b: Backend): Backend => ({
+  ...b,
+  listRecipes: () => new Promise(() => {}),
+  listCookbooks: () => new Promise(() => {}),
+  listPlanned: () => new Promise(() => {}),
+});
 
 export const backend: Backend = isDemo ? (demoLoading ? neverLoading(demo) : demoSlow ? slowly(demo) : demo) : http;

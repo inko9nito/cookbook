@@ -114,3 +114,16 @@ export function EditRowsSkeleton({ rows }: { rows: string[] }) {
     </List>
   );
 }
+
+/** Issue #62: a Planner day's recipes still loading: a row with a grey thumbnail and title. */
+export function PlannerRowsSkeleton() {
+  return (
+    <List strongIos insetIos dividersIos className="ck-plan-list" aria-busy="true" aria-label="Loading">
+      <ListItem aria-hidden="true">
+        <SkeletonBlock slot="media" tag="span" className="ck-picker-thumb" effect={EFFECT} />
+        <SkeletonText slot="title" effect={EFFECT}>Roast chicken with lemon</SkeletonText>
+        <SkeletonText slot="footer" effect={EFFECT}>45 min</SkeletonText>
+      </ListItem>
+    </List>
+  );
+}

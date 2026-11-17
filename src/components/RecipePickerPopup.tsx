@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Searchbar, List, ListItem, Block, f7 } from 'framework7-react';
 import { ChefHat } from 'lucide-react';
 import { coverPhoto, type Recipe } from '../lib/recipe';
@@ -12,6 +12,8 @@ type Common = {
   recipes: Recipe[];
   /** a muted line under a recipe ("In Meat") */
   footer?: (r: Recipe) => string | undefined;
+  /** issue #67: a control under the search bar (the Planner's meal slot) */
+  top?: ReactNode;
   onClosed: () => void;
 };
 type Props =
@@ -114,6 +116,7 @@ export default function RecipePickerPopup(props: Props) {
             onSearchbarClear={() => setQuery('')}
           />
         </div>
+        {props.top && <Block className="ck-picker-top">{props.top}</Block>}
         {props.mode === 'several' && props.hint && (
           <Block className="ck-note ck-picker-hint">
             <p>{props.hint}</p>

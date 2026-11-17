@@ -1210,7 +1210,9 @@ swiper-container.ck-week-swiper { width: 100%; }
 }
 .ck-week-today .ck-week-num { color: var(--ck-accent-ink); font-weight: 600; }
 .ck-week-selected .ck-week-num { background-color: var(--ck-fg); color: var(--ck-surface); }
-.ck-week-selected.ck-week-today .ck-week-num { background-color: var(--ck-accent-ink); }
+/* today picked: bright Tomato like the + beside it and every orange button (white on it is 3.7:1, the exception the user
+   chose in issue #21; Tomato ink here looked like a second orange) */
+.ck-week-selected.ck-week-today .ck-week-num { background-color: var(--ck-accent); }
 .ck-week-dot { width: 5px; height: 5px; border-radius: 50%; }
 .ck-week-busy .ck-week-dot { background-color: var(--ck-accent); }
 /* pressed: a soft grey circle under the finger (issue #67: a tap should visibly land) */
@@ -1228,11 +1230,19 @@ swiper-container.ck-week-swiper { width: 100%; }
     - var(--f7-tabbar-icons-height) - var(--f7-safe-area-bottom) - 40px);
 }
 .ck-plan-day-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 8px 0 16px; margin-bottom: 6px; }
-.ck-plan-day-head h2 { margin: 0; min-width: 0; font-family: var(--ck-font-display); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--ck-fg); }
+.ck-plan-day-head h2 { margin: 0; min-width: 0; font-family: var(--ck-font-display); font-size: 18px; font-weight: 500; color: var(--ck-fg); }
 .ck-plan-day-today .ck-plan-day-head h2 { color: var(--ck-accent-ink); }
-.ck-plan-day-date { font-family: var(--ck-font); font-size: 14px; font-weight: 600; letter-spacing: 0; color: var(--ck-muted); margin-left: 2px; }
+.ck-plan-day-date { font-family: var(--ck-font); font-size: 14px; font-weight: 500; color: var(--ck-muted); margin-left: 2px; }
+/* a day with nothing planned steps back: its name muted like its date (today keeps its Tomato) */
+.ck-plan-day-empty:not(.ck-plan-day-today) .ck-plan-day-head h2 { color: var(--ck-muted); }
 .link.ck-plan-add { width: 40px; height: 40px; justify-content: center; flex: none; color: var(--ck-accent-ink); }
 .list.ck-plan-list { --f7-list-margin-vertical: 0px; --f7-list-item-footer-font-size: 13px; }
+/* a recipe's name in semibold, the content of the day (a note stays plain) */
+.list.ck-plan-list li:not(.ck-plan-note) .item-title { font-weight: 600; }
+/* no hairline under a card's last row: Framework7 removes it for a swipeable row, or a link, but misses a swipeable link */
+.list.ck-plan-list li:last-child .item-inner::after { display: none; }
+/* the thumbnail as far from the card's left edge as from its top and bottom (12px) */
+.list.ck-plan-list .item-content { padding-left: 12px; }
 .ck-plan-empty { margin: 0; padding: 0 16px; }
 /* issue #67: a day's meal slots, each a small label over its own card (items for the whole day come first, unlabelled) */
 .ck-plan-slot + .ck-plan-slot { margin-top: 12px; }
@@ -1269,7 +1279,7 @@ html.ios .navbar .right .link.ck-plan-today { font-weight: 500; }
 /* only this month's days, as in iOS's own Calendar (Framework7 fills the rows with the months either side, faded) */
 .calendar.ck-calendar .calendar-day-prev,
 .calendar.ck-calendar .calendar-day-next { visibility: hidden; }
-.calendar.ck-calendar .calendar-day-today.calendar-day-selected .calendar-day-number { background-color: var(--ck-accent-ink); }
+.calendar.ck-calendar .calendar-day-today.calendar-day-selected .calendar-day-number { background-color: var(--ck-accent); }
 .calendar.ck-calendar.calendar-sheet { height: calc(var(--f7-calendar-height) + 16px + var(--f7-safe-area-bottom)); padding-bottom: calc(16px + var(--f7-safe-area-bottom)); }
 .calendar.ck-calendar .calendar-day.active-state .calendar-day-number,
 .calendar.ck-calendar .calendar-day:active .calendar-day-number { background-color: var(--ck-soft); }

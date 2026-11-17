@@ -26,11 +26,14 @@ const COLOR_NAMES: Record<BookColor, string> = { blush: 'Blush', sage: 'Sage', b
  * The plates are numbered left to right (1 left, 2 the big one in the middle, 3 right). A plate is chosen or automatic:
  * an automatic plate shows the cookbook's next photo with a faint number on the preview, so it's clear nothing was
  * picked for it; in the grid only chosen photos are numbered. Tapping a photo puts it on the first plate that isn't
- * chosen yet (a strong Tomato number and ring); tapping a chosen one
- * makes its plate automatic again, the others staying put. Nothing is saved until Done.
+ * chosen yet (a strong Tomato number and ring); tapping a chosen one makes its plate automatic again, the others
+ * staying put. Or tap a plate first (it's selected: a Tomato rim, and the hint says so), then the photo to put on it.
+ * Nothing is saved until Done.
  */
 export default function EditCoverPopup({ opened, cookbook, byId, onDone, onClosed }: Props) {
   const [spots, setSpots] = useState<CoverSpots>([null, null, null]);
+  // a plate tapped in the preview: the next photo tapped goes on it
+  const [target, setTarget] = useState<number | null>(null);
   const [color, setColor] = useState<BookColor>(colorOf(cookbook));
   const [order, setOrder] = useState<string[]>([]);
   const [query, setQuery] = useState('');
@@ -46,6 +49,7 @@ export default function EditCoverPopup({ opened, cookbook, byId, onDone, onClose
     const now = spotsOf(cookbook, byId);
     const first = platesOf(now, cookbook, byId).flatMap((p) => (p.id ? [p.id] : []));
     setSpots(now);
+    setTarget(null);
     setColor(colorOf(cookbook));
     setOrder([...first, ...choices.map((r) => r.id).filter((id) => !first.includes(id))]);
     setQuery('');
@@ -55,6 +59,12 @@ export default function EditCoverPopup({ opened, cookbook, byId, onDone, onClose
   const plates = platesOf(spots, cookbook, byId);
   const tap = (id: string) => {
     const at = spots.indexOf(id);
+    // a plate is selected: the photo goes on it (a photo chosen for another plate swaps places with what was there)
+    if (target !== null) {
+      if (at !== target) setSpots((s) => s.map((x, i) => (i === target ? id : i === at ? s[target] : x)) as CoverSpots);
+      setTarget(null);
+      return;
+    }
     if (at >= 0) return setSpots((s) => s.map((x, i) => (i === at ? null : x)) as CoverSpots);
     const free = spots.indexOf(null);
     if (free < 0) {
@@ -87,7 +97,13 @@ export default function EditCoverPopup({ opened, cookbook, byId, onDone, onClose
         {/* the card as it will look, in the colour picked, its plates numbered */}
         <Block className="ck-cover-preview-block">
           <div className={`ck-cover-preview ck-tint-${color}`}>
-            <CookbookPlates photos={[plates[1], plates[0], plates[2]].map((p) => photoOf(p.id) ?? '')} numbers={numbers} />
+            <CookbookPlates
+              photos={[plates[1], plates[0], plates[2]].map((p) => photoOf(p.id) ?? '')}
+              numbers={numbers}
+              selected={target}
+              onPlate={(at) => setTarget((t) => (t === at ? null : at))}
+              labels={plates.map((p, at) => `Plate ${at + 1}, the ${SPOT_NAMES[at]}: ${p.id ? byId.get(p.id)!.title : 'empty'}${p.id && !p.chosen ? ', filled in for you' : ''}`)}
+            />
           </div>
           {/* the six colours, right under the card they change */}
           <div className="ck-cover-colors" role="radiogroup" aria-label="Cookbook colour">
@@ -105,7 +121,13 @@ export default function EditCoverPopup({ opened, cookbook, byId, onDone, onClose
               </button>
             ))}
           </div>
-          <p className="ck-note ck-cover-hint">Tap photos in order for plates 1, 2 and 3, left to right. Plates with a faint number are filled in for you.</p>
+          {target === null ? (
+            <p className="ck-note ck-cover-hint">Tap photos in order for plates 1, 2 and 3, or tap a plate first to change just that one. Plates with a faint number are filled in for you.</p>
+          ) : (
+            <p className="ck-note ck-cover-hint ck-cover-hint-on" role="status">
+              Now tap a photo for plate {target + 1}, the {SPOT_NAMES[target]}.
+            </p>
+          )}
         </Block>
 
         {choices.length > 9 && (

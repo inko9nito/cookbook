@@ -1178,6 +1178,11 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
   border: 1.5px solid var(--ck-strong);
 }
 .ck-cover-hint { margin: 12px 0 0; }
+/* a plate tapped to change it: the hint turns dark and says which plate the next photo goes on */
+.ck-cover-hint.ck-cover-hint-on { color: var(--ck-fg); font-weight: 600; }
+/* the preview's plates are buttons in Edit Cover; the selected one gets a Tomato rim instead of the white one */
+.ck-plates button.ck-plate { padding: 0; margin-top: 0; margin-bottom: 0; font: inherit; appearance: none; -webkit-appearance: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ck-plate.ck-plate-selected { border-color: var(--ck-accent); }
 .block.ck-cover-grid { margin: 16px 0 24px; }
 .block.ck-cover-none { margin: 24px 0; text-align: center; }
 .ck-cover-cell {

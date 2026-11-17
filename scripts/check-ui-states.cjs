@@ -51,6 +51,8 @@ async function audit(page, name) {
         // under the tab bar or sitting behind an open sheet doesn't count
         const group = (el) => el.closest('li, .navbar-inner, .toolbar-inner, .actions-group, .segmented, .stepper, .ck-row, .block, .list-button');
         if (!group(a) || group(a) !== group(b)) continue;
+        // a cookbook's plates overlap by design (Edit Cover's are buttons, issue #80; the middle one is on top)
+        if (a.closest('.ck-plates') && b.closest('.ck-plates')) continue;
         // the part of each that shows: a button scrolled out of a scrolling row (e.g. cook mode's recipe tabs) is clipped
         const shownRect = (el) => {
           const raw = el.getBoundingClientRect();
@@ -1610,6 +1612,36 @@ async function swipeLeft(ctx, page, locator) {
     const left = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-cover-preview .ck-plate')].sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)[0].style.backgroundImage);
     if (!left.includes('mustard')) throw new Error(`the preview's left plate is ${left}`);
     if (!(await page.locator('.popup.modal-in .ck-cover-preview').getAttribute('class')).includes('ck-tint-lilac')) throw new Error('the preview didn’t turn lilac');
+  });
+  // or tap a plate first (it's selected: a Tomato rim, the hint names it), then the photo for it
+  const plate = (cls) => page.locator(`.popup.modal-in .ck-cover-preview .ck-plate-${cls}`);
+  await step('26b3d-cover-plate-selected', async () => {
+    await plate('middle').tap(); await page.waitForTimeout(300);
+    if (!(await plate('middle').getAttribute('class')).includes('ck-plate-selected')) throw new Error('the tapped plate isn’t selected');
+    const rim = await plate('middle').evaluate((e) => getComputedStyle(e).borderTopColor);
+    if (rim !== 'rgb(228, 87, 46)') throw new Error(`the selected plate's rim is ${rim}`);
+    const hint = await page.locator('.popup.modal-in .ck-cover-hint').textContent();
+    if (!hint.includes('Now tap a photo for plate 2')) throw new Error(`the hint reads "${hint}"`);
+  });
+  await step('26b3e-cover-plate-replaced', async () => {
+    // the photo goes on the selected plate, replacing what was there; the others stay
+    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Italian Turkey"]').tap(); await page.waitForTimeout(300);
+    if ((await coverNumbers()).join('|') !== 'Italian Turkey Zucchini Meatballs=2|Mustard Dill Chicken Thighs=1') throw new Error(`numbered: ${JSON.stringify(await coverNumbers())}`);
+    if (await page.locator('.popup.modal-in .ck-plate-selected').count()) throw new Error('the plate stays selected');
+    // a photo already on another plate swaps places with what was on the selected one
+    await plate('left').tap(); await page.waitForTimeout(200);
+    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Italian Turkey"]').tap(); await page.waitForTimeout(300);
+    if ((await coverNumbers()).join('|') !== 'Italian Turkey Zucchini Meatballs=1|Mustard Dill Chicken Thighs=2') throw new Error(`after swapping: ${JSON.stringify(await coverNumbers())}`);
+    // tapping the selected plate again unselects it
+    await plate('right').tap(); await page.waitForTimeout(200);
+    await plate('right').tap(); await page.waitForTimeout(200);
+    if (await page.locator('.popup.modal-in .ck-plate-selected').count()) throw new Error('tapping a selected plate again doesn’t unselect it');
+    // back to the mustard chicken on the left and the corn in the middle, for the steps after
+    await plate('left').tap(); await page.waitForTimeout(200);
+    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Mustard Dill"]').tap(); await page.waitForTimeout(250);
+    await plate('middle').tap(); await page.waitForTimeout(200);
+    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Corn pudding"]').tap(); await page.waitForTimeout(300);
+    if ((await coverNumbers()).join('|') !== 'Corn pudding=2|Mustard Dill Chicken Thighs=1') throw new Error(`numbered: ${JSON.stringify(await coverNumbers())}`);
   });
   await step('26b4-cover-full', async () => {
     // a fourth is refused while three plates are chosen

@@ -12,16 +12,40 @@ import { photoStyle } from './photo';
 /** A plate's number in the cover editor (issue #80): chosen (strong), filled in automatically (faint), or none. */
 export type PlateNumber = 'chosen' | 'auto' | 'none';
 
-export function CookbookPlates({ photos, numbers }: { photos: string[]; numbers?: PlateNumber[] }) {
-  // `numbers` (the cover editor, issue #80), left to right: each plate shows its number, faint when filled in for you
-  const plate = (cls: string, at: number, src?: string, icon?: boolean) => (
-    <span className={`ck-plate ${cls}${src ? ' ck-photo' : ' ck-plate-empty'}`} style={photoStyle(src)}>
-      {icon && <BookOpen size={24} strokeWidth={1.5} />}
-      {numbers && numbers[at] !== 'none' && <Badge className={`ck-cover-no${numbers[at] === 'auto' ? ' ck-cover-no-auto' : ''}`}>{at + 1}</Badge>}
-    </span>
-  );
+type PlatesProps = {
+  /** middle first, then left and right ('' or missing: an empty plate) */
+  photos: string[];
+  /** the cover editor (issue #80), left to right: each plate's number, faint when filled in for you */
+  numbers?: PlateNumber[];
+  /** the cover editor: the plates are buttons; tapping one selects it, to put the next photo tapped on it */
+  onPlate?: (at: number) => void;
+  /** the selected plate (0 left, 1 middle, 2 right) */
+  selected?: number | null;
+  /** each plate's name for VoiceOver, left to right */
+  labels?: string[];
+};
+
+export function CookbookPlates({ photos, numbers, onPlate, selected, labels }: PlatesProps) {
+  const plate = (cls: string, at: number, src?: string, icon?: boolean) => {
+    const className = `ck-plate ${cls}${src ? ' ck-photo' : ' ck-plate-empty'}${selected === at ? ' ck-plate-selected' : ''}`;
+    const inside = (
+      <>
+        {icon && <BookOpen size={24} strokeWidth={1.5} />}
+        {numbers && numbers[at] !== 'none' && <Badge className={`ck-cover-no${numbers[at] === 'auto' ? ' ck-cover-no-auto' : ''}`}>{at + 1}</Badge>}
+      </>
+    );
+    return onPlate ? (
+      <button type="button" className={className} style={photoStyle(src)} aria-pressed={selected === at} aria-label={labels?.[at]} onClick={() => onPlate(at)}>
+        {inside}
+      </button>
+    ) : (
+      <span className={className} style={photoStyle(src)}>
+        {inside}
+      </span>
+    );
+  };
   return (
-    <span className={`ck-plates${numbers ? ' ck-plates-numbered' : ''}`} aria-hidden="true">
+    <span className={`ck-plates${numbers ? ' ck-plates-numbered' : ''}`} aria-hidden={onPlate ? undefined : true}>
       {plate('ck-plate-left', 0, photos[1])}
       {plate('ck-plate-right', 2, photos[2])}
       {plate('ck-plate-middle', 1, photos[0], !photos.some(Boolean))}

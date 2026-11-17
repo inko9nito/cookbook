@@ -28,8 +28,9 @@ async function audit(page, name) {
   await page.addScriptTag({ content: AXE });
   const contrast = await page.evaluate(async () => {
     // below AA on purpose (DESIGN.md): ticked rows in cook mode fade (--ck-done-ink), and the orange buttons' 600-weight
-    // white label on bright Tomato (3.7:1, the user's choice in issue #21). Everything else must pass.
-    const r = await window.axe.run({ include: [document], exclude: [['.ck-cook li.ck-done'], ['.button.ck-main'], ['.button.ck-cta-button'], ['.link.ck-nav-primary'], ['.dialog .button.button-fill']] }, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
+    // white label on bright Tomato (3.7:1, the user's choice in issue #21). Loading placeholders (issue #35) are grey bars
+    // drawn with a font, not text to read. Everything else must pass.
+    const r = await window.axe.run({ include: [document], exclude: [['.skeleton-text'], ['.ck-cook li.ck-done'], ['.button.ck-main'], ['.button.ck-cta-button'], ['.link.ck-nav-primary'], ['.dialog .button.button-fill']] }, { runOnly: ['color-contrast'], resultTypes: ['violations'] });
     return r.violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(' ')}: ${n.any[0]?.message ?? v.help}`));
   });
   const overlaps = await page.evaluate(() => {
@@ -1438,6 +1439,35 @@ async function swipeLeft(ctx, page, locator) {
       await page.waitForTimeout(250);
     }
     if (seen2.some((x) => !x.startsWith('Section 1') || !x.endsWith('|true'))) throw new Error(`while saving, the new section's page showed ${JSON.stringify([...new Set(seen2)])}`);
+  });
+
+  // Issue #35: while the recipes and cookbooks first load, grey placeholders in their shape: no lone "All" chip, no
+  // "0 recipes", no small spinner. ?loading makes the demo's recipes and cookbooks never arrive.
+  const noLoadingTells = async (where) => {
+    const pg = page.locator('.view.tab-active .page-current');
+    if (await pg.locator('.preloader').count()) throw new Error(`${where} shows a spinner while loading`);
+    if (await pg.locator('.chip').count()) throw new Error(`${where} shows chips while loading`);
+    const text = await pg.evaluate((el) => [...el.querySelectorAll(':not(.skeleton-text)')].filter((e) => !e.closest('.skeleton-text') && !e.children.length).map((e) => e.textContent).join(' '));
+    if (/\b0 (recipes|cookbooks)\b/.test(text)) throw new Error(`${where} counts 0 while loading`);
+  };
+  await step('35a-recipes-loading', async () => {
+    await page.goto(`${BASE}?loading`); await page.waitForTimeout(1200);
+    await noLoadingTells('Recipes');
+    if ((await page.locator('#view-recipes .page-current .ck-skeleton-card').count()) < 4) throw new Error('no placeholder recipe tiles');
+    if ((await page.locator('#view-recipes .page-current .ck-skeleton-chip').count()) < 3) throw new Error('no placeholder chips');
+    const photo = await page.locator('#view-recipes .page-current .ck-skeleton-card .ck-card-photo').first().boundingBox();
+    if (!photo || Math.abs(photo.width - photo.height) > 2) throw new Error(`a placeholder tile's photo isn't square (${JSON.stringify(photo)})`);
+  });
+  await step('35b-cookbooks-loading', async () => {
+    await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(800);
+    await noLoadingTells('Cookbooks');
+    if ((await page.locator('#view-cookbooks .page-current .ck-skeleton-tile').count()) < 2) throw new Error('no placeholder cookbook cards');
+    if (await page.locator('#view-cookbooks .page-current', { hasText: 'No cookbooks yet' }).count()) throw new Error('says "No cookbooks yet" while loading');
+  });
+  await step('35c-cookbooks-list-loading', async () => {
+    await page.locator('#view-cookbooks .page-current > .navbar .ck-view-switch').tap(); await page.waitForTimeout(600);
+    await noLoadingTells('Cookbooks as a list');
+    if ((await page.locator('#view-cookbooks .page-current .ck-book-list .skeleton-block').count()) < 3) throw new Error('no placeholder cookbook rows');
   });
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)

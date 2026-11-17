@@ -1569,25 +1569,46 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(600);
     await page.locator(`${CUR} > .navbar .link.back`).tap(); await page.waitForTimeout(900);
   });
-  // Change Cover picks up to three photos for the collage, each labelled with where it goes
+  // Change Cover (issue #80): the cover as it will look, then the photos as a grid. It opens with the three plates shown
+  // now numbered left to right (1 left, 2 the big middle one, 3 right), even those never chosen; tapping a numbered
+  // photo frees its plate, the next tap fills it
+  const coverNumbers = () => page.evaluate(() =>
+    [...document.querySelectorAll('.popup.modal-in .ck-cover-cell')].map((c) => `${c.getAttribute('aria-label').split(',')[0]}${c.querySelector('.ck-cover-no') ? `=${c.querySelector('.ck-cover-no').textContent}` : ''}`));
   await step('26b3-cover-photos', async () => {
     await page.locator(`${CUR} > .navbar a[aria-label="More actions"]`).tap(); await page.waitForTimeout(700);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Change Cover' }).tap(); await page.waitForTimeout(1000);
-    // the current cover (Pulled Beef) starts ticked, across the top: untick it, then pick three in order
-    const first = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-picker-list li')].filter((li) => li.querySelector('input:checked')).map((li) => li.querySelector('.item-footer')?.textContent));
-    if (first.join(',') !== 'The big plate') throw new Error(`the current cover reads ${JSON.stringify(first)}`);
-    for (const t of ['Pulled Beef', 'Corn pudding', 'Mustard Dill', 'Kebabs']) { await page.locator('.popup.modal-in li', { hasText: t }).locator('label').tap(); await page.waitForTimeout(250); }
-    const labels = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-picker-list li')].filter((li) => li.querySelector('input:checked')).map((li) => `${li.querySelector('.item-title').childNodes[0].textContent.trim()}=${li.querySelector('.item-footer')?.textContent}`));
-    if (labels.length !== 3) throw new Error(`three cover photos aren't ticked: ${JSON.stringify(labels)}`);
-    if (!labels.some((l) => l.startsWith('Corn pudding=The big plate'))) throw new Error(`the first pick isn't the big plate: ${JSON.stringify(labels)}`);
+    // Pulled Beef is the chosen cover (the middle plate); the corn and the kebabs fill the sides
+    const cells = await coverNumbers();
+    if (cells.join('|') !== 'Corn pudding=1|Pulled Beef with Parsnip Purée=2|Middle Eastern Chicken Kebabs=3|Italian Turkey Zucchini Meatballs|Mustard Dill Chicken Thighs')
+      throw new Error(`the cover photos open as ${JSON.stringify(cells)}`);
+    // photos only, no names; the preview's plates are numbered left to right
+    if ((await page.locator('.popup.modal-in .ck-cover-cell').first().innerText()).trim() !== '1') throw new Error('a photo shows more than its number');
+    const plates = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-cover-preview .ck-plate')].sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map((p) => p.textContent).join(''));
+    if (plates !== '123') throw new Error(`the preview's plates read ${plates} from left to right`);
+    const cell = await page.locator('.popup.modal-in .ck-cover-cell').first().boundingBox();
+    if (Math.abs(cell.width - cell.height) > 1 || cell.width < 90) throw new Error(`a photo is ${Math.round(cell.width)}×${Math.round(cell.height)}`);
   });
-  await step('26b4-cover-photos-max', async () => {
-    // a fourth is refused while three are ticked
-    await page.locator('.popup.modal-in li', { hasText: 'Pulled Beef' }).locator('label').tap(); await page.waitForTimeout(400);
-    const n = await page.locator('.popup.modal-in .ck-picker-list input:checked').count();
-    if (n !== 3) throw new Error(`${n} cover photos are ticked`);
+  await step('26b3b-cover-photo-swapped', async () => {
+    // freeing the left plate and tapping the mustard chicken puts it there; the other two stay put
+    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Corn pudding"]').tap(); await page.waitForTimeout(250);
+    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Mustard Dill"]').tap(); await page.waitForTimeout(400);
+    const cells = (await coverNumbers()).filter((c) => c.includes('='));
+    if (cells.join('|') !== 'Pulled Beef with Parsnip Purée=2|Middle Eastern Chicken Kebabs=3|Mustard Dill Chicken Thighs=1') throw new Error(`after swapping: ${JSON.stringify(cells)}`);
+    const left = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-cover-preview .ck-plate')].sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)[0].style.backgroundImage);
+    if (!left.includes('mustard')) throw new Error(`the preview's left plate is ${left}`);
+  });
+  await step('26b4-cover-photos-full', async () => {
+    // a fourth is refused while three plates are taken
+    await page.locator('.popup.modal-in .ck-cover-cell[aria-label^="Italian Turkey"]').tap(); await page.waitForTimeout(400);
+    if ((await page.locator('.popup.modal-in .ck-cover-cell .ck-cover-no').count()) !== 3) throw new Error('a fourth photo was numbered');
     await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
     await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
+    // opened again, it shows the plates as saved
+    await page.locator(`${CUR} > .navbar a[aria-label="More actions"]`).tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Change Cover' }).tap(); await page.waitForTimeout(1000);
+    const cells = (await coverNumbers()).filter((c) => c.includes('='));
+    if (cells.join('|') !== 'Mustard Dill Chicken Thighs=1|Pulled Beef with Parsnip Purée=2|Middle Eastern Chicken Kebabs=3') throw new Error(`saved as ${JSON.stringify(cells)}`);
+    await page.locator('.popup.modal-in a', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(900);
   });
   // Change Colour: six swatches; picking one recolours the card at once
   await step('26b5-change-colour', async () => {
@@ -2099,6 +2120,59 @@ async function swipeLeft(ctx, page, locator) {
     if (look.lastLine !== 'none') throw new Error('a hairline under the last row of a card');
     if (new Set(look.gaps).size !== 1) throw new Error(`the thumbnail's gaps (left, top, bottom) are ${look.gaps}`);
   });
+
+  // Issue #82: a recipe without directions says so under the heading, with Add directions (opening the editor there),
+  // and cook mode shows the ingredients alone, filling the screen, with no divider
+  await step('82a-recipe-no-directions', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1000);
+    for (let n = 0; n < 2; n++) {
+      const li = page.locator('.view.tab-active .page-current .ck-edit-list li.ck-step-row').first();
+      await swipeLeft(ctx, page, li); await page.waitForTimeout(600);
+      await li.locator('.swipeout-delete').tap(); await page.waitForTimeout(800);
+    }
+    if (await page.locator('.view.tab-active .page-current .ck-edit-list li.ck-step-row').count()) throw new Error('the directions were not deleted');
+    await page.locator('.view.tab-active .page-current .navbar a', { hasText: 'Save' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.view.tab-active .page-current .ck-sec-empty').scrollIntoViewIfNeeded(); await page.waitForTimeout(400);
+    const empty = await page.locator('.view.tab-active .page-current .ck-panel-rest .ck-sec-empty').innerText();
+    if (!empty.includes('No directions yet.') || !empty.includes('Add directions')) throw new Error(`under Directions: "${empty}"`);
+  });
+  await step('82b-add-directions-opens-editor', async () => {
+    await page.locator('.view.tab-active .page-current .ck-sec-empty .button', { hasText: 'Add directions' }).tap(); await page.waitForTimeout(1200);
+    const t = await page.evaluate(() => {
+      const pg = document.querySelector('.view.tab-active .page-current');
+      return { bar: pg.querySelector('.navbar').getBoundingClientRect().bottom, title: pg.querySelector('.block-title[data-at="directions"]').getBoundingClientRect().top };
+    });
+    if (t.title < t.bar || t.title > t.bar + 40) throw new Error(`the editor opens with Directions ${Math.round(t.title - t.bar)}px under the title bar`);
+    await page.locator('.view.tab-active .page-current .navbar a', { hasText: 'Cancel' }).first().tap(); await page.waitForTimeout(1000);
+  });
+  await step('82c-cook-no-directions', async () => {
+    await page.locator('.view.tab-active .page-current .ck-cta-button', { hasText: 'Start cooking' }).tap(); await page.waitForTimeout(900);
+    const t = await page.evaluate(() => {
+      const body = document.querySelector('.ck-cook .ck-split-body').getBoundingClientRect();
+      const ing = document.querySelector('.ck-cook .ck-pane-ingredients').getBoundingClientRect();
+      return {
+        steps: document.querySelectorAll('.ck-cook .ck-pane-steps').length,
+        handle: document.querySelectorAll('.ck-cook .ck-split-handle').length,
+        fill: Math.round(ing.height - body.height),
+        note: document.querySelector('.ck-cook .ck-pane-note')?.textContent,
+      };
+    });
+    if (t.steps || t.handle) throw new Error('cook mode still shows a Directions half or the divider');
+    if (Math.abs(t.fill) > 1) throw new Error(`the ingredients don't fill cook mode (${t.fill}px)`);
+    if (t.note !== 'No directions for this recipe.') throw new Error(`the note reads "${t.note}"`);
+  });
+  await step('82d-cook-no-directions-done', async () => {
+    // every ingredient ticked counts as done: closing offers Mark as made
+    const rows = page.locator('.ck-cook .ck-pane-ingredients li label');
+    for (let n = 0; n < (await rows.count()); n++) { await rows.nth(n).tap(); await page.waitForTimeout(120); }
+    await page.locator('.ck-cook .navbar a[aria-label="Close cook mode"]').tap(); await page.waitForTimeout(700);
+    if (!(await page.locator('.dialog.modal-in', { hasText: 'Done cooking?' }).count())) throw new Error('closing with every ingredient ticked does not offer Mark as made');
+  });
+  await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Not now' }).tap().catch(() => {});
+  await page.waitForTimeout(800);
 
   // Issue #35: while the recipes and cookbooks first load, grey placeholders in their shape: no lone "All" chip, no
   // "0 recipes", no small spinner. ?loading makes the demo's recipes and cookbooks never arrive.

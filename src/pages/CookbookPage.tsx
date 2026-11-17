@@ -9,6 +9,7 @@ import { showTabbar } from '../components/ui/tabbar';
 import RecipeCard from '../components/ui/RecipeCard';
 import { CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import RecipePickerPopup from '../components/RecipePickerPopup';
+import CoverPickerPopup from '../components/CoverPickerPopup';
 import OrganizePopup from '../components/OrganizePopup';
 import { useCookbooks, useStore } from '../data/store';
 import { BOOK_COLORS, colorOf, cookbookRecipeIds, coversOf, existing, recipeIdsOf, withRecipeIds, type BookColor, type Cookbook } from '../lib/cookbook';
@@ -25,8 +26,6 @@ const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? on
 const SHELF = 12;
 // Uncategorized has a shelf and a page like a section's, at /cookbook/:id/section/uncategorized/
 const UNCATEGORIZED = 'uncategorized';
-// the cover's plates take up to three photos, picked in order: the first is the big plate in the middle
-const COVER_SPOTS = ['The big plate', 'Left plate', 'Right plate'];
 const COLOR_NAMES: Record<BookColor, string> = { blush: 'Blush', sage: 'Sage', butter: 'Butter', sky: 'Sky', oat: 'Oat', lilac: 'Lilac' };
 const aToZ = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
 
@@ -143,14 +142,14 @@ export default function CookbookPage({ f7route, f7router }: Props) {
     }
   };
 
-  // the cookbook's plates: up to three recipes with a photo, in the order picked
+  // the cookbook's plates (issue #80): up to three recipes with a photo, the big middle plate first
   const setCovers = (ids: string[]) => {
     setChoosingCover(false);
-    const picked = ids.slice(0, COVER_SPOTS.length);
+    const picked = ids.slice(0, 3);
+    if (picked.join() === coversOf(book).join()) return;
     save({ ...book, coverRecipeIds: picked, coverRecipeId: picked[0] ?? null });
   };
   const coverChoices = searchable.filter((r) => coverPhoto(r));
-  const currentCovers = coversOf(book).filter((id) => coverChoices.some((r) => r.id === id));
 
   const searching = words.length > 0;
   // a section with recipes, or a cookbook with recipes or sections: otherwise the page says it's empty
@@ -284,19 +283,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         }}
         onClosed={() => setAdding(false)}
       />
-      <RecipePickerPopup
-        key="cover"
-        mode="several"
-        opened={choosingCover}
-        title="Cover Photos"
-        hint="Pick up to three. The first is the big plate in the middle, the next two go either side of it."
-        recipes={coverChoices}
-        selected={currentCovers}
-        max={COVER_SPOTS.length}
-        spots={COVER_SPOTS}
-        onDone={setCovers}
-        onClosed={() => setChoosingCover(false)}
-      />
+      <CoverPickerPopup key="cover" opened={choosingCover} cookbook={book} byId={byId} onDone={setCovers} onClosed={() => setChoosingCover(false)} />
       {/* the card's colour: six soft colours as round swatches; tapping one changes it at once (Done closes) */}
       <Sheet
         key="colour"

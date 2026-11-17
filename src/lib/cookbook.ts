@@ -84,17 +84,49 @@ export const coversOf = (c: Pick<Cookbook, 'coverRecipeId' | 'coverRecipeIds'>):
   c.coverRecipeIds?.length ? c.coverRecipeIds : c.coverRecipeId ? [c.coverRecipeId] : [];
 
 /**
- * Up to `n` different photos for a collage cover: the chosen cover recipes' first, in order, then the other recipes'.
- * Fewer when fewer recipes have one.
+ * The recipes whose photos make a collage cover, up to `n` with different photos: the chosen cover recipes first, in
+ * order, then the other recipes'. Fewer when fewer recipes have one. `taken` photos are skipped.
  */
-export function coverPhotos(covers: string[], ids: string[], byId: Map<string, Recipe>, n = 3): string[] {
+export function coverRecipeIds(covers: string[], ids: string[], byId: Map<string, Recipe>, n = 3, taken: string[] = []): string[] {
   const out: string[] = [];
+  const seen = new Set(taken);
   for (const id of [...covers, ...ids]) {
     const src = byId.get(id) && coverPhoto(byId.get(id)!);
-    if (src && !out.includes(src)) out.push(src);
+    if (!src || seen.has(src) || out.includes(id)) continue;
+    seen.add(src);
+    out.push(id);
     if (out.length === n) break;
   }
   return out;
+}
+
+/** Up to `n` different photos for a collage cover (see `coverRecipeIds`). */
+export const coverPhotos = (covers: string[], ids: string[], byId: Map<string, Recipe>, n = 3): string[] =>
+  coverRecipeIds(covers, ids, byId, n).map((id) => coverPhoto(byId.get(id)!)!);
+
+/**
+ * Issue #80: the cover picker numbers the plates left to right, 1 (left), 2 (the big one in the middle), 3 (right),
+ * while a cookbook keeps its covers middle first (`coverRecipeIds`: [middle, left, right]). A spot is empty (null)
+ * while nothing is picked for it.
+ */
+export type CoverSpots = [string | null, string | null, string | null];
+
+/** The plates as shown now, chosen or not (a cookbook that never chose shows its first recipes), as spots. */
+export function spotsOf(c: Cookbook, byId: Map<string, Recipe>): CoverSpots {
+  const [middle = null, left = null, right = null] = coverRecipeIds(coversOf(c), cookbookRecipeIds(c), byId);
+  return [left, middle, right];
+}
+
+/**
+ * The covers to keep for picked spots, middle first. An empty spot takes the cookbook's next recipe with a photo not
+ * already on the cover (as the cover would show anyway), so the picked ones stay where they were put. A spot stays
+ * empty only when the cookbook has no more photos, and then the ones after it move up.
+ */
+export function coversFromSpots(spots: CoverSpots, c: Cookbook, byId: Map<string, Recipe>): string[] {
+  const picked = spots.filter((id): id is string => !!id && !!byId.get(id) && !!coverPhoto(byId.get(id)!));
+  const fill = coverRecipeIds([], cookbookRecipeIds(c).filter((id) => !picked.includes(id)), byId, 3, picked.map((id) => coverPhoto(byId.get(id)!)!));
+  const [left, middle, right] = spots.map((id) => (id && picked.includes(id) ? id : (fill.shift() ?? null)));
+  return [middle, left, right].filter((id): id is string => !!id);
 }
 
 export const recipeIdsOf = (c: Cookbook, sectionId: string | null): string[] =>

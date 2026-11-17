@@ -3,7 +3,7 @@ import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   Actions, ActionsGroup, ActionsButton, f7,
 } from 'framework7-react';
-import { BookOpen, CalendarDays, Ellipsis, Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { BookOpen, CalendarDays, Ellipsis, Star, ChevronDown, ChevronRight, ExternalLink, Plus } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
 import CookMode from '../components/CookMode';
 import RecipePhotos from '../components/RecipePhotos';
@@ -44,6 +44,22 @@ function IngredientName({ ing, linked }: { ing: Ingredient; linked?: { id: strin
       {ing.name}
       <ChevronRight {...inlineIcon} aria-hidden="true" />
     </Link>
+  );
+}
+
+/**
+ * A section with nothing in it yet (issue #82: a recipe without directions showed a bare heading over a gap): a soft
+ * card saying so, with a button that opens the editor at that section.
+ */
+function EmptySection({ text, action, onAdd }: { text: string; action: string; onAdd: () => void }) {
+  return (
+    <div className="ck-sec-empty">
+      <p>{text}</p>
+      <Button round small className="ck-soft" onClick={onAdd}>
+        <Plus {...inlineIcon} aria-hidden="true" />
+        {action}
+      </Button>
+    </div>
   );
 }
 
@@ -151,6 +167,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const scaled = Math.abs(factor - 1) > 0.001;
   const servingsLabel = `${friendly(recipe.servings * factor)} servings`;
   let stepNo = 0;
+  const stepCount = recipe.steps.filter((s) => s.kind !== 'header').length;
 
   return (
     <Page name="recipe" className="ck-recipe-page" hideNavbarOnScroll onPageBeforeIn={hideTabbar}>
@@ -205,6 +222,9 @@ export default function RecipePage({ f7route, f7router }: Props) {
             <ChevronDown {...inlineIcon} />
           </Link>
         </div>
+        {!recipe.ingredients.some((i) => i.kind !== 'header') && (
+          <EmptySection text="No ingredients yet." action="Add ingredients" onAdd={() => f7router?.navigate(`/recipe/${recipe.id}/edit/?at=ingredients`)} />
+        )}
       </div>
 
       {/* each group: a plain label that scrolls with the content (not F7's sticky group title), then its rows */}
@@ -232,25 +252,31 @@ export default function RecipePage({ f7route, f7router }: Props) {
         <div className="ck-sec">
           <h2>Directions</h2>
         </div>
-        <div className="ck-steps">
-          {recipe.steps.map((s) => {
-            if (s.kind === 'header') {
-              stepNo = 0;
+        {/* issue #82: no directions yet says so, with a way to add them, instead of a gap under the heading */}
+        {stepCount === 0 && (
+          <EmptySection text="No directions yet." action="Add directions" onAdd={() => f7router?.navigate(`/recipe/${recipe.id}/edit/?at=directions`)} />
+        )}
+        {recipe.steps.length > 0 && (
+          <div className="ck-steps">
+            {recipe.steps.map((s) => {
+              if (s.kind === 'header') {
+                stepNo = 0;
+                return (
+                  <div key={s.id} className="ck-group-label">
+                    {s.text}
+                  </div>
+                );
+              }
+              stepNo += 1;
               return (
-                <div key={s.id} className="ck-group-label">
-                  {s.text}
+                <div key={s.id} className="ck-step">
+                  <span className="ck-step-no">{stepNo}</span>
+                  <span className="ck-step-text">{s.text}</span>
                 </div>
               );
-            }
-            stepNo += 1;
-            return (
-              <div key={s.id} className="ck-step">
-                <span className="ck-step-no">{stepNo}</span>
-                <span className="ck-step-text">{s.text}</span>
-              </div>
-            );
-          })}
-        </div>
+            })}
+          </div>
+        )}
 
         {recipe.notes && (
           <>

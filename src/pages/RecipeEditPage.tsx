@@ -18,7 +18,8 @@ import { EditRowsSkeleton } from '../components/ui/Skeletons';
 import { hideTabbar } from '../components/ui/tabbar';
 
 type Props = {
-  f7route?: { params: Record<string, string> };
+  /** `?at=ingredients` or `?at=directions` (issue #82: a recipe page's Add ingredients / Add directions) opens it there */
+  f7route?: { params: Record<string, string>; query?: Record<string, string> };
   f7router?: { back: () => void };
   /** issue #17: photos or screenshots picked with + → From photos or screenshots, to read the new recipe from */
   scanFiles?: File[];
@@ -389,13 +390,23 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
     f7router?.back();
   };
   const cancel = () => (dirty ? setDiscardOpen(true) : f7router?.back());
+  // issue #82: opened from a recipe page's Add directions (or Add ingredients), the editor starts at that section
+  const at = f7route?.query?.at;
+  const scrollToSection = (page: { el: HTMLElement }) => {
+    if (at !== 'ingredients' && at !== 'directions') return;
+    const title = page.el.querySelector<HTMLElement>(`.block-title[data-at="${at}"]`);
+    const content = page.el.querySelector<HTMLElement>('.page-content');
+    // the title bar lies over the page's content, so the section starts just under the bar
+    const top = page.el.querySelector('.navbar')?.getBoundingClientRect().bottom ?? content?.getBoundingClientRect().top ?? 0;
+    if (title && content) content.scrollTop += title.getBoundingClientRect().top - top - 8;
+  };
 
   let stepNo = 0;
   const ingHeaders = draft.ingredients.filter((i) => i.kind === 'header').map((i) => i.id);
   const stepHeaders = draft.steps.filter((x) => x.kind === 'header').map((x) => x.id);
 
   return (
-    <Page name="recipe-edit" className="ck-edit" noSwipeback={dirty} onPageBeforeIn={hideTabbar}>
+    <Page name="recipe-edit" className="ck-edit" noSwipeback={dirty} onPageBeforeIn={hideTabbar} onPageAfterIn={scrollToSection}>
       <Navbar innerClassName="navbar-inner-centered-title">
         <NavLeft>
           <Link onClick={cancel}>Cancel</Link>
@@ -524,7 +535,7 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
       </List>
 
       {/* Ingredients */}
-      <BlockTitle medium>Ingredients</BlockTitle>
+      <BlockTitle medium data-at="ingredients">Ingredients</BlockTitle>
       {reading && <EditRowsSkeleton rows={['2 cups flour', '1 tsp baking soda', '3 large eggs, beaten', '1 cup milk']} />}
       {draft.ingredients.length > 0 && (
         <List
@@ -609,7 +620,7 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
       </Block>
 
       {/* Directions */}
-      <BlockTitle medium>Directions</BlockTitle>
+      <BlockTitle medium data-at="directions">Directions</BlockTitle>
       {reading && <EditRowsSkeleton rows={['Heat the oven and grease the tin.', 'Mix everything together until smooth and pour it in.', 'Bake until golden.']} />}
       {draft.steps.length > 0 && (
         <List

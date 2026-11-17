@@ -54,6 +54,7 @@ const saveSplit = (n: number) => {
 };
 const noTicks = (): Ticks => ({ ing: new Set(), steps: new Set() });
 const stepCount = (r: Recipe) => r.steps.filter((s) => s.kind !== 'header').length;
+const ingredientCount = (r: Recipe) => r.ingredients.filter((i) => i.kind !== 'header').length;
 
 /**
  * While the recipe tabs show, Safari's status bar strip takes the tab strip's grey (it follows the page's theme
@@ -78,7 +79,9 @@ function useStripThemeColor(on: boolean) {
  * - Tick ingredients and steps as you go; ticked rows are crossed out.
  * - Steps show the ingredients they mention (at the current scale) and timer buttons for the times they mention.
  * - Timers keep running; the soonest counts down in the top bar.
- * - The screen stays on. Closing after ticking every step offers "Mark as made".
+ * - The screen stays on. Closing after ticking every step offers "Mark as made" (every ingredient, for a recipe
+ *   without directions).
+ * - A recipe with only ingredients (or only directions) shows that half alone, with no divider (issue #82).
  *
  * Issue #11, cooking several recipes at once: an ingredient made from another recipe (the sauce, the pie crust) opens
  * that recipe in a new tab: the top bar becomes a strip of recipe tabs (in place of the title), and tapping one
@@ -209,7 +212,11 @@ export default function CookMode({ recipe, factor, picks, onPick, onFactor, onCl
   // closing a recipe with all its steps ticked offers "Mark as made" first; after marking, it starts fresh if reopened
   const close = () => {
     const r = shownRecipe;
-    const done = stepCount(r) > 0 && (ticks[r.id]?.steps.size ?? 0) >= stepCount(r);
+    // a recipe without directions (a dressing, issue #82) is done when every ingredient is ticked
+    const done =
+      stepCount(r) > 0
+        ? (ticks[r.id]?.steps.size ?? 0) >= stepCount(r)
+        : ingredientCount(r) > 0 && (ticks[r.id]?.ing.size ?? 0) >= ingredientCount(r);
     if (!done) return closeTab(r.id);
     f7.dialog
       .create({
@@ -368,6 +375,12 @@ function RecipeTab({
   timers, now, onStartTimer, onStopTimer, onShow, split, setSplit,
 }: TabProps) {
   const { recipes } = useStore();
+  // issue #82: a recipe with only ingredients (or only directions) shows that half alone, filling the screen, with no
+  // divider; an empty half under a lone heading looked broken
+  const hasIngredients = ingredientCount(recipe) > 0;
+  const hasSteps = stepCount(recipe) > 0;
+  const halves = hasIngredients && hasSteps;
+  const missing = !hasIngredients && !hasSteps ? 'No ingredients or directions yet.' : !hasSteps ? 'No directions for this recipe.' : 'No ingredients for this recipe.';
   // issue #6: the tapped amount, while its unit sheet is open
   const [converting, setConverting] = useState<ConvertTarget | null>(null);
   const [scaleOpen, setScaleOpen] = useState(false);
@@ -384,7 +397,7 @@ function RecipeTab({
     const stop = (e: TouchEvent) => e.preventDefault();
     el.addEventListener('touchstart', stop, { passive: false });
     return () => el.removeEventListener('touchstart', stop);
-  }, []);
+  }, [halves]);
   // switching away closes this recipe's unit sheet
   useEffect(() => {
     if (!active) setConverting(null);
@@ -450,125 +463,133 @@ function RecipeTab({
     <Tab className="page-content ck-split" tabActive={active}>
       <div className={`ck-split-body${holding ? ' ck-split-body-holding' : ''}`} ref={splitBox}>
         {/* top half: ingredients */}
-        <div className="ck-pane ck-pane-ingredients" style={{ flexBasis: `${split * 100}%` }}>
-          <div className="ck-pane-head">
-            <h2>Ingredients</h2>
-            {/* same pill as the recipe page: tap to change servings without leaving cook mode */}
-            <Link className="ck-scale-button" onClick={() => setScaleOpen(true)} aria-label={`${servingsText}, adjust amounts`}>
-              <span>{servingsText}</span>
-              <ChevronDown {...inlineIcon} />
-            </Link>
-          </div>
-          {ingGroups.filter((g) => g.items.length).map((g) => (
-            <div key={g.id} className="ck-ing-group">
-              {g.label && <div className="ck-group-label">{g.label}</div>}
-              <List dividers className="ck-plain-list ck-cook-list">
-                {g.items.map((i) => (
-                  <ListItem
-                    key={i.id}
-                    checkbox
-                    checked={doneIng.has(i.id)}
-                    onChange={() => onTick('ing', i.id)}
-                    className={[doneIng.has(i.id) ? 'ck-done' : '', converting?.ing.id === i.id ? 'ck-ing-on' : ''].join(' ')}
-                  >
-                    <span slot="title">
-                      {/* issue #6: tap an underlined amount to see it in other units (the rest of the row ticks it) */}
-                      <ConvertibleAmount ing={i} factor={factor} picks={picks} onOpen={(t) => setConverting((cur) => toggleTarget(cur, t))} />{' '}
-                      <CookName ing={i} linked={linkedRecipe(i, recipes)} onOpen={(r) => onShow(r.id)} />
-                    </span>
-                    {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
-                  </ListItem>
-                ))}
-              </List>
+        {(hasIngredients || !hasSteps) && (
+          <div className={`ck-pane ck-pane-ingredients${halves ? '' : ' ck-pane-alone'}`} style={halves ? { flexBasis: `${split * 100}%` } : undefined}>
+            <div className="ck-pane-head">
+              <h2>Ingredients</h2>
+              {/* same pill as the recipe page: tap to change servings without leaving cook mode */}
+              <Link className="ck-scale-button" onClick={() => setScaleOpen(true)} aria-label={`${servingsText}, adjust amounts`}>
+                <span>{servingsText}</span>
+                <ChevronDown {...inlineIcon} />
+              </Link>
             </div>
-          ))}
-        </div>
+            {ingGroups.filter((g) => g.items.length).map((g) => (
+              <div key={g.id} className="ck-ing-group">
+                {g.label && <div className="ck-group-label">{g.label}</div>}
+                <List dividers className="ck-plain-list ck-cook-list">
+                  {g.items.map((i) => (
+                    <ListItem
+                      key={i.id}
+                      checkbox
+                      checked={doneIng.has(i.id)}
+                      onChange={() => onTick('ing', i.id)}
+                      className={[doneIng.has(i.id) ? 'ck-done' : '', converting?.ing.id === i.id ? 'ck-ing-on' : ''].join(' ')}
+                    >
+                      <span slot="title">
+                        {/* issue #6: tap an underlined amount to see it in other units (the rest of the row ticks it) */}
+                        <ConvertibleAmount ing={i} factor={factor} picks={picks} onOpen={(t) => setConverting((cur) => toggleTarget(cur, t))} />{' '}
+                        <CookName ing={i} linked={linkedRecipe(i, recipes)} onOpen={(r) => onShow(r.id)} />
+                      </span>
+                      {footerText(i, factor) && <span slot="footer">{footerText(i, factor)}</span>}
+                    </ListItem>
+                  ))}
+                </List>
+              </div>
+            ))}
+            {!halves && <p className="ck-pane-note">{missing}</p>}
+          </div>
+        )}
 
         {/* bottom half: directions */}
-        <div className="ck-pane ck-pane-steps">
-          <div className="ck-pane-head">
-            <h2>Directions</h2>
-          </div>
-          <List className="ck-plain-list ck-cook-list ck-cook-steps">
-            {steps.map((s) => {
-              if (s.kind === 'header') {
+        {hasSteps && (
+          <div className={`ck-pane ck-pane-steps${halves ? '' : ' ck-pane-alone'}`}>
+            <div className="ck-pane-head">
+              <h2>Directions</h2>
+            </div>
+            <List className="ck-plain-list ck-cook-list ck-cook-steps">
+              {steps.map((s) => {
+                if (s.kind === 'header') {
+                  return (
+                    <li key={s.id} className="ck-cook-step-group">
+                      <span className="ck-group-label">{s.text}</span>
+                    </li>
+                  );
+                }
+                const done = doneSteps.has(s.id);
+                const uses = stepIngredients(s.text, recipe.ingredients);
+                const stepTimerList = stepTimers(s.text);
                 return (
-                  <li key={s.id} className="ck-cook-step-group">
-                    <span className="ck-group-label">{s.text}</span>
-                  </li>
-                );
-              }
-              const done = doneSteps.has(s.id);
-              const uses = stepIngredients(s.text, recipe.ingredients);
-              const stepTimerList = stepTimers(s.text);
-              return (
-                <ListItem key={s.id} checkbox checked={done} onChange={(e: { target: Element }) => tickStep(s.id, e.target)} className={done ? 'ck-done' : ''}>
-                  <div slot="title" className="ck-cook-step">
-                    <span className="ck-cook-text">
-                      <b className="ck-step-no">{s.n}</b> {s.text}
-                    </span>
-                    {(uses.length > 0 || stepTimerList.length > 0) && (
-                      // a Framework7 accordion item, so ticking the step slides this up (Framework7's own collapse) instead of
-                      // it vanishing. The class string never changes, so React leaves the open/closed state to Framework7.
-                      <div className="accordion-item accordion-item-opened ck-step-extra">
-                        <div className="accordion-item-content">
-                          <div className="ck-step-extra-inner">
-                            {uses.length > 0 && (
-                              <span className="ck-cook-uses">{uses.map((i) => `${amountText(i, factor, picks)} ${i.name}`.trim()).join(' · ')}</span>
-                            )}
-                            {stepTimerList.map((t) => {
-                              const running = timers.find((x) => x.step === s.n && x.label === t.label);
-                              return (
-                                <Button
-                                  key={t.label}
-                                  className={`ck-soft ck-timer-button ${running ? 'ck-timer-running' : ''}`}
-                                  onClick={(e: { preventDefault: () => void; stopPropagation: () => void }) => {
-                                    // a tap on the timer must not tick the step
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (running) onStopTimer(running.id);
-                                    else onStartTimer(s.n, t.label, t.seconds);
-                                  }}
-                                >
-                                  <TimerIcon {...inlineIcon} />
-                                  {running ? `${clock((running.endsAt - now) / 1000)} left · Stop` : `${t.label} timer`}
-                                </Button>
-                              );
-                            })}
+                  <ListItem key={s.id} checkbox checked={done} onChange={(e: { target: Element }) => tickStep(s.id, e.target)} className={done ? 'ck-done' : ''}>
+                    <div slot="title" className="ck-cook-step">
+                      <span className="ck-cook-text">
+                        <b className="ck-step-no">{s.n}</b> {s.text}
+                      </span>
+                      {(uses.length > 0 || stepTimerList.length > 0) && (
+                        // a Framework7 accordion item, so ticking the step slides this up (Framework7's own collapse) instead of
+                        // it vanishing. The class string never changes, so React leaves the open/closed state to Framework7.
+                        <div className="accordion-item accordion-item-opened ck-step-extra">
+                          <div className="accordion-item-content">
+                            <div className="ck-step-extra-inner">
+                              {uses.length > 0 && (
+                                <span className="ck-cook-uses">{uses.map((i) => `${amountText(i, factor, picks)} ${i.name}`.trim()).join(' · ')}</span>
+                              )}
+                              {stepTimerList.map((t) => {
+                                const running = timers.find((x) => x.step === s.n && x.label === t.label);
+                                return (
+                                  <Button
+                                    key={t.label}
+                                    className={`ck-soft ck-timer-button ${running ? 'ck-timer-running' : ''}`}
+                                    onClick={(e: { preventDefault: () => void; stopPropagation: () => void }) => {
+                                      // a tap on the timer must not tick the step
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      if (running) onStopTimer(running.id);
+                                      else onStartTimer(s.n, t.label, t.seconds);
+                                    }}
+                                  >
+                                    <TimerIcon {...inlineIcon} />
+                                    {running ? `${clock((running.endsAt - now) / 1000)} left · Stop` : `${t.label} timer`}
+                                  </Button>
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </ListItem>
-              );
-            })}
-          </List>
-        </div>
+                      )}
+                    </div>
+                  </ListItem>
+                );
+              })}
+            </List>
+            {!halves && <p className="ck-pane-note">{missing}</p>}
+          </div>
+        )}
 
         {/* the divider: drag to give either half more room. Last in the markup and placed on the split line, so it sits over
             both halves (their lists are positioned too) without a z-index */}
-        <div
-          ref={handleEl}
-          className={`ck-split-handle${holding ? ' ck-split-holding' : ''}`}
-          style={{ top: `calc(${split * 100}% - var(--ck-split-half))` }}
-          role="separator"
-          aria-orientation="horizontal"
-          aria-label="Resize ingredients and directions"
-          aria-valuemin={Math.round(MIN_SPLIT * 100)}
-          aria-valuemax={Math.round(MAX_SPLIT * 100)}
-          aria-valuenow={Math.round(split * 100)}
-          tabIndex={0}
-          onPointerDown={onHandleDown}
-          onPointerMove={onHandleMove}
-          onPointerUp={onHandleUp}
-          onPointerCancel={onHandleUp}
-          onKeyDown={onHandleKey}
-        >
-          <span className="ck-split-grip">
-            <GripHorizontal {...inlineIcon} />
-          </span>
-        </div>
+        {halves && (
+          <div
+            ref={handleEl}
+            className={`ck-split-handle${holding ? ' ck-split-holding' : ''}`}
+            style={{ top: `calc(${split * 100}% - var(--ck-split-half))` }}
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="Resize ingredients and directions"
+            aria-valuemin={Math.round(MIN_SPLIT * 100)}
+            aria-valuemax={Math.round(MAX_SPLIT * 100)}
+            aria-valuenow={Math.round(split * 100)}
+            tabIndex={0}
+            onPointerDown={onHandleDown}
+            onPointerMove={onHandleMove}
+            onPointerUp={onHandleUp}
+            onPointerCancel={onHandleUp}
+            onKeyDown={onHandleKey}
+          >
+            <span className="ck-split-grip">
+              <GripHorizontal {...inlineIcon} />
+            </span>
+          </div>
+        )}
       </div>
       {/* opened inside the cook popup (Framework7 moves it there), which would otherwise cover it */}
       <UnitSheet containerEl=".popup.ck-cook" target={converting} factor={factor} picks={picks} onPick={onPick} onClosed={() => setConverting(null)} />

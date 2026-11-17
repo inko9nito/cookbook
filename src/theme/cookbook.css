@@ -1142,3 +1142,71 @@ html.ios .navbar.ck-cook-tabbed .navbar-inner { padding-top: 0; padding-bottom: 
 .ck-scan-title { font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; color: var(--ck-fg); }
 .ck-scan-title.ck-scan-failed { color: var(--ck-error); }
 .ck-scan-detail { font-size: 14px; color: var(--ck-fg2); }
+
+/* ── Planner (issue #62): a week's calendar strip under the title (Framework7's subnavbar, so it stays while the agenda
+   scrolls), then the week as an agenda, day by day. Like iOS's own Calendar: today's date in Tomato, the picked day
+   filled (Tomato when it's today, dark otherwise), a dot under days with something planned. ── */
+/* Not iOS 26: Framework7 v9 floats the subnavbar as a rounded glass capsule inset from the edges; this one is docked flat,
+   full width, in the page colour with a hairline under it (like the tab bar's on top) */
+.page.ck-planner { --f7-subnavbar-height: 96px; --f7-subnavbar-offset-left: 0px; --f7-subnavbar-offset-right: 0px; }
+html.ios .subnavbar.ck-week-bar { border-radius: 0; box-shadow: none; background-color: var(--ck-bg); }
+html.ios .subnavbar.ck-week-bar::after { background-color: var(--ck-line); }
+html.ios .subnavbar.ck-week-bar .subnavbar-inner { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 6px; padding: 2px 0 0; border-radius: 0; }
+.ck-week-label { padding: 0 16px; font-size: 13px; font-weight: 600; color: var(--ck-muted); }
+swiper-container.ck-week-swiper { width: 100%; }
+.ck-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0 8px; }
+.link.ck-week-day, .ck-week-day {
+  margin: 0; padding: 0 0 4px; color: var(--ck-fg); font-family: var(--ck-font);
+  display: grid; justify-items: center; gap: 3px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.ck-week-letter { font-size: 11px; font-weight: 700; line-height: 14px; color: var(--ck-muted); }
+.ck-week-num {
+  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
+  font-family: var(--ck-font-display); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--ck-fg);
+}
+.ck-week-today .ck-week-num { color: var(--ck-accent-ink); font-weight: 600; }
+.ck-week-selected .ck-week-num { background-color: var(--ck-fg); color: var(--ck-surface); }
+.ck-week-selected.ck-week-today .ck-week-num { background-color: var(--ck-accent-ink); }
+.ck-week-dot { width: 5px; height: 5px; border-radius: 50%; }
+.ck-week-busy .ck-week-dot { background-color: var(--ck-accent); }
+.ck-week-day:focus-visible { outline: none; }
+.ck-week-day:focus-visible .ck-week-num { box-shadow: 0 0 0 2px var(--ck-bg), 0 0 0 4px var(--ck-accent-ink); }
+/* the agenda: each day its name (today's in Tomato) and date, its own +, then its recipes as an inset card */
+.ck-agenda { padding: 4px 0 24px; }
+.ck-plan-day + .ck-plan-day { margin-top: 22px; }
+.ck-plan-day-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 8px 0 16px; margin-bottom: 6px; }
+.ck-plan-day-head h2 { margin: 0; min-width: 0; font-family: var(--ck-font-display); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--ck-fg); }
+.ck-plan-day-today .ck-plan-day-head h2 { color: var(--ck-accent-ink); }
+.ck-plan-day-date { font-family: var(--ck-font); font-size: 14px; font-weight: 600; letter-spacing: 0; color: var(--ck-muted); margin-left: 2px; }
+.link.ck-plan-add { width: 40px; height: 40px; justify-content: center; flex: none; color: var(--ck-accent-ink); }
+.list.ck-plan-list { --f7-list-margin-vertical: 0px; --f7-list-item-footer-font-size: 13px; }
+.ck-plan-empty { margin: 0; padding: 0 16px; }
+/* swiping a row: Move in dark grey (Framework7's light grey under white text was unreadable), Remove in red */
+html.ios .list.ck-plan-list .swipeout-actions-right > a.ck-plan-move { background-color: var(--ck-fg2); }
+/* "Today" next to the bar's round buttons: the same soft grey pill (Tomato text on it would be under 4.5:1) */
+html.ios .navbar .right .link.ck-plan-today { font-weight: 500; }
+/* a recipe page's Planned chips: like the label chips, with a calendar */
+.chip.ck-chip.ck-plan-chip { gap: 6px; }
+.chip.ck-chip.ck-plan-chip .ck-icon { color: var(--ck-fg2); }
+/* picking a day (Framework7's Calendar in a sheet): the strip's colours; the title in the header */
+.calendar.ck-calendar {
+  --f7-calendar-day-text-color: var(--ck-fg);
+  --f7-calendar-today-text-color: var(--ck-accent-ink);
+  --f7-calendar-today-bg-color: transparent;
+  --f7-calendar-selected-bg-color: var(--ck-fg);
+  --f7-calendar-selected-text-color: var(--ck-surface);
+  --f7-calendar-event-bg-color: var(--ck-accent);
+  --f7-calendar-event-dot-size: 5px;
+  --f7-calendar-week-header-text-color: var(--ck-muted);
+  --f7-calendar-day-size: 36px;
+  --f7-calendar-day-font-size: 17px;
+  --f7-calendar-height: 440px;
+  --f7-calendar-header-height: 52px;
+}
+.calendar.ck-calendar .calendar-day-today .calendar-day-number { font-weight: 600; }
+/* only this month's days, as in iOS's own Calendar (Framework7 fills the rows with the months either side, faded) */
+.calendar.ck-calendar .calendar-day-prev,
+.calendar.ck-calendar .calendar-day-next { visibility: hidden; }
+.calendar.ck-calendar .calendar-day-today.calendar-day-selected .calendar-day-number { background-color: var(--ck-accent-ink); }
+.calendar.ck-calendar.calendar-sheet { height: calc(var(--f7-calendar-height) + 16px + var(--f7-safe-area-bottom)); padding-bottom: calc(16px + var(--f7-safe-area-bottom)); }
+.calendar.ck-calendar .calendar-header { font-family: var(--ck-font-display); font-weight: 600; color: var(--ck-fg); }

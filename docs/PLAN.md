@@ -237,8 +237,9 @@ Bottom tab bar (Framework7 tabbar, with a `View` per tab so each tab keeps its o
    - **Add Recipes** opens a `Popup` with a searchbar, where tapping recipes toggles a check mark (adding several at once).
    - **Organize** means drag-to-reorder and moving recipes between sections.
    - The **⋯** menus are `Actions` sheets.
-3. **Plan** *(later)*
-   - Top `Segmented` control: **Calendar** (the dated planner: week view, tap a day, add recipe or note) and **Meal Plans** (templates).
+3. **Plan**
+   - **Planner** *(built in issue #62)*: the dated calendar. A week's strip under the title (today picked, swipe for other weeks), then the week as an agenda of days with their recipes. + adds recipes to a day; swipe a row to Move or Remove it. The recipe page's ⋯ → Add to Planner picks a day, and its Planned section lists the days it's planned for.
+   - **Meal Plans** *(later, #26)*: templates. They may join the Planner under a `Segmented` control (Planner | Meal Plans).
    - A template page shows the guide, then days grouped by week with prep tips.
    - **Add to Calendar** asks for a start date (`Calendar` picker) and places the template's recipes onto real days.
 4. **Groceries** *(maybe later)*
@@ -247,7 +248,7 @@ Bottom tab bar (Framework7 tabbar, with a `View` per tab so each tab keeps its o
 - Large photo (tap → `Photo Browser`), title, source link, star rating, "Made it N times", and Prep / Cook / Total time.
 - **Action row** under the title, with icon buttons like Apple's apps:
   - **Cookbook:** a `Popup` with a cover grid. Tap to toggle a check mark, "+ New Cookbook" at the top, and pick a section if the cookbook has sections.
-  - **Plan:** a `Popup` with the calendar, by weeks and days. Tap a day to add the recipe there.
+  - **Plan** (built in #62 as ⋯ → Add to Planner): Framework7's Calendar in a sheet. Tap a day to add the recipe there.
   - **Groceries** *(later)*: a `Sheet` with a servings stepper and an ingredient checklist (untick what I have).
   - **Share:** the iOS share sheet via the Web Share API, sending a link or the recipe as text.
 - **Servings stepper / ×½ ×2 ×3 chips** that scale ingredients live, ranges included (R5).

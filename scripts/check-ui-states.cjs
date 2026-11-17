@@ -1434,8 +1434,8 @@ async function swipeLeft(ctx, page, locator) {
     await page.evaluate(() => { const pc = document.querySelector('.view.tab-active .page-current .page-content'); pc.scrollTop = pc.scrollHeight; });
     await page.waitForTimeout(500);
     const sections = (await page.locator(`${CUR} .ck-panel-rest .ck-sec h2`).allTextContents()).join(',');
-    if (sections !== 'Directions,Notes,Labels,Cookbooks,Source') throw new Error(`the page ends with ${sections}`);
-    const labels = (await page.locator(`${CUR} .ck-belongs .chip:not(.ck-book-chip)`).allTextContents()).join(',');
+    if (sections !== 'Directions,Notes,Labels,Cookbooks,Planned,Source') throw new Error(`the page ends with ${sections}`);
+    const labels = (await page.locator(`${CUR} .ck-belongs .chip:not(.ck-book-chip):not(.ck-plan-chip)`).allTextContents()).join(',');
     if (labels !== 'Side,Dessert,Holiday') throw new Error(`the labels are ${labels}`);
     const books = (await page.locator(`${CUR} .ck-book-chip`).allTextContents()).join(',');
     if (books !== 'Everything else,Everything else · Meat,Grilling') throw new Error(`the cookbook chips are ${books}`);
@@ -1511,6 +1511,142 @@ async function swipeLeft(ctx, page, locator) {
     if (seen2.some((x) => !x.startsWith('Section 1') || !x.endsWith('|true'))) throw new Error(`while saving, the new section's page showed ${JSON.stringify([...new Set(seen2)])}`);
   });
 
+  // ── Planner (issue #62): the Plan tab, from a fresh start. The demo plans two recipes today, one tomorrow, one the
+  // day after and one a week from today. A week's strip stays under the title with today picked; below it the agenda. ──
+  const PLAN = '#view-plan .page-current';
+  const dayKey = (n) => page.evaluate((n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }, n);
+  // a row's title without its time (Framework7 puts the footer inside the title)
+  const rowsOn = (day) => page.locator(`${PLAN} .ck-plan-day[data-day="${day}"] .ck-plan-list .item-title`).evaluateAll((els) => els.map((e) => [...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim()));
+  const shortLabel = (day) => page.evaluate((day) => { const [y, m, d] = day.split('-').map(Number); return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(y, m - 1, d)); }, day);
+  const pickInCalendar = async (day) => {
+    await page.waitForSelector('.calendar.modal-in');
+    const [y, m, d] = day.split('-').map(Number);
+    // Framework7's calendar names a day by year, 0-based month and day; the month shown may need a swipe to the next
+    const cell = page.locator(`.calendar.modal-in .calendar-month-current .calendar-day[data-date="${y}-${m - 1}-${d}"]`);
+    if (!(await cell.count())) { await page.locator('.calendar.modal-in .calendar-next-month-button, .calendar.modal-in .icon-next').first().tap(); await page.waitForTimeout(500); }
+    await cell.tap(); await page.waitForTimeout(800);
+  };
+  let today0, today1, today7;
+  await step('62a-planner', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    await page.locator('.tabbar a[aria-label="Plan"]').tap(); await page.waitForTimeout(900);
+    [today0, today1, today7] = [await dayKey(0), await dayKey(1), await dayKey(7)];
+    if ((await page.locator(`${PLAN} > .navbar .title`).textContent()) !== 'Planner') throw new Error('the Plan tab isn’t titled Planner');
+    const label = await page.locator(`${PLAN} .ck-week-label`).textContent();
+    if (!label.startsWith('This week · ')) throw new Error(`the week reads "${label}"`);
+    // today is picked at first and filled in Tomato ink; the strip runs Monday to Sunday
+    const sel = page.locator(`${PLAN} .swiper-slide-active .ck-week-day.ck-week-selected`);
+    if ((await sel.count()) !== 1 || !(await sel.getAttribute('class')).includes('ck-week-today')) throw new Error('today isn’t the picked day');
+    const fill = await sel.locator('.ck-week-num').evaluate((e) => getComputedStyle(e).backgroundColor);
+    if (fill !== 'rgb(196, 66, 28)') throw new Error(`today picked is filled ${fill}, not Tomato ink`);
+    // the other days' dates are dark (a day is a link: it once took the links' Tomato)
+    const plain = await page.locator(`${PLAN} .swiper-slide-active .ck-week-day:not(.ck-week-today):not(.ck-week-selected) .ck-week-num`).first().evaluate((e) => getComputedStyle(e).color);
+    if (plain !== 'rgb(38, 38, 40)') throw new Error(`another day's date is ${plain}, not dark`);
+    const letters = await page.locator(`${PLAN} .swiper-slide-active .ck-week-letter`).allTextContents();
+    if (letters.join('') !== 'MTWTFSS') throw new Error(`the strip's days are ${letters.join('')}`);
+    // the strip is docked flat and full width under the title (not Framework7 v9's floating glass capsule)
+    const bar = await page.locator(`${PLAN} .subnavbar`).evaluate((e) => ({ r: getComputedStyle(e).borderRadius, w: e.getBoundingClientRect().width, bg: getComputedStyle(e).backgroundColor }));
+    if (bar.r !== '0px' || Math.abs(bar.w - 393) > 1 || bar.bg === 'rgba(0, 0, 0, 0)') throw new Error(`the strip's bar is ${JSON.stringify(bar)}`);
+    if ((await rowsOn(today0)).join() !== 'Mustard Dill Chicken Thighs,Corn pudding') throw new Error(`today shows ${JSON.stringify(await rowsOn(today0))}`);
+    if ((await page.locator(`${PLAN} .ck-plan-day-today h2`).textContent()).trim().split(' ')[0] !== 'Today') throw new Error('today’s heading doesn’t say Today');
+    // days with something planned have a dot
+    if (!(await page.locator(`${PLAN} .swiper-slide-active .ck-week-day.ck-week-today.ck-week-busy`).count())) throw new Error('today has no dot');
+    if (await page.locator(`${PLAN} .navbar a.ck-plan-today`).count()) throw new Error('Today shows while today is picked');
+  });
+  // picking another day fills it dark (today stays Tomato), scrolls the agenda to it, and offers Today to come back
+  await step('62b-planner-pick-day', async () => {
+    const target = await page.locator(`${PLAN} .swiper-slide-active .ck-week-day:not(.ck-week-today)`).last();
+    await target.tap(); await page.waitForTimeout(900);
+    if (!(await target.getAttribute('class')).includes('ck-week-selected')) throw new Error('the tapped day isn’t picked');
+    const fill = await target.locator('.ck-week-num').evaluate((e) => getComputedStyle(e).backgroundColor);
+    if (fill !== 'rgb(38, 38, 40)') throw new Error(`a picked day is filled ${fill}, not dark`);
+    if (!(await page.locator(`${PLAN} .navbar a.ck-plan-today`).isVisible())) throw new Error('no Today button');
+  });
+  // swiping the strip shows the next week and picks the same weekday there; next week holds the recipe planned a week on
+  await step('62c-planner-next-week', async () => {
+    await page.locator(`${PLAN} .navbar a.ck-plan-today`).tap(); await page.waitForTimeout(800);
+    // most of the way across, as the photo swipe (17c): Swiper only counts a short drag when it's quick
+    const strip = await page.locator(`${PLAN} .ck-week-swiper`).boundingBox();
+    const cdp = await ctx.newCDPSession(page);
+    const at = (x) => [{ x, y: strip.y + strip.height / 2 }];
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(340) });
+    for (let x = 320; x >= 60; x -= 20) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: at(x) }); await page.waitForTimeout(16); }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
+    await page.waitForTimeout(900);
+    const label = await page.locator(`${PLAN} .ck-week-label`).textContent();
+    if (!label.startsWith('Next week · ')) throw new Error(`after a swipe the week reads "${label}"`);
+    const picked = await page.locator(`${PLAN} .swiper-slide-active .ck-week-day.ck-week-selected`).getAttribute('aria-label');
+    if (!picked.includes(await shortLabel(today7))) throw new Error(`picked "${picked}", not a week from today`);
+    if ((await rowsOn(today7)).join() !== 'Italian Turkey Zucchini Meatballs') throw new Error(`a week from today shows ${JSON.stringify(await rowsOn(today7))}`);
+  });
+  await step('62d-planner-today', async () => {
+    await page.locator(`${PLAN} .navbar a.ck-plan-today`).tap(); await page.waitForTimeout(900);
+    if (!(await page.locator(`${PLAN} .ck-week-label`).textContent()).startsWith('This week')) throw new Error('Today didn’t come back to this week');
+    if (!(await page.locator(`${PLAN} .swiper-slide-active .ck-week-day.ck-week-today.ck-week-selected`).count())) throw new Error('Today didn’t pick today');
+  });
+  // + adds recipes to the picked day: the recipe picker, ticks, Done
+  await step('62e-planner-add', async () => {
+    await page.locator(`${PLAN} > .navbar a.ck-nav-primary`).tap(); await page.waitForTimeout(900);
+    if ((await page.locator('.popup.modal-in .navbar .title').textContent()) !== 'Add to Today') throw new Error('the picker isn’t titled Add to Today');
+    const already = await page.locator('.popup.modal-in li', { hasText: 'Corn pudding' }).locator('.item-footer').textContent();
+    if (already !== 'Already planned that day') throw new Error(`a recipe planned today says "${already}"`);
+    await page.locator('.popup.modal-in li', { hasText: 'Tahini Sauce' }).locator('label').tap(); await page.waitForTimeout(300);
+  });
+  await step('62f-planner-added', async () => {
+    await page.locator('.popup.modal-in .navbar a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
+    if ((await rowsOn(today0)).join() !== 'Mustard Dill Chicken Thighs,Corn pudding,Tahini Sauce') throw new Error(`today shows ${JSON.stringify(await rowsOn(today0))}`);
+  });
+  // swiping a row offers Move and Remove
+  await step('62g-planner-swipe-row', async () => {
+    await swipeLeft(ctx, page, page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] li.swipeout`, { hasText: 'Tahini Sauce' }));
+    await page.waitForTimeout(700);
+    if (!(await page.locator(`${PLAN} li.swipeout-opened .ck-plan-move`).isVisible())) throw new Error('no Move button');
+  });
+  // Move picks another day from a month calendar (today in Tomato, dots on planned days)
+  await step('62h-planner-move-calendar', async () => {
+    await page.locator(`${PLAN} li.swipeout-opened .ck-plan-move`).tap(); await page.waitForTimeout(900);
+    if (!(await page.locator('.calendar.ck-calendar.modal-in').isVisible())) throw new Error('no calendar');
+    if ((await page.locator('.calendar.modal-in .calendar-header').textContent()).trim() !== 'Move to') throw new Error('the calendar isn’t titled Move to');
+    if ((await page.locator('.calendar.modal-in .calendar-month-current .calendar-day-event').count()) < 2) throw new Error('no dots on planned days');
+  });
+  await step('62i-planner-moved', async () => {
+    await pickInCalendar(today1);
+    if ((await rowsOn(today0)).includes('Tahini Sauce')) throw new Error('still today after Move');
+    if (!(await rowsOn(today1)).includes('Tahini Sauce')) throw new Error(`tomorrow shows ${JSON.stringify(await rowsOn(today1))}`);
+  });
+  await step('62j-planner-removed', async () => {
+    await swipeLeft(ctx, page, page.locator(`${PLAN} .ck-plan-day[data-day="${today1}"] li.swipeout`, { hasText: 'Tahini Sauce' }));
+    await page.waitForTimeout(700);
+    await page.locator(`${PLAN} li.swipeout-opened .swipeout-delete`).tap(); await page.waitForTimeout(900);
+    if ((await rowsOn(today1)).includes('Tahini Sauce')) throw new Error('Remove left it there');
+  });
+  // a recipe's page lists the days it's planned for; its ⋯ menu adds it to another day
+  await step('62k-recipe-planned', async () => {
+    await page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] li`, { hasText: 'Corn pudding' }).locator('a.item-link').tap(); await page.waitForTimeout(1200);
+    await page.locator(`${PLAN} > .page-content`).evaluate((e) => e.scrollTo(0, e.scrollHeight)); await page.waitForTimeout(500);
+    const chips = await page.locator(`${PLAN} .ck-plan-chip`).allTextContents();
+    if (chips.join() !== 'Today') throw new Error(`Planned shows ${JSON.stringify(chips)}`);
+  });
+  await step('62l-recipe-add-to-planner', async () => {
+    await page.locator(`${PLAN} > .navbar a[aria-label="More actions"]`).tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Add to Planner' }).tap(); await page.waitForTimeout(900);
+    if ((await page.locator('.calendar.modal-in .calendar-header').textContent()).trim() !== 'Add to Planner') throw new Error('the calendar isn’t titled Add to Planner');
+  });
+  await step('62m-recipe-added-to-planner', async () => {
+    await pickInCalendar(today7);
+    const chips = await page.locator(`${PLAN} .ck-plan-chip`).allTextContents();
+    if (chips.length !== 2 || chips[1] !== (await shortLabel(today7))) throw new Error(`Planned shows ${JSON.stringify(chips)}`);
+  });
+  // a Planned chip opens the Planner on that day
+  await step('62n-planned-chip', async () => {
+    await page.locator(`${PLAN} .ck-plan-chip`).nth(1).tap(); await page.waitForTimeout(1200);
+    if ((await page.locator(`${PLAN} > .navbar .title`).textContent()) !== 'Planner') throw new Error('the chip didn’t go back to the Planner');
+    const picked = await page.locator(`${PLAN} .swiper-slide-active .ck-week-day.ck-week-selected`).getAttribute('aria-label');
+    if (!picked.includes(await shortLabel(today7))) throw new Error(`the Planner picked "${picked}"`);
+    if (!(await rowsOn(today7)).includes('Corn pudding')) throw new Error(`that day shows ${JSON.stringify(await rowsOn(today7))}`);
+  });
+
   // Issue #35: while the recipes and cookbooks first load, grey placeholders in their shape: no lone "All" chip, no
   // "0 recipes", no small spinner. ?loading makes the demo's recipes and cookbooks never arrive.
   const noLoadingTells = async (where) => {
@@ -1538,6 +1674,17 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('#view-cookbooks .page-current > .navbar .ck-view-switch').tap(); await page.waitForTimeout(600);
     await noLoadingTells('Cookbooks as a list');
     if ((await page.locator('#view-cookbooks .page-current .ck-book-list .skeleton-block').count()) < 3) throw new Error('no placeholder cookbook rows');
+  });
+  // the Planner (issue #62): the days and the strip are there at once (they're dates), each day a grey row, no
+  // "Nothing planned" and no dots until the recipes arrive
+  await step('35d-planner-loading', async () => {
+    await page.locator('.tabbar a[aria-label="Plan"]').tap(); await page.waitForTimeout(800);
+    const pg = page.locator('#view-plan .page-current');
+    if (await pg.locator('.preloader').count()) throw new Error('the Planner shows a spinner while loading');
+    if ((await pg.locator('.ck-plan-day').count()) !== 7) throw new Error('the week’s days don’t show while loading');
+    if ((await pg.locator('.ck-plan-list .skeleton-block').count()) < 7) throw new Error('no placeholder rows');
+    if (await pg.locator('.ck-plan-empty').count()) throw new Error('says "Nothing planned" while loading');
+    if (await pg.locator('.ck-week-busy').count()) throw new Error('dots on the strip while loading');
   });
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)

@@ -3,14 +3,17 @@ import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   Actions, ActionsGroup, ActionsButton, f7,
 } from 'framework7-react';
-import { BookOpen, Ellipsis, Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { BookOpen, CalendarDays, Ellipsis, Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import ScaleSheet from '../components/ScaleSheet';
 import CookMode from '../components/CookMode';
 import RecipePhotos from '../components/RecipePhotos';
 import AddToCookbookPopup from '../components/AddToCookbookPopup';
-import { useCookbooks, useStore } from '../data/store';
+import { useCookbooks, usePlanner, useStore } from '../data/store';
+import { showInPlanner } from '../data/plannerNav';
+import { busyDays, mediumDate, plan, today, upcomingDaysOf, type Day } from '../lib/planner';
+import { pickDay } from '../components/ui/pickDay';
 import { colorOf, placesOfRecipe } from '../lib/cookbook';
-import { titleCase, linkedRecipe, usedIn, type Ingredient } from '../lib/recipe';
+import { titleCase, linkedRecipe, newId, usedIn, type Ingredient } from '../lib/recipe';
 import { friendly } from '../lib/ingredients';
 import { footerText, type UnitPicks } from '../components/ui/ingredientLine';
 import { ConvertibleAmount, toggleTarget, withPick, type ConvertTarget } from '../components/UnitChoices';
@@ -76,6 +79,7 @@ const siteOf = (url: string) => {
 export default function RecipePage({ f7route, f7router }: Props) {
   const { recipes, deleteRecipe, setFilter } = useStore();
   const { cookbooks } = useCookbooks();
+  const { planned, savePlanned } = usePlanner();
   const recipe = recipes.find((r) => r.id === f7route?.params.id);
   const [factor, setFactor] = useState(1);
   const [scaleOpen, setScaleOpen] = useState(false);
@@ -99,6 +103,23 @@ export default function RecipePage({ f7route, f7router }: Props) {
 
   const soon = (what: string) => f7.toast.show({ text: `${what} comes in a later phase`, closeTimeout: 1500 });
   const places = placesOfRecipe(cookbooks, recipe.id);
+  // issue #62: the days it's planned for, from today on
+  const planDays = upcomingDaysOf(planned, recipe.id, today());
+  const addToPlanner = () =>
+    pickDay({
+      title: 'Add to Planner',
+      busy: busyDays(planned.filter((p) => p.recipeId === recipe.id)),
+      onPick: (day) => {
+        savePlanned(plan(recipe.id, day, newId));
+        f7.toast.show({ text: `Added to ${mediumDate(day)}`, closeTimeout: 2000 });
+      },
+    });
+  // a Planned chip opens the Planner on that day: back to the Planner in the Plan tab, or over to it
+  const showDay = (day: Day) => {
+    showInPlanner(day);
+    if (f7router?.view.el.id === 'view-plan') f7router.back(f7router.history[0], { force: true });
+    else f7.tab.show('#view-plan');
+  };
   // a label opens Recipes showing just that label (R2's filter): back to the list in the Recipes tab, or over to it
   const showLabel = (tag: string) => {
     setFilter([tag]);
@@ -219,7 +240,8 @@ export default function RecipePage({ f7route, f7router }: Props) {
         )}
 
         {/* issue #41: where it belongs, as chips that open it. Labels open Recipes filtered by that label; each cookbook
-            (or section) it's in is a chip in the cookbook's colour. Meal plans (#26) will follow, with a clipboard icon. */}
+            (or section) it's in is a chip in the cookbook's colour; the days it's planned for (#62) open the Planner there.
+            Meal plans (#26) will follow, with a clipboard icon. */}
         {recipe.tags.length > 0 && (
           <>
             <div className="ck-sec">
@@ -244,6 +266,21 @@ export default function RecipePage({ f7route, f7router }: Props) {
                 <Link key={p.key} href={p.href} noLinkClass className={`chip ck-chip ck-book-chip ck-tint-${colorOf(p.cookbook)}`}>
                   <BookOpen {...inlineIcon} aria-hidden="true" />
                   <span className="chip-label">{p.label}</span>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+        {planDays.length > 0 && (
+          <>
+            <div className="ck-sec">
+              <h2>Planned</h2>
+            </div>
+            <div className="ck-chips ck-belongs">
+              {planDays.map((d) => (
+                <Link key={d} noLinkClass className="chip ck-chip ck-plan-chip" onClick={() => showDay(d)}>
+                  <CalendarDays {...inlineIcon} aria-hidden="true" />
+                  <span className="chip-label">{d === today() ? 'Today' : mediumDate(d)}</span>
                 </Link>
               ))}
             </div>
@@ -277,7 +314,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
         <ActionsGroup>
           <ActionsButton onClick={() => f7router?.navigate(`/recipe/${recipe.id}/edit/`)}>Edit Recipe</ActionsButton>
           <ActionsButton onClick={() => setAddingToCookbook(true)}>Add to Cookbook</ActionsButton>
-          <ActionsButton onClick={() => soon('Meal planning')}>Add to Plan</ActionsButton>
+          <ActionsButton onClick={addToPlanner}>Add to Planner</ActionsButton>
           <ActionsButton onClick={() => soon('The grocery list')}>Add to Grocery List</ActionsButton>
           <ActionsButton onClick={() => soon('Sharing')}>Share</ActionsButton>
           <ActionsButton onClick={() => soon('Duplicating')}>Duplicate</ActionsButton>

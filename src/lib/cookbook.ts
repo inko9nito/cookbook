@@ -117,6 +117,19 @@ export const toggleIn = (c: Cookbook, sectionId: string | null, recipeId: string
   return withRecipeIds(c, sectionId, on ? [...ids, recipeId] : ids);
 };
 
+/** A place a recipe is in, for its page (issue #41): the cookbook, or a section of it ("Dinners · Meat"), and where it opens. */
+export type RecipePlace = { key: string; cookbook: Cookbook; sectionId: string | null; label: string; href: string };
+
+/** Every place the recipe is in: cookbooks A–Z, and in each its Uncategorized first, then its sections in order. */
+export function placesOfRecipe(cookbooks: Cookbook[], recipeId: string): RecipePlace[] {
+  return [...cookbooks].sort(byName).flatMap((c) => [
+    ...(c.recipeIds.includes(recipeId) ? [{ key: c.id, cookbook: c, sectionId: null, label: c.name, href: `/cookbook/${c.id}/` }] : []),
+    ...c.sections
+      .filter((s) => s.recipeIds.includes(recipeId))
+      .map((s) => ({ key: `${c.id}:${s.id}`, cookbook: c, sectionId: s.id, label: `${c.name} · ${s.name}`, href: `/cookbook/${c.id}/section/${s.id}/` })),
+  ]);
+}
+
 /** Cookbooks A–Z, the way Prepear lists them. */
 export const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
 

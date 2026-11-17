@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { BOOK_COLORS, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
+import { BOOK_COLORS, colorOf, cookbookRecipeIds, coverOf, coverPhotos, coversOf, fromOrganizeRows, organizeRows, placesOfRecipe, toggleIn, type Cookbook, type OrganizeRow } from './cookbook';
 import { emptyRecipe, type Recipe } from './recipe';
 
 const book: Cookbook = {
@@ -83,5 +83,24 @@ describe('cookbooks', () => {
     const out = fromOrganizeRows(book, moved);
     expect(out.recipeIds).toEqual(['c', 'b']);
     expect(out.sections[0].recipeIds).toEqual(['a']);
+  });
+});
+
+describe('where a recipe is (issue #41)', () => {
+  test('cookbooks A–Z; in each, Uncategorized first, then sections in order', () => {
+    const dinners: Cookbook = { ...book, id: 'd', name: 'dinners', recipeIds: ['r'], sections: [
+      { id: 'm', name: 'Meat', coverRecipeId: null, recipeIds: ['r'] },
+      { id: 'f', name: 'Fish', coverRecipeId: null, recipeIds: [] },
+      { id: 'o', name: 'Other', coverRecipeId: null, recipeIds: ['x', 'r'] },
+    ] };
+    const bread: Cookbook = { ...book, id: 'b', name: 'Bread', recipeIds: ['r'], sections: [] };
+    const none: Cookbook = { ...book, id: 'n', name: 'Apples', recipeIds: ['x'], sections: [] };
+    expect(placesOfRecipe([dinners, none, bread], 'r').map((p) => [p.label, p.href])).toEqual([
+      ['Bread', '/cookbook/b/'],
+      ['dinners', '/cookbook/d/'],
+      ['dinners · Meat', '/cookbook/d/section/m/'],
+      ['dinners · Other', '/cookbook/d/section/o/'],
+    ]);
+    expect(placesOfRecipe([none], 'r')).toEqual([]);
   });
 });

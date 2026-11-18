@@ -11,7 +11,6 @@
   --ck-fg2: #55555a;
   --ck-muted: #6e6e73;
   --ck-photo-dark: #000000; /* behind a photo being cropped */
-  --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
   --ck-on-dark-button: rgba(255, 255, 255, 0.16); /* a button on --ck-photo-dark, with white text (the cropper's Rotate, #59) */
   --ck-crop-edge: rgba(255, 255, 255, 0.9); /* the edge of the crop square, over the photo (#51) */
   --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
@@ -1019,8 +1018,8 @@ html.ios .photo-browser-page .navbar-bg::after { background-color: var(--ck-phot
 .popup.ck-crop { --f7-page-bg-color: var(--ck-photo-dark); }
 .ck-crop-frame {
   position: relative; width: 100%; aspect-ratio: 4 / 5; margin-top: 8px; overflow: hidden; background-color: var(--ck-photo-dark);
-  /* shorter on a short screen (Safari with its bars), so Rotate and the hint still show under it */
-  max-height: calc(100dvh - var(--f7-navbar-height) - var(--f7-safe-area-top) - var(--f7-safe-area-bottom) - 160px);
+  /* shorter on a short screen (Safari with its bars), so Rotate still shows under it */
+  max-height: calc(100dvh - var(--f7-navbar-height) - var(--f7-safe-area-top) - var(--f7-safe-area-bottom) - 96px);
 }
 /* the img Cropper.js works from never shows (Cropper draws its own copies), not even while it starts again after Rotate */
 .ck-crop-frame > img { display: block; max-width: 100%; visibility: hidden; }
@@ -1036,7 +1035,6 @@ html.ios .photo-browser-page .navbar-bg::after { background-color: var(--ck-phot
 /* the whole photo turns, not just the part that was inside the frame */
 .ck-crop-still .cropper-wrap-box { overflow: visible; }
 .ck-crop-still-photo { position: absolute; }
-.block.ck-crop-hint { color: var(--ck-on-dark-muted); text-align: center; }
 /* issue #59: Rotate, under the frame: a soft see-through pill with white text on the black */
 .block.ck-crop-tools { display: flex; justify-content: center; margin: 20px 0 0; }
 .button.ck-crop-rotate { width: auto; height: 40px; gap: 6px; padding: 0 18px; background-color: var(--ck-on-dark-button); color: var(--ck-surface); }

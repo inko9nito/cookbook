@@ -10,7 +10,6 @@ colors:
   ink-muted: "#6e6e73"
   ink-done: "#a5a5aa"
   photo-dark: "#000000"
-  on-dark-muted: "#c7c7cc"
   on-dark-button: "rgba(255, 255, 255, 0.16)"
   crop-edge: "rgba(255, 255, 255, 0.9)"
   scrim: "rgba(0, 0, 0, 0.62)"
@@ -166,7 +165,6 @@ Implementation: `src/theme/cookbook.css` (tokens and Framework7 variable mapping
 | `--ck-fg2` | `#55555a` | Secondary text |
 | `--ck-muted` | `#6e6e73` | Meta text, placeholders, inactive tabs (iOS secondary label grey) |
 | `--ck-photo-dark` | `#000000` | Behind a photo being cropped (Crop Photo) |
-| `--ck-on-dark-muted` | `#c7c7cc` | Small text on `--ck-photo-dark` (the crop hint) |
 | `--ck-on-dark-button` | `rgba(255,255,255,0.16)` | A button on `--ck-photo-dark`, with white text and icon (Crop Photo's Rotate, #59) |
 | `--ck-crop-edge` | `rgba(255,255,255,0.9)` | The thin edge of Crop Photo's square, over the photo (#51) |
 | `--ck-scrim` | `rgba(0,0,0,0.62)` | Small label over a photo (the "Cover" badge on thumbnails) |

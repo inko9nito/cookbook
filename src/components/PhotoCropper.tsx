@@ -22,7 +22,8 @@ const INSET = 16;
 /** how long Rotate's quarter turn takes (issue #51) */
 const TURN_MS = 280;
 
-/** Where the photo goes in the cropper so that `crop` (a box on the photo, in its pixels) fills the square. */
+/** Where the photo goes in the cropper so that `crop` (a box on the photo, in its pixels) fills the square. `natural`
+ * is the photo's own size in pixels (not its size on screen: mixing them up made the photo and the square tiny, #51). */
 const photoAt = (square: Rect, natural: { width: number; height: number }, crop?: Box): Rect => {
   // no crop yet: the photo fills the square, centred
   const box = crop ? squareIn(crop) : null;
@@ -56,11 +57,18 @@ export default function PhotoCropper({ photo, onDone, onClose }: Props) {
   const turned = useRef<{ at: Rect; still: HTMLElement; turn: Animation } | null>(null);
   // counts closes, so a turn that finishes after Cancel is dropped
   const opening = useRef(0);
+  // the photo as now, for the frame's size watcher (set up once)
+  const current = useRef(photo);
+  current.current = photo;
 
-  const start = () => {
+  /** Start the cropper on the photo, with `crop` in the square (the photo's own crop by default). */
+  const start = (crop?: Box) => {
+    const photo = current.current;
     if (!img.current || !photo) return;
+    const startAt = crop ?? photo.crop;
     cropper.current?.destroy();
-    cropper.current = new Cropper(img.current, {
+    // ready uses this instance itself: cropper.current can still be the one before it, or a newer one
+    const instance: Cropper = new Cropper(img.current, {
       aspectRatio: 1,
       viewMode: 1,
       dragMode: 'move',
@@ -76,13 +84,13 @@ export default function PhotoCropper({ photo, onDone, onClose }: Props) {
       modal: true,
       restore: false,
       ready() {
-        const c = cropper.current;
-        if (!c) return;
+        const c = instance;
+        if (cropper.current !== c) return;
         const frameSize = c.getContainerData();
         const side = Math.round(Math.min(frameSize.width, frameSize.height) - 2 * INSET);
         const square = { left: (frameSize.width - side) / 2, top: (frameSize.height - side) / 2, width: side, height: side };
         const after = turned.current;
-        c.setCanvasData(after ? after.at : photoAt(square, c.getImageData(), photo.crop));
+        c.setCanvasData(after ? after.at : photoAt(square, { width: c.getImageData().naturalWidth, height: c.getImageData().naturalHeight }, startAt));
         c.setCropBoxData(square);
         if (after) {
           turned.current = null;
@@ -95,13 +103,32 @@ export default function PhotoCropper({ photo, onDone, onClose }: Props) {
         }
       },
     });
+    cropper.current = instance;
   };
 
   // the cropper starts as the popup starts to open, so the photo is there while it slides up (Framework7's open event
   // can't be used: it fires before the popup has this photo's handler)
   useEffect(() => {
-    if (photo) start();
+    if (photo && frame.current?.offsetWidth) start();
   }, [photo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cropper measures the frame once, as it starts. On the iPhone the popup could still be hidden then: the frame was 0
+  // wide, Cropper fell back to 200×100, and the square came out tiny (#51). So it starts once the frame has its size,
+  // and starts again, keeping the crop, if the frame's size changes.
+  useEffect(() => {
+    const el = frame.current;
+    if (!el) return;
+    const watch = new ResizeObserver(() => {
+      if (!current.current || turning.current || !el.offsetWidth || !el.offsetHeight) return;
+      const c = cropper.current;
+      if (!c) return start();
+      const size = c.getContainerData();
+      if (size.width === undefined) return; // still loading its photo: it measures the frame once it has
+      if (Math.abs(size.width - el.offsetWidth) > 1 || Math.abs(size.height - el.offsetHeight) > 1) start(c.getData(true));
+    });
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rotate = async () => {
     const c = cropper.current;
@@ -206,7 +233,6 @@ export default function PhotoCropper({ photo, onDone, onClose }: Props) {
             <span>Rotate</span>
           </Button>
         </Block>
-        <Block className="ck-note ck-crop-hint">Pinch to zoom, drag to move. What's in the square is what shows on the recipe.</Block>
       </Page>
     </Popup>
   );

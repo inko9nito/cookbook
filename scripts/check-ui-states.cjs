@@ -617,6 +617,17 @@ async function swipeLeft(ctx, page, locator) {
       return c.left <= b.left + 1 && c.top <= b.top + 1 && c.right >= b.right - 1 && c.bottom >= b.bottom - 1;
     });
     if (!(await covers())) throw new Error('the photo does not cover the crop square');
+    // the cropper fits the frame even when the frame gets its size after the cropper starts (on the iPhone the popup
+    // could still be hidden as it started, and the square came out tiny, #51)
+    const fits = () => page.evaluate(() => {
+      const fr = document.querySelector('.ck-crop-frame').getBoundingClientRect();
+      const b = document.querySelector('.ck-crop .cropper-container:not(.ck-crop-still) .cropper-crop-box').getBoundingClientRect();
+      return Math.abs(b.width - (Math.min(fr.width, fr.height) - 32)) <= 2;
+    });
+    await page.evaluate(() => { document.querySelector('.ck-crop-frame').style.width = '200px'; }); await page.waitForTimeout(400);
+    if (!(await fits())) throw new Error('the crop square did not follow the frame’s size');
+    await page.evaluate(() => { document.querySelector('.ck-crop-frame').style.width = ''; }); await page.waitForTimeout(400);
+    if (!(await fits())) throw new Error('the crop square did not grow back with the frame');
     // dragged far past its edge, and zoomed all the way out, it still covers the square
     await page.mouse.move(sq.x + sq.width / 2, sq.y + sq.height / 2); await page.mouse.down();
     await page.mouse.move(sq.x + sq.width / 2 + 400, sq.y + sq.height / 2 + 300, { steps: 8 }); await page.mouse.up();
@@ -676,6 +687,15 @@ async function swipeLeft(ctx, page, locator) {
     if (rotatedSize) {
       await page.locator('.view.tab-active .page-current .ck-photo-btn[aria-label="Crop photo"]').tap(); await page.waitForTimeout(1500);
       const again = await page.locator('.ck-crop .cropper-canvas img').evaluate((i) => [i.naturalWidth, i.naturalHeight]);
+      // a photo that already has a crop opens on it, full size (#51: it opened tiny, its size on screen taken for its
+      // size in pixels)
+      const reopened = await page.evaluate(() => {
+        const fr = document.querySelector('.ck-crop-frame').getBoundingClientRect();
+        const b = document.querySelector('.ck-crop .cropper-crop-box').getBoundingClientRect();
+        const c = document.querySelector('.ck-crop .cropper-canvas').getBoundingClientRect();
+        return { fits: Math.abs(b.width - (Math.min(fr.width, fr.height) - 32)) <= 2, covers: c.left <= b.left + 1 && c.top <= b.top + 1 && c.right >= b.right - 1 && c.bottom >= b.bottom - 1 };
+      });
+      if (!reopened.fits || !reopened.covers) throw new Error(`cropping a cropped photo again: ${JSON.stringify(reopened)}`);
       if (again.join() !== rotatedSize.join()) throw new Error(`cropping again shows the photo ${again.join('×')}, not turned (${rotatedSize.join('×')})`);
       await page.locator('.ck-crop a', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(1000);
     }

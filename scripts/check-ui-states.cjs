@@ -2896,6 +2896,9 @@ async function swipeLeft(ctx, page, locator) {
     // one grey page, not a white band behind the content (Framework7 paints login screen content white)
     const bgs = await page.evaluate(() => [...new Set([...document.querySelectorAll('.login-screen, .login-screen .page, .login-screen .page-content')].map((e) => getComputedStyle(e).backgroundColor).filter((c) => c !== 'rgba(0, 0, 0, 0)'))]);
     if (bgs.length !== 1) throw new Error(`sign-in screen has ${bgs.length} background colours: ${bgs.join(', ')}`);
+    // it fits: nothing to scroll, so it can't be dragged up and down with the icon cut off at the top (in Safari it was)
+    const overflow = await page.locator('.login-screen.modal-in .page-content').evaluate((el) => el.scrollHeight - el.clientHeight);
+    if (overflow > 1) throw new Error(`the sign-in screen scrolls (its content is ${overflow}px taller than its box)`);
   });
   await step('19b-signed-in', async () => {
     await page.locator('.ck-signin-button').tap();

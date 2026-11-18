@@ -114,16 +114,31 @@ export default function PhotoCropper({ photo, onDone, onClose }: Props) {
     const f = c.getContainerData();
     const p = c.getCanvasData();
     const at = { left: f.width / 2 + p.top - f.height / 2, top: f.height / 2 + f.width / 2 - p.left - p.width, width: p.height, height: p.width };
-    // a still copy of the cropper as it is, turned smoothly while the turned photo is drawn, then swapped for it
+    // a still copy of the cropper as it is, covering the frame while the turned photo is drawn, then swapped for it.
+    // Only the photo turns in it (the user, #51): the square and the dimming around it stay put. The photo is in it
+    // twice, as in Cropper: once under the dimming, and once clipped to the square, over it.
     const still = shown.cloneNode(true) as HTMLElement;
     still.classList.add('ck-crop-still');
+    const photoLayer = still.querySelector<HTMLElement>('.cropper-wrap-box')!;
+    const square = still.querySelector<HTMLElement>('.cropper-view-box')!;
+    const box = c.getCropBoxData();
+    // the square's own copy of the photo: the whole photo layer, placed so it lines up with the one under the dimming
+    const inSquare = document.createElement('div');
+    inSquare.className = 'ck-crop-still-photo';
+    Object.assign(inSquare.style, { left: `${-box.left}px`, top: `${-box.top}px`, width: `${f.width}px`, height: `${f.height}px` });
+    inSquare.append(photoLayer.cloneNode(true));
+    square.replaceChildren(inSquare);
     frame.current!.append(still);
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const turn = still.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(-90deg)' }], {
-      duration: reduce ? 0 : TURN_MS,
-      easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
-      fill: 'forwards',
-    });
+    // both copies turn about the frame's middle, which is the square's middle
+    const turns = [photoLayer, inSquare].map((layer) =>
+      layer.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(-90deg)' }], {
+        duration: reduce ? 0 : TURN_MS,
+        easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+        fill: 'forwards',
+      }),
+    );
+    const turn = turns[0];
     c.destroy();
     cropper.current = null;
     try {

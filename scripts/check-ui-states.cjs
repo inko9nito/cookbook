@@ -634,8 +634,16 @@ async function swipeLeft(ctx, page, locator) {
     const [w, h] = await size();
     const before = await page.locator('.ck-crop .cropper-crop-box').boundingBox();
     await page.locator('.ck-crop.modal-in .ck-crop-rotate').tap(); await page.waitForTimeout(120);
-    const mid = await page.evaluate(() => { const e = document.querySelector('.ck-crop-still'); return e ? getComputedStyle(e).transform : null; });
-    if (!mid || mid === 'none') throw new Error('Rotate did not turn the photo smoothly (no turn under way)');
+    const mid = await page.evaluate(() => {
+      const still = document.querySelector('.ck-crop-still');
+      if (!still) return null;
+      const r = still.querySelector('.cropper-crop-box').getBoundingClientRect();
+      return { photo: getComputedStyle(still.querySelector('.cropper-wrap-box')).transform, still: getComputedStyle(still).transform, square: [r.x, r.y, r.width, r.height] };
+    });
+    if (!mid || mid.photo === 'none') throw new Error('Rotate did not turn the photo smoothly (no turn under way)');
+    // only the photo turns: the square and the dimming stay put (the user, #51)
+    if (mid.still !== 'none') throw new Error('Rotate turned the frame and its square, not just the photo');
+    if (Math.abs(mid.square[0] - before.x) > 1 || Math.abs(mid.square[1] - before.y) > 1 || Math.abs(mid.square[2] - before.width) > 1) throw new Error('the crop square moved while the photo turned');
     await page.waitForTimeout(1100);
     if (await page.locator('.ck-crop-still').count()) throw new Error('the turning copy stayed after Rotate');
     const [w2, h2] = await size();

@@ -1028,9 +1028,14 @@ html.ios .photo-browser-page .navbar-bg::after { background-color: var(--ck-phot
 .ck-crop .cropper-view-box { outline: 1px solid var(--ck-crop-edge); }
 .ck-crop .cropper-line,
 .ck-crop .cropper-point { display: none; }
-/* Rotate: a still copy of the cropper, turned a quarter turn (PhotoCropper's approved exception), over the frame until
-   the turned photo is ready under it */
-.ck-crop-frame > .ck-crop-still { position: absolute; left: 0; top: 0; pointer-events: none; }
+/* Rotate: a still copy of the cropper over the frame until the turned photo is ready under it; only its photo turns a
+   quarter turn (PhotoCropper's approved exception), the square and the dimming stay put. Black behind, so the turning
+   photo's corners don't show the cropper under it. */
+.ck-crop-frame > .ck-crop-still { position: absolute; left: 0; top: 0; pointer-events: none; background-color: var(--ck-photo-dark); }
+.ck-crop-still .cropper-view-box { position: relative; }
+/* the whole photo turns, not just the part that was inside the frame */
+.ck-crop-still .cropper-wrap-box { overflow: visible; }
+.ck-crop-still-photo { position: absolute; }
 .block.ck-crop-hint { color: var(--ck-on-dark-muted); text-align: center; }
 /* issue #59: Rotate, under the frame: a soft see-through pill with white text on the black */
 .block.ck-crop-tools { display: flex; justify-content: center; margin: 20px 0 0; }

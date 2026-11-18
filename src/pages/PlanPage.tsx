@@ -80,7 +80,8 @@ export default function PlanPage() {
     const target = agenda.current?.querySelector<HTMLElement>(`[data-day="${want?.day}"]`);
     if (!want || !content || !target || !content.getClientRects().length || loading) return;
     pending.current = null;
-    const top = target.getBoundingClientRect().top - content.getBoundingClientRect().top + content.scrollTop - parseFloat(getComputedStyle(content).paddingTop) - 4;
+    // #84: the day lands 16px under the strip, the room the first day has (.ck-agenda's top padding)
+    const top = target.getBoundingClientRect().top - content.getBoundingClientRect().top + content.scrollTop - parseFloat(getComputedStyle(content).paddingTop) - 16;
     const to = Math.min(Math.max(0, top), content.scrollHeight - content.clientHeight);
     if (Math.abs(to - content.scrollTop) < 1) return;
     ignoreScrollUntil.current = Date.now() + (want.smooth ? 900 : 200);

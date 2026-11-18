@@ -180,8 +180,10 @@ export default function RecipePage({ f7route, f7router }: Props) {
   return (
     <Page name="recipe" className="ck-recipe-page" hideNavbarOnScroll onPageBeforeIn={hideTabbar}>
       {/* App controls stay out of the content: back and ••• float over the photo with no bar behind them (issue #7; they
-          slide away while scrolling down and come back on scroll up, like Prepear), Start cooking in the footer */}
-      <Navbar backLink className="ck-float-bar">
+          slide away while scrolling down and come back on scroll up, like Prepear), Start cooking in the footer. Issue
+          #87: Framework7's transparent navbar, so the bar fades in once the page scrolls and the recipe doesn't run
+          under the clock and the buttons. No title in it: the recipe's name is on the page (never in both, as iOS). */}
+      <Navbar backLink transparent className="ck-float-bar">
         <NavRight>
           <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
             <Ellipsis {...navIcon} />

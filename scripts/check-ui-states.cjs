@@ -373,6 +373,24 @@ async function swipeLeft(ctx, page, locator) {
     });
     if (gap < 8) throw new Error(`the count line starts ${gap}px below the bar`);
   });
+  // issue #99: at the top, the search bar sits flat on the page (no line or shadow); they show once the recipes scroll
+  await step('01d-recipes-bar-edge-on-scroll', async () => {
+    const edge = () => page.evaluate(() => {
+      const bar = document.querySelector('.view.tab-active .page-current .subnavbar');
+      return { shadow: getComputedStyle(bar).boxShadow, line: getComputedStyle(bar, '::after').backgroundColor };
+    });
+    const top = await edge();
+    if (top.shadow !== 'none' || top.line !== 'rgba(0, 0, 0, 0)') throw new Error(`at the top the search bar has an edge: ${JSON.stringify(top)}`);
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 120));
+    await page.waitForTimeout(800);
+    const scrolled = await edge();
+    if (scrolled.shadow === 'none' || scrolled.line !== 'rgb(201, 201, 206)') throw new Error(`scrolled, the search bar's edge is ${JSON.stringify(scrolled)}`);
+    await page.screenshot({ path: path.join(OUT, '01d2-recipes-scrolled-edge.png') });
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0));
+    // Framework7 fades the bar's shadow
+    await page.waitForTimeout(800);
+    if ((await edge()).shadow !== 'none') throw new Error('back at the top, the search bar keeps its shadow');
+  });
   await step('02-recipes-chip-selected', async () => { await page.locator('.ck-chip', { hasText: 'Dinner' }).first().tap(); });
   // R2: chips come from the tags in use; two picked offer "all" or "any" in the sort sheet; the filter is remembered
   await step('02b-recipes-two-tags-any', async () => {
@@ -1245,13 +1263,45 @@ async function swipeLeft(ctx, page, locator) {
       const nav = document.querySelector('.navbar-current, .view.tab-active .page-current .navbar');
       const back = nav.querySelector('.link.back').getBoundingClientRect();
       const ink = getComputedStyle(nav.querySelector('.link.back'));
-      return { heroTop: Math.round(hero.top), bg: getComputedStyle(nav.querySelector('.navbar-bg')).display, backInPhoto: back.top >= hero.top && back.bottom <= hero.bottom, backBg: ink.backgroundColor, backInk: ink.color };
+      return { heroTop: Math.round(hero.top), bg: getComputedStyle(nav.querySelector('.navbar-bg')).opacity, backInPhoto: back.top >= hero.top && back.bottom <= hero.bottom, backBg: ink.backgroundColor, backInk: ink.color };
     });
     // issue #90: dark see-through circles with white icons over the photo (Uber Eats), not white ones
     if (t.backBg !== 'rgba(0, 0, 0, 0.45)' || t.backInk !== 'rgb(255, 255, 255)') throw new Error(`the back button over the photo is ${t.backInk} on ${t.backBg}`);
     if (t.heroTop !== 0) throw new Error(`photo starts ${t.heroTop}px down, not at the top`);
-    if (t.bg !== 'none') throw new Error('the top bar still has a background');
+    if (t.bg !== '0') throw new Error('the top bar still has a background');
     if (!t.backInPhoto) throw new Error('back button is not over the photo');
+  });
+  // issue #87: scrolled, the recipe ran under the clock and the buttons with nothing behind them. The bar fades in
+  // (Framework7's transparent navbar); while it's slid away the strip under the clock is solid; coming back, it's solid
+  // with the usual bar buttons. With an iPhone's status bar, as the installed app has it.
+  await step('21b-recipe-bar-on-scroll', async () => {
+    await page.evaluate(() => document.documentElement.style.setProperty('--f7-safe-area-top', '59px'));
+    await page.waitForTimeout(200);
+    const bar = () => page.evaluate(() => {
+      const nav = document.querySelector('.view.tab-active .page-current > .navbar');
+      return { cls: nav.className, bg: getComputedStyle(nav.querySelector('.navbar-bg')).opacity, backBg: getComputedStyle(nav.querySelector('.link.back')).backgroundColor };
+    });
+    await page.mouse.move(200, 450);
+    for (let i = 0; i < 16; i++) { await page.mouse.wheel(0, 15); await page.waitForTimeout(60); }
+    await page.waitForTimeout(600);
+    const down = await bar();
+    if (!down.cls.includes('navbar-hidden') || down.bg !== '1') throw new Error(`scrolling down, the bar is ${JSON.stringify(down)}`);
+    // what shows under the clock is the bar's colour, not the recipe
+    const clock = await page.evaluate(() => document.elementFromPoint(200, 20)?.closest('.navbar') ? 'bar' : document.elementFromPoint(200, 20)?.className);
+    if (clock !== 'bar') throw new Error(`under the clock is ${clock}, not the bar`);
+    await page.screenshot({ path: path.join(OUT, '21b-recipe-scrolled-down.png') });
+    for (let i = 0; i < 6; i++) { await page.mouse.wheel(0, -15); await page.waitForTimeout(60); }
+    await page.waitForTimeout(600);
+    const up = await bar();
+    if (up.cls.includes('navbar-hidden') || !up.cls.includes('navbar-transparent-visible') || up.bg !== '1') throw new Error(`scrolling back up, the bar is ${JSON.stringify(up)}`);
+    if (up.backBg !== 'rgb(236, 236, 238)') throw new Error(`on the solid bar, back is ${up.backBg}, not the usual soft grey`);
+    await page.screenshot({ path: path.join(OUT, '21b2-recipe-scrolled-up.png') });
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0));
+    await page.waitForTimeout(600);
+    const top = await bar();
+    if (top.bg !== '0' || top.backBg !== 'rgba(0, 0, 0, 0.45)') throw new Error(`back at the top, the bar is ${JSON.stringify(top)}`);
+    await page.evaluate(() => document.documentElement.style.removeProperty('--f7-safe-area-top'));
+    await page.waitForTimeout(200);
   });
   // issue #6: amounts that convert are underlined (a fitted grey line; notes look different); tapping one opens a
   // bottom sheet with radio options (24-*); picking one replaces the amount, and the
@@ -2122,6 +2172,21 @@ async function swipeLeft(ctx, page, locator) {
     // the strip ends in a clear line and a soft shadow over the agenda (#67)
     const edge = await page.locator(`${PLAN} .subnavbar`).evaluate((e) => ({ shadow: getComputedStyle(e).boxShadow, line: getComputedStyle(e, '::after').backgroundColor }));
     if (edge.shadow === 'none' || edge.line !== 'rgb(201, 201, 206)') throw new Error(`the strip's edge is ${JSON.stringify(edge)}`);
+    // issue #84: room to breathe under the title row, between the week line and the days, under the dots, and before
+    // the first day
+    const room = await page.locator(PLAN).evaluate((p) => {
+      const r = (sel) => p.querySelector(sel).getBoundingClientRect();
+      const nav = p.querySelector(':scope > .navbar');
+      const titleRow = nav.getBoundingClientRect().top + nav.offsetHeight;
+      return {
+        underTitle: Math.round(r('.ck-week-label').top - titleRow),
+        toDays: Math.round(r('.swiper-slide-active .ck-week-letter').top - r('.ck-week-label').bottom),
+        underDots: Math.round(r('.subnavbar').bottom - r('.swiper-slide-active .ck-week-dot').bottom),
+        // the agenda opens scrolled to today
+        toFirstDay: Math.round(r('.ck-plan-day-today').top - r('.subnavbar').bottom),
+      };
+    });
+    if (room.underTitle < 10 || room.toDays < 12 || room.underDots < 14 || room.toFirstDay < 16) throw new Error(`the Planner's header is crowded: ${JSON.stringify(room)}`);
     if ((await page.locator(`${PLAN} .ck-plan-day-today h2`).textContent()).trim().split(' ')[0] !== 'Today') throw new Error('today’s heading doesn’t say Today');
     // days with something planned have a dot
     if (!(await page.locator(`${PLAN} .swiper-slide-active .ck-week-day.ck-week-today.ck-week-busy`).count())) throw new Error('today has no dot');

@@ -16,7 +16,7 @@
   --ck-overlay-button: rgba(0, 0, 0, 0.45); /* round bar buttons over a recipe photo, white icons (issue #90) */
   --ck-frosted-button: rgba(255, 255, 255, 0.6); /* round bar buttons over a cookbook's pastel header, dark icons (issue #90) */
   --ck-plate-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); /* a cookbook's plates (round recipe photos) on its card */
-  --ck-bar-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
+  --ck-bar-shadow: 0 6px 10px -4px rgba(0, 0, 0, 0.07); /* #84: drawn below the bar only (a plain 0 4px 10px showed as a faint line above it too) */
   --ck-tab-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.12); /* the recipe tab shown in cook mode, lifted off the grey strip (#85) */ /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
   /* a cookbook card's soft colours (issue #25): pale and muted, one per cookbook */
   --ck-book-blush: #f6e4dd;
@@ -309,13 +309,22 @@ html.ios .navbar .link.back {
 }
 
 /* Recipe page (issue #7): back and ••• float over the photo; there's no bar behind them, and the photo starts at the
-   top of the screen (under the status bar) instead of below a bar */
-html.ios .navbar.ck-float-bar .navbar-bg { display: none; }
+   top of the screen (under the status bar) instead of below a bar. Issue #87: once the page scrolls, the recipe ran
+   under the clock and the buttons with nothing behind them, so the bar is Framework7's transparent navbar: see-through
+   over the photo, fading to the page colour as the page scrolls (Framework7 sets its opacity and adds
+   .navbar-transparent-visible once it's solid). Framework7's iOS theme only hides a transparent bar's title, so the
+   background is hidden here too. */
+html.ios .navbar.ck-float-bar:not(.navbar-transparent-visible) .navbar-bg { opacity: 0; }
+/* Framework7 stops the fade while the bar is slid away (scrolling down hides it from 44px, before the fade ends at the
+   bar's height), which left the strip under the clock half see-through: while hidden, that strip is solid. Framework7
+   sets the fade's opacity on the element itself, hence !important. */
+html.ios .navbar.ck-float-bar.navbar-hidden .navbar-bg { opacity: 1 !important; }
 .page.ck-recipe-page > .page-content { padding-top: 0; }
 /* Bar buttons over a recipe's photo (issue #90, from the user's Uber Eats reference): dark see-through circles with
-   white icons, instead of white ones that jumped out of the photo. No blur (see "No glass blur" above). */
-html.ios .navbar.ck-float-bar .left .link,
-html.ios .navbar.ck-float-bar .right .link {
+   white icons, instead of white ones that jumped out of the photo. No blur (see "No glass blur" above). Once the bar is
+   solid (#87) they're the usual bar buttons. */
+html.ios .navbar.ck-float-bar:not(.navbar-transparent-visible) .left .link,
+html.ios .navbar.ck-float-bar:not(.navbar-transparent-visible) .right .link {
   background-color: var(--ck-overlay-button);
   color: var(--ck-surface);
 }
@@ -494,6 +503,10 @@ html.ios .searchbar {
    where the bar ends). ── */
 html.ios .subnavbar.ck-docked-bar { --f7-subnavbar-offset-left: 0px; --f7-subnavbar-offset-right: 0px; border-radius: 0; box-shadow: var(--ck-bar-shadow); background-color: var(--ck-bg); }
 html.ios .subnavbar.ck-docked-bar::after { background-color: var(--ck-strong); }
+/* issue #99: the search bars (Recipes, a cookbook) show their line and shadow only once the page has scrolled, as iOS's
+   own bars do; at the top they sit flat on the page (.ck-at-top, from useAtTop). The Planner's week strip keeps both. */
+html.ios .page.ck-at-top .subnavbar.ck-docked-bar.ck-search-bar { box-shadow: none; }
+html.ios .page.ck-at-top .subnavbar.ck-docked-bar.ck-search-bar::after { background-color: transparent; }
 html.ios .subnavbar.ck-docked-bar .subnavbar-inner { flex-direction: column; align-items: stretch; justify-content: flex-start; padding: 0; border-radius: 0; }
 /* the search bar (and the chips): 4px under the title row, as when it was in the page, and 12px between them and the
    hairline; the chips run to the screen's edges as they scroll sideways */
@@ -1351,17 +1364,19 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
 /* ── Planner (issue #62): a week's calendar strip under the title (Framework7's subnavbar, so it stays while the agenda
    scrolls), then the week as an agenda, day by day. Like iOS's own Calendar: today's date in Tomato, the picked day
    filled (Tomato when it's today, dark otherwise), a dot under days with something planned. ── */
-/* docked flat under the title like the other docked bars (.ck-docked-bar: a clear line and a soft shadow under it) */
-.page.ck-planner { --f7-subnavbar-height: 96px; }
-html.ios .subnavbar.ck-week-bar .subnavbar-inner { gap: 6px; padding: 2px 0 0; }
+/* docked flat under the title like the other docked bars (.ck-docked-bar: a clear line and a soft shadow under it).
+   Issue #84: room to breathe: 10px under the title row, 12px from the week's label to the days, 6px from a day's
+   letter to its date, and 14px under the dots (it was 2, 6, 3 and 4) */
+.page.ck-planner { --f7-subnavbar-height: 122px; }
+html.ios .subnavbar.ck-week-bar .subnavbar-inner { gap: 12px; padding: 10px 0 0; }
 .ck-week-label { padding: 0 16px; font-size: 13px; font-weight: 600; color: var(--ck-muted); }
 swiper-container.ck-week-swiper { width: 100%; }
 .ck-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0 8px; }
 .link.ck-week-day, .ck-week-day {
-  margin: 0; padding: 0 0 4px; color: var(--ck-fg); font-family: var(--ck-font);
+  margin: 0; padding: 0 0 14px; color: var(--ck-fg); font-family: var(--ck-font);
   display: grid; justify-items: center; gap: var(--ck-day-dot-gap); cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-.ck-week-letter { font-size: 11px; font-weight: 700; line-height: 14px; color: var(--ck-muted); }
+.ck-week-letter { margin-bottom: 3px; font-size: 11px; font-weight: 700; line-height: 14px; color: var(--ck-muted); }
 .ck-week-num {
   display: grid; place-items: center; width: var(--ck-day-size); height: var(--ck-day-size); border-radius: 50%;
   font-family: var(--ck-font-display); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--ck-fg);
@@ -1379,7 +1394,7 @@ swiper-container.ck-week-swiper { width: 100%; }
 .ck-week-day:focus-visible { outline: none; }
 .ck-week-day:focus-visible .ck-week-num { box-shadow: 0 0 0 2px var(--ck-bg), 0 0 0 4px var(--ck-accent-ink); }
 /* the agenda: each day its name (today's in Tomato) and date, its own +, then its recipes as an inset card */
-.ck-agenda { padding: 4px 0 24px; }
+.ck-agenda { padding: 16px 0 24px; } /* #84: the first day starts clear of the strip */
 .ck-plan-day + .ck-plan-day { margin-top: 22px; }
 /* room after the last day, so any day (Sunday too) can scroll up under the strip: picking it shows it at the top, and
    scrolling picks the day at the top (#67) */

@@ -12,10 +12,12 @@
   --ck-muted: #6e6e73;
   --ck-photo-dark: #000000; /* behind a photo being cropped */
   --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
+  --ck-on-dark-button: rgba(255, 255, 255, 0.16); /* a button on --ck-photo-dark, with white text (the cropper's Rotate, #59) */
   --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
   --ck-overlay-button: rgba(0, 0, 0, 0.45); /* round bar buttons over a recipe photo, white icons (issue #90) */
   --ck-frosted-button: rgba(255, 255, 255, 0.6); /* round bar buttons over a cookbook's pastel header, dark icons (issue #90) */
   --ck-plate-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); /* a cookbook's plates (round recipe photos) on its card */
+  --ck-lift-shadow: 0 6px 18px rgba(0, 0, 0, 0.16), 0 1px 3px rgba(0, 0, 0, 0.08); /* a row lifted to move it (#78) */
   --ck-bar-shadow: 0 6px 10px -4px rgba(0, 0, 0, 0.07); /* #84: drawn below the bar only (a plain 0 4px 10px showed as a faint line above it too) */
   --ck-tab-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.12); /* the recipe tab shown in cook mode, lifted off the grey strip (#85) */ /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
   /* a cookbook card's soft colours (issue #25): pale and muted, one per cookbook */
@@ -920,11 +922,12 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 .list.ck-edit-list li .item-link { margin-right: var(--f7-sortable-handler-width); }
 .list.ck-edit-list li.swipeout-opened .sortable-handler,
 .list.ck-edit-list li.swipeout-active .sortable-handler { opacity: 0; pointer-events: none; }
-/* the row being held or dragged (Framework7 marks it .sorting as soon as the long press registers): a pale Tomato
-   fill and rounded corners, so it's clear which row moves */
+/* the row being held or dragged (Framework7 marks it .sorting as soon as the long press registers): lifted off the
+   card, white with a soft shadow and rounded corners, as iOS lifts a row it moves. Issue #78: the pale Tomato fill it
+   had read as an error. */
 .list.ck-edit-list li.sorting,
-.list.ck-edit-list li.ck-group-row.sorting { background-color: var(--ck-accent-tint); border-radius: 16px; }
-/* the long press also leaves the row's pressed shade on; drop it so the tint reads clean */
+.list.ck-edit-list li.ck-group-row.sorting { background-color: var(--ck-surface); border-radius: 16px; box-shadow: var(--ck-lift-shadow); }
+/* the long press also leaves the row's pressed shade on; drop it so the lifted row reads clean */
 .list.ck-edit-list li.sorting .item-link.active-state { background-color: transparent; }
 /* ↑ ↓ on group rows: move the whole group past its neighbour */
 .ck-group-move { display: flex; gap: 6px; align-self: center; }
@@ -1018,6 +1021,9 @@ html.ios .photo-browser-page .navbar-bg::after { background-color: var(--ck-phot
 .ck-crop .cropper-line,
 .ck-crop .cropper-point { display: none; }
 .block.ck-crop-hint { color: var(--ck-on-dark-muted); text-align: center; }
+/* issue #59: Rotate, under the frame: a soft see-through pill with white text on the black */
+.block.ck-crop-tools { display: flex; justify-content: center; margin: 20px 0 0; }
+.button.ck-crop-rotate { width: auto; height: 40px; gap: 6px; padding: 0 18px; background-color: var(--ck-on-dark-button); color: var(--ck-surface); }
 .button.ck-photo-btn {
   --f7-button-bg-color: rgba(255, 255, 255, 0.94);
   --f7-button-text-color: var(--ck-fg);
@@ -1420,9 +1426,14 @@ swiper-container.ck-week-swiper { width: 100%; }
 /* issue #67: a day's meal slots, each a small label over its own card (items for the whole day come first, unlabelled) */
 .ck-plan-slot + .ck-plan-slot { margin-top: 12px; }
 .ck-plan-slot-label { padding: 0 16px; margin-bottom: 6px; font-size: 13px; font-weight: 700; line-height: 16px; color: var(--ck-fg2); }
-/* a note ("Eating out"): a pale butter square with a notebook, the text wrapping */
-.ck-plan-note-icon { display: grid; place-items: center; background-color: var(--ck-book-butter); color: var(--ck-fg2); }
-.list.ck-plan-list li.ck-plan-note .item-title { white-space: normal; }
+/* a note ("Eating out"): a soft grey square with a muted notebook, like a recipe without a photo (issue #74: the butter
+   square wasn't the design system), the text wrapping and keeping its line breaks */
+.ck-plan-note-icon { display: grid; place-items: center; background-color: var(--ck-soft); color: var(--ck-muted); }
+.list.ck-plan-list li.ck-plan-note .item-title { white-space: pre-line; overflow-wrap: anywhere; }
+/* issue #74: the note's own screen, a big field that grows with the text (Framework7's resizable textarea) */
+.list.ck-note-field { margin-top: 16px; }
+/* Framework7 sizes a resizable textarea to one line and grows it with the text; this one starts 180px tall */
+.list.ck-note-field textarea { min-height: 180px; padding-top: 12px; padding-bottom: 12px; font-size: 17px; line-height: 1.4; }
 /* the meal choice in the recipe picker */
 .block.ck-picker-top { margin: 14px 0 0; }
 /* swiping a row: Move in dark grey (Framework7's light grey under white text was unreadable), Remove in red */

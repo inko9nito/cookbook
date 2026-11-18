@@ -14,6 +14,8 @@ type Box = NonNullable<Photo['crop']>;
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
+    // a photo already saved is at /api/photos/… (same site); the canvas needs it untainted to read it back
+    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
@@ -64,6 +66,23 @@ export async function photoFromFile(file: File, id: string): Promise<Photo> {
   const small = await loadImage(original);
   const crop = centerBox(small.naturalWidth, small.naturalHeight);
   return { id, src: cropImage(small, crop), original, crop };
+}
+
+/**
+ * Issue #59: a photo turned a quarter turn to the left (as iOS Photos' rotate button does), as a JPEG data URL the same
+ * size with width and height swapped.
+ */
+export async function rotateLeft(src: string): Promise<string> {
+  const img = await loadImage(src);
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalHeight;
+  canvas.height = img.naturalWidth;
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.translate(0, canvas.height);
+  ctx.rotate(-Math.PI / 2);
+  ctx.drawImage(img, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.92);
 }
 
 /** Apply a crop made in the cropper to a photo. */

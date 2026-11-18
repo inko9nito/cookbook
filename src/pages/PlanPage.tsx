@@ -3,9 +3,10 @@ import {
   Page, Navbar, NavTitle, NavRight, Subnavbar, Link, Block, Button, List, ListItem, SwipeoutActions, SwipeoutButton, Segmented,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
-import { CalendarSearch, ChefHat, NotebookPen, Plus } from 'lucide-react';
+import { CalendarSearch, ChefHat, NotebookPen, Plus, ShoppingCart } from 'lucide-react';
 import WeekStrip from '../components/WeekStrip';
 import RecipePickerPopup from '../components/RecipePickerPopup';
+import { ShopWeekSheet } from '../components/AddGroceriesSheet';
 import { PlannerRowsSkeleton } from '../components/ui/Skeletons';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { pickDay } from '../components/ui/pickDay';
@@ -59,6 +60,7 @@ export default function PlanPage() {
   const [adding, setAdding] = useState(false);
   const [addMeal, setAddMeal] = useState<Meal | null>(null);
   const [slotFor, setSlotFor] = useState<Planned | null>(null);
+  const [shopping, setShopping] = useState(false);
   const loading = (recipesLoading || plannedLoading) && !loadError;
 
   const byId = new Map(recipes.map((r) => [r.id, r]));
@@ -220,6 +222,10 @@ export default function PlanPage() {
               Today
             </Link>
           )}
+          {/* issue #64: the week's planned recipes onto the grocery list */}
+          <Link iconOnly onClick={() => setShopping(true)} aria-label="Shop this week">
+            <ShoppingCart {...navIcon} />
+          </Link>
           <Link iconOnly onClick={jump} aria-label="Go to a day">
             <CalendarSearch {...navIcon} />
           </Link>
@@ -301,6 +307,8 @@ export default function PlanPage() {
           <ActionsButton strong>Cancel</ActionsButton>
         </ActionsGroup>
       </Actions>
+
+      <ShopWeekSheet opened={shopping} day={selected} onClosed={() => setShopping(false)} />
 
       <RecipePickerPopup
         mode="several"

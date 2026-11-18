@@ -1476,3 +1476,45 @@ html.ios .calendar.ck-calendar .toolbar .calendar-month-selector .current-month-
    field that wraps (Source link, From a Link) ran under it. Text in a field with a clear button stops short of it. */
 .item-input-wrap:has(> .input-clear-button) > textarea,
 .item-input-wrap:has(> .input-clear-button) > input { padding-right: calc(var(--f7-input-clear-button-size) + 8px); }
+
+/* ── Groceries (issue #64): the list by aisle or by recipe, its store pill, Instacart's ↗ on each row ── */
+.block.ck-grocery-head { margin: 8px 0 18px; }
+.ck-grocery-store-row { justify-content: space-between; flex-wrap: nowrap; margin-top: 14px; }
+.ck-grocery-store-row .ck-note { margin: 0; padding-left: 0; }
+/* the user asked for this: say that the links leave for Instacart */
+.ck-note.ck-instacart-note { margin: 10px 0 0; font-size: 13px; line-height: 18px; }
+.ck-instacart-note .ck-icon { display: inline-block; color: var(--ck-accent-ink); vertical-align: -2px; }
+.ck-grocery-group + .ck-grocery-group { margin-top: 22px; }
+.ck-grocery-group:last-child { padding-bottom: 24px; }
+.ck-grocery-got { justify-content: space-between; flex-wrap: nowrap; }
+.ck-grocery-got .link { font-family: var(--ck-font-display); font-size: 15px; font-weight: 400; color: var(--ck-accent-ink); }
+/* the row's name in plain weight with its amount bold (like the recipe page), not the Planner's semibold titles */
+.list.ck-grocery-list li .item-title { font-weight: 500; white-space: normal; }
+/* a row held or swiped open: the page grey, which the muted footer still reads on (Framework7's darker grey didn't) */
+.list.ck-grocery-list { --f7-list-link-pressed-bg-color: var(--ck-bg); }
+.list.ck-grocery-list li.ck-done .item-title,
+.list.ck-grocery-list li.ck-done .item-footer { text-decoration: line-through; color: var(--ck-done-ink); }
+/* ↗: Instacart's search for it, a soft round button at the row's end */
+.link.ck-instacart-link {
+  display: grid; place-items: center; width: 36px; height: 36px; border-radius: 9999px;
+  background-color: var(--ck-bg); color: var(--ck-accent-ink);
+}
+/* an item pinned to another store than the list's */
+.ck-store-tag {
+  display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px; vertical-align: 1px;
+  font-size: 12px; font-weight: 600; line-height: 18px; background-color: var(--ck-book-blush); color: var(--ck-fg2);
+}
+/* swiping a row: Aisle in muted grey, Store in dark grey (as the Planner's Meal and Move), Delete in red */
+html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-aisle { background-color: var(--ck-muted); }
+html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-store { background-color: var(--ck-fg2); }
+/* by recipe: each recipe's thumbnail, name and servings over its card */
+.ck-grocery-recipe-head { display: flex; align-items: center; gap: 12px; padding: 0 16px; margin-bottom: 8px; }
+.ck-grocery-recipe-head h2 { margin: 0; font-family: var(--ck-font-display); font-size: 18px; font-weight: 500; line-height: 22px; color: var(--ck-fg); }
+.ck-grocery-recipe-head .ck-note { margin: 0; padding: 0; font-size: 13px; }
+/* the add sheets (a recipe, Shop this week): small labels over the rows, the week's arrows */
+.block-footer.ck-sheet-label { margin-top: 18px; margin-bottom: 4px; font-size: 13px; font-weight: 700; color: var(--ck-fg2); }
+.sheet-modal.ck-add-sheet .list.ck-pick-list { --f7-list-margin-vertical: 0px; }
+.sheet-modal.ck-add-sheet .page-content { padding-bottom: var(--ck-sheet-inset); }
+.ck-add-recipe-name { margin: 0; }
+.block.ck-week-nav { justify-content: space-between; flex-wrap: nowrap; }
+.link.ck-round-soft { width: 36px; height: 36px; border-radius: 9999px; justify-content: center; background-color: var(--ck-soft); color: var(--ck-fg); }

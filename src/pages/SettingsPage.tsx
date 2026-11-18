@@ -79,6 +79,11 @@ export default function SettingsPage() {
       <List strongIos insetIos dividersIos>
         <ListItem link="/settings/prepear/" title="From Prepear" />
       </List>
+      {/* issue #64: the Instacart stores the grocery list's links search */}
+      <BlockTitle>Groceries</BlockTitle>
+      <List strongIos insetIos dividersIos>
+        <ListItem link="/grocery-stores/" title="Grocery Stores" />
+      </List>
       {/* the build running: tapping it copies it; its refresh icon brings in a newer one
           and reloads the app (issues #48, #91) */}
       <BlockTitle>Version</BlockTitle>

@@ -13,12 +13,14 @@ import { useAuth } from './auth';
 import { Settings, type Recipe, type SortKey } from '../lib/recipe';
 import type { Cookbook } from '../lib/cookbook';
 import type { Planned } from '../lib/planner';
+import type { GroceryItem } from '../lib/groceries';
 import { pendingChanges, upsert } from './pending';
 
 const RECIPES = ['recipes'] as const;
 const SETTINGS = ['settings'] as const;
 const COOKBOOKS = ['cookbooks'] as const;
 const PLANNER = ['planner'] as const;
+const GROCERIES = ['groceries'] as const;
 const DAY = 24 * 60 * 60 * 1000;
 
 const queryClient = new QueryClient({
@@ -47,9 +49,11 @@ const toast = (text: string) => f7.toast?.show({ text, closeTimeout: 3000 });
 const recipesUnderWay = pendingChanges<Recipe>();
 const cookbooksUnderWay = pendingChanges<Cookbook>();
 const plannedUnderWay = pendingChanges<Planned>();
+const groceriesUnderWay = pendingChanges<GroceryItem>();
 const fetchRecipes = async () => recipesUnderWay.overlay(await backend.listRecipes());
 const fetchCookbooks = async () => cookbooksUnderWay.overlay(await backend.listCookbooks());
 const fetchPlanned = async () => plannedUnderWay.overlay(await backend.listPlanned());
+const fetchGroceries = async () => groceriesUnderWay.overlay(await backend.listGroceries());
 
 /** Upload the photos picked on the phone (data URLs) and swap in their stored addresses. */
 async function withUploadedPhotos(r: Recipe): Promise<Recipe> {
@@ -129,9 +133,11 @@ export function useStore() {
     onSettled: (_r, e, id) => {
       recipesUnderWay.end(id);
       if (e) qc.invalidateQueries({ queryKey: RECIPES });
-      // the recipe also left every cookbook it was in, and every day it was planned for (the database does that)
+      // the recipe also left every cookbook it was in, every day it was planned for and the grocery list (the database
+      // does that)
       qc.invalidateQueries({ queryKey: COOKBOOKS });
       qc.invalidateQueries({ queryKey: PLANNER });
+      qc.invalidateQueries({ queryKey: GROCERIES });
     },
   });
 
@@ -165,6 +171,8 @@ export function useStore() {
     setSort: (sort: SortKey) => changeSettings.mutate({ sort }),
     setFilter: (filterTags: string[], filterMode = settings.filterMode) => changeSettings.mutate({ filterTags, filterMode }),
     setCookbookView: (cookbookView: Settings['cookbookView']) => changeSettings.mutate({ cookbookView }),
+    /** issue #64: any of the grocery list's settings (stores, the store it's shopping at, its view, aisles picked) */
+    changeSettings: (patch: Partial<Settings>) => changeSettings.mutate(patch),
   };
 }
 
@@ -272,5 +280,40 @@ export function usePlanner() {
     /** plan a recipe for a day, or move it (the same id, another day) */
     savePlanned: (p: Planned) => save.mutate(p),
     deletePlanned: (id: string) => remove.mutate(id),
+  };
+}
+
+/**
+ * The grocery list (issue #64), loaded like the recipes and kept offline too (it's used in the shop). Every change is
+ * one batch (items to save, ids to take off) that shows at once and is sent in the background; if the server refuses
+ * it, it's undone with a toast.
+ */
+export function useGroceries() {
+  const qc = useQueryClient();
+  const enabled = useAuth().status === 'signedIn';
+  const query = useQuery({ queryKey: GROCERIES, queryFn: fetchGroceries, enabled });
+
+  const change = useMutation({
+    mutationFn: backend.changeGroceries,
+    scope: { id: 'groceries' },
+    onMutate: ({ save, remove }: { save: GroceryItem[]; remove: string[] }) => {
+      save.forEach((g) => groceriesUnderWay.start(g.id, g));
+      remove.forEach((id) => groceriesUnderWay.start(id, null));
+      qc.setQueryData<GroceryItem[]>(GROCERIES, (list = []) => save.reduce((out, g) => upsert(out, g), list.filter((g) => !remove.includes(g.id))));
+    },
+    onError: (e) => toast(`Couldn’t change the grocery list. ${e instanceof Error ? e.message : ''}`.trim()),
+    onSettled: (_r, e, { save, remove }) => {
+      [...save.map((g) => g.id), ...remove].forEach((id) => groceriesUnderWay.end(id));
+      if (e) qc.invalidateQueries({ queryKey: GROCERIES });
+    },
+  });
+
+  return {
+    items: query.data ?? [],
+    loading: query.isPending && enabled,
+    loadError: !query.data && query.error instanceof Error ? query.error.message : null,
+    reload: () => query.refetch(),
+    /** save some items (new or changed) and take some off, in one go */
+    changeGroceries: (save: GroceryItem[], remove: string[] = []) => change.mutate({ save, remove }),
   };
 }

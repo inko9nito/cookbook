@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import { formatIngredient } from './ingredients';
+import { AISLES, GroceryStore } from './groceries';
 
 const id = z.string().min(1).max(64);
 
@@ -90,6 +91,13 @@ export const Settings = z.object({
   filterMode: z.enum(['all', 'any']).default('all'),
   /** the Cookbooks tab as collage tiles or as a list (issue #25 redesign), remembered like the sort */
   cookbookView: z.enum(['grid', 'list']).default('grid'),
+  /** issue #64: the Instacart stores the grocery list's links search, and the one it's shopping at (its slug) */
+  groceryStores: z.array(GroceryStore).max(10).default([]),
+  groceryStore: z.string().max(80).default(''),
+  /** the grocery list by aisle or by recipe, remembered */
+  groceryView: z.enum(['aisle', 'recipe']).default('aisle'),
+  /** aisles picked for things the app put in the wrong one, by name (nameKey), so it stays picked */
+  groceryAisles: z.record(z.string().max(300), z.enum(AISLES)).default({}),
 });
 export type Settings = z.infer<typeof Settings>;
 

@@ -289,8 +289,12 @@ export function ShopWeekPopup({ opened, day, onClosed }: { opened: boolean; day?
   const [start, setStart] = useState<Day>(weekStart(now));
   const [flipped, setFlipped] = useState<Set<string>>(new Set());
   const [round, setRound] = useState(0);
+  // the steps' View is there only while the popup is (Framework7 moves an open popup to the app's root): closed, it
+  // would put a second current page inside the Plan or Groceries page
+  const [live, setLive] = useState(false);
   useEffect(() => {
     if (!opened) return;
+    setLive(true);
     setStart(weekStart(day ?? now));
     setFlipped(new Set());
     setRound((n) => n + 1);
@@ -330,10 +334,18 @@ export function ShopWeekPopup({ opened, day, onClosed }: { opened: boolean; day?
   const value: ShopWeek = { label, days, week, byId, onList, isOn, flipRecipe, moveWeek, picked, now, rows, ticks, naming, names, setChoosing, add };
   return (
     <>
-      <Popup ref={popup as never} className="ck-link-popup ck-add-popup ck-shop-week-popup" opened={opened} onPopupClosed={onClosed} push swipeToClose="to-bottom" swipeHandler=".navbar">
+      <Popup
+        ref={popup as never}
+        className="ck-link-popup ck-add-popup ck-shop-week-popup"
+        opened={opened}
+        onPopupClosed={() => {
+          setLive(false);
+          onClosed();
+        }}
+        push swipeToClose="to-bottom" swipeHandler=".navbar">
         <ShopWeekContext.Provider value={value}>
           {/* made afresh each time it opens, so it starts on step one */}
-          <View key={round} url="/shop-week/" routes={shopRoutes} iosSwipeBack={false} className="ck-shop-view" />
+          {(live || opened) && <View key={round} url="/shop-week/" routes={shopRoutes} iosSwipeBack={false} className="ck-shop-view" />}
         </ShopWeekContext.Provider>
       </Popup>
       <PickChoice row={choosing} onPick={pick} onClosed={() => setChoosing(null)} />

@@ -191,7 +191,7 @@ async function audit(page, name) {
     for (const c of pushed ? [pushed] : document.querySelectorAll('.sheet-modal.modal-in')) {
       const edge = c.getBoundingClientRect();
       const items = c.classList.contains('popup')
-        ? [...c.querySelectorAll(':scope .page-current > .navbar .left .link, :scope .page-current > .navbar .right .link, :scope > .view > .page > .navbar .left .link, :scope > .view > .page > .navbar .right .link, :scope > .page > .navbar .left .link, :scope > .page > .navbar .right .link')].map((a) => a.getBoundingClientRect())
+        ? [...c.querySelectorAll(':scope .page-current > .navbar .left .link, :scope .page-current > .navbar .right .link, :scope > .view > .page:not(.page-previous) > .navbar .left .link, :scope > .view > .page:not(.page-previous) > .navbar .right .link, :scope > .page > .navbar .left .link, :scope > .page > .navbar .right .link')].map((a) => a.getBoundingClientRect())
         : [...c.querySelectorAll(':scope > .toolbar .left, :scope > .toolbar .right, :scope .sheet-modal-inner > .toolbar .left, :scope .sheet-modal-inner > .toolbar .right, :scope .calendar-header')].map(textBox);
       const shown = items.filter((r) => r && r.right > r.left);
       if (!shown.length) continue;
@@ -2849,7 +2849,8 @@ async function swipeLeft(ctx, page, locator) {
   await step('40n4-shop-week-picked', async () => {
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Beef stock' }).tap(); await page.waitForTimeout(800);
     const sheet = page.locator('.ck-shop-week-popup.modal-in .page-current');
-    if (!(await sheet.locator('li .item-title').allTextContents()).some((t) => t.trim() === 'Beef stock')) throw new Error('the pick didn’t show');
+    const titles = await sheet.locator('li .item-title').evaluateAll((els) => els.map((e) => e.firstChild?.textContent?.trim()));
+    if (!titles.includes('Beef stock')) throw new Error(`the pick didn’t show (${titles.join(', ')})`);
   });
   await step('40o-shop-week-added', async () => {
     const before = (await groTitles()).length;

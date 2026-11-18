@@ -44,6 +44,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,woff2}'],
+        // the launch images are for iOS to show as the home-screen app opens (one per iPhone screen); the app never loads them
+        globIgnores: ['launch/**'],
         navigateFallback: '/index.html',
         // the API and Netlify's own endpoints (sign-in) always go to the network
         navigateFallbackDenylist: [/^\/api\//, /^\/\.netlify\//],

@@ -12,6 +12,7 @@
     "check:peek": "node scripts/check-prepear-peek.mjs",
     "check:export": "node scripts/check-prepear-export.mjs",
     "check:update": "node scripts/check-app-update.cjs",
+    "launch-screens": "node scripts/make-launch-screens.cjs",
     "test": "vitest run"
   },
   "dependencies": {

@@ -2842,6 +2842,30 @@ async function swipeLeft(ctx, page, locator) {
     await page.goto(BASE); await page.waitForTimeout(1200);
     if (await page.locator('#ck-launch').count()) throw new Error('the launch loader is still in the page');
   });
+  // The home-screen app's page starts out shorter than the screen and grows a moment later: the pot must stay where
+  // iOS's launch image has it (laid out on the full screen) the whole time, not draw higher and then drop.
+  await step('37c-launch-loader-holds-still', async () => {
+    const screenSize = { width: 393, height: 852 };
+    const appCtx = await browser.newContext({ viewport: { width: 393, height: 800 }, screen: screenSize });
+    await appCtx.addInitScript(() => Object.defineProperty(Navigator.prototype, 'standalone', { get: () => true }));
+    const app = await appCtx.newPage();
+    try {
+      await app.goto(`${BASE}?loader`); await app.waitForTimeout(600);
+      const top = async () => (await app.locator('#ck-launch .ck-launch-stage').boundingBox()).y;
+      const short = await top();
+      await app.setViewportSize(screenSize); await app.waitForTimeout(300);
+      const full = await top();
+      const plain = await browser.newPage({ viewport: screenSize }); // the launch image's layout: the full screen
+      await plain.goto(`${BASE}?loader`); await plain.waitForTimeout(600);
+      const image = (await plain.locator('#ck-launch .ck-launch-stage').boundingBox()).y;
+      await plain.close();
+      if (Math.abs(short - image) > 0.5 || Math.abs(full - image) > 0.5) {
+        throw new Error(`the pot moves: ${short.toFixed(1)} while the page is short, ${full.toFixed(1)} once it's full height, ${image.toFixed(1)} in the launch image`);
+      }
+    } finally {
+      await appCtx.close();
+    }
+  });
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)
   await step('19-sign-in', async () => {

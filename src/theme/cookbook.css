@@ -1491,7 +1491,7 @@ html.ios .calendar.ck-calendar .toolbar .calendar-month-selector .current-month-
 /* the row's name in plain weight with its amount bold (like the recipe page), not the Planner's semibold titles */
 .list.ck-grocery-list li .item-title { font-weight: 500; white-space: normal; }
 /* a row held or swiped open: the page grey, which the muted footer still reads on (Framework7's darker grey didn't) */
-.list.ck-grocery-list { --f7-list-link-pressed-bg-color: var(--ck-bg); }
+.list.ck-grocery-list { --f7-list-link-pressed-bg-color: var(--ck-bg); --f7-swipeout-active-bg-color: var(--ck-bg); }
 .list.ck-grocery-list li.ck-done .item-title,
 .list.ck-grocery-list li.ck-done .item-footer { text-decoration: line-through; color: var(--ck-done-ink); }
 /* ↗: Instacart's search for it, a soft round button at the row's end */
@@ -1517,4 +1517,6 @@ html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-store { ba
 .sheet-modal.ck-add-sheet .page-content { padding-bottom: var(--ck-sheet-inset); }
 .ck-add-recipe-name { margin: 0; }
 .block.ck-week-nav { justify-content: space-between; flex-wrap: nowrap; }
+/* Shop this week's Back: pulled out like Done (Framework7 pads toolbar links 12px), so its text meets the 24px edge */
+html.ios .sheet-modal.ck-add-sheet .toolbar .left .link:first-child { margin-left: -12px; }
 .link.ck-round-soft { width: 36px; height: 36px; border-radius: 9999px; justify-content: center; background-color: var(--ck-soft); color: var(--ck-fg); }

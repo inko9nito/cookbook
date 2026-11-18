@@ -32,11 +32,28 @@ function photosOnScreen(): string[] {
   return [...urls];
 }
 
-/** Resolves once the photo is loaded and ready to draw (or failed: then there's nothing to wait for). */
-function loaded(url: string): Promise<void> {
-  const img = new Image();
-  img.src = url;
-  return img.decode().catch(() => undefined);
+/**
+ * Resolves once these photos have finished downloading, going by the page's own record of what it has fetched (Resource
+ * Timing), so the photos themselves are left alone. Loading a second copy of each and decoding it early (img.decode())
+ * stopped iPhone Safari drawing those photos in the recipe grid at all: the cards stayed blank until another screen had
+ * shown the photo.
+ */
+function arrived(urls: string[]): Promise<void> {
+  const waiting = new Set(urls.map((u) => new URL(u, location.href).href));
+  const allIn = () => {
+    for (const e of performance.getEntriesByType('resource')) waiting.delete(e.name);
+    return waiting.size === 0;
+  };
+  if (allIn()) return Promise.resolve();
+  return new Promise((resolve) => {
+    const watch = new PerformanceObserver(() => {
+      if (allIn()) {
+        watch.disconnect();
+        resolve();
+      }
+    });
+    watch.observe({ type: 'resource' });
+  });
 }
 
 /**
@@ -73,7 +90,7 @@ function fullHeight(): Promise<void> {
  */
 async function showApp() {
   await new Promise((r) => requestAnimationFrame(r)); // the screen's cards are laid out
-  await Promise.race([Promise.all([fullHeight(), ...photosOnScreen().map(loaded)]), deadline()]);
+  await Promise.race([Promise.all([fullHeight(), arrived(photosOnScreen())]), deadline()]);
   hideLaunchLoader();
 }
 

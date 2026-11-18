@@ -8,6 +8,7 @@ import { useStore, type SortKey } from '../data/store';
 import { COURSES } from '../lib/recipe';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
+import { useAtTop } from '../components/ui/atTop';
 import RecipeCard from '../components/ui/RecipeCard';
 import { ChipsSkeleton, CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import { searchByTitle, searchWords } from '../lib/search';
@@ -27,6 +28,8 @@ export default function RecipesPage({ f7router }: Props) {
   const [newOpen, setNewOpen] = useState(false);
   const scanRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
+  // issue #99: the search bar's line and shadow show only once the recipes have scrolled
+  const { atTop, onPageInit } = useAtTop();
 
   // issue #15: + → From a link opens its own screen (FromLinkPopup): paste the copied link there, or type one in
   const readLink = (url: string) => f7router?.navigate('/recipe/new/', { props: { scanUrl: url } });
@@ -55,7 +58,7 @@ export default function RecipesPage({ f7router }: Props) {
   return (
     // the title row slides away while scrolling down and comes back on scrolling up; the search bar and chips under it
     // stay (Framework7's hideNavbarOnScroll moves the navbar up by its own height, leaving the subnavbar showing)
-    <Page name="recipes" className={`ck-recipes-page ${loadError ? 'ck-no-chips' : ''}`} hideNavbarOnScroll onPageAfterIn={showTabbar}>
+    <Page name="recipes" className={`ck-recipes-page${loadError ? ' ck-no-chips' : ''}${atTop ? ' ck-at-top' : ''}`} hideNavbarOnScroll onPageInit={onPageInit} onPageAfterIn={showTabbar}>
       {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
       <CookingFab slot="fixed" />
       <Navbar key="navbar" className="ck-navbar-root">

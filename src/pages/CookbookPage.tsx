@@ -6,6 +6,7 @@ import {
 import { Ellipsis, Plus } from 'lucide-react';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
+import { useAtTop } from '../components/ui/atTop';
 import RecipeCard from '../components/ui/RecipeCard';
 import { CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import RecipePickerPopup from '../components/RecipePickerPopup';
@@ -68,6 +69,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
       : undefined;
   const byId = new Map(recipes.map((r) => [r.id, r]));
   const hasHeader = !!book && !sectionId;
+  // issue #99: the docked search bar's line and shadow show only once the page has scrolled (as on Recipes)
+  const { atTop, onPageInit } = useAtTop();
 
   // issue #90 (the user's mockup): the header scrolls with the page, and as it does
   // - its plates and colour fade out from the first pixel (`--ck-hero-p`, 0 at the top to 1 once the plates have gone
@@ -118,7 +121,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   if (!book || (sectionId && !section)) {
     return (
       // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays
-    <Page name="cookbook" className="ck-cookbook-page" hideNavbarOnScroll onPageAfterIn={showTabbar}>
+    <Page name="cookbook" className={`ck-cookbook-page${atTop ? ' ck-at-top' : ''}`} hideNavbarOnScroll onPageInit={onPageInit} onPageAfterIn={showTabbar}>
       {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
       <CookingFab slot="fixed" />
         <Navbar key="navbar" backLink title={loading ? '' : 'Not found'} />
@@ -228,7 +231,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
     // as on Recipes: the title row slides away while scrolling down and comes back on scrolling up; the search bar stays.
     // With the header (issue #90), the bar has no background over the header, and no title or search bar of its own until
     // the header's search bar reaches it; the title row's hiding is done by the header's scroll listener (above).
-    <Page name="cookbook" className={`ck-cookbook-page${hero ? ' ck-book-hero-page' : ''}`} style={tint} hideNavbarOnScroll={!hero} onPageAfterIn={showTabbar}>
+    <Page name="cookbook" className={`ck-cookbook-page${hero ? ' ck-book-hero-page' : ''}${atTop ? ' ck-at-top' : ''}`} style={tint} hideNavbarOnScroll={!hero} onPageInit={onPageInit} onPageAfterIn={showTabbar}>
       {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
       <CookingFab slot="fixed" />
       <Navbar

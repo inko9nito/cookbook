@@ -240,6 +240,10 @@ Where each component's shape comes from:
 
 While the app starts, the app icon's cooking pot (Lucide's `cooking-pot`, Tomato strokes, 1.75 wide on its 24px grid, 96px across) sits a little above the middle of the grey page, and its **lid rocks like a cartoon pot about to boil over**. The lid is turned level and hovers just above the rim (in the icon it hangs ajar). Over a 2.8s loop it tips up on the left, then the right, then the left, then the right a bit higher, then rests still for about 0.9s before starting again. Each side starts up as the other lands, like a seesaw, so it flows. Up eases out and down eases in, softly, and the pot squashes each time the lid lands and stretches back up before it settles, like a cartoon. No steam. With reduced motion it's the still pot. It fades out (0.25s) as soon as the first screen is ready; inside screens, loading is always skeletons (issue #35).
 
+### Launch loader
+
+While the app starts, the app icon's cooking pot (Lucide's `cooking-pot`, Tomato strokes, 1.75 wide on its 24px grid, 96px across) sits a little above the middle of the grey page, and its **lid rocks like a cartoon pot about to boil over**. The lid is turned level and hovers just above the rim (in the icon it hangs ajar). Over a 2.8s loop it tips up on the left, then the right, then the left, then the right a bit higher, then rests still for about 0.9s before starting again. Each side starts up as the other lands, like a seesaw, so it flows. Up eases out and down eases in, softly, and the pot squashes each time the lid lands and stretches back up before it settles, like a cartoon. No steam. With reduced motion it's the still pot. It fades out (0.25s) as soon as the first screen is ready; inside screens, loading is always skeletons (issue #35).
+
 ## Do's and Don'ts
 
 - Never hard-code a color in a component. Use `var(--ck-*)`.

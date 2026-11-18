@@ -89,14 +89,17 @@ describe('recipes in the database', () => {
 
 describe('settings', () => {
   test('defaults, then remembered (R1, R2)', async () => {
-    expect(await getSettings(db.sql)).toEqual({ sort: 'newest', filterTags: [], filterMode: 'all', cookbookView: 'grid' });
+    expect(await getSettings(db.sql)).toEqual({ sort: 'newest', filterTags: [], filterMode: 'all', cookbookView: 'grid', cookbookSorts: {} });
     await saveSettings(db.sql, { sort: 'az' });
-    expect(await saveSettings(db.sql, { filterTags: ['soup'], filterMode: 'any' })).toEqual({ sort: 'az', filterTags: ['soup'], filterMode: 'any', cookbookView: 'grid' });
+    expect(await saveSettings(db.sql, { filterTags: ['soup'], filterMode: 'any' })).toEqual({ sort: 'az', filterTags: ['soup'], filterMode: 'any', cookbookView: 'grid', cookbookSorts: {} });
     // the Cookbooks tab's tiles or list (#25) is remembered the same way
     expect((await saveSettings(db.sql, { cookbookView: 'list' })).cookbookView).toBe('list');
+    // and each cookbook's sort (#95)
+    expect((await saveSettings(db.sql, { cookbookSorts: { b1: 'az' } })).cookbookSorts).toEqual({ b1: 'az' });
   });
   test('unknown settings are refused', async () => {
     await expect(saveSettings(db.sql, { sort: 'sideways' } as never)).rejects.toThrow();
     await expect(saveSettings(db.sql, { color: 'red' } as never)).rejects.toThrow();
+    await expect(saveSettings(db.sql, { cookbookSorts: { b1: 'sideways' } } as never)).rejects.toThrow();
   });
 });

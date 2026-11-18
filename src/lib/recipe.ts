@@ -80,6 +80,20 @@ export type Recipe = z.infer<typeof Recipe>;
 export const SortKey = z.enum(['newest', 'oldest', 'az']);
 export type SortKey = z.infer<typeof SortKey>;
 
+/** Issue #95: a cookbook's recipes can be sorted too; `manual` (the default) is the cookbook's own order, set in Organize. */
+export const CookbookSort = z.enum(['manual', ...SortKey.options]);
+export type CookbookSort = z.infer<typeof CookbookSort>;
+
+export const SORT_LABELS: Record<CookbookSort, string> = { manual: 'Manual', newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
+
+/** The recipes in this order (a new array); `manual` keeps the order they came in. */
+export function sortRecipes(list: Recipe[], sort: CookbookSort): Recipe[] {
+  if (sort === 'manual') return [...list];
+  return [...list].sort((a, b) =>
+    sort === 'az' ? a.title.localeCompare(b.title) : sort === 'newest' ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt),
+  );
+}
+
 /**
  * App settings kept on the server, so they survive reinstalling.
  * R1: the recipe sort is remembered. R2: so is the last tag filter, matching all of the tags or any of them.
@@ -90,6 +104,11 @@ export const Settings = z.object({
   filterMode: z.enum(['all', 'any']).default('all'),
   /** the Cookbooks tab as collage tiles or as a list (issue #25 redesign), remembered like the sort */
   cookbookView: z.enum(['grid', 'list']).default('grid'),
+  /** issue #95: each cookbook's sort (its sections' too), by cookbook id; one not listed is in its manual order */
+  cookbookSorts: z
+    .record(z.string().min(1).max(64), CookbookSort)
+    .refine((m) => Object.keys(m).length <= 1000, 'Too many cookbook sorts')
+    .default({}),
 });
 export type Settings = z.infer<typeof Settings>;
 

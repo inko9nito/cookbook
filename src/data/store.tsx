@@ -10,7 +10,7 @@ import { del, get, set } from 'idb-keyval';
 import { f7 } from 'framework7-react';
 import { ApiError, backend, demoSlow, isDemo } from './api';
 import { useAuth } from './auth';
-import { Settings, type Recipe, type SortKey } from '../lib/recipe';
+import { Settings, type CookbookSort, type Recipe, type SortKey } from '../lib/recipe';
 import type { Cookbook } from '../lib/cookbook';
 import type { Planned } from '../lib/planner';
 import { pendingChanges, upsert } from './pending';
@@ -165,6 +165,16 @@ export function useStore() {
     setSort: (sort: SortKey) => changeSettings.mutate({ sort }),
     setFilter: (filterTags: string[], filterMode = settings.filterMode) => changeSettings.mutate({ filterTags, filterMode }),
     setCookbookView: (cookbookView: Settings['cookbookView']) => changeSettings.mutate({ cookbookView }),
+    /** issue #95: a cookbook's sort, its manual order unless one was picked */
+    cookbookSort: (cookbookId: string): CookbookSort => settings.cookbookSorts[cookbookId] ?? 'manual',
+    setCookbookSort: (cookbookId: string, sort: CookbookSort) => {
+      // from the latest settings (not this render's), leaving out cookbooks deleted since; manual needs no entry
+      const now = (qc.getQueryData<Settings>(SETTINGS) ?? settings).cookbookSorts;
+      const books = qc.getQueryData<Cookbook[]>(COOKBOOKS);
+      const cookbookSorts = Object.fromEntries(Object.entries(now).filter(([id]) => id !== cookbookId && (!books || books.some((c) => c.id === id))));
+      if (sort !== 'manual') cookbookSorts[cookbookId] = sort;
+      changeSettings.mutate({ cookbookSorts });
+    },
   };
 }
 

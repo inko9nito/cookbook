@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { Recipe, emptyRecipe, linkedRecipe, recipeNamed, usedIn, type Ingredient } from './recipe';
+import { Recipe, Settings, emptyRecipe, linkedRecipe, recipeNamed, sortRecipes, usedIn, type Ingredient } from './recipe';
 
 const recipe = (id: string, title: string, ingredients: Ingredient[] = []): Recipe => ({ ...emptyRecipe(), id, title, ingredients });
 const line = (name: string, recipeId?: string): Ingredient => ({ id: name, amount: '1', unit: '', name, note: '', ...(recipeId ? { recipeId } : {}) });
@@ -30,5 +30,27 @@ describe('recipes as ingredients (issue #11)', () => {
   test('a recipe knows where it is used', () => {
     expect(usedIn('crust', all).map((r) => r.title)).toEqual(['Apple Pie']);
     expect(usedIn('sauce', all)).toEqual([]);
+  });
+});
+
+describe('sorting (R1, and in a cookbook #95)', () => {
+  const dated = (id: string, title: string, createdAt: string): Recipe => ({ ...recipe(id, title), createdAt });
+  // a cookbook's own order (Organize's): not by date, not by name
+  const list = [dated('b', 'Beans', '2026-02-01'), dated('c', 'Chili', '2026-03-01'), dated('a', 'Apple Pie', '2026-01-01')];
+  const order = (sort: Parameters<typeof sortRecipes>[1]) => sortRecipes(list, sort).map((r) => r.id).join('');
+
+  test('manual keeps the order given; the others sort by date or name', () => {
+    expect(order('manual')).toBe('bca');
+    expect(order('newest')).toBe('cba');
+    expect(order('oldest')).toBe('abc');
+    expect(order('az')).toBe('abc');
+    // a new array: the cookbook's own order is never changed in place
+    expect(list.map((r) => r.id).join('')).toBe('bca');
+  });
+
+  test('a cookbook is in its manual order until a sort is picked for it', () => {
+    expect(Settings.parse({}).cookbookSorts).toEqual({});
+    expect(Settings.parse({ cookbookSorts: { b1: 'az' } }).cookbookSorts.b1).toBe('az');
+    expect(() => Settings.parse({ cookbookSorts: { b1: 'sideways' } })).toThrow();
   });
 });

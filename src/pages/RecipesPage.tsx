@@ -4,8 +4,8 @@ import {
   Block, BlockFooter, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton, Button,
 } from 'framework7-react';
 import { ArrowUpDown, Plus } from 'lucide-react';
-import { useStore, type SortKey } from '../data/store';
-import { COURSES } from '../lib/recipe';
+import { useStore } from '../data/store';
+import { COURSES, SORT_LABELS, SortKey, sortRecipes } from '../lib/recipe';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAtTop } from '../components/ui/atTop';
@@ -16,7 +16,6 @@ import { MAX_READ_IMAGES } from '../lib/read-recipe';
 import CookingFab from '../components/CookingFab';
 import FromLinkPopup, { openFromLink } from '../components/FromLinkPopup';
 
-const SORT_LABELS: Record<SortKey, string> = { newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
 const label = (t: string) => t[0].toUpperCase() + t.slice(1);
 
 type Props = { f7router?: { navigate: (url: string, options?: { props?: Record<string, unknown> }) => void } };
@@ -41,15 +40,10 @@ export default function RecipesPage({ f7router }: Props) {
   const tags = settings.filterTags.filter((t) => used.has(t));
   const matchAny = settings.filterMode === 'any';
 
-  const shown = recipes
-    .filter((r) => !tags.length || (matchAny ? tags.some((t) => r.tags.includes(t)) : tags.every((t) => r.tags.includes(t))))
-    .sort((a, b) =>
-      sort === 'az'
-        ? a.title.localeCompare(b.title)
-        : sort === 'newest'
-          ? b.createdAt.localeCompare(a.createdAt)
-          : a.createdAt.localeCompare(b.createdAt),
-    );
+  const shown = sortRecipes(
+    recipes.filter((r) => !tags.length || (matchAny ? tags.some((t) => r.tags.includes(t)) : tags.every((t) => r.tags.includes(t)))),
+    sort,
+  );
   // search: titles with every word typed, among the recipes the chips show
   const words = searchWords(query);
   const found = searchByTitle(shown, words);
@@ -175,7 +169,7 @@ export default function RecipesPage({ f7router }: Props) {
       <Actions key="sort" opened={sortOpen} onActionsClosed={() => setSortOpen(false)}>
         <ActionsGroup>
           <ActionsLabel>Sort recipes</ActionsLabel>
-          {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+          {SortKey.options.map((k) => (
             <ActionsButton key={k} strong={k === sort} onClick={() => setSort(k)}>
               {SORT_LABELS[k]}
             </ActionsButton>

@@ -2014,6 +2014,43 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.locator(`${CUR} .ck-shelf`).count()) throw new Error('the shelves stay while searching');
     await field.fill(''); await field.blur(); await page.waitForTimeout(500);
   });
+  // Issue #95: a cookbook sorts too, from its own Sort button (as on Recipes). Manual, the cookbook's own order, is the
+  // default; a sort orders every shelf (and the sections' pages), says so in the header's count, and is remembered.
+  const meatShelf = () => page.locator(`${CUR} .ck-shelf`, { hasText: 'Meat' }).locator('.ck-shelf-row .ck-card-title').allTextContents();
+  const manualMeat = await meatShelf();
+  await step('95a-cookbook-sort-sheet', async () => {
+    await page.locator(`${CUR} > .navbar a[aria-label="Sort recipes"]`).tap(); await page.waitForTimeout(700);
+    const items = await page.locator('.actions-modal.modal-in .actions-button').allTextContents();
+    if (items.join('|') !== 'Manual (as organized)|Newest first|Oldest first|A–Z|Cancel') throw new Error(`the cookbook's sort sheet is ${JSON.stringify(items)}`);
+    const on = await page.locator('.actions-modal.modal-in .actions-button-strong').first().textContent();
+    if (on !== 'Manual (as organized)') throw new Error(`the cookbook starts sorted "${on}", not by hand`);
+  });
+  await step('95b-cookbook-sorted-az', async () => {
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'A–Z' }).tap(); await page.waitForTimeout(900);
+    const az = await meatShelf();
+    const expected = [...manualMeat].sort((a, b) => a.localeCompare(b));
+    if (az.join() !== expected.join() || az.join() === manualMeat.join()) throw new Error(`sorted A–Z, the Meat shelf is ${JSON.stringify(az)} (by hand ${JSON.stringify(manualMeat)})`);
+    const meta = await page.locator(`${CUR} .ck-book-hero-meta`).textContent();
+    if (!meta.includes('6 recipes · 2 sections · A–Z')) throw new Error(`sorted, the header's count reads "${meta}"`);
+    // remembered: still A–Z after a reload
+    await page.reload(); await page.waitForTimeout(2000);
+    await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(900);
+    await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).tap(); await page.waitForTimeout(1000);
+    if ((await meatShelf()).join() !== expected.join()) throw new Error('the cookbook’s sort was not remembered');
+    // a section's page is sorted the same way, and says so
+    await page.locator(`${CUR} .ck-shelf`, { hasText: 'Meat' }).locator('.ck-shelf-all').tap(); await page.waitForTimeout(1000);
+    if ((await cards()).join() !== expected.join()) throw new Error(`the section isn't sorted A–Z: ${JSON.stringify(await cards())}`);
+    const note = await page.locator(`${CUR} .ck-count`).textContent();
+    if (!note.includes('3 recipes · A–Z')) throw new Error(`the section's count reads "${note}"`);
+    await page.locator(`${CUR} > .navbar .link.back`).tap(); await page.waitForTimeout(900);
+  });
+  await step('95c-cookbook-sorted-manual', async () => {
+    await page.locator(`${CUR} > .navbar a[aria-label="Sort recipes"]`).tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Manual' }).tap(); await page.waitForTimeout(900);
+    if ((await meatShelf()).join() !== manualMeat.join()) throw new Error(`back to Manual, the Meat shelf is ${JSON.stringify(await meatShelf())}`);
+    const meta = await page.locator(`${CUR} .ck-book-hero-meta`).textContent();
+    if (meta.includes('·') && /Manual|A–Z|first/.test(meta)) throw new Error(`in its own order, the count still names a sort: "${meta}"`);
+  });
   await step('26d-section-page', async () => {
     await page.locator(`${CUR} .ck-shelf`, { hasText: 'Meat' }).locator('.ck-shelf-all').tap(); await page.waitForTimeout(1000);
     const sub = await page.locator('.view.tab-active .page-current > .navbar .subtitle').textContent();

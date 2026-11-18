@@ -3,7 +3,7 @@ import {
   Page, Navbar, NavRight, Subnavbar, Link, Searchbar, Block, BlockFooter, Button,
   Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
-import { Ellipsis, Plus } from 'lucide-react';
+import { ArrowUpDown, Ellipsis, Plus } from 'lucide-react';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAtTop } from '../components/ui/atTop';
@@ -15,7 +15,7 @@ import { CookbookPlates } from '../components/ui/CookbookTile';
 import OrganizePopup from '../components/OrganizePopup';
 import { useCookbooks, useStore } from '../data/store';
 import { colorOf, platePhotos, cookbookRecipeIds, coversOf, existing, recipeIdsOf, withRecipeIds, type BookColor, type Cookbook } from '../lib/cookbook';
-import { newId, type Recipe } from '../lib/recipe';
+import { CookbookSort, newId, SORT_LABELS, sortRecipes, type Recipe } from '../lib/recipe';
 import { searchByTitle, searchWords } from '../lib/search';
 import CookingFab from '../components/CookingFab';
 
@@ -36,11 +36,12 @@ const aToZ = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, undefined,
  * A cookbook with sections shows each as a shelf of its recipes (scrolling sideways, See all opens the section), and
  * its Uncategorized recipes as one more shelf; without sections, just its recipes as a grid.
  * A section shows its cookbook's name above its own, then its recipes. The search covers every recipe shown from here
- * (a cookbook's sections too). + adds recipes; ⋯ holds Organize, New Section, Rename, Edit Cover (the three photos
+ * (a cookbook's sections too). Sort (issue #95) orders the recipes everywhere in the cookbook, its sections too, and is
+ * remembered for each cookbook; Manual, the default, is the cookbook's own order (Organize). + adds recipes; ⋯ holds Organize, New Section, Rename, Edit Cover (the three photos
  * on the cookbook's plates and its card's soft colour, issue #80) and Delete.
  */
 export default function CookbookPage({ f7route, f7router }: Props) {
-  const { recipes } = useStore();
+  const { recipes, cookbookSort, setCookbookSort } = useStore();
   const { cookbooks, loading, saveCookbook, deleteCookbook } = useCookbooks();
   const [query, setQuery] = useState('');
   // issue #90 (the cookbook's header), set by its scroll listener below: `docked` once the header's search bar has
@@ -52,6 +53,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const headerRef = useRef<HTMLDivElement>(null);
   const headerSearchRef = useRef<HTMLDivElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [choosingCover, setChoosingCover] = useState(false);
   const [organizing, setOrganizing] = useState(false);
@@ -142,11 +144,16 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   }
 
   const save = (c: Cookbook) => saveCookbook(c);
+  // issue #95: the cookbook's sort, for every shelf, section and search in it (Manual: the order Organize sets)
+  const sort = cookbookSort(book.id);
+  const sorted = (ids: string[]) => sortRecipes(existing(ids, byId), sort);
   // what this page holds: the cookbook's Uncategorized recipes, or the section's
   const placeIds = recipeIdsOf(book, placeId);
-  const here = existing(placeIds, byId);
+  const here = sorted(placeIds);
   // the search covers everything shown from here: a cookbook's sections too
-  const searchable = section ? here : existing(cookbookRecipeIds(book), byId);
+  const searchable = section ? here : sorted(cookbookRecipeIds(book));
+  // the count says how they're sorted, as on Recipes, once it isn't the cookbook's own order
+  const sortNote = sort === 'manual' ? '' : ` · ${SORT_LABELS[sort]}`;
   const words = searchWords(query);
   const found = searchByTitle(searchable, words);
   const name = section ? section.name : book.name;
@@ -245,6 +252,10 @@ export default function CookbookPage({ f7route, f7router }: Props) {
           <Link iconOnly onClick={() => setAdding(true)} aria-label="Add recipes" className="ck-nav-primary">
             <Plus {...navIcon} />
           </Link>
+          {/* issue #95: sorting, as on Recipes */}
+          <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
+            <ArrowUpDown {...navIcon} />
+          </Link>
           <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
             <Ellipsis {...navIcon} />
           </Link>
@@ -264,6 +275,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
           <p className={`ck-book-hero-meta${titled ? ' ck-book-hero-meta-gone' : ''}`}>
             {count(searchable.length, 'recipe')}
             {book.sections.length > 0 && ` · ${count(book.sections.length, 'section')}`}
+            {sortNote}
           </p>
         </div>
       )}
@@ -280,6 +292,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
           <span className="ck-note">
             {searching ? `${found.length} of ${count(searchable.length, 'recipe')}` : count(searchable.length, 'recipe')}
             {!section && !searching && book.sections.length > 0 && ` · ${count(book.sections.length, 'section')}`}
+            {sortNote}
           </span>
         </Block>
       )}
@@ -306,7 +319,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         !section &&
         book.sections.length > 0 &&
         [...book.sections, ...(here.length ? [{ id: UNCATEGORIZED, name: 'Uncategorized', recipeIds: book.recipeIds }] : [])].map((s) => {
-          const inShelf = existing(s.recipeIds, byId);
+          const inShelf = sorted(s.recipeIds);
           const href = `/cookbook/${book.id}/section/${s.id}/`;
           return (
             <div key={`shelf-${s.id}`} className="ck-shelf">
@@ -354,6 +367,20 @@ export default function CookbookPage({ f7route, f7router }: Props) {
               {section ? 'Delete Section' : 'Delete Cookbook'}
             </ActionsButton>
           )}
+        </ActionsGroup>
+        <ActionsGroup>
+          <ActionsButton strong>Cancel</ActionsButton>
+        </ActionsGroup>
+      </Actions>
+
+      <Actions key="sort" opened={sortOpen} onActionsClosed={() => setSortOpen(false)}>
+        <ActionsGroup>
+          <ActionsLabel>{book.sections.length ? `Sort recipes in ${book.name} and its sections` : `Sort recipes in ${book.name}`}</ActionsLabel>
+          {CookbookSort.options.map((k) => (
+            <ActionsButton key={k} strong={k === sort} onClick={() => setCookbookSort(book.id, k)}>
+              {k === 'manual' ? 'Manual (as organized)' : SORT_LABELS[k]}
+            </ActionsButton>
+          ))}
         </ActionsGroup>
         <ActionsGroup>
           <ActionsButton strong>Cancel</ActionsButton>

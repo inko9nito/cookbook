@@ -40,6 +40,12 @@ describe('the grocery list in the database', () => {
     ]);
   });
 
+  test('the choice picked on an item whose ingredient offers some (soy sauce or tamari) is kept', async () => {
+    await changeGroceries(db, { save: [{ id: 'g9', recipeId: 'r1', ingredientId: 'i9', choice: 'tamari', checked: false, createdAt: at(9) }] });
+    expect((await listGroceries(db)).find((g) => g.id === 'g9')).toMatchObject({ choice: 'tamari' });
+    await changeGroceries(db, { remove: ['g9'] });
+  });
+
   test('ticking, pinning to a store and taking off, in one change', async () => {
     await changeGroceries(db, {
       save: [{ id: 'g1', text: 'paper towels', checked: true, store: 'acme-market', createdAt: at(1) }],

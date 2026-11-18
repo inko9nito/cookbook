@@ -172,7 +172,7 @@ export const sampleRecipes: Recipe[] = [
       ing('1', 'large', 'onion', 'sliced'),
       ing('4', 'cloves', 'garlic', 'smashed'),
       ing('2', 'tbsp', 'tomato paste'),
-      ing('1', 'cup', 'dry red wine'),
+      ing('1', 'cup', 'dry red wine or beef stock'),
       ing('2', 'cups', 'beef broth'),
       ing('3', 'sprigs', 'fresh thyme'),
       ing('2', '', 'bay leaves'),
@@ -329,6 +329,8 @@ export const demoGroceries = (recipes: Recipe[]): GroceryItem[] => {
     ...from('2', ['boneless chicken thighs', 'garlic', 'red onion', 'bell peppers', 'warm pitas', 'lemon'], { servings: 8, plannedId: 'pl-2' }),
     ...from('2', ['plain whole milk Greek yogurt'], { servings: 8, plannedId: 'pl-2', store: 'corner-grocer' }),
     typed('paper towels'),
+    // a choice, as written until one is picked (issue #64)
+    typed('1 tbsp soy sauce or tamari'),
     typed('2 avocados', { checked: true }),
     ...from('5', ['whole-grain mustard'], { checked: true, plannedId: 'pl-0' }),
   ];

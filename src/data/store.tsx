@@ -2,7 +2,7 @@
 // Changes show at once (optimistic) and are sent in the background; if the server refuses, they're undone with a toast.
 // On the live site the cache is kept in IndexedDB, so recipes open offline in the kitchen.
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
@@ -14,6 +14,7 @@ import { Settings, type Recipe, type SortKey } from '../lib/recipe';
 import type { Cookbook } from '../lib/cookbook';
 import type { Planned } from '../lib/planner';
 import type { GroceryItem } from '../lib/groceries';
+import { isNamed, nameOf, namesMap, type GroceryName } from '../lib/grocery-names';
 import { pendingChanges, upsert } from './pending';
 
 const RECIPES = ['recipes'] as const;
@@ -21,6 +22,7 @@ const SETTINGS = ['settings'] as const;
 const COOKBOOKS = ['cookbooks'] as const;
 const PLANNER = ['planner'] as const;
 const GROCERIES = ['groceries'] as const;
+const GROCERY_NAMES = ['grocery-names'] as const;
 const DAY = 24 * 60 * 60 * 1000;
 
 const queryClient = new QueryClient({
@@ -316,4 +318,140 @@ export function useGroceries() {
     /** save some items (new or changed) and take some off, in one go */
     changeGroceries: (save: GroceryItem[], remove: string[] = []) => change.mutate({ save, remove }),
   };
+}
+
+// ── what each ingredient is on the grocery list (issue #64) ──
+
+// names the server couldn't name this time (Claude out of reach): the rules stand in, and they aren't asked about again
+// until the app is opened afresh
+const notNamed = new Set<string>();
+// names being asked about now, so two screens don't ask twice
+const naming = new Map<string, Promise<void>>();
+
+const keepNames = (rows: GroceryName[]) =>
+  queryClient.setQueryData<GroceryName[]>(GROCERY_NAMES, (list = []) => {
+    const byKey = new Map(list.map((n) => [n.key, n]));
+    for (const r of rows) byKey.set(r.key, r);
+    return [...byKey.values()];
+  });
+
+/**
+ * Name the ones not named yet: at most 60 a request, three requests at once. Resolves when they're named (or the
+ * server couldn't: then the rules stand in for them).
+ */
+async function nameThese(list: string[]) {
+  const known = namesMap(queryClient.getQueryData<GroceryName[]>(GROCERY_NAMES) ?? []);
+  const todo = new Map<string, string>();
+  const waits: Promise<void>[] = [];
+  for (const n of list) {
+    const key = nameOf(n);
+    if (!key || known.has(key) || notNamed.has(key) || todo.has(key)) continue;
+    if (naming.has(key)) waits.push(naming.get(key)!);
+    else todo.set(key, n);
+  }
+  const names = [...todo.values()];
+  const batches: string[][] = [];
+  for (let i = 0; i < names.length; i += 60) batches.push(names.slice(i, i + 60));
+  let next = 0;
+  const worker = async () => {
+    while (next < batches.length) {
+      const batch = batches[next++];
+      const done = (async () => {
+        try {
+          const { names: rows } = await backend.nameGroceries(batch);
+          keepNames(rows);
+          const got = new Set(rows.map((r) => r.key));
+          for (const n of batch) if (!got.has(nameOf(n))) notNamed.add(nameOf(n));
+        } catch {
+          for (const n of batch) notNamed.add(nameOf(n));
+        }
+      })();
+      for (const n of batch) naming.set(nameOf(n), done);
+      await done;
+      for (const n of batch) naming.delete(nameOf(n));
+    }
+  };
+  await Promise.all([...Array(Math.min(3, batches.length))].map(worker).concat(waits));
+}
+
+/**
+ * What each ingredient is on the grocery list (grocery-names.ts), kept offline like the list. `correct` keeps a
+ * correction from the phone (Same as…, Rename…), shown at once.
+ */
+export function useGroceryNames() {
+  const qc = useQueryClient();
+  const enabled = useAuth().status === 'signedIn';
+  const query = useQuery({ queryKey: GROCERY_NAMES, queryFn: backend.listGroceryNames, enabled });
+  const names = useMemo(() => namesMap(query.data ?? []), [query.data]);
+  return {
+    names,
+    /** the names have loaded (or can't be: then the rules stand in) */
+    settled: !!query.data || query.isError,
+    correct: (name: Omit<GroceryName, 'by'>) => {
+      keepNames([{ ...name, by: 'you' }]);
+      backend.correctGroceryName(name).catch((e) => {
+        toast(`Couldn’t keep that change. ${e instanceof Error ? e.message : ''}`.trim());
+        qc.invalidateQueries({ queryKey: GROCERY_NAMES });
+      });
+    },
+  };
+}
+
+/**
+ * The names a screen needs, named while it's open (`active`). `naming` while some are still being named (at most 12
+ * seconds: after that the rules stand in, and the answers show when they come).
+ */
+export function useNamed(list: string[], active: boolean) {
+  const { names, settled } = useGroceryNames();
+  const missing = settled ? [...new Set(list.map((n) => n.trim()).filter((n) => !isNamed(n, names) && !notNamed.has(nameOf(n))))] : [];
+  const sig = missing.join('\n');
+  const [waiting, setWaiting] = useState(false);
+  useEffect(() => {
+    if (!active || !sig) return;
+    let live = true;
+    setWaiting(true);
+    const stop = setTimeout(() => live && setWaiting(false), 12_000);
+    nameThese(sig.split('\n')).finally(() => {
+      clearTimeout(stop);
+      if (live) setWaiting(false);
+    });
+    return () => {
+      live = false;
+      clearTimeout(stop);
+    };
+  }, [active, sig]);
+  return { names, naming: active && (!settled || (waiting && missing.length > 0)) };
+}
+
+/**
+ * Issue #64: once a session, the library's ingredient names not named yet are named on the server in the background
+ * (grocery-names-background.mts), so adding a recipe to the list doesn't wait for Claude. The names are read again a
+ * few times while that runs.
+ */
+export function useNameLibrary(recipes: Recipe[], active: boolean) {
+  const { names, settled } = useGroceryNames();
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!active || !settled || !recipes.length) return;
+    let asked = false;
+    try {
+      asked = sessionStorage.getItem('cookbook.namingLibrary') === '1';
+    } catch {
+      /* no session storage: ask (the server runs one at a time) */
+    }
+    if (asked) return;
+    const missing = [...new Set(recipes.flatMap((r) => r.ingredients.filter((i) => i.kind !== 'header' && i.name.trim()).map((i) => i.name.trim())))].filter(
+      (n) => !isNamed(n, names),
+    );
+    if (!missing.length) return;
+    try {
+      sessionStorage.setItem('cookbook.namingLibrary', '1');
+    } catch {
+      /* as above */
+    }
+    backend
+      .backfillGroceryNames(missing.slice(0, 5000))
+      .then(() => [60, 180, 420].forEach((s) => setTimeout(() => qc.invalidateQueries({ queryKey: GROCERY_NAMES }), s * 1000)))
+      .catch(() => undefined);
+  }, [active, settled, recipes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 }

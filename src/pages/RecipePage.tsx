@@ -7,7 +7,7 @@ import { BookOpen, CalendarDays, CookingPot, Ellipsis, Plus, Star, ChevronDown, 
 import ScaleSheet from '../components/ScaleSheet';
 import RecipePhotos from '../components/RecipePhotos';
 import AddToCookbookPopup from '../components/AddToCookbookPopup';
-import { AddRecipeSheet } from '../components/AddGroceriesSheet';
+import { AddRecipePopup } from '../components/AddGroceriesPopup';
 import { useCookbooks, usePlanner, useStore } from '../data/store';
 import { showInPlanner } from '../data/plannerNav';
 import { busyDays, mealName, MEALS, mediumDate, plan, today, upcomingDaysOf, type Day, type Meal } from '../lib/planner';
@@ -379,7 +379,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
 
       <AddToCookbookPopup opened={addingToCookbook} recipe={recipe} onClosed={() => setAddingToCookbook(false)} />
       {/* issue #64: its ingredients onto the grocery list, at the servings shown */}
-      <AddRecipeSheet recipe={addingToList ? recipe : null} servings={Math.round(recipe.servings * factor * 100) / 100} onClosed={() => setAddingToList(false)} />
+      <AddRecipePopup recipe={addingToList ? recipe : null} servings={Math.round(recipe.servings * factor * 100) / 100} onClosed={() => setAddingToList(false)} />
 
       <Actions opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>
         <ActionsGroup>

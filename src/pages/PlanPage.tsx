@@ -6,7 +6,7 @@ import {
 import { CalendarSearch, ChefHat, NotebookPen, Plus, ShoppingCart } from 'lucide-react';
 import WeekStrip from '../components/WeekStrip';
 import RecipePickerPopup from '../components/RecipePickerPopup';
-import { ShopWeekSheet } from '../components/AddGroceriesSheet';
+import { ShopWeekPopup } from '../components/AddGroceriesPopup';
 import { PlannerRowsSkeleton } from '../components/ui/Skeletons';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { pickDay } from '../components/ui/pickDay';
@@ -308,7 +308,7 @@ export default function PlanPage() {
         </ActionsGroup>
       </Actions>
 
-      <ShopWeekSheet opened={shopping} day={selected} onClosed={() => setShopping(false)} />
+      <ShopWeekPopup opened={shopping} day={selected} onClosed={() => setShopping(false)} />
 
       <RecipePickerPopup
         mode="several"

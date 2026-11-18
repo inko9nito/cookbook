@@ -127,3 +127,17 @@ export function PlannerRowsSkeleton() {
     </List>
   );
 }
+
+/** Issue #64: an add screen's ingredients while they're being named: rows with a grey name and amount. */
+export function AddRowsSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <List strongIos insetIos dividersIos className="ck-convert-list ck-add-list" aria-busy="true" aria-label="Loading">
+      {TITLES.slice(0, count).map((t, i) => (
+        <ListItem key={i} aria-hidden="true">
+          <SkeletonText slot="title" effect={EFFECT}>{t}</SkeletonText>
+          <SkeletonText slot="footer" effect={EFFECT}>2 tbsp</SkeletonText>
+        </ListItem>
+      ))}
+    </List>
+  );
+}

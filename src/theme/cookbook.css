@@ -1512,21 +1512,22 @@ html.ios .calendar.ck-calendar .toolbar .calendar-month-selector .current-month-
   display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px; vertical-align: 1px;
   font-size: 12px; font-weight: 600; line-height: 18px; background-color: var(--ck-book-blush); color: var(--ck-fg2);
 }
-/* swiping a row: Aisle in muted grey, Store in dark grey (as the Planner's Meal and Move), Delete in red */
-html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-aisle { background-color: var(--ck-muted); }
+/* swiping a row: Edit in muted grey, Store in dark grey (as the Planner's Meal and Move), Delete in red */
+html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-edit { background-color: var(--ck-muted); }
 html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-store { background-color: var(--ck-fg2); }
 /* by recipe: each recipe's thumbnail, name and servings over its card */
 .ck-grocery-recipe-head { display: flex; align-items: center; gap: 12px; padding: 0 16px; margin-bottom: 10px; }
 .ck-grocery-recipe-head h2 { margin: 0; font-family: var(--ck-font-display); font-size: 18px; font-weight: 500; line-height: 22px; color: var(--ck-fg); }
 .ck-grocery-recipe-head .ck-note { margin: 0; padding: 0; font-size: 13px; }
-/* the add sheets (a recipe, Shop this week): small labels over the rows, the week's arrows */
-.block-footer.ck-sheet-label { margin-top: 18px; margin-bottom: 4px; font-size: 13px; font-weight: 700; color: var(--ck-fg2); }
-.sheet-modal.ck-add-sheet .list.ck-pick-list { --f7-list-margin-vertical: 0px; }
-/* the sheet grows with its rows up to 85% of the screen, then its rows scroll (the sheet's own height is auto, so the
-   scrolling part needs the cap: without it the rows ran off the bottom, unreachable) */
-.sheet-modal.ck-add-sheet .page-content { padding-bottom: var(--ck-sheet-inset); max-height: 85vh; }
-.ck-add-recipe-name { margin: 0; }
-.block.ck-week-nav { justify-content: space-between; flex-wrap: nowrap; }
-/* Shop this week's Back: pulled out like Done (Framework7 pads toolbar links 12px), so its text meets the 24px edge */
-html.ios .sheet-modal.ck-add-sheet .toolbar .left .link:first-child { margin-left: -12px; }
+/* the add screens (full-screen popups like Add Recipes: a recipe, Shop this week): the recipe's name over the
+   servings, small titles over the rows, a choice's Pick one at the end of its row, the week's arrows */
+.block.ck-add-head { margin: 16px 0 0; }
+.ck-add-recipe-name { margin: 0; font-family: var(--ck-font-display); font-size: 20px; font-weight: 500; line-height: 24px; color: var(--ck-fg); }
+.popup.ck-add-popup .block-title.ck-add-label { margin-top: 24px; }
+.popup.ck-add-popup .list.ck-add-list li .item-title { white-space: normal; }
+.link.ck-choice-link {
+  display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border-radius: 9999px;
+  font-size: 14px; font-weight: 600; background-color: var(--ck-soft); color: var(--ck-accent-ink);
+}
+.block.ck-week-nav { justify-content: space-between; flex-wrap: nowrap; margin-top: 16px; }
 .link.ck-round-soft { width: 36px; height: 36px; border-radius: 9999px; justify-content: center; background-color: var(--ck-soft); color: var(--ck-fg); }

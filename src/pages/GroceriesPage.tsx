@@ -11,12 +11,13 @@ import { photoStyle } from '../components/ui/photo';
 import { PlannerRowsSkeleton } from '../components/ui/Skeletons';
 import CookingFab from '../components/CookingFab';
 import RecipePickerPopup from '../components/RecipePickerPopup';
-import { AddRecipeSheet, ShopWeekSheet } from '../components/AddGroceriesSheet';
-import { useGroceries, usePlanner, useStore } from '../data/store';
+import { AddRecipePopup, ShopWeekPopup } from '../components/AddGroceriesPopup';
+import { useGroceries, useGroceryNames, useNamed, useNameLibrary, usePlanner, useStore } from '../data/store';
 import {
-  AISLE_NAMES, AISLES, byAisle, byRecipe, instacartSearch, linesOf, listText, nameKey, partAmount, partName, type Aisle, type GroceryItem,
-  type Line,
+  AISLE_NAMES, AISLES, byAisle, byRecipe, instacartSearch, itemNames, linesOf, listText, nameKey, partAmount, partName, shopName, type Aisle,
+  type GroceryItem, type Line,
 } from '../lib/groceries';
+import { nameOf, type GroceryThing } from '../lib/grocery-names';
 import { coverPhoto, newId, type Recipe } from '../lib/recipe';
 import { dayName, mealName, today } from '../lib/planner';
 import { friendly } from '../lib/ingredients';
@@ -25,15 +26,20 @@ const toast = (text: string) => f7.toast.show({ text, closeTimeout: 2200 });
 const aToZ = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
 // the thing to buy leads the row: "White miso paste", its amount in the small print under it
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+// an action sheet opened from another waits for the first to go
+const after = (f: () => void) => setTimeout(f, 350);
 
 /**
  * The Groceries tab (issue #64): the grocery list, by aisle or by recipe (remembered). Things from several recipes are
  * added up into one line ("3 lemons"), each saying which recipes it's for. Tapping a row ticks it; its ↗ opens
  * Instacart's search for it at the store the list is shopping at (the line at the top), or at the store it's pinned to.
  * A row ticked stays where it is, crossed out, while you're on the list (no jumping rows mid-shop); ticked lines gather
- * in Got it at the bottom once you've been elsewhere (Clear takes them off). Swiping a row: Aisle (the app guessed
- * wrong; kept for that name), Store (pin it to another store), Delete. + adds Shop this week (the Planner's recipes), a
- * recipe, or something typed. ⋯ shares what's left as text, or clears the list. The search bar finds a thing or a recipe.
+ * in Got it at the bottom once you've been elsewhere (Clear takes them off). What each row is comes from its ingredient's
+ * name (named once by Claude; grocery-names.ts); a recipe's choice ("soy sauce or tamari") is its own row until one is
+ * picked, and its ↗ asks which to search. Swiping a row: Edit (pick a choice, move it to another aisle, say it's the same
+ * thing as another row, or rename it; kept for those words), Store (pin it to another store), Delete. + adds Shop this
+ * week (the Planner's recipes), a recipe, or something typed. ⋯ shares what's left as text, or clears the list. The
+ * search bar finds a thing or a recipe.
  */
 export default function GroceriesPage({ f7router }: { f7router?: { navigate: (url: string) => void } }) {
   const { recipes, settings, changeSettings, loading: recipesLoading } = useStore();
@@ -44,6 +50,9 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
   const [storeMenu, setStoreMenu] = useState(false);
   const [pinning, setPinning] = useState<Line | null>(null);
   const [moving, setMoving] = useState<Line | null>(null);
+  const [editing, setEditing] = useState<Line | null>(null);
+  const [sameAs, setSameAs] = useState<Line | null>(null);
+  const [searching, setSearching] = useState<Line | null>(null);
   const [picking, setPicking] = useState(false);
   const [adding, setAdding] = useState<Recipe | null>(null);
   const [shopWeek, setShopWeek] = useState(false);
@@ -53,16 +62,24 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
   const { atTop, onPageInit } = useAtTop();
   const loading = (recipesLoading || listLoading) && !loadError;
 
+  // what each ingredient is: named on the server (Claude, once per name); the rules stand in meanwhile
+  const { names } = useNamed(itemNames(items, recipes), !loading);
+  const { correct } = useGroceryNames();
+  useNameLibrary(recipes, !loading);
+
   const real = new Map(items.map((g) => [g.id, g]));
   const lines = linesOf(
     items.map((g) => (placed.has(g.id) ? { ...g, checked: placed.get(g.id)! } : g)),
     recipes,
     settings.groceryAisles,
+    names,
   );
   const ticked = (l: Line) => l.parts.every((p) => real.get(p.item.id)?.checked);
   const words = nameKey(query);
   const matches = (l: Line) =>
-    !words || ` ${nameKey(l.name)} `.includes(` ${words}`) || l.recipes.some((r) => r.title.toLowerCase().includes(query.trim().toLowerCase()));
+    !words ||
+    [l.name, ...(l.thing ? [l.thing.item] : []), ...(l.choices ?? []).map((t) => t.item)].some((n) => ` ${nameKey(n)} `.includes(` ${words}`)) ||
+    l.recipes.some((r) => r.title.toLowerCase().includes(query.trim().toLowerCase()));
   const toGet = lines.filter((l) => !l.checked);
   const got = lines.filter((l) => l.checked);
   const shownToGet = toGet.filter(matches);
@@ -92,8 +109,26 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
       return slug && slug !== store?.slug ? { ...rest, store: slug } : rest;
     }));
   const remove = (line: Line) => changeGroceries([], line.parts.map((p) => p.item.id));
-  const moveTo = (line: Line, aisle: Aisle) => changeSettings({ groceryAisles: { ...settings.groceryAisles, [nameKey(line.name)]: aisle } });
-  const searchFor = (line: Line) => instacartSearch(line.term, line.store ?? store?.slug);
+  const moveTo = (line: Line, aisle: Aisle) => changeSettings({ groceryAisles: { ...settings.groceryAisles, [nameKey(line.thing?.item ?? line.name)]: aisle } });
+  const searchFor = (line: Line, term = line.term) => instacartSearch(term, line.store ?? store?.slug);
+  // a choice picked (or opened again: null) on every item of a line
+  const pickFor = (line: Line, choice: string | null) =>
+    save(saved(line).map((item) => {
+      const { choice: _old, ...rest } = item;
+      return choice ? { ...rest, choice } : rest;
+    }));
+  // the line's words (each ingredient name in it) are this thing from now on: kept on the server, for every recipe
+  const nameAs = (line: Line, thing: GroceryThing) => {
+    for (const key of new Set(line.parts.map((p) => nameOf(p.name)))) if (key) correct({ key, things: [thing] });
+  };
+  const rename = (line: Line) => {
+    if (!line.thing) return;
+    const was = line.thing;
+    f7.dialog.prompt('What to buy, as it’s called in the store. It’s kept for these words in every recipe.', 'Rename', (text: string) => {
+      const item = text.trim();
+      if (item && item !== was.item) nameAs(line, { ...was, item, plural: item });
+    }, undefined, was.item);
+  };
 
   const addTyped = () =>
     f7.dialog.prompt('Like “2 avocados” or “paper towels”.', 'Add to the list', (text: string) => {
@@ -108,7 +143,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
       changeGroceries([], items.map((g) => g.id)),
     );
   const share = async () => {
-    const text = listText(linesOf(items, recipes, settings.groceryAisles));
+    const text = listText(linesOf(items, recipes, settings.groceryAisles, names));
     try {
       if (navigator.share) await navigator.share({ title: 'Grocery list', text });
       else {
@@ -136,21 +171,32 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
         {line.store && line.store !== store?.slug && <span className="ck-store-tag">{storeName(line.store)}</span>}
       </span>
       {footer && <span slot="footer">{footer}</span>}
-      {!ticked(line) && (
-        <Link
-          slot="after"
-          external
-          target="_blank"
-          href={searchFor(line)}
-          className="ck-instacart-link"
-          aria-label={`Find ${line.name} on Instacart${line.store ?? store?.slug ? ` at ${storeName(line.store ?? store?.slug)}` : ''}`}
-        >
-          <ArrowUpRight {...inlineIcon} />
-        </Link>
-      )}
+      {!ticked(line) &&
+        (line.choices ? (
+          // a choice: ↗ asks which to search
+          <Link
+            slot="after"
+            className="ck-instacart-link"
+            onClick={() => setSearching(line)}
+            aria-label={`Find ${line.name} on Instacart: pick which`}
+          >
+            <ArrowUpRight {...inlineIcon} />
+          </Link>
+        ) : (
+          <Link
+            slot="after"
+            external
+            target="_blank"
+            href={searchFor(line)}
+            className="ck-instacart-link"
+            aria-label={`Find ${line.name} on Instacart${line.store ?? store?.slug ? ` at ${storeName(line.store ?? store?.slug)}` : ''}`}
+          >
+            <ArrowUpRight {...inlineIcon} />
+          </Link>
+        ))}
       <SwipeoutActions right>
-        <SwipeoutButton close className="ck-grocery-aisle" onClick={() => setMoving(line)}>
-          Aisle
+        <SwipeoutButton close className="ck-grocery-edit" onClick={() => setEditing(line)}>
+          Edit
         </SwipeoutButton>
         {stores.length > 1 && (
           <SwipeoutButton close className="ck-grocery-store" onClick={() => setPinning(line)}>
@@ -379,7 +425,64 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
         </ActionsGroup>
       </Actions>
 
-      {/* swipe → Aisle: the app guessed wrong; kept for that name */}
+      {/* swipe → Edit: pick a choice, another aisle, the same thing as another row, another name */}
+      <Actions opened={!!editing} onActionsClosed={() => setEditing(null)}>
+        <ActionsGroup>
+          <ActionsLabel>{editing ? cap(editing.name) : ''}</ActionsLabel>
+          {editing?.choices?.map((t) => (
+            <ActionsButton key={t.item} onClick={() => pickFor(editing, t.item)}>{`Get ${t.item}`}</ActionsButton>
+          ))}
+          {editing && !editing.choices && editing.parts.some((p) => p.item.choice) && (
+            <ActionsButton onClick={() => pickFor(editing, null)}>{`Back to “${shopName(editing.parts.find((p) => p.item.choice)!.name)}”`}</ActionsButton>
+          )}
+          <ActionsButton onClick={() => editing && after(() => setMoving(editing))}>Move to another aisle…</ActionsButton>
+          {editing?.thing && (
+            <>
+              <ActionsButton onClick={() => after(() => setSameAs(editing))}>Same thing as…</ActionsButton>
+              <ActionsButton onClick={() => rename(editing)}>Rename…</ActionsButton>
+            </>
+          )}
+        </ActionsGroup>
+        <ActionsGroup>
+          <ActionsButton strong>Cancel</ActionsButton>
+        </ActionsGroup>
+      </Actions>
+
+      {/* Edit → Same thing as…: this row's words are that row's thing, for every recipe */}
+      <Actions opened={!!sameAs} onActionsClosed={() => setSameAs(null)}>
+        <ActionsGroup>
+          <ActionsLabel>{sameAs ? `${cap(sameAs.name)} is the same thing as…` : ''}</ActionsLabel>
+          {sameAs &&
+            toGet
+              .filter((l) => l.thing && l.key !== sameAs.key && nameKey(l.thing.item) !== nameKey(sameAs.thing!.item))
+              .sort((a, b) => Number(b.aisle === sameAs.aisle) - Number(a.aisle === sameAs.aisle) || a.name.localeCompare(b.name))
+              .map((l) => (
+                <ActionsButton key={l.key} onClick={() => nameAs(sameAs, l.thing!)}>
+                  {cap(l.name)}
+                </ActionsButton>
+              ))}
+        </ActionsGroup>
+        <ActionsGroup>
+          <ActionsButton strong>Cancel</ActionsButton>
+        </ActionsGroup>
+      </Actions>
+
+      {/* ↗ on a choice: which to search on Instacart */}
+      <Actions opened={!!searching} onActionsClosed={() => setSearching(null)}>
+        <ActionsGroup>
+          <ActionsLabel>Search Instacart for</ActionsLabel>
+          {searching?.choices?.map((t) => (
+            <ActionsButton key={t.item} onClick={() => window.open(searchFor(searching, t.item), '_blank')}>
+              {cap(t.item)}
+            </ActionsButton>
+          ))}
+        </ActionsGroup>
+        <ActionsGroup>
+          <ActionsButton strong>Cancel</ActionsButton>
+        </ActionsGroup>
+      </Actions>
+
+      {/* Edit → Move to another aisle: the app guessed wrong; kept for that thing */}
       <Actions opened={!!moving} onActionsClosed={() => setMoving(null)}>
         <ActionsGroup>
           <ActionsLabel>{moving ? `Which aisle for ${moving.name}?` : ''}</ActionsLabel>
@@ -406,8 +509,8 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
         }}
         onClosed={() => setPicking(false)}
       />
-      <AddRecipeSheet recipe={adding} onClosed={() => setAdding(null)} />
-      <ShopWeekSheet opened={shopWeek} onClosed={() => setShopWeek(false)} />
+      <AddRecipePopup recipe={adding} onClosed={() => setAdding(null)} />
+      <ShopWeekPopup opened={shopWeek} onClosed={() => setShopWeek(false)} />
     </Page>
   );
 }

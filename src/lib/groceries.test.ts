@@ -3,6 +3,7 @@ import {
   addRows, addUp, aisleOf, byAisle, byRecipe, GroceryItem, instacartSearch, isStaple, lineText, linesOf, nameKey, partAmount, searchTerm, shopName, storeSlugFrom, type GroceryItem as Item,
 } from './groceries';
 import { emptyRecipe, type Ingredient, type Recipe } from './recipe';
+import { namesMap, ruleThings, type Aisle, type GroceryThing } from './grocery-names';
 
 const ing = (id: string, amount: string, unit: string, name: string, note = ''): Ingredient => ({ id, amount, unit, name, note });
 
@@ -216,27 +217,65 @@ describe('the add sheets', () => {
   });
 });
 
-describe('the same thing under other words (issue #64, from the phone)', () => {
-  test('white miso and white miso paste are one line, in the fridge aisle', () => {
-    const ls = linesOf([item({ text: '2 tablespoons white miso paste' }), item({ text: '3-4 tbsp white miso' })], []);
-    expect(ls.map(lineText)).toEqual(['5–6 tbsp white miso paste']);
+describe('what each ingredient is: named once (by Claude), the rules until then (issue #64)', () => {
+  const thing = (item: string, aisle: Aisle, plural = item, onHand = false): GroceryThing => ({ item, plural, aisle, onHand });
+  const names = namesMap([
+    { key: 'white miso paste', things: [thing('white miso', 'dairy')], by: 'claude' },
+    { key: 'white miso', things: [thing('white miso', 'dairy')], by: 'claude' },
+    { key: 'soy sauce or tamari', things: [thing('soy sauce', 'pantry'), thing('tamari', 'pantry')], by: 'claude' },
+    { key: 'soy sauce', things: [thing('soy sauce', 'pantry')], by: 'claude' },
+    { key: 'star anise', things: [thing('star anise', 'spices')], by: 'claude' },
+    { key: 'ice cubes', things: [thing('ice', 'frozen', 'ice', true)], by: 'claude' },
+  ]);
+  const miso = recipe('m', 'Miso Dressing', 4, [
+    ing('a', '2', 'tablespoons', 'white miso paste'),
+    ing('b', '2', 'tablespoons', 'soy sauce or tamari'),
+    ing('c', '½', 'cup', 'ice cubes'),
+  ]);
+  const eggs = recipe('e', 'Deviled Eggs', 4, [ing('a', '3-4', 'tbsp', 'white miso'), ing('b', '1', 'cup', 'soy sauce'), ing('c', '2', '', 'star anise')]);
+  const both = [miso, eggs];
+  const on = (r: Recipe, i: string, extra: Partial<Item> = {}) => item({ recipeId: r.id, ingredientId: i, ...extra });
+
+  test('the same thing under other words is one line, in the aisle it was named for', () => {
+    const ls = linesOf([on(miso, 'a'), on(eggs, 'a')], both, {}, names);
+    expect(ls.map(lineText)).toEqual(['5–6 tbsp white miso']);
     expect(ls[0].aisle).toBe('dairy');
   });
-  test('the first of two choices, prep words and what the recipe says about using it are left out of the key', () => {
-    expect(nameKey('soy sauce or tamari')).toBe(nameKey('soy sauce'));
-    expect(nameKey('lemon or lime juice')).toBe(nameKey('lemon juice'));
-    expect(nameKey('freshly squeezed lemon juice')).toBe(nameKey('lemon juice'));
+
+  test('a choice stays its own line, as written, until one is picked; the picked one adds up with the rest', () => {
+    const open = linesOf([on(miso, 'b'), on(eggs, 'b')], both, {}, names);
+    expect(open.map(lineText)).toEqual(['2 tbsp soy sauce or tamari', '1 cup soy sauce']);
+    expect(open[0].choices!.map((t) => t.item)).toEqual(['soy sauce', 'tamari']);
+    const soy = linesOf([on(miso, 'b', { choice: 'soy sauce' }), on(eggs, 'b')], both, {}, names);
+    expect(soy.map(lineText)).toEqual(['18 tbsp soy sauce']);
+    const tamari = linesOf([on(miso, 'b', { choice: 'tamari' }), on(eggs, 'b')], both, {}, names);
+    expect(tamari.map(lineText)).toEqual(['2 tbsp tamari', '1 cup soy sauce']);
+  });
+
+  test('the plural is as named ("2 star anise"); what is usually on hand starts unticked', () => {
+    expect(linesOf([on(eggs, 'c')], both, {}, names).map(lineText)).toEqual(['2 star anise']);
+    const rows = addRows([{ recipe: miso }], [], both, names);
+    expect(rows.find((r) => r.name === 'ice')).toMatchObject({ on: false, note: 'Usually on hand' });
+  });
+
+  test('the add screen: a choice is a row of its own; a pick makes it that thing and says so when it is on the list', () => {
+    const list = linesOf([on(eggs, 'b')], both, {}, names);
+    const rows = addRows([{ recipe: miso }], list, both, names);
+    const choice = rows.find((r) => r.choices)!;
+    expect(choice).toMatchObject({ name: 'soy sauce or tamari', note: '' });
+    const picked = addRows([{ recipe: miso }], list, both, names, { [choice.key]: 'soy sauce' }).find((r) => r.key === choice.key)!;
+    expect(picked).toMatchObject({ name: 'soy sauce', pick: 'soy sauce', note: 'Adds to the 1 cup soy sauce already on your list' });
+    expect(picked.adds[0].choice).toBe('soy sauce');
+  });
+
+  test('until named, the rules: choices split, preparation and how it is used left out', () => {
+    expect(ruleThings('soy sauce or tamari').map((t) => t.item)).toEqual(['soy sauce', 'tamari']);
+    expect(ruleThings('lemon or lime juice').map((t) => t.item)).toEqual(['lemon juice', 'lime juice']);
+    expect(ruleThings('freshly squeezed lemon juice').map((t) => t.item)).toEqual(['lemon juice']);
     expect(shopName('honey/maple syrup if you prefer it on the sweeter side')).toBe('honey/maple syrup');
     expect(shopName('parsley, chopped')).toBe('parsley');
-    expect(shopName('salt to taste')).toBe('salt');
   });
-  test('ice is usually on hand; star anise and mirin find their aisles; a name written for more than one stays', () => {
-    expect(isStaple('ice cubes')).toBe(true);
-    expect(aisleOf('star anise')).toBe('spices');
-    expect(aisleOf('mirin')).toBe('pantry');
-    expect(aisleOf('furikake')).toBe('spices');
-    expect(linesOf([item({ text: '2 star anise' })], []).map(lineText)).toEqual(['2 star anise']);
-  });
+
   test('units are short on the list: the amount is the small print', () => {
     expect(linesOf([item({ text: '2 tablespoons soy sauce' })], []).map(lineText)).toEqual(['2 tbsp soy sauce']);
     expect(partAmount({ amount: '8', unit: 'tablespoons' })).toBe('½ cup');

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
-  addRows, addUp, aisleOf, byAisle, byRecipe, GroceryItem, instacartSearch, isStaple, lineText, linesOf, nameKey, searchTerm, storeSlugFrom, type GroceryItem as Item,
+  addRows, addUp, aisleOf, byAisle, byRecipe, GroceryItem, instacartSearch, isStaple, lineText, linesOf, nameKey, partAmount, searchTerm, shopName, storeSlugFrom, type GroceryItem as Item,
 } from './groceries';
 import { emptyRecipe, type Ingredient, type Recipe } from './recipe';
 
@@ -192,7 +192,7 @@ describe('the add sheets', () => {
       '2 lemons|true|',
       '6 cloves garlic|true|',
       '¼ cup butter|true|Adds to the 2 tbsp butter already on your list',
-      ' salt|false|Usually in the pantry',
+      ' salt|false|Usually on hand',
     ]);
     expect(rows[0].adds).toEqual([{ recipeId: 'r1', ingredientId: 'i1', servings: 8 }]);
   });
@@ -213,5 +213,33 @@ describe('the add sheets', () => {
     const [row] = addRows([{ recipe: pie }], [], [crust, pie]);
     expect(row.on).toBe(false);
     expect(row.note).toBe('Its own recipe: Pie Crust');
+  });
+});
+
+describe('the same thing under other words (issue #64, from the phone)', () => {
+  test('white miso and white miso paste are one line, in the fridge aisle', () => {
+    const ls = linesOf([item({ text: '2 tablespoons white miso paste' }), item({ text: '3-4 tbsp white miso' })], []);
+    expect(ls.map(lineText)).toEqual(['5–6 tbsp white miso paste']);
+    expect(ls[0].aisle).toBe('dairy');
+  });
+  test('the first of two choices, prep words and what the recipe says about using it are left out of the key', () => {
+    expect(nameKey('soy sauce or tamari')).toBe(nameKey('soy sauce'));
+    expect(nameKey('lemon or lime juice')).toBe(nameKey('lemon juice'));
+    expect(nameKey('freshly squeezed lemon juice')).toBe(nameKey('lemon juice'));
+    expect(shopName('honey/maple syrup if you prefer it on the sweeter side')).toBe('honey/maple syrup');
+    expect(shopName('parsley, chopped')).toBe('parsley');
+    expect(shopName('salt to taste')).toBe('salt');
+  });
+  test('ice is usually on hand; star anise and mirin find their aisles; a name written for more than one stays', () => {
+    expect(isStaple('ice cubes')).toBe(true);
+    expect(aisleOf('star anise')).toBe('spices');
+    expect(aisleOf('mirin')).toBe('pantry');
+    expect(aisleOf('furikake')).toBe('spices');
+    expect(linesOf([item({ text: '2 star anise' })], []).map(lineText)).toEqual(['2 star anise']);
+  });
+  test('units are short on the list: the amount is the small print', () => {
+    expect(linesOf([item({ text: '2 tablespoons soy sauce' })], []).map(lineText)).toEqual(['2 tbsp soy sauce']);
+    expect(partAmount({ amount: '8', unit: 'tablespoons' })).toBe('½ cup');
+    expect(partAmount({ amount: '1/2', unit: '' })).toBe('½');
   });
 });

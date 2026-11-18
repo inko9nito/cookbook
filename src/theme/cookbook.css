@@ -512,7 +512,8 @@ html.ios .subnavbar.ck-docked-bar .subnavbar-inner { flex-direction: column; ali
    hairline; the chips run to the screen's edges as they scroll sideways */
 .page.ck-recipes-page { --f7-subnavbar-height: calc(4px + 44px + 12px + var(--f7-chip-height) + 12px); }
 .page.ck-recipes-page.ck-no-chips,
-.page.ck-cookbook-page { --f7-subnavbar-height: calc(4px + 44px + 12px); }
+.page.ck-cookbook-page,
+.page.ck-groceries { --f7-subnavbar-height: calc(4px + 44px + 12px); }
 html.ios .subnavbar.ck-search-bar .searchbar { flex: none; width: auto; margin: 4px 16px 0; }
 .subnavbar.ck-search-bar .ck-chips-scroll { flex: none; margin-top: 12px; padding: 0 16px; }
 /* the count line starts the scrolling content, a little under the hairline */
@@ -545,6 +546,9 @@ html.ios .subnavbar.ck-search-bar .searchbar { flex: none; width: auto; margin: 
 
 /* ── Segmented control: the selected segment always has white text.
    iPhone Safari keeps a tapped button in its hover/pressed state, which showed grey text on the dark segment. ── */
+/* The dark highlight slides over in 200ms (Framework7) while the text turned white/grey in 100ms, so for a moment the
+   text was white on grey and grey on dark. The text now changes colour in step with the slide. */
+html.ios .segmented-strong .button { transition-duration: 200ms; }
 html.ios .segmented-strong .button.button-active,
 html.ios .segmented-strong .button.button-active:hover,
 html.ios .segmented-strong .button.button-active.active-state {
@@ -1478,17 +1482,21 @@ html.ios .calendar.ck-calendar .toolbar .calendar-month-selector .current-month-
 .item-input-wrap:has(> .input-clear-button) > input { padding-right: calc(var(--f7-input-clear-button-size) + 8px); }
 
 /* ── Groceries (issue #64): the list by aisle or by recipe, its store pill, Instacart's ↗ on each row ── */
-.block.ck-grocery-head { margin: 8px 0 18px; }
-.ck-grocery-store-row { justify-content: space-between; flex-wrap: nowrap; margin-top: 14px; }
-.ck-grocery-store-row .ck-note { margin: 0; padding-left: 0; }
-/* the user asked for this: say that the links leave for Instacart */
-.ck-note.ck-instacart-note { margin: 10px 0 0; font-size: 13px; line-height: 18px; }
-.ck-instacart-note .ck-icon { display: inline-block; color: var(--ck-accent-ink); vertical-align: -2px; }
-.ck-grocery-group + .ck-grocery-group { margin-top: 22px; }
-.ck-grocery-group:last-child { padding-bottom: 24px; }
+.block.ck-grocery-head { margin: 16px 0 20px; }
+/* one line under the toggle (the user found the top too busy): the note the user asked for, that ↗ leaves for
+   Instacart, and the store it searches, tapped to change it */
+.link.ck-instacart-store {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 12px;
+  font-size: 13px; line-height: 18px; color: var(--ck-muted);
+}
+.link.ck-instacart-store b { font-weight: 600; color: var(--ck-fg); }
+.link.ck-instacart-store .ck-icon:first-child { color: var(--ck-accent-ink); }
+.link.ck-instacart-store .ck-icon:last-child { color: var(--ck-fg2); }
+/* the groups in one column with a fixed gap: on iPhone Safari the gap between groups, made of margins, was lost */
+.ck-grocery-groups { display: flex; flex-direction: column; gap: 24px; padding-bottom: 24px; }
 .ck-grocery-got { justify-content: space-between; flex-wrap: nowrap; }
 .ck-grocery-got .link { font-family: var(--ck-font-display); font-size: 15px; font-weight: 400; color: var(--ck-accent-ink); }
-/* the row's name in plain weight with its amount bold (like the recipe page), not the Planner's semibold titles */
+/* the thing to buy leads (medium weight, wrapping); its amount and recipes are the muted small print under it */
 .list.ck-grocery-list li .item-title { font-weight: 500; white-space: normal; }
 /* a row held or swiped open: the page grey, which the muted footer still reads on (Framework7's darker grey didn't) */
 .list.ck-grocery-list { --f7-list-link-pressed-bg-color: var(--ck-bg); --f7-swipeout-active-bg-color: var(--ck-bg); }
@@ -1508,13 +1516,15 @@ html.ios .calendar.ck-calendar .toolbar .calendar-month-selector .current-month-
 html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-aisle { background-color: var(--ck-muted); }
 html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-store { background-color: var(--ck-fg2); }
 /* by recipe: each recipe's thumbnail, name and servings over its card */
-.ck-grocery-recipe-head { display: flex; align-items: center; gap: 12px; padding: 0 16px; margin-bottom: 8px; }
+.ck-grocery-recipe-head { display: flex; align-items: center; gap: 12px; padding: 0 16px; margin-bottom: 10px; }
 .ck-grocery-recipe-head h2 { margin: 0; font-family: var(--ck-font-display); font-size: 18px; font-weight: 500; line-height: 22px; color: var(--ck-fg); }
 .ck-grocery-recipe-head .ck-note { margin: 0; padding: 0; font-size: 13px; }
 /* the add sheets (a recipe, Shop this week): small labels over the rows, the week's arrows */
 .block-footer.ck-sheet-label { margin-top: 18px; margin-bottom: 4px; font-size: 13px; font-weight: 700; color: var(--ck-fg2); }
 .sheet-modal.ck-add-sheet .list.ck-pick-list { --f7-list-margin-vertical: 0px; }
-.sheet-modal.ck-add-sheet .page-content { padding-bottom: var(--ck-sheet-inset); }
+/* the sheet grows with its rows up to 85% of the screen, then its rows scroll (the sheet's own height is auto, so the
+   scrolling part needs the cap: without it the rows ran off the bottom, unreachable) */
+.sheet-modal.ck-add-sheet .page-content { padding-bottom: var(--ck-sheet-inset); max-height: 85vh; }
 .ck-add-recipe-name { margin: 0; }
 .block.ck-week-nav { justify-content: space-between; flex-wrap: nowrap; }
 /* Shop this week's Back: pulled out like Done (Framework7 pads toolbar links 12px), so its text meets the 24px edge */

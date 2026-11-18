@@ -21,19 +21,21 @@ function useTicks(rows: AddRow[], round: number) {
   return { on, flip, ticked: rows.filter(on) };
 }
 
-/** The ingredients to add, ticked unless they're usually in the pantry: untick what you have. */
+/** The ingredients to add (the thing to buy, its amount under it), ticked unless they're usually on hand: untick what you have. */
 function AddList({ rows, on, flip }: { rows: AddRow[]; on: (r: AddRow) => boolean; flip: (key: string) => void }) {
   return (
     <>
       <BlockFooter className="ck-sheet-label">Untick what you have</BlockFooter>
       <List strong inset dividers className="ck-pick-list ck-add-list">
         {rows.map((r) => (
-          <ListItem key={r.key} checkbox checked={on(r)} onChange={() => flip(r.key)}>
-            <span slot="title">
-              {r.amount && <span className="ck-amount">{r.amount}</span>} {r.name}
-            </span>
-            {r.note && <span slot="footer">{r.note}</span>}
-          </ListItem>
+          <ListItem
+            key={r.key}
+            checkbox
+            checked={on(r)}
+            onChange={() => flip(r.key)}
+            title={r.name ? r.name[0].toUpperCase() + r.name.slice(1) : r.name}
+            footer={[r.amount, r.note].filter(Boolean).join(' · ') || undefined}
+          />
         ))}
       </List>
     </>
@@ -75,7 +77,7 @@ export function AddRecipeSheet({ recipe, servings: startServings, onClosed }: { 
       swipeToClose
       backdrop
       closeByBackdropClick
-      style={{ height: 'auto', maxHeight: '85vh' }}
+      style={{ height: 'auto' }}
       className="ck-edit-sheet ck-add-sheet ck-add-recipe-sheet"
     >
       <Toolbar>
@@ -165,7 +167,7 @@ export function ShopWeekSheet({ opened, day, onClosed }: { opened: boolean; day?
       swipeToClose
       backdrop
       closeByBackdropClick
-      style={{ height: 'auto', maxHeight: '85vh' }}
+      style={{ height: 'auto' }}
       className="ck-edit-sheet ck-add-sheet ck-shop-week-sheet"
     >
       <Toolbar>

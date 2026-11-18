@@ -3,7 +3,7 @@
 // Volume converts to volume and weight to weight; there's no cups-to-grams, which would need each ingredient's density.
 
 import { parseIngredient } from 'parse-ingredient';
-import { readAmount } from './ingredients';
+import { readAmount, unitFor } from './ingredients';
 
 type Kind = 'volume' | 'weight';
 type UnitDef = {
@@ -211,4 +211,15 @@ export function convertTo(amount: string, unit: string, targetId: string): Conve
   const base = baseOf(amount, id);
   if (!base) return null;
   return join(express(base.low, targetId), base.high === null ? null : express(base.high, targetId));
+}
+
+/**
+ * Issue #64: a unit in its short form, agreeing with the amount ("tablespoons" → "tbsp", "cups" → "cup" for ½), for the
+ * grocery list, where the amount is the small print under the name. Units we don't convert (clove, can) as unitFor.
+ */
+export function shortUnit(unit: string, amount: string): string {
+  const id = unitId(unit);
+  if (!id) return unitFor(unit, amount);
+  const a = readAmount(amount);
+  return a && (a.high ?? a.low) > 1 ? UNITS[id].many : UNITS[id].one;
 }

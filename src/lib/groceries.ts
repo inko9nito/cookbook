@@ -11,7 +11,7 @@
 import { z } from 'zod';
 import type { Ingredient, Recipe } from './recipe';
 import { formatNumber, parseLine, readAmount, scaleAmount, unitFor } from './ingredients';
-import { amountIn, neaterAmount } from './units';
+import { amountIn, neaterAmount, shortUnit } from './units';
 
 const id = z.string().min(1).max(64);
 
@@ -128,20 +128,55 @@ export function partOf(item: GroceryItem, recipes: Map<string, Recipe>): Part | 
 const singular = (w: string) =>
   w.length <= 3 || w.endsWith('ss') || w.endsWith('us') ? w : w.endsWith('ies') ? `${w.slice(0, -3)}y` : w.endsWith('oes') ? w.slice(0, -2) : w.endsWith('s') ? w.slice(0, -1) : w;
 
-/** What two lines must share to be the same thing: "Lemons" and "lemon", "garlic (minced)" and "garlic". */
-export const nameKey = (name: string) =>
+/**
+ * The thing to buy, without what the recipe says about using it: "honey/maple syrup if you prefer it sweeter" → "honey/
+ * maple syrup", "parsley, chopped" → "parsley", "salt to taste" → "salt". The recipe keeps its line as written.
+ */
+export const shopName = (name: string) =>
   name
-    .toLowerCase()
-    .replace(/\([^)]*\)/g, ' ')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-    .split(' ')
-    .filter(Boolean)
-    .map(singular)
-    .join(' ');
+    .replace(/\s*\((?:optional|about|to taste|for)[^)]*\)/gi, '')
+    .replace(/\s*,.*$/, '')
+    .replace(/\s+(?:if|to taste|for (?:serving|garnish|topping|the|dipping|drizzling)|plus more|or more|as needed|optional)\b.*$/i, '')
+    .trim() || name.trim();
+
+// words that say how it's prepared, not what to buy: "freshly squeezed lemon juice" is "lemon juice" on the list
+const PREP = new Set(
+  'freshly squeezed chopped minced diced sliced grated shredded crushed finely roughly coarsely thinly peeled packed softened melted divided optional organic raw about cold warm room temperature'
+    .split(' '),
+);
+// the same thing to buy under another name (keys, singular): "white miso paste" and "white miso" are one line
+const SAME: [string, string][] = [
+  ['miso paste', 'miso'],
+  ['ice cube', 'ice'],
+];
+
+/**
+ * What two lines must share to be the same thing: "Lemons" and "lemon", "garlic (minced)" and "garlic", "freshly
+ * squeezed lemon juice" and "lemon juice", "white miso paste" and "white miso", "soy sauce or tamari" and "soy sauce"
+ * (the first choice: "lemon or lime juice" is lemon juice).
+ */
+export function nameKey(name: string): string {
+  const words = (text: string) =>
+    text
+      .toLowerCase()
+      .replace(/\([^)]*\)/g, ' ')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .split(' ')
+      .filter((w) => w && !PREP.has(w))
+      .map(singular);
+  const [first, second] = shopName(name).split(/\s+or\s+/i);
+  let key = words(first);
+  // "lemon or lime juice": the first choice takes the rest of the second's words
+  const other = second ? words(second) : [];
+  if (key.length === 1 && other.length > 1) key = [...key, ...other.slice(1)];
+  let text = key.join(' ');
+  for (const [from, to] of SAME) text = ` ${text} `.replace(` ${from} `, ` ${to} `).trim();
+  return text;
+}
 
 /** What to search Instacart for: the name without anything in brackets ("yellow onion", not "1 onion (about 8 oz)"). */
-export const searchTerm = (name: string) => name.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+export const searchTerm = (name: string) => shopName(name).replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
 
 // ── adding up ──
 
@@ -189,7 +224,7 @@ export function addUp(amounts: Amount[]): string {
     const amount = range(s.low, s.high);
     const neater = neaterAmount(amount, s.unit);
     if (neater && !neater.approx) return `${neater.amount} ${neater.unit}`;
-    return [amount, unitFor(s.unit, amount)].filter(Boolean).join(' ');
+    return [amount, shortUnit(s.unit, amount)].filter(Boolean).join(' ');
   });
   return [...added, ...words].join(' + ');
 }
@@ -233,15 +268,29 @@ export function countName(name: string, unit: string, amount: string): string {
 
 /** The name a line shows: plural when there's more than one ("3 lemons" from "1 lemon" and "2 lemons"). */
 function lineName(parts: Part[], amount: string): string {
-  const names = parts.map((p) => p.name.trim()).filter(Boolean);
-  if (!names.length) return '';
+  return agreeingName(
+    parts.map((p) => p.name),
+    parts.map((p) => p.ingredient?.amount ?? p.amount),
+    amount,
+  );
+}
+
+/**
+ * The name for an added-up amount, from the names and amounts as the recipes wrote them: plural when there's more than
+ * one ("3 lemons" from "1 lemon" and "2 lemons"), but as written when the recipes all wrote it for more than one ("2
+ * star anise" stays star anise).
+ */
+function agreeingName(names: string[], written: string[], amount: string): string {
+  const shop = names.map((x) => shopName(x.trim())).filter(Boolean);
+  if (!shop.length) return '';
   const n = readAmount(amount.split(' ')[0] ?? '');
   const many = n ? (n.high ?? n.low) > 1 : false;
-  const plural = names.find((x) => /s$/i.test(x) && nameKey(x) !== x.toLowerCase());
+  const plural = shop.find((x) => /s$/i.test(x) && singular(x.toLowerCase()) !== x.toLowerCase());
   if (many && plural) return plural;
+  if (written.every((w) => ((a) => a !== null && (a.high ?? a.low) > 1)(readAmount(w)))) return shop[0];
   // the count reads off the added-up amount ("3", "2 large"): its first word, and its size word if it has one
   const [count, size = ''] = amount.split(' ');
-  return countName(names[0], SIZES.includes(size.toLowerCase()) ? size : amount.includes(' ') ? 'unit' : '', count);
+  return countName(shop[0], SIZES.includes(size.toLowerCase()) ? size : amount.includes(' ') ? 'unit' : '', count);
 }
 
 /** The list's lines: items for the same thing added up, unticked and ticked apart, each at its store. */
@@ -302,20 +351,23 @@ export function byRecipe(lines: Line[]): { recipe?: Recipe; parts: { part: Part;
     .map(({ recipe, parts }) => ({ recipe, parts: parts.sort((a, b) => order(a.part) - order(b.part) || a.part.item.createdAt.localeCompare(b.part.item.createdAt)) }));
 }
 
-/** A part's own amount as it reads: "1½ lb". */
-export const partAmount = (p: { amount: string; unit: string }) => [p.amount, unitFor(p.unit, p.amount)].filter(Boolean).join(' ');
+/** A part's own name as the list shows it: "lemons" for 2 of "lemon", "star anise" as a recipe wrote "2 star anise". */
+export const partName = (p: Part) => agreeingName([p.name], [p.ingredient?.amount ?? p.amount], addUp([p]));
+
+/** A part's own amount as the list shows it ("1½ lb", "½ cup" for 8 tablespoons), as an added-up line would. */
+export const partAmount = (p: { amount: string; unit: string }) => addUp([p]);
 
 // ── what's usually in the pantry ──
 
 const STAPLES = [
   'salt', 'kosher salt', 'sea salt', 'table salt', 'flaky salt', 'pepper', 'black pepper', 'ground pepper', 'ground black pepper',
   'freshly ground black pepper', 'salt and pepper', 'salt pepper', 'water', 'warm water', 'cold water', 'hot water', 'boiling water',
-  'ice', 'ice water', 'olive oil', 'extra virgin olive oil', 'vegetable oil', 'canola oil', 'neutral oil', 'oil', 'cooking spray',
+  'ice', 'ice cubes', 'crushed ice', 'ice water', 'olive oil', 'extra virgin olive oil', 'vegetable oil', 'canola oil', 'neutral oil', 'oil', 'cooking spray',
   'nonstick cooking spray', 'flour', 'all purpose flour', 'baking soda', 'baking powder',
 ];
 const STAPLE_KEYS = new Set(STAPLES.map(nameKey));
 
-/** Salt, pepper, oil, flour, water…: the add sheets start them unticked ("Usually in the pantry"). */
+/** Salt, pepper, oil, flour, water, ice…: the add sheets start them unticked ("Usually on hand"). */
 export const isStaple = (name: string) => STAPLE_KEYS.has(nameKey(name));
 
 // ── which aisle ──
@@ -323,12 +375,12 @@ export const isStaple = (name: string) => STAPLE_KEYS.has(nameKey(name));
 // Words that put a name in an aisle, checked in this order (so "chicken broth" is pantry, not meat; "frozen peas" is
 // frozen, not produce). A word matches whole words, plurals included.
 const AISLE_WORDS: [Aisle, string[]][] = [
-  ['frozen', ['frozen', 'ice cream', 'puff pastry', 'phyllo']],
+  ['frozen', ['frozen', 'ice', 'ice cream', 'puff pastry', 'phyllo']],
   ['household', ['paper towel', 'toilet paper', 'napkin', 'foil', 'plastic wrap', 'parchment', 'trash bag', 'dish soap', 'detergent', 'sponge', 'zip bag', 'ziploc']],
-  ['pantry', ['broth', 'stock', 'bouillon', 'canned', 'can', 'paste', 'sauce', 'ketchup', 'mustard', 'mayonnaise', 'mayo', 'vinegar', 'oil', 'honey', 'syrup', 'maple', 'molasses', 'jam', 'peanut butter', 'tahini', 'flour', 'sugar', 'cornstarch', 'baking soda', 'baking powder', 'yeast', 'vanilla', 'chocolate', 'cocoa', 'rice', 'pasta', 'spaghetti', 'penne', 'noodle', 'quinoa', 'couscous', 'oat', 'lentil', 'chickpea', 'bean', 'nut', 'almond', 'walnut', 'pecan', 'cashew', 'peanut', 'pistachio', 'seed', 'raisin', 'date', 'cranberry', 'breadcrumb', 'panko', 'cracker', 'cereal', 'coconut milk', 'soy sauce', 'tamari', 'fish sauce', 'sriracha', 'salsa', 'olive', 'caper', 'pickle', 'tomato paste', 'crushed tomato', 'diced tomato', 'tomato sauce', 'evaporated milk', 'condensed milk', 'gelatin', 'cooking spray', 'curry paste', 'harissa', 'water']],
-  ['spices', ['salt', 'pepper', 'peppercorn', 'cumin', 'paprika', 'cinnamon', 'nutmeg', 'clove', 'oregano', 'thyme', 'rosemary', 'sage', 'bay leaf', 'chili powder', 'chile powder', 'cayenne', 'turmeric', 'coriander', 'cardamom', 'allspice', 'ginger', 'garlic powder', 'onion powder', 'red pepper flake', 'chili flake', 'italian seasoning', 'seasoning', 'spice', 'curry powder', 'garam masala', 'za atar', 'sumac', 'smoked paprika', 'mustard seed', 'fennel seed', 'black pepper', 'white pepper']],
-  ['meat', ['chicken', 'beef', 'pork', 'lamb', 'turkey', 'bacon', 'sausage', 'ham', 'steak', 'ground', 'mince', 'chorizo', 'prosciutto', 'salami', 'pancetta', 'veal', 'duck', 'fish', 'salmon', 'tuna', 'cod', 'halibut', 'tilapia', 'shrimp', 'prawn', 'scallop', 'crab', 'lobster', 'clam', 'mussel', 'anchov', 'thigh', 'breast', 'drumstick', 'wing', 'brisket', 'tenderloin', 'pork chop', 'lamb chop']],
-  ['dairy', ['milk', 'cream', 'butter', 'cheese', 'cheddar', 'mozzarella', 'parmesan', 'parmigiano', 'feta', 'ricotta', 'goat cheese', 'yogurt', 'yoghurt', 'egg', 'sour cream', 'creme fraiche', 'buttermilk', 'half and half', 'ghee', 'mascarpone', 'cream cheese', 'tofu']],
+  ['pantry', ['broth', 'stock', 'bouillon', 'canned', 'can', 'paste', 'sauce', 'ketchup', 'mustard', 'mayonnaise', 'mayo', 'vinegar', 'oil', 'honey', 'syrup', 'maple', 'molasses', 'jam', 'peanut butter', 'tahini', 'flour', 'sugar', 'cornstarch', 'baking soda', 'baking powder', 'yeast', 'vanilla', 'chocolate', 'cocoa', 'rice', 'pasta', 'spaghetti', 'penne', 'noodle', 'quinoa', 'couscous', 'oat', 'lentil', 'chickpea', 'bean', 'nut', 'almond', 'walnut', 'pecan', 'cashew', 'peanut', 'pistachio', 'seed', 'raisin', 'date', 'cranberry', 'breadcrumb', 'panko', 'cracker', 'cereal', 'coconut milk', 'soy sauce', 'tamari', 'fish sauce', 'sriracha', 'salsa', 'olive', 'caper', 'pickle', 'tomato paste', 'crushed tomato', 'diced tomato', 'tomato sauce', 'evaporated milk', 'condensed milk', 'gelatin', 'cooking spray', 'curry paste', 'harissa', 'water', 'mirin', 'rice wine', 'sake', 'nori', 'seaweed', 'stevia', 'sweetener', 'gochujang', 'hoisin', 'oyster sauce', 'coconut aminos']],
+  ['spices', ['salt', 'pepper', 'peppercorn', 'cumin', 'paprika', 'cinnamon', 'nutmeg', 'clove', 'oregano', 'thyme', 'rosemary', 'sage', 'bay leaf', 'chili powder', 'chile powder', 'cayenne', 'turmeric', 'coriander', 'cardamom', 'allspice', 'ginger', 'garlic powder', 'onion powder', 'red pepper flake', 'chili flake', 'italian seasoning', 'seasoning', 'spice', 'curry powder', 'garam masala', 'za atar', 'sumac', 'smoked paprika', 'mustard seed', 'fennel seed', 'black pepper', 'white pepper', 'star anise', 'anise', 'five spice', 'furikake', 'togarashi', 'shichimi', 'everything bagel seasoning']],
+  ['meat', ['chicken', 'beef', 'pork', 'lamb', 'turkey', 'bacon', 'sausage', 'ham', 'steak', 'ground', 'mince', 'chorizo', 'prosciutto', 'salami', 'pancetta', 'veal', 'duck', 'fish', 'salmon', 'tuna', 'cod', 'halibut', 'tilapia', 'shrimp', 'prawn', 'scallop', 'crab', 'lobster', 'clam', 'mussel', 'anchov', 'roe', 'ikura', 'thigh', 'breast', 'drumstick', 'wing', 'brisket', 'tenderloin', 'pork chop', 'lamb chop']],
+  ['dairy', ['milk', 'cream', 'butter', 'cheese', 'cheddar', 'mozzarella', 'parmesan', 'parmigiano', 'feta', 'ricotta', 'goat cheese', 'yogurt', 'yoghurt', 'egg', 'sour cream', 'creme fraiche', 'buttermilk', 'half and half', 'ghee', 'mascarpone', 'cream cheese', 'tofu', 'miso']],
   ['bakery', ['bread', 'bun', 'roll', 'bagel', 'tortilla', 'pita', 'naan', 'baguette', 'brioche', 'croissant', 'english muffin', 'flatbread', 'sourdough', 'pie crust']],
   ['drinks', ['wine', 'beer', 'juice', 'soda', 'sparkling water', 'coffee', 'tea', 'kombucha', 'liqueur', 'vodka', 'rum', 'tequila', 'whiskey', 'bourbon', 'gin']],
   ['produce', ['onion', 'shallot', 'garlic', 'ginger root', 'fresh ginger', 'scallion', 'green onion', 'leek', 'potato', 'sweet potato', 'carrot', 'celery', 'tomato', 'cucumber', 'zucchini', 'squash', 'pumpkin', 'pepper', 'bell pepper', 'jalapeno', 'chile', 'chili', 'poblano', 'serrano', 'lettuce', 'spinach', 'kale', 'arugula', 'chard', 'cabbage', 'broccoli', 'cauliflower', 'brussels sprout', 'asparagus', 'green bean', 'pea', 'corn', 'mushroom', 'eggplant', 'avocado', 'lemon', 'lime', 'orange', 'apple', 'pear', 'banana', 'berry', 'strawberry', 'blueberry', 'raspberry', 'grape', 'cherry', 'peach', 'plum', 'mango', 'pineapple', 'melon', 'watermelon', 'pomegranate', 'fig', 'lemon juice', 'lime juice', 'lemon zest', 'lime zest', 'herb', 'basil', 'cilantro', 'parsley', 'mint', 'dill', 'chive', 'radish', 'beet', 'fennel', 'turnip', 'parsnip', 'sprout', 'salad', 'greens', 'romaine', 'fresh']],
@@ -359,7 +411,7 @@ export type AddRow = {
   key: string;
   amount: string;
   name: string;
-  /** "Usually in the pantry", "Its own recipe: Pie Crust", "Adds to the 2 tbsp already on your list" */
+  /** "Usually on hand", "Its own recipe: Pie Crust", "Adds to the 2 tbsp already on your list" */
   note: string;
   /** starts ticked */
   on: boolean;
@@ -373,14 +425,15 @@ export function addRows(
   list: Line[],
   recipes: Recipe[],
 ): AddRow[] {
-  const groups = new Map<string, { parts: { amount: string; unit: string; name: string }[]; adds: AddRow['adds']; linked?: Recipe }>();
+  const groups = new Map<string, { parts: { amount: string; unit: string; name: string }[]; written: string[]; adds: AddRow['adds']; linked?: Recipe }>();
   for (const { recipe, servings, plannedId } of sources) {
     for (const ing of recipe.ingredients) {
       if (ing.kind === 'header' || !ing.name.trim()) continue;
       const part = ingredientPart(recipe, ing, servings);
       const key = nameKey(ing.name) || `${recipe.id}:${ing.id}`;
-      const g = groups.get(key) ?? { parts: [], adds: [] };
+      const g = groups.get(key) ?? { parts: [], written: [], adds: [] };
       g.parts.push(part);
+      g.written.push(ing.amount);
       g.adds.push({ recipeId: recipe.id, ingredientId: ing.id, ...(servings ? { servings } : {}), ...(plannedId ? { plannedId } : {}) });
       if (ing.recipeId && !g.linked) g.linked = recipes.find((r) => r.id === ing.recipeId);
       groups.set(key, g);
@@ -388,14 +441,13 @@ export function addRows(
   }
   return [...groups].map(([key, g]) => {
     const amount = addUp(g.parts);
-    const [count, size = ''] = amount.split(' ');
-    const name = countName(g.parts[0].name, SIZES.includes(size.toLowerCase()) ? size : amount.includes(' ') ? 'unit' : '', count);
+    const name = agreeingName(g.parts.map((p) => p.name), g.written, amount);
     const onList = list.find((l) => !l.checked && nameKey(l.name) === key);
     const staple = isStaple(name);
     const note = g.linked
       ? `Its own recipe: ${g.linked.title}`
       : staple
-        ? 'Usually in the pantry'
+        ? 'Usually on hand'
         : onList
           ? onList.amount
             ? `Adds to the ${lineText(onList)} already on your list`

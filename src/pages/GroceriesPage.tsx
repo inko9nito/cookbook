@@ -1,11 +1,12 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import {
-  Page, Navbar, NavTitle, NavRight, Link, Block, Button, Segmented, List, ListItem, SwipeoutActions, SwipeoutButton,
-  Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
+  Page, Navbar, NavTitle, NavRight, Subnavbar, Searchbar, Link, Block, Button, Segmented, List, ListItem, SwipeoutActions,
+  SwipeoutButton, Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
 import { ArrowUpRight, ChefHat, ChevronDown, Ellipsis, Plus } from 'lucide-react';
 import { showTabbar } from '../components/ui/tabbar';
 import { inlineIcon, navIcon } from '../components/ui/icons';
+import { useAtTop } from '../components/ui/atTop';
 import { photoStyle } from '../components/ui/photo';
 import { PlannerRowsSkeleton } from '../components/ui/Skeletons';
 import CookingFab from '../components/CookingFab';
@@ -13,7 +14,8 @@ import RecipePickerPopup from '../components/RecipePickerPopup';
 import { AddRecipeSheet, ShopWeekSheet } from '../components/AddGroceriesSheet';
 import { useGroceries, usePlanner, useStore } from '../data/store';
 import {
-  AISLE_NAMES, AISLES, byAisle, byRecipe, countName, instacartSearch, linesOf, listText, nameKey, partAmount, type Aisle, type GroceryItem, type Line,
+  AISLE_NAMES, AISLES, byAisle, byRecipe, instacartSearch, linesOf, listText, nameKey, partAmount, partName, type Aisle, type GroceryItem,
+  type Line,
 } from '../lib/groceries';
 import { coverPhoto, newId, type Recipe } from '../lib/recipe';
 import { dayName, mealName, today } from '../lib/planner';
@@ -21,14 +23,17 @@ import { friendly } from '../lib/ingredients';
 
 const toast = (text: string) => f7.toast.show({ text, closeTimeout: 2200 });
 const aToZ = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+// the thing to buy leads the row: "White miso paste", its amount in the small print under it
+const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 /**
  * The Groceries tab (issue #64): the grocery list, by aisle or by recipe (remembered). Things from several recipes are
  * added up into one line ("3 lemons"), each saying which recipes it's for. Tapping a row ticks it; its ↗ opens
- * Instacart's search for it at the store the list is shopping at (the pill at the top), or at the store it's pinned to.
- * Ticked lines go to Got it at the bottom (Clear takes them off). Swiping a row: Aisle (the app guessed wrong; kept for
- * that name), Store (pin it to another store), Delete. + adds Shop this week (the Planner's recipes), a recipe, or
- * something typed. ⋯ shares what's left as text, or clears the list.
+ * Instacart's search for it at the store the list is shopping at (the line at the top), or at the store it's pinned to.
+ * A row ticked stays where it is, crossed out, while you're on the list (no jumping rows mid-shop); ticked lines gather
+ * in Got it at the bottom once you've been elsewhere (Clear takes them off). Swiping a row: Aisle (the app guessed
+ * wrong; kept for that name), Store (pin it to another store), Delete. + adds Shop this week (the Planner's recipes), a
+ * recipe, or something typed. ⋯ shares what's left as text, or clears the list. The search bar finds a thing or a recipe.
  */
 export default function GroceriesPage({ f7router }: { f7router?: { navigate: (url: string) => void } }) {
   const { recipes, settings, changeSettings, loading: recipesLoading } = useStore();
@@ -42,22 +47,47 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
   const [picking, setPicking] = useState(false);
   const [adding, setAdding] = useState<Recipe | null>(null);
   const [shopWeek, setShopWeek] = useState(false);
+  const [query, setQuery] = useState('');
+  // ticked or unticked while on the list: where each item was then, so its row stays put (item id → ticked then)
+  const [placed, setPlaced] = useState<Map<string, boolean>>(new Map());
+  const { atTop, onPageInit } = useAtTop();
   const loading = (recipesLoading || listLoading) && !loadError;
 
-  const lines = linesOf(items, recipes, settings.groceryAisles);
+  const real = new Map(items.map((g) => [g.id, g]));
+  const lines = linesOf(
+    items.map((g) => (placed.has(g.id) ? { ...g, checked: placed.get(g.id)! } : g)),
+    recipes,
+    settings.groceryAisles,
+  );
+  const ticked = (l: Line) => l.parts.every((p) => real.get(p.item.id)?.checked);
+  const words = nameKey(query);
+  const matches = (l: Line) =>
+    !words || ` ${nameKey(l.name)} `.includes(` ${words}`) || l.recipes.some((r) => r.title.toLowerCase().includes(query.trim().toLowerCase()));
   const toGet = lines.filter((l) => !l.checked);
   const got = lines.filter((l) => l.checked);
+  const shownToGet = toGet.filter(matches);
+  const shownGot = got.filter(matches);
   const stores = settings.groceryStores;
   const store = stores.find((s) => s.slug === settings.groceryStore) ?? stores[0];
   const storeName = (slug?: string) => stores.find((s) => s.slug === slug)?.name ?? slug ?? '';
   const view = settings.groceryView;
-  const recipeCount = new Set(toGet.flatMap((l) => l.recipes.map((r) => r.id))).size;
   const now = today();
 
   const save = (list: GroceryItem[]) => changeGroceries(list);
-  const tick = (line: Line, checked: boolean) => save(line.parts.map((p) => ({ ...p.item, checked })));
+  // the items as saved (a row held in place reads its items as they were)
+  const saved = (line: Line) => line.parts.map((p) => real.get(p.item.id) ?? p.item);
+  const tick = (line: Line, checked: boolean) => {
+    setPlaced((m) => {
+      const next = new Map(m);
+      for (const g of saved(line)) if (!next.has(g.id)) next.set(g.id, g.checked);
+      return next;
+    });
+    save(saved(line).map((g) => ({ ...g, checked })));
+  };
+  // leaving the list (another tab, the other view): ticked rows gather in Got it
+  const regroup = () => setPlaced((m) => (m.size ? new Map() : m));
   const pin = (line: Line, slug: string | null) =>
-    save(line.parts.map(({ item }) => {
+    save(saved(line).map((item) => {
       const { store: _old, ...rest } = item;
       return slug && slug !== store?.slug ? { ...rest, store: slug } : rest;
     }));
@@ -69,13 +99,16 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
     f7.dialog.prompt('Like “2 avocados” or “paper towels”.', 'Add to the list', (text: string) => {
       if (text.trim()) save([{ id: newId(), text: text.trim(), checked: false, createdAt: new Date().toISOString() }]);
     });
-  const clearGot = () => changeGroceries([], got.flatMap((l) => l.parts.map((p) => p.item.id)));
+  const clearGot = () => {
+    regroup();
+    changeGroceries([], items.filter((g) => g.checked).map((g) => g.id));
+  };
   const clearAll = () =>
     f7.dialog.confirm('Everything on the grocery list comes off it. Your recipes stay as they are.', 'Clear the list?', () =>
       changeGroceries([], items.map((g) => g.id)),
     );
   const share = async () => {
-    const text = listText(lines);
+    const text = listText(linesOf(items, recipes, settings.groceryAisles));
     try {
       if (navigator.share) await navigator.share({ title: 'Grocery list', text });
       else {
@@ -87,23 +120,23 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
     }
   };
 
-  /** A row: tap to tick; ↗ opens Instacart's search for it; swipe for Aisle, Store, Delete. */
-  const row = (line: Line, key: string, title: ReactNode, footer: string) => (
+  /** A row: the thing to buy, its amount and recipes under it; tap to tick; ↗ opens Instacart's search for it; swipe for Aisle, Store, Delete. */
+  const row = (line: Line, key: string, title: string, footer: string) => (
     <ListItem
       key={key}
       swipeout
       checkbox
-      checked={line.checked}
+      checked={ticked(line)}
       onChange={(e: { target: { checked: boolean } }) => tick(line, e.target.checked)}
-      className={line.checked ? 'ck-done' : ''}
+      className={ticked(line) ? 'ck-done' : ''}
       onSwipeoutDeleted={() => remove(line)}
     >
       <span slot="title">
-        {title}
+        {cap(title)}
         {line.store && line.store !== store?.slug && <span className="ck-store-tag">{storeName(line.store)}</span>}
       </span>
       {footer && <span slot="footer">{footer}</span>}
-      {!line.checked && (
+      {!ticked(line) && (
         <Link
           slot="after"
           external
@@ -129,12 +162,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
     </ListItem>
   );
 
-  const lineTitle = (l: Line) => (
-    <>
-      {l.amount && <span className="ck-amount">{l.amount}</span>} {l.name}
-    </>
-  );
-  const forRecipes = (l: Line) => (l.recipes.length ? l.recipes.map((r) => r.title).join(' · ') : 'Added by you');
+  const lineFooter = (l: Line) => [l.amount, ...l.recipes.map((r) => r.title)].filter(Boolean).join(' · ');
 
   const plannedById = new Map(planned.map((p) => [p.id, p]));
   const recipeMeta = (parts: { part: { item: GroceryItem; recipe?: Recipe } }[]) => {
@@ -146,45 +174,70 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
       .join(' · ');
   };
 
+  const nothing = query.trim() && !shownToGet.length && !shownGot.length;
+  const recipeGroups = byRecipe(lines)
+    .map((g) => ({ ...g, parts: g.parts.filter(({ line }) => matches(line) || (!!g.recipe && g.recipe.title.toLowerCase().includes(query.trim().toLowerCase()))) }))
+    .filter((g) => g.parts.length);
+
   return (
-    <Page name="groceries" className="ck-groceries" onPageAfterIn={showTabbar}>
+    <Page
+      name="groceries"
+      className={`ck-groceries${atTop ? ' ck-at-top' : ''}`}
+      onPageInit={onPageInit}
+      onPageAfterIn={showTabbar}
+      onPageTabHide={regroup}
+    >
       {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
       <CookingFab slot="fixed" />
       <Navbar className="ck-navbar-root">
         <NavTitle>Groceries</NavTitle>
+        {/* + first, the screen's main action, as on Recipes and Cookbooks */}
         <NavRight>
-          <Link iconOnly onClick={() => setMoreMenu(true)} aria-label="More grocery list actions">
-            <Ellipsis {...navIcon} />
-          </Link>
           <Link iconOnly onClick={() => setAddMenu(true)} aria-label="Add to the grocery list" className="ck-nav-primary">
             <Plus {...navIcon} />
           </Link>
+          <Link iconOnly onClick={() => setMoreMenu(true)} aria-label="More grocery list actions">
+            <Ellipsis {...navIcon} />
+          </Link>
         </NavRight>
+        {/* the search bar stays under the title while the list scrolls, as on Recipes; it finds a thing or a recipe */}
+        <Subnavbar className="ck-docked-bar ck-search-bar">
+          <Searchbar
+            customSearch
+            backdrop={false}
+            disableButton={false}
+            placeholder="Search the list"
+            onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
+            onSearchbarClear={() => setQuery('')}
+          />
+        </Subnavbar>
       </Navbar>
 
       <Block className="ck-grocery-head">
         <Segmented strong className="ck-grocery-view">
-          <Button active={view === 'aisle'} onClick={() => changeSettings({ groceryView: 'aisle' })}>
+          <Button active={view === 'aisle'} onClick={() => { regroup(); changeSettings({ groceryView: 'aisle' }); }}>
             By aisle
           </Button>
-          <Button active={view === 'recipe'} onClick={() => changeSettings({ groceryView: 'recipe' })}>
+          <Button active={view === 'recipe'} onClick={() => { regroup(); changeSettings({ groceryView: 'recipe' }); }}>
             By recipe
           </Button>
         </Segmented>
-        <div className="ck-row ck-grocery-store-row">
-          <span className="ck-note">
-            {loading ? 'Loading…' : toGet.length ? `${toGet.length} to get${recipeCount ? ` · ${recipeCount} ${recipeCount === 1 ? 'recipe' : 'recipes'}` : ''}` : 'Nothing to get'}
+        {/* the user asked for a note that the links leave for Instacart: it's also where the store is picked */}
+        <Link className="ck-instacart-store" onClick={() => setStoreMenu(true)} aria-label={store ? `↗ opens Instacart at ${store.name}. Change the store` : 'Pick the store ↗ opens on Instacart'}>
+          <ArrowUpRight size={14} strokeWidth={2.25} className="ck-icon" aria-hidden="true" />
+          <span>
+            {store ? (
+              <>
+                opens Instacart at <b>{store.name}</b>
+              </>
+            ) : (
+              <>
+                opens Instacart · <b>Pick a store</b>
+              </>
+            )}
           </span>
-          <Link className="ck-scale-button" onClick={() => setStoreMenu(true)} aria-label="Which store to shop at">
-            <span>{store ? `Shopping at ${store.name}` : 'Pick a store'}</span>
-            <ChevronDown {...inlineIcon} />
-          </Link>
-        </div>
-        {/* the user asked for this: the links leave the app */}
-        <p className="ck-note ck-instacart-note">
-          <ArrowUpRight size={14} strokeWidth={2.25} className="ck-icon" aria-hidden="true" /> opens Instacart and searches for the item
-          {store ? ` at ${store.name}` : ''}. Tap a row to tick it off.
-        </p>
+          <ChevronDown size={14} strokeWidth={2.25} className="ck-icon" aria-hidden="true" />
+        </Link>
       </Block>
 
       {loadError ? (
@@ -195,69 +248,71 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
           </Button>
         </Block>
       ) : loading ? (
-        <div className="ck-grocery-group">
+        <div className="ck-grocery-groups">
           <PlannerRowsSkeleton />
         </div>
       ) : !lines.length ? (
         <Block>
           <p className="ck-note">Nothing on the list yet. On a recipe, ⋯ → Add to Grocery List adds its ingredients; + here adds this week’s planned recipes or anything else.</p>
         </Block>
+      ) : nothing ? (
+        <Block>
+          <p className="ck-note">{`Nothing on the list matches “${query.trim()}”.`}</p>
+        </Block>
       ) : view === 'aisle' ? (
-        <>
-          {byAisle(toGet).map((g) => (
+        // one column with a fixed gap between groups (the gap was lost between margins on iPhone Safari)
+        <div className="ck-grocery-groups">
+          {byAisle(shownToGet).map((g) => (
             <section key={g.aisle} className="ck-grocery-group">
               <div className="ck-plan-slot-label">{AISLE_NAMES[g.aisle]}</div>
               <List strongIos insetIos dividersIos className="ck-plan-list ck-grocery-list">
-                {g.lines.map((l) => row(l, l.key, lineTitle(l), forRecipes(l)))}
+                {g.lines.map((l) => row(l, l.key, l.name, lineFooter(l)))}
               </List>
             </section>
           ))}
-          {got.length > 0 && (
-            <section className="ck-grocery-group">
+          {shownGot.length > 0 && (
+            <section key="got" className="ck-grocery-group">
               <div className="ck-plan-slot-label ck-row ck-grocery-got">
                 <span>{`Got it · ${got.length}`}</span>
                 <Link onClick={clearGot}>Clear</Link>
               </div>
               <List strongIos insetIos dividersIos className="ck-plan-list ck-grocery-list">
-                {got.map((l) => row(l, l.key, lineTitle(l), forRecipes(l)))}
+                {shownGot.map((l) => row(l, l.key, l.name, lineFooter(l)))}
               </List>
             </section>
           )}
-        </>
+        </div>
       ) : (
-        byRecipe(lines).map((g) => {
-          const photo = g.recipe && coverPhoto(g.recipe);
-          return (
-            <section key={g.recipe?.id ?? 'typed'} className="ck-grocery-group">
-              {g.recipe ? (
-                <div className="ck-grocery-recipe-head">
-                  <span className={`ck-picker-thumb ck-photo${photo ? '' : ' ck-photo-empty'}`} style={photoStyle(photo)} aria-hidden="true">
-                    {!photo && <ChefHat size={16} strokeWidth={1.5} />}
-                  </span>
-                  <div>
-                    <h2>{g.recipe.title}</h2>
-                    <div className="ck-note">{recipeMeta(g.parts)}</div>
+        <div className="ck-grocery-groups">
+          {recipeGroups.map((g) => {
+            const photo = g.recipe && coverPhoto(g.recipe);
+            return (
+              <section key={g.recipe?.id ?? 'typed'} className="ck-grocery-group">
+                {g.recipe ? (
+                  <div className="ck-grocery-recipe-head">
+                    <span className={`ck-picker-thumb ck-photo${photo ? '' : ' ck-photo-empty'}`} style={photoStyle(photo)} aria-hidden="true">
+                      {!photo && <ChefHat size={16} strokeWidth={1.5} />}
+                    </span>
+                    <div>
+                      <h2>{g.recipe.title}</h2>
+                      <div className="ck-note">{recipeMeta(g.parts)}</div>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="ck-plan-slot-label">Added by you</div>
-              )}
-              <List strongIos insetIos dividersIos className="ck-plan-list ck-grocery-list">
-                {g.parts.map(({ part, line }) => {
-                  const others = line.recipes.filter((r) => r.id !== part.recipe?.id).map((r) => r.title);
-                  const together = line.parts.length > 1 ? (line.amount ? `${line.amount} in all` : 'Also') + (others.length ? `${line.amount ? ', with' : ' for'} ${others.join(' and ')}` : '') : '';
-                  const footer = [part.note, together].filter(Boolean).join(' · ');
-                  const title = (
-                    <>
-                      {partAmount(part) && <span className="ck-amount">{partAmount(part)}</span>} {countName(part.name, part.unit, part.amount)}
-                    </>
-                  );
-                  return row(line, part.item.id, title, footer);
-                })}
-              </List>
-            </section>
-          );
-        })
+                ) : (
+                  <div className="ck-plan-slot-label">Added by you</div>
+                )}
+                <List strongIos insetIos dividersIos className="ck-plan-list ck-grocery-list">
+                  {g.parts.map(({ part, line }) => {
+                    const others = line.recipes.filter((r) => r.id !== part.recipe?.id).map((r) => r.title);
+                    const together = line.parts.length > 1 ? (line.amount ? `${line.amount} in all` : 'Also') + (others.length ? `${line.amount ? ', with' : ' for'} ${others.join(' and ')}` : '') : '';
+                    const footer = [partAmount(part), part.note, together].filter(Boolean).join(' · ');
+                    return row(line, part.item.id, partName(part), footer);
+                  })}
+                </List>
+              </section>
+            );
+          })}
+        </div>
       )}
 
       {/* + : this week's planned recipes, a recipe, or something typed */}

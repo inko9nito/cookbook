@@ -2729,7 +2729,8 @@ async function swipeLeft(ctx, page, locator) {
   await step('37a-launch-loader', async () => {
     await page.goto(`${BASE}?loader`); await page.waitForTimeout(1500);
     if (!(await page.locator('#ck-launch .ck-launch-lid').isVisible())) throw new Error('the launch loader isn’t showing');
-    const lid = () => page.locator('#ck-launch .ck-launch-lid').evaluate((el) => getComputedStyle(el).transform);
+    // the lid rocks in two layers (one per hinge): count the poses of both together
+    const lid = () => page.locator('#ck-launch .ck-launch-lid').evaluate((el) => getComputedStyle(el).transform + getComputedStyle(el.firstElementChild).transform);
     const seen = new Set();
     for (let i = 0; i < 12; i++) { seen.add(await lid()); await page.waitForTimeout(90); }
     if (seen.size < 3) throw new Error('the lid isn’t moving');

@@ -1527,7 +1527,7 @@ html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-store { ba
 .popup.ck-add-popup .list.ck-add-list li .item-title { white-space: normal; }
 .link.ck-choice-link {
   display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border-radius: 9999px;
-  font-size: 14px; font-weight: 600; background-color: var(--ck-soft); color: var(--ck-accent-ink);
+  font-size: 14px; font-weight: 600; background-color: var(--ck-soft); color: var(--ck-fg);
 }
 .block.ck-week-nav { justify-content: space-between; flex-wrap: nowrap; margin-top: 16px; }
 .link.ck-round-soft { width: 36px; height: 36px; border-radius: 9999px; justify-content: center; background-color: var(--ck-soft); color: var(--ck-fg); }

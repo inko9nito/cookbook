@@ -17,9 +17,104 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
     <title>Cookbook</title>
+    <!--
+      The launch loader: the app icon's cooking pot, its lid rocking like a cartoon pot about to boil over (approved
+      exception, see CLAUDE.md). It's plain HTML and CSS here, so it shows on the first paint, before the app's code has
+      loaded, and keeps moving while that code starts up: only transforms animate, on whole elements (the pot, and the lid
+      in two nested layers), so the phone can run it off the main thread. hideLaunchLoader() (src/data/launch.ts) fades
+      it out once the first screen has something to show. ?loader keeps it on screen to look at; ?loader=slow plays it
+      at a quarter speed.
+
+      The lid sits level on the pot and rocks, one side up and then the other, over one 2.8s loop: left, right, left,
+      right (the last one a bit higher), then a still moment (about 0.9s) before it starts again. Each side starts up as the other lands,
+      like a seesaw, so it flows instead of ticking. The outer layer hinges on the lid's left end (it lifts the right
+      side); the inner one on its right end (it lifts the left side). Up eases out, down eases in, softly; the pot squashes
+      each time the lid lands and stretches back up, like a cartoon.
+    -->
+    <style>
+      #app { isolation: isolate; } /* the app's own layers stay under the loader, which comes after it */
+      .ck-launch {
+        --ck-boil: 2.8s;
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding-bottom: 8vh; /* a little above the middle, where the eye expects it */
+        background: var(--ck-bg, #f5f5f5);
+        transition: opacity 0.25s ease-out;
+      }
+      .ck-launch.ck-launch-done { opacity: 0; pointer-events: none; }
+      /* one 28 x 24 grid for every layer: Lucide's 24px grid with room at the sides for the lid as it tips */
+      .ck-launch-stage { position: relative; width: 112px; height: 96px; }
+      .ck-launch-stage div, .ck-launch-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .ck-launch-stage svg {
+        overflow: visible;
+        fill: none;
+        stroke: var(--ck-accent, #e4572e);
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .ck-launch-pot, .ck-launch-lid, .ck-launch-lid > div { animation: var(--ck-boil) 0.2s infinite both; }
+      .ck-launch-pot { transform-origin: 50% 91.67%; animation-name: ck-pot; } /* squashes onto its base */
+      .ck-launch-lid { transform-origin: 20.54% 39.17%; animation-name: ck-lid-right; } /* hinged on the lid's left end */
+      .ck-launch-lid > div { transform-origin: 79.46% 39.17%; animation-name: ck-lid-left; } /* hinged on its right end */
+      @keyframes ck-lid-left {
+        0%        { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+        8.6%       { transform: translateY(-3%) rotate(10deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+        17.3%       { transform: translateY(0) rotate(0); }
+        36.1%       { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+        44%       { transform: translateY(-2%) rotate(7deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+        51.9%, 100% { transform: translateY(0) rotate(0); }
+      }
+      @keyframes ck-lid-right {
+        0%, 15.7%   { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+        24.4%       { transform: translateY(-3%) rotate(-10deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+        33%       { transform: translateY(0) rotate(0); }
+        50.3%       { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+        58.9%       { transform: translateY(-4.5%) rotate(-12deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+        67.6%, 100% { transform: translateY(0) rotate(0); }
+      }
+      /* a cartoon squash as each side lands, then a little stretch back up before it settles; the last one the biggest */
+      @keyframes ck-pot {
+        0%, 16.5%     { transform: scale(1, 1); }
+        18.9%         { transform: scale(1.035, 0.945); }
+        22%         { transform: scale(0.99, 1.015); }
+        25.1%, 32.2%    { transform: scale(1, 1); }
+        34.6%         { transform: scale(1.035, 0.945); }
+        37.7%         { transform: scale(0.99, 1.015); }
+        40.9%, 51.1%    { transform: scale(1, 1); }
+        53.4%         { transform: scale(1.025, 0.96); }
+        56.6%         { transform: scale(0.995, 1.01); }
+        59.7%, 66.8%    { transform: scale(1, 1); }
+        69.5%       { transform: scale(1.05, 0.92); }
+        73.1%         { transform: scale(0.985, 1.025); }
+        76.2%, 100%   { transform: scale(1, 1); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .ck-launch-pot, .ck-launch-lid, .ck-launch-lid > div { animation: none; }
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>
+    <div id="ck-launch" class="ck-launch" role="progressbar" aria-label="Loading Cookbook">
+      <div class="ck-launch-stage" aria-hidden="true">
+        <!-- Lucide's cooking-pot (the app icon, #102), split into the pot and its lid. The lid is turned level and set
+             down onto the rim (in the icon it hangs ajar), so it can rock both ways. -->
+        <svg class="ck-launch-pot" viewBox="-2 0 28 24"><path d="M2 12h20" /><path d="M20 12v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8" /></svg>
+        <div class="ck-launch-lid"><div><svg viewBox="-2 0 28 24"><g transform="translate(0 3.4) rotate(14.04 12 6)"><path d="m4 8 16-4" /><path d="m8.86 6.78-.45-1.81a2 2 0 0 1 1.45-2.43l1.94-.48a2 2 0 0 1 2.43 1.46l.45 1.8" /></g></svg></div></div>
+      </div>
+    </div>
+    <script>
+      // In automated checks (check:ui) the loader stays out of the way, unless the check asks for it with ?loader.
+      (function () {
+        var q = new URLSearchParams(location.search), el = document.getElementById('ck-launch');
+        if (navigator.webdriver && !q.has('loader')) el.remove();
+        else if (q.get('loader') === 'slow') el.style.setProperty('--ck-boil', '11.2s');
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -4,10 +4,13 @@ import type { Photo } from '../../lib/recipe';
 /** Background-image style for a recipe photo; empty when the recipe has no photo (the placeholder tone shows instead). */
 export const photoStyle = (photo?: string): CSSProperties => (photo ? { backgroundImage: `url(${photo})` } : {});
 
-/** Every recipe photo is 4:3: the recipe page, the cards and the crop frame all use it. */
-export const PHOTO_RATIO = 4 / 3;
+/**
+ * Every recipe photo is square (issue #51; 4:3 before): the recipe page, the cards, the editor and the crop square all
+ * show the same shape, so a crop shows as it was made. Photos cropped to 4:3 before show their middle square.
+ */
+export const PHOTO_RATIO = 1;
 const MAX_ORIGINAL = 2048; // long edge of the full photo kept for re-cropping
-const MAX_CROP_WIDTH = 1600; // width of the 4:3 crop that's shown
+const MAX_CROP_WIDTH = 1200; // width of the crop that's shown (a full-width photo on the phone, at 3x)
 
 type Box = NonNullable<Photo['crop']>;
 
@@ -40,14 +43,23 @@ const draw = (img: CanvasImageSource, box: Box, width: number, height: number) =
   return canvas.toDataURL('image/jpeg', 0.86);
 };
 
-/** The largest 4:3 box in the middle of an image. */
+/** The largest photo-shaped (square) box in the middle of an image. */
 export const centerBox = (w: number, h: number): Box => {
   const width = Math.min(w, h * PHOTO_RATIO);
   const height = width / PHOTO_RATIO;
   return { x: Math.round((w - width) / 2), y: Math.round((h - height) / 2), width: Math.round(width), height: Math.round(height) };
 };
 
-/** The 4:3 picture that shows for a crop box on an image. */
+/**
+ * The square in the middle of a crop box: what a crop made before photos were square (4:3) shows now, and where the
+ * cropper starts for it.
+ */
+export const squareIn = (box: Box): Box => {
+  const side = Math.min(box.width, box.height);
+  return { x: box.x + (box.width - side) / 2, y: box.y + (box.height - side) / 2, width: side, height: side };
+};
+
+/** The picture that shows for a crop box on an image. */
 export const cropImage = (img: CanvasImageSource, box: Box) => {
   const width = Math.min(MAX_CROP_WIDTH, box.width);
   return draw(img, box, width, width / PHOTO_RATIO);
@@ -55,7 +67,7 @@ export const cropImage = (img: CanvasImageSource, box: Box) => {
 
 /**
  * A photo picked on the phone: shrunk to a 2048px long edge (kept as the original, for re-cropping) and centre-cropped
- * to 4:3 until it's cropped by hand.
+ * square until it's cropped by hand.
  */
 export async function photoFromFile(file: File, id: string): Promise<Photo> {
   const img = await loadImage(await readFile(file));

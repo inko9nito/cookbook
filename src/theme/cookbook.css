@@ -11,8 +11,8 @@
   --ck-fg2: #55555a;
   --ck-muted: #6e6e73;
   --ck-photo-dark: #000000; /* behind a photo being cropped */
-  --ck-on-dark-muted: #c7c7cc; /* small text on --ck-photo-dark */
   --ck-on-dark-button: rgba(255, 255, 255, 0.16); /* a button on --ck-photo-dark, with white text (the cropper's Rotate, #59) */
+  --ck-crop-edge: rgba(255, 255, 255, 0.9); /* the edge of the crop square, over the photo (#51) */
   --ck-scrim: rgba(0, 0, 0, 0.62); /* small label over a photo ("Cover") */
   --ck-overlay-button: rgba(0, 0, 0, 0.45); /* round bar buttons over a recipe photo, white icons (issue #90) */
   --ck-frosted-button: rgba(255, 255, 255, 0.6); /* round bar buttons over a cookbook's pastel header, dark icons (issue #90) */
@@ -599,7 +599,7 @@ html.ios {
 
 /* ── Recipe page (Airbnb) ── */
 /* The top bar is solid (back and ••• only, like Prepear). A see-through bar that fades in while scrolling looked glitchy on the phone. */
-.ck-hero { width: 100%; aspect-ratio: 4 / 3; }
+.ck-hero { width: 100%; aspect-ratio: 1; } /* square, as cropped (issue #51) */
 /* the photo is a button (tap to open it full screen): no button look */
 button.ck-hero { display: block; padding: 0; border: 0; border-radius: 0; cursor: zoom-in; }
 /* several photos swipe sideways (Framework7's Swiper); the dots sit above the panel's rounded top */
@@ -980,7 +980,7 @@ html.ios .toolbar.ck-cta .toolbar-inner {
   font-size: 14px;
   font-weight: 500;
 }
-.ck-edit-photo { position: relative; aspect-ratio: 16 / 10; border-radius: 24px; display: grid; place-items: center; }
+.ck-edit-photo { position: relative; aspect-ratio: 1; border-radius: 24px; display: grid; place-items: center; }
 .ck-edit-photo.ck-edit-photo-empty {
   aspect-ratio: auto; height: 120px; display: flex; justify-content: center; align-items: center; gap: 8px;
   border: 1.5px dashed var(--ck-strong); background-color: var(--ck-soft); color: var(--ck-fg2); font-size: 15px; font-weight: 500;
@@ -989,7 +989,7 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 /* all the photos under the large one: tap to show it large; the first is the cover; + adds more */
 .ck-thumbs { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
 .ck-thumbs::-webkit-scrollbar { display: none; }
-.ck-thumb { position: relative; flex: none; width: 64px; aspect-ratio: 4 / 3; border-radius: 10px; display: grid; place-items: center; }
+.ck-thumb { position: relative; flex: none; width: 64px; aspect-ratio: 1; border-radius: 10px; display: grid; place-items: center; }
 .ck-thumb.ck-thumb-on { box-shadow: 0 0 0 2px var(--ck-bg), 0 0 0 4px var(--ck-accent); }
 .ck-thumb-add { border: 1.5px dashed var(--ck-strong); background-color: var(--ck-soft); color: var(--ck-fg2); box-sizing: border-box; }
 .ck-thumb-badge {
@@ -1012,15 +1012,29 @@ html.ios .toolbar.ck-cta .toolbar-inner {
 .photo-browser-popup .photo-browser-page { background-color: var(--ck-photo-dark); }
 /* the "Not iOS 26" bars are painted the light page colour; the photo viewer's bar is black */
 html.ios .photo-browser-page .navbar-bg::after { background-color: var(--ck-photo-dark); }
-/* Crop Photo: the 4:3 frame is the whole cropper, edge to edge, on black */
+/* Crop Photo (issue #51): a fixed square (the shape every recipe photo shows in) with a thin white edge, in a frame
+   a little taller than wide, edge to edge on black; the photo around the square shows dimmed, so what's left out is
+   plain to see */
 .popup.ck-crop { --f7-page-bg-color: var(--ck-photo-dark); }
-.ck-crop-frame { width: 100%; aspect-ratio: 4 / 3; margin-top: 24px; background-color: var(--ck-photo-dark); }
-.ck-crop-frame img { display: block; max-width: 100%; }
-/* the frame is the whole cropper: no Cropper.js outline, lines or corner handles */
-.ck-crop .cropper-view-box { outline: 0; }
+.ck-crop-frame {
+  position: relative; width: 100%; aspect-ratio: 4 / 5; margin-top: 8px; overflow: hidden; background-color: var(--ck-photo-dark);
+  /* shorter on a short screen (Safari with its bars), so Rotate still shows under it */
+  max-height: calc(100dvh - var(--f7-navbar-height) - var(--f7-safe-area-top) - var(--f7-safe-area-bottom) - 96px);
+}
+/* the img Cropper.js works from never shows (Cropper draws its own copies), not even while it starts again after Rotate */
+.ck-crop-frame > img { display: block; max-width: 100%; visibility: hidden; }
+.ck-crop .cropper-modal { background-color: var(--ck-photo-dark); opacity: 0.6; }
+.ck-crop .cropper-view-box { outline: 1px solid var(--ck-crop-edge); }
 .ck-crop .cropper-line,
 .ck-crop .cropper-point { display: none; }
-.block.ck-crop-hint { color: var(--ck-on-dark-muted); text-align: center; }
+/* Rotate: a still copy of the cropper over the frame until the turned photo is ready under it; only its photo turns a
+   quarter turn (PhotoCropper's approved exception), the square and the dimming stay put. Black behind, so the turning
+   photo's corners don't show the cropper under it. */
+.ck-crop-frame > .ck-crop-still { position: absolute; left: 0; top: 0; pointer-events: none; background-color: var(--ck-photo-dark); }
+.ck-crop-still .cropper-view-box { position: relative; }
+/* the whole photo turns, not just the part that was inside the frame */
+.ck-crop-still .cropper-wrap-box { overflow: visible; }
+.ck-crop-still-photo { position: absolute; }
 /* issue #59: Rotate, under the frame: a soft see-through pill with white text on the black */
 .block.ck-crop-tools { display: flex; justify-content: center; margin: 20px 0 0; }
 .button.ck-crop-rotate { width: auto; height: 40px; gap: 6px; padding: 0 18px; background-color: var(--ck-on-dark-button); color: var(--ck-surface); }

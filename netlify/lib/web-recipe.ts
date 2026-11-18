@@ -193,8 +193,9 @@ export function instructionGroups(value: unknown): ReadRecipe['directions'] {
 type ImageChoice = { url: string; width: number; height: number };
 
 /**
- * The recipe's photo: of the sizes a site lists (often square, 4:3, 16:9 and the original), the one closest to the
- * app's 4:3 that's at least 600 wide, else the first. Sizes come from ImageObjects or from names like "-1200x900.jpg".
+ * The recipe's photo: of the sizes a site lists (often square, 4:3, 16:9 and the original), the one closest to 4:3
+ * that's at least 600 wide, else the first. The app's photos are square (issue #51); a 4:3 photo leaves room around the
+ * square to move the crop. Sizes come from ImageObjects or from names like "-1200x900.jpg".
  */
 export function recipeImage(value: unknown, base: string): string {
   const choices: ImageChoice[] = [];

@@ -605,32 +605,97 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.view.tab-active .page-current input[type=file]').setInputFiles(photoFile('seafood-salad.jpg'));
     await page.waitForTimeout(1500);
     if (!(await page.locator('.ck-crop.modal-in .cropper-container').count())) throw new Error('picking one photo did not open Crop Photo');
+    // issue #51: a square, inside the frame, with the rest of the photo dimmed around it
     const f = await page.locator('.ck-crop .cropper-container').boundingBox();
-    if (Math.abs(f.width / f.height - 4 / 3) > 0.02) throw new Error(`crop frame is not 4:3 (${Math.round(f.width)}×${Math.round(f.height)})`);
-    await page.mouse.move(f.x + f.width / 2, f.y + f.height / 2); await page.mouse.down();
-    await page.mouse.move(f.x + f.width / 2 + 60, f.y + f.height / 2, { steps: 5 }); await page.mouse.up();
+    const sq = await page.locator('.ck-crop .cropper-crop-box').boundingBox();
+    if (Math.abs(sq.width - sq.height) > 1) throw new Error(`the crop is not square (${Math.round(sq.width)}×${Math.round(sq.height)})`);
+    if (sq.x - f.x < 8 || sq.y - f.y < 8) throw new Error('the crop square fills the frame: nothing around it shows what is left out');
+    if (!(await page.locator('.ck-crop .cropper-modal').isVisible())) throw new Error('no dimming around the crop square');
+    const covers = () => page.evaluate(() => {
+      const c = document.querySelector('.ck-crop .cropper-canvas').getBoundingClientRect();
+      const b = document.querySelector('.ck-crop .cropper-crop-box').getBoundingClientRect();
+      return c.left <= b.left + 1 && c.top <= b.top + 1 && c.right >= b.right - 1 && c.bottom >= b.bottom - 1;
+    });
+    if (!(await covers())) throw new Error('the photo does not cover the crop square');
+    // the cropper fits the frame even when the frame gets its size after the cropper starts (on the iPhone the popup
+    // could still be hidden as it started, and the square came out tiny, #51)
+    const fits = () => page.evaluate(() => {
+      const fr = document.querySelector('.ck-crop-frame').getBoundingClientRect();
+      const b = document.querySelector('.ck-crop .cropper-container:not(.ck-crop-still) .cropper-crop-box').getBoundingClientRect();
+      return Math.abs(b.width - (Math.min(fr.width, fr.height) - 32)) <= 2;
+    });
+    await page.evaluate(() => { document.querySelector('.ck-crop-frame').style.width = '200px'; }); await page.waitForTimeout(400);
+    if (!(await fits())) throw new Error('the crop square did not follow the frame’s size');
+    await page.evaluate(() => { document.querySelector('.ck-crop-frame').style.width = ''; }); await page.waitForTimeout(400);
+    if (!(await fits())) throw new Error('the crop square did not grow back with the frame');
+    // dragged far past its edge, and zoomed all the way out, it still covers the square
+    await page.mouse.move(sq.x + sq.width / 2, sq.y + sq.height / 2); await page.mouse.down();
+    await page.mouse.move(sq.x + sq.width / 2 + 400, sq.y + sq.height / 2 + 300, { steps: 8 }); await page.mouse.up();
+    for (let i = 0; i < 8; i++) { await page.mouse.wheel(0, 300); await page.waitForTimeout(50); }
+    if (!(await covers())) throw new Error('dragged or zoomed out, the photo no longer covers the crop square');
+    await page.mouse.wheel(0, -400); await page.waitForTimeout(100);
+    await page.mouse.move(sq.x + sq.width / 2, sq.y + sq.height / 2); await page.mouse.down();
+    await page.mouse.move(sq.x + sq.width / 2 - 60, sq.y + sq.height / 2, { steps: 5 }); await page.mouse.up();
   });
-  // issue #59: Rotate turns the photo a quarter turn left (a landscape photo stands up), the frame stays 4:3, and Done
-  // keeps the turned photo
+  // issue #59: Rotate turns the photo a quarter turn left (a landscape photo stands up), the square stays where it is,
+  // and Done keeps the turned photo. #51: it turns smoothly (a still copy turning over the frame), then the copy goes.
   let rotatedSize;
   await step('17a-crop-rotated', async () => {
-    const size = () => page.locator('.ck-crop .cropper-canvas img').evaluate((i) => [i.naturalWidth, i.naturalHeight]);
+    const size = () => page.locator('.ck-crop .cropper-container:not(.ck-crop-still) .cropper-canvas img').evaluate((i) => [i.naturalWidth, i.naturalHeight]);
     const [w, h] = await size();
-    await page.locator('.ck-crop.modal-in .ck-crop-rotate').tap(); await page.waitForTimeout(1200);
+    const before = await page.locator('.ck-crop .cropper-crop-box').boundingBox();
+    await page.locator('.ck-crop.modal-in .ck-crop-rotate').tap(); await page.waitForTimeout(120);
+    const mid = await page.evaluate(() => {
+      const still = document.querySelector('.ck-crop-still');
+      if (!still) return null;
+      const r = still.querySelector('.cropper-crop-box').getBoundingClientRect();
+      return { photo: getComputedStyle(still.querySelector('.cropper-wrap-box')).transform, still: getComputedStyle(still).transform, square: [r.x, r.y, r.width, r.height] };
+    });
+    if (!mid || mid.photo === 'none') throw new Error('Rotate did not turn the photo smoothly (no turn under way)');
+    // only the photo turns: the square and the dimming stay put (the user, #51)
+    if (mid.still !== 'none') throw new Error('Rotate turned the frame and its square, not just the photo');
+    if (Math.abs(mid.square[0] - before.x) > 1 || Math.abs(mid.square[1] - before.y) > 1 || Math.abs(mid.square[2] - before.width) > 1) throw new Error('the crop square moved while the photo turned');
+    await page.waitForTimeout(1100);
+    if (await page.locator('.ck-crop-still').count()) throw new Error('the turning copy stayed after Rotate');
     const [w2, h2] = await size();
     if (w2 !== h || h2 !== w) throw new Error(`Rotate left the photo ${w2}×${h2} (was ${w}×${h})`);
-    const f = await page.locator('.ck-crop .cropper-container').boundingBox();
-    if (Math.abs(f.width / f.height - 4 / 3) > 0.02) throw new Error(`after Rotate the frame is not 4:3 (${Math.round(f.width)}×${Math.round(f.height)})`);
     const crop = await page.locator('.ck-crop .cropper-crop-box').boundingBox();
-    if (Math.abs(crop.width - f.width) > 2) throw new Error('after Rotate the photo doesn’t fill the frame');
+    if (Math.abs(crop.x - before.x) > 1 || Math.abs(crop.y - before.y) > 1 || Math.abs(crop.width - before.width) > 1) throw new Error('Rotate moved the crop square');
+    const covers = await page.evaluate(() => {
+      const c = document.querySelector('.ck-crop .cropper-canvas').getBoundingClientRect();
+      const b = document.querySelector('.ck-crop .cropper-crop-box').getBoundingClientRect();
+      return c.left <= b.left + 1 && c.top <= b.top + 1 && c.right >= b.right - 1 && c.bottom >= b.bottom - 1;
+    });
+    if (!covers) throw new Error('after Rotate the photo doesn’t cover the square');
     rotatedSize = [w2, h2];
   });
   await step('17b-photos-added', async () => {
     await page.locator('.ck-crop a', { hasText: 'Done' }).tap(); await page.waitForTimeout(1200);
+    // issue #51: the photo, its thumbnail and the crop are all square
+    const shapes = await page.evaluate(() => ['.ck-edit-photo', '.ck-thumb-on'].map((q) => {
+      const r = document.querySelector(`.view.tab-active .page-current ${q}`).getBoundingClientRect();
+      return Math.abs(r.width - r.height) <= 1;
+    }));
+    if (shapes.includes(false)) throw new Error('the editor’s photo or its thumbnail is not square');
+    const kept = await page.evaluate(() => new Promise((ok) => {
+      const i = new Image();
+      i.onload = () => ok([i.naturalWidth, i.naturalHeight]);
+      i.src = document.querySelector('.view.tab-active .page-current .ck-thumb-on').style.backgroundImage.slice(5, -2);
+    }));
+    if (kept[0] !== kept[1]) throw new Error(`the cropped photo is ${kept.join('×')}, not square`);
     // the turned photo is the one kept: cropping it again shows it turned
     if (rotatedSize) {
       await page.locator('.view.tab-active .page-current .ck-photo-btn[aria-label="Crop photo"]').tap(); await page.waitForTimeout(1500);
       const again = await page.locator('.ck-crop .cropper-canvas img').evaluate((i) => [i.naturalWidth, i.naturalHeight]);
+      // a photo that already has a crop opens on it, full size (#51: it opened tiny, its size on screen taken for its
+      // size in pixels)
+      const reopened = await page.evaluate(() => {
+        const fr = document.querySelector('.ck-crop-frame').getBoundingClientRect();
+        const b = document.querySelector('.ck-crop .cropper-crop-box').getBoundingClientRect();
+        const c = document.querySelector('.ck-crop .cropper-canvas').getBoundingClientRect();
+        return { fits: Math.abs(b.width - (Math.min(fr.width, fr.height) - 32)) <= 2, covers: c.left <= b.left + 1 && c.top <= b.top + 1 && c.right >= b.right - 1 && c.bottom >= b.bottom - 1 };
+      });
+      if (!reopened.fits || !reopened.covers) throw new Error(`cropping a cropped photo again: ${JSON.stringify(reopened)}`);
       if (again.join() !== rotatedSize.join()) throw new Error(`cropping again shows the photo ${again.join('×')}, not turned (${rotatedSize.join('×')})`);
       await page.locator('.ck-crop a', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(1000);
     }
@@ -644,6 +709,7 @@ async function swipeLeft(ctx, page, locator) {
   await step('17c-recipe-photos-swiped', async () => {
     await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0)); await page.waitForTimeout(400);
     const hero = await page.locator('.view.tab-active .page-current swiper-container').boundingBox();
+    if (Math.abs(hero.width - hero.height) > 2) throw new Error(`the recipe's photos are not square (${Math.round(hero.width)}×${Math.round(hero.height)}), as cropped (#51)`);
     const cdp = await ctx.newCDPSession(page);
     const at = (x) => [{ x: hero.x + x, y: hero.y + hero.height / 2 }];
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(300) });

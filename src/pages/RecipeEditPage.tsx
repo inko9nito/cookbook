@@ -325,7 +325,7 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
           : 'Something went wrong. Try again, or update the app in Settings → Version.';
     setScan({ status: 'failed', message });
   };
-  // issue #15: the page's recipe, its link kept as the source, its photo added (cropped to 4:3, to recrop if needed)
+  // issue #15: the page's recipe, its link kept as the source, its photo added (cropped square, to recrop if needed)
   const readLink = async (link: string) => {
     setScan({ status: 'reading' });
     try {

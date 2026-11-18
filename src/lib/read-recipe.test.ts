@@ -85,21 +85,25 @@ describe('withReading', () => {
 });
 
 describe('dishCrop', () => {
-  test('a wide photo at the top of a screenshot: as wide as the photo, 4:3, scaled to the kept size', () => {
+  test('a wide photo at the top of a screenshot: as wide as the photo, square, scaled to the kept size', () => {
     // sent 720 wide; kept 1440 × 3120
-    expect(dishCrop({ image: 0, left: 0, top: 100, width: 720, height: 400 }, 720, 1440, 3120)).toEqual({ x: 0, y: 60, width: 1440, height: 1080 });
+    expect(dishCrop({ image: 0, left: 0, top: 100, width: 720, height: 400 }, 720, 1440, 3120)).toEqual({ x: 0, y: 0, width: 1440, height: 1440 });
+  });
+
+  test('4:3 when asked', () => {
+    expect(dishCrop({ image: 0, left: 0, top: 100, width: 720, height: 400 }, 720, 1440, 3120, 4 / 3)).toEqual({ x: 0, y: 60, width: 1440, height: 1080 });
   });
 
   test('a tall photo: as tall as the photo, centred on it, kept inside the image', () => {
     const box = dishCrop({ image: 0, left: 10, top: 0, width: 300, height: 400 }, 1000, 1000, 750)!;
     expect(box.height).toBe(400);
-    expect(box.width).toBe(533);
+    expect(box.width).toBe(400);
     expect(box.x).toBe(0);
     expect(box.y).toBe(0);
   });
 
-  test('larger than the image: the largest 4:3 box that fits', () => {
-    expect(dishCrop({ image: 0, left: -20, top: -20, width: 2000, height: 2000 }, 1000, 1000, 1000)).toEqual({ x: 0, y: 125, width: 1000, height: 750 });
+  test('larger than the image: the largest square that fits', () => {
+    expect(dishCrop({ image: 0, left: -20, top: -20, width: 2000, height: 2000 }, 1000, 1000, 750)).toEqual({ x: 125, y: 0, width: 750, height: 750 });
   });
 
   test('a tiny box is no photo', () => {

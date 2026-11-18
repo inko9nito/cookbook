@@ -172,10 +172,10 @@ export function withReading(draft: Recipe, read: ReadRecipe, others: Recipe[] = 
 type Box = { x: number; y: number; width: number; height: number };
 
 /**
- * The 4:3 crop box for the dish photo, on the photo as kept (`width` × `height`), from the box Claude gave on the image
+ * The square crop box (issue #51; recipe photos are square) for the dish photo, on the photo as kept (`width` × `height`), from the box Claude gave on the image
  * it was sent (`sentWidth` wide): just big enough to hold the dish photo, centred on it, inside the image.
  */
-export function dishCrop(dish: DishPhoto, sentWidth: number, width: number, height: number, ratio = 4 / 3): Box | null {
+export function dishCrop(dish: DishPhoto, sentWidth: number, width: number, height: number, ratio = 1): Box | null {
   const k = width / sentWidth;
   const left = Math.max(0, dish.left * k);
   const top = Math.max(0, dish.top * k);

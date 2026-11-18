@@ -33,7 +33,7 @@ export type Step = z.infer<typeof Step>;
 
 export const CropBox = z.object({ x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive() });
 
-/** A recipe photo: the 4:3 crop that's shown, plus the full photo and the crop box so the crop can be redone. */
+/** A recipe photo: the square crop that's shown (4:3 before issue #51), plus the full photo and the crop box so the crop can be redone. */
 export const Photo = z.object({
   id,
   /** what shows: a sample photo (/photos/…), a stored photo (/api/photos/…), or, before saving, a data URL */

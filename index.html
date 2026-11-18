@@ -25,16 +25,16 @@
       it out once the first screen has something to show. ?loader keeps it on screen to look at; ?loader=slow plays it
       at a quarter speed.
 
-      The lid sits level on the pot and rocks, one side up and then the other, over one 1.6s loop: left, right, left,
+      The lid sits level on the pot and rocks, one side up and then the other, over one 2.2s loop: left, right, left,
       right (the last one a bit higher), then a breath before it starts again. Each side starts up as the other lands,
       like a seesaw, so it flows instead of ticking. The outer layer hinges on the lid's left end (it lifts the right
-      side); the inner one on its right end (it lifts the left side). Up eases out, down eases in, softly; the pot gives
-      a little squash each time the lid lands.
+      side); the inner one on its right end (it lifts the left side). Up eases out, down eases in, softly; the pot squashes
+      each time the lid lands and stretches back up, like a cartoon.
     -->
     <style>
       #app { isolation: isolate; } /* the app's own layers stay under the loader, which comes after it */
       .ck-launch {
-        --ck-boil: 1.6s;
+        --ck-boil: 2.2s;
         position: fixed;
         inset: 0;
         display: flex;
@@ -76,17 +76,21 @@
         75%       { transform: translateY(-4.5%) rotate(-12deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
         86%, 100% { transform: translateY(0) rotate(0); }
       }
-      /* a little squash as each side lands, the last one the biggest */
+      /* a cartoon squash as each side lands, then a little stretch back up before it settles; the last one the biggest */
       @keyframes ck-pot {
-        0%, 20.5%   { transform: scale(1, 1); }
-        23.5%       { transform: scale(1.015, 0.975); }
-        27.5%, 40.5% { transform: scale(1, 1); }
-        43.5%       { transform: scale(1.015, 0.975); }
-        47.5%, 64.5% { transform: scale(1, 1); }
-        67.5%       { transform: scale(1.01, 0.985); }
-        71.5%, 84.5% { transform: scale(1, 1); }
-        87.5%       { transform: scale(1.02, 0.965); }
-        92%, 100%   { transform: scale(1, 1); }
+        0%, 21%     { transform: scale(1, 1); }
+        24%         { transform: scale(1.035, 0.945); }
+        28%         { transform: scale(0.99, 1.015); }
+        32%, 41%    { transform: scale(1, 1); }
+        44%         { transform: scale(1.035, 0.945); }
+        48%         { transform: scale(0.99, 1.015); }
+        52%, 65%    { transform: scale(1, 1); }
+        68%         { transform: scale(1.025, 0.96); }
+        72%         { transform: scale(0.995, 1.01); }
+        76%, 85%    { transform: scale(1, 1); }
+        88.5%       { transform: scale(1.05, 0.92); }
+        93%         { transform: scale(0.985, 1.025); }
+        97%, 100%   { transform: scale(1, 1); }
       }
       @media (prefers-reduced-motion: reduce) {
         .ck-launch-pot, .ck-launch-lid, .ck-launch-lid > div { animation: none; }
@@ -108,7 +112,7 @@
       (function () {
         var q = new URLSearchParams(location.search), el = document.getElementById('ck-launch');
         if (navigator.webdriver && !q.has('loader')) el.remove();
-        else if (q.get('loader') === 'slow') el.style.setProperty('--ck-boil', '6.4s');
+        else if (q.get('loader') === 'slow') el.style.setProperty('--ck-boil', '8.8s');
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>

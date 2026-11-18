@@ -2745,18 +2745,18 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('40j2-groceries-search', async () => {
     // the search bar finds a thing (or a recipe) on the list
-    await page.locator(`${GRO} .searchbar input`).fill('lemon'); await page.waitForTimeout(500);
+    await page.locator(`${GRO} > .navbar .searchbar input`).fill('lemon'); await page.waitForTimeout(500);
     const titles = await groTitles();
     if (!titles.length || titles.some((t) => !/lemon/i.test(t))) throw new Error(`searching "lemon" shows ${titles.join(', ')}`);
-    await page.locator(`${GRO} .searchbar input`).fill('kebab'); await page.waitForTimeout(500);
+    await page.locator(`${GRO} > .navbar .searchbar input`).fill('kebab'); await page.waitForTimeout(500);
     if ((await groTitles()).length < 3) throw new Error('searching a recipe’s name doesn’t show its things');
-    await page.locator(`${GRO} .searchbar input`).fill('zzz'); await page.waitForTimeout(500);
+    await page.locator(`${GRO} > .navbar .searchbar input`).fill('zzz'); await page.waitForTimeout(500);
     if (!(await page.locator(`${GRO} .ck-note`, { hasText: 'Nothing on the list matches' }).count())) throw new Error('no message when nothing matches');
   });
   await step('40j3-groceries-search-cleared', async () => {
-    await page.locator(`${GRO} .searchbar .input-clear-button`).tap(); await page.waitForTimeout(500);
+    await page.locator(`${GRO} > .navbar .searchbar .input-clear-button`).tap(); await page.waitForTimeout(500);
     if ((await groTitles()).length < 8) throw new Error('clearing the search didn’t bring the list back');
-    await page.locator(`${GRO} .searchbar input`).blur();
+    await page.locator(`${GRO} > .navbar .searchbar input`).blur();
   });
   await step('40k-groceries-plus', async () => {
     await page.locator(`${GRO} > .navbar a[aria-label="Add to the grocery list"]`).tap(); await page.waitForTimeout(800);

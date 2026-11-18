@@ -8,6 +8,7 @@ import { CookProvider } from './data/cook';
 import CookMode from './components/CookMode';
 import SignInScreen from './components/SignInScreen';
 import { takeStartTab } from './data/startTab';
+import { LaunchLoaderDone } from './data/launch';
 
 const f7params = {
   name: 'Cookbook',
@@ -89,6 +90,7 @@ export default function CookbookApp() {
         </Views>
         <SignInScreen />
         <SessionGuard />
+        <LaunchLoaderDone />
         {/* issue #85: cook mode lives with the app, so it stays (tucked away) while you look at other recipes */}
         <CookMode />
       </App>

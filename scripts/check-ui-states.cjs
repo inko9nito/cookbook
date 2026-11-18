@@ -2724,6 +2724,21 @@ async function swipeLeft(ctx, page, locator) {
     if (await pg.locator('.ck-week-busy').count()) throw new Error('dots on the strip while loading');
   });
 
+  // the launch loader (index.html): the pot whose lid rattles while the app starts. Checks leave it out unless asked
+  // with ?loader, which also keeps it on screen
+  await step('37a-launch-loader', async () => {
+    await page.goto(`${BASE}?loader`); await page.waitForTimeout(1500);
+    if (!(await page.locator('#ck-launch .ck-launch-lid').isVisible())) throw new Error('the launch loader isn’t showing');
+    const lid = () => page.locator('#ck-launch .ck-launch-lid').evaluate((el) => getComputedStyle(el).transform);
+    const seen = new Set();
+    for (let i = 0; i < 12; i++) { seen.add(await lid()); await page.waitForTimeout(90); }
+    if (seen.size < 3) throw new Error('the lid isn’t moving');
+  });
+  await step('37b-launch-loader-gone', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    if (await page.locator('#ck-launch').count()) throw new Error('the launch loader is still in the page');
+  });
+
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)
   await step('19-sign-in', async () => {
     await page.goto(`${BASE}?signin`);

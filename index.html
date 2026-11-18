@@ -124,6 +124,7 @@
       // doesn't change. Set here, in the head, so it's in place for the first paint.
       if (navigator.standalone && innerHeight > innerWidth) {
         document.documentElement.style.setProperty('--ck-launch-h', screen.height + 'px');
+        document.documentElement.dataset.ckStartHeight = String(innerHeight); // has it grown since? (src/data/launch.ts)
       }
     </script>
   </head>

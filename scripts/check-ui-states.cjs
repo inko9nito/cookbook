@@ -610,8 +610,30 @@ async function swipeLeft(ctx, page, locator) {
     await page.mouse.move(f.x + f.width / 2, f.y + f.height / 2); await page.mouse.down();
     await page.mouse.move(f.x + f.width / 2 + 60, f.y + f.height / 2, { steps: 5 }); await page.mouse.up();
   });
+  // issue #59: Rotate turns the photo a quarter turn left (a landscape photo stands up), the frame stays 4:3, and Done
+  // keeps the turned photo
+  let rotatedSize;
+  await step('17a-crop-rotated', async () => {
+    const size = () => page.locator('.ck-crop .cropper-canvas img').evaluate((i) => [i.naturalWidth, i.naturalHeight]);
+    const [w, h] = await size();
+    await page.locator('.ck-crop.modal-in .ck-crop-rotate').tap(); await page.waitForTimeout(1200);
+    const [w2, h2] = await size();
+    if (w2 !== h || h2 !== w) throw new Error(`Rotate left the photo ${w2}×${h2} (was ${w}×${h})`);
+    const f = await page.locator('.ck-crop .cropper-container').boundingBox();
+    if (Math.abs(f.width / f.height - 4 / 3) > 0.02) throw new Error(`after Rotate the frame is not 4:3 (${Math.round(f.width)}×${Math.round(f.height)})`);
+    const crop = await page.locator('.ck-crop .cropper-crop-box').boundingBox();
+    if (Math.abs(crop.width - f.width) > 2) throw new Error('after Rotate the photo doesn’t fill the frame');
+    rotatedSize = [w2, h2];
+  });
   await step('17b-photos-added', async () => {
     await page.locator('.ck-crop a', { hasText: 'Done' }).tap(); await page.waitForTimeout(1200);
+    // the turned photo is the one kept: cropping it again shows it turned
+    if (rotatedSize) {
+      await page.locator('.view.tab-active .page-current .ck-photo-btn[aria-label="Crop photo"]').tap(); await page.waitForTimeout(1500);
+      const again = await page.locator('.ck-crop .cropper-canvas img').evaluate((i) => [i.naturalWidth, i.naturalHeight]);
+      if (again.join() !== rotatedSize.join()) throw new Error(`cropping again shows the photo ${again.join('×')}, not turned (${rotatedSize.join('×')})`);
+      await page.locator('.ck-crop a', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(1000);
+    }
     await page.locator('.view.tab-active .page-current input[type=file]').setInputFiles([photoFile('corn.jpg'), photoFile('meatballs.jpg')]);
     await page.waitForTimeout(1500);
     if (await page.locator('.ck-crop.modal-in').count()) throw new Error('picking several photos opened Crop Photo');
@@ -703,7 +725,8 @@ async function swipeLeft(ctx, page, locator) {
     const side = await page.evaluate(() => { const li = document.querySelector('.view.tab-active .page-current .ck-edit-list li:not(.ck-group-row)'); return li.querySelector('.sortable-handler').getBoundingClientRect().left - li.getBoundingClientRect().left > li.getBoundingClientRect().width / 2; });
     if (!side) throw new Error('drag handles are on the left');
   });
-  // a long press on a row picks it up: it turns pale Tomato (no grey pressed shade) while held and dragged
+  // a long press on a row picks it up: it lifts off the card, white with a soft shadow (no grey pressed shade, and not
+  // the pale Tomato that read as an error, #78) while held and dragged
   let holdCdp;
   await step('11d-row-held', async () => {
     const li = page.locator('.view.tab-active .page-current .ck-edit-list li:not(.ck-group-row)').nth(2);
@@ -713,9 +736,10 @@ async function swipeLeft(ctx, page, locator) {
     holdCdp = await ctx.newCDPSession(page);
     await holdCdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + 120, y: box.y + box.height / 2 }] });
     await page.waitForTimeout(900);
-    const held = await li.evaluate((e) => ({ sorting: e.classList.contains('sorting'), bg: getComputedStyle(e).backgroundColor, tint: getComputedStyle(e).getPropertyValue('--ck-accent-tint'), link: getComputedStyle(e.querySelector('.item-link')).backgroundColor }));
+    const held = await li.evaluate((e) => ({ sorting: e.classList.contains('sorting'), bg: getComputedStyle(e).backgroundColor, shadow: getComputedStyle(e).boxShadow, link: getComputedStyle(e.querySelector('.item-link')).backgroundColor }));
     if (!held.sorting) throw new Error('long press did not pick the row up');
     if (held.bg === before) throw new Error('held row looks the same as the others');
+    if (held.bg !== 'rgb(255, 255, 255)' || held.shadow === 'none') throw new Error(`held row isn't lifted (white with a shadow): ${held.bg}, ${held.shadow}`);
     if (held.link !== 'rgba(0, 0, 0, 0)') throw new Error(`held row keeps the pressed shade (${held.link})`);
   });
   if (holdCdp) {
@@ -2361,12 +2385,38 @@ async function swipeLeft(ctx, page, locator) {
   await step('67d-planner-add-note', async () => {
     await page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] .ck-plan-add`).tap(); await page.waitForTimeout(700);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'A note' }).tap();
-    await page.waitForSelector('.dialog.modal-in input');
-    await page.locator('.dialog.modal-in input').fill('Leftovers for lunch');
+    await page.waitForSelector('.ck-note-popup.modal-in textarea');
+    // issue #74: its own screen with a big field, focused (the keyboard up), that keeps line breaks
+    const field = page.locator('.ck-note-popup.modal-in textarea');
+    if (!(await field.evaluate((t) => document.activeElement === t))) throw new Error('the note field isn’t focused');
+    const tall = (await field.boundingBox()).height;
+    if (tall < 150) throw new Error(`the note field is ${Math.round(tall)}px tall`);
+    if (!(await page.locator('.ck-note-popup .title').textContent()).startsWith('Note for ')) throw new Error('the note screen isn’t titled Note for …');
+    if (await page.locator('.ck-note-popup .ck-note-remove').count()) throw new Error('a new note offers Remove Note');
+    await field.fill('Leftovers for lunch');
   });
   await step('67e-planner-note-added', async () => {
-    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(900);
+    await page.locator('.ck-note-popup .ck-nav-primary', { hasText: 'Save' }).tap(); await page.waitForTimeout(900);
     if (!(await rowsOn(today0)).includes('Leftovers for lunch')) throw new Error(`today shows ${JSON.stringify(await rowsOn(today0))}`);
+    // the note's square is the design's soft grey with a muted icon, not butter
+    const icon = await page.locator(`${PLAN} li.ck-plan-note .ck-plan-note-icon`).first().evaluate((e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).color]);
+    if (icon.join() !== 'rgb(236, 236, 238),rgb(110, 110, 115)') throw new Error(`a note's icon is ${icon.join(' on ')}`);
+  });
+  // issue #74: tapping a note opens it to change: a longer note, over several lines, kept as written
+  await step('67e2-planner-note-edit', async () => {
+    await page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] li.ck-plan-note`, { hasText: 'Leftovers' }).locator('a.item-link').tap();
+    await page.waitForSelector('.ck-note-popup.modal-in textarea');
+    const field = page.locator('.ck-note-popup.modal-in textarea');
+    if ((await field.inputValue()) !== 'Leftovers for lunch') throw new Error(`the note opened as "${await field.inputValue()}"`);
+    if (!(await page.locator('.ck-note-popup.modal-in .ck-note-remove').count())) throw new Error('no Remove Note');
+    await field.fill('Leftovers for lunch\nThe rest of the chili, with rice from Sunday. Use up the cilantro before it goes.');
+    await page.waitForTimeout(300);
+  });
+  await step('67e3-planner-note-long', async () => {
+    await page.locator('.ck-note-popup .ck-nav-primary', { hasText: 'Save' }).tap(); await page.waitForTimeout(900);
+    const row = page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] li.ck-plan-note`, { hasText: 'Leftovers' });
+    const tall = await row.locator('.item-title').evaluate((t) => Math.round(t.getBoundingClientRect().height));
+    if (tall < 60) throw new Error(`the long note shows in ${tall}px, as if on one line`);
   });
   // swipe → Meal puts it in a slot
   await step('67f-planner-meal-sheet', async () => {

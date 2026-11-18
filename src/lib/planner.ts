@@ -16,13 +16,16 @@ export const MEALS = ['breakfast', 'lunch', 'dinner'] as const;
 export type Meal = (typeof MEALS)[number];
 export const mealName = (m: Meal) => m[0].toUpperCase() + m.slice(1);
 
+/** The longest note (issue #74: room for a longer note, like who's bringing what). */
+export const NOTE_MAX = 2000;
+
 /** Something planned for a day: a recipe (by id) or a note ("Eating out"), either one, never both. */
 export const Planned = z
   .object({
     id,
     day: Day,
     recipeId: id.optional(),
-    note: z.string().trim().min(1).max(500).optional(),
+    note: z.string().trim().min(1).max(NOTE_MAX).optional(),
     meal: z.enum(MEALS).optional(),
     /** issue #67: the servings picked on the recipe page when it was added; none: the recipe's own */
     servings: z.number().positive().max(1000).optional(),

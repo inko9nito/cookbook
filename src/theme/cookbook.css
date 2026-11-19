@@ -19,6 +19,7 @@
   --ck-plate-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); /* a cookbook's plates (round recipe photos) on its card */
   --ck-lift-shadow: 0 6px 18px rgba(0, 0, 0, 0.16), 0 1px 3px rgba(0, 0, 0, 0.08); /* a row lifted to move it (#78) */
   --ck-bar-shadow: 0 6px 10px -4px rgba(0, 0, 0, 0.07); /* #84: drawn below the bar only (a plain 0 4px 10px showed as a faint line above it too) */
+  --ck-lift-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.22); /* a cook-mode tab lifted to be dragged (#116) */
   --ck-tab-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.12); /* the recipe tab shown in cook mode, lifted off the grey strip (#85) */ /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
   /* a cookbook card's soft colours (issue #25): pale and muted, one per cookbook */
   --ck-book-blush: #f6e4dd;
@@ -1184,7 +1185,7 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
    on soft grey without one) and its name. Tabs share the width (up to 240px each, the shown one a bigger share); with
    more than fit (each keeps at least 112px, the shown one 132px) the strip scrolls sideways with a swipe, no
    scrollbar, and long names end in … */
-.popup.ck-cook { --ck-cook-bar: 56px; }
+:root { --ck-cook-bar: 56px; }
 html.ios .toolbar.ck-cook-recipes { --f7-toolbar-height: var(--ck-cook-bar); }
 html.ios .toolbar.ck-cook-recipes .toolbar-inner {
   justify-content: flex-start; align-items: flex-start; gap: 2px; padding: 0 14px var(--f7-safe-area-bottom);
@@ -1220,6 +1221,27 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
 .tabs.ck-cook-tabs-with-bar .ck-pane.ck-pane-alone { -webkit-mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); }
 /* the split screen ends above the bar */
 .tabs.ck-cook-tabs-with-bar > .page-content.ck-split { padding-bottom: calc(var(--ck-cook-bar) + var(--f7-safe-area-bottom)); }
+/* Issue #116: cook mode is a card over the app (Framework7's push popup: rounded top corners, the app shrunk back behind
+   it). A grabber at the top centre of its bar says it swipes down, as iOS sheets do */
+.popup.ck-cook .ck-grabber {
+  position: absolute; top: 6px; left: 0; right: 0; margin: 0 auto;
+  width: 36px; height: 5px; border-radius: 9999px; background-color: var(--ck-strong); pointer-events: none;
+}
+/* ✓'s toast (Marked as made · Undo) sits just above cook mode's recipe tabs while they show, instead of covering them */
+html:has(.popup.ck-cook.modal-in .toolbar.ck-cook-recipes) .toast.ck-undo-toast.toast-bottom { bottom: calc(var(--ck-cook-bar) + var(--f7-safe-area-bottom)); }
+html:has(.popup.ck-cook.modal-in .toolbar.ck-cook-recipes) .toast.ck-undo-toast.toast-bottom .toast-content { padding-bottom: var(--f7-toast-padding-vertical); }
+/* a recipe just marked as made: its tab's photo is a Tomato ✓ as the tab goes */
+.ck-cook-recipe .ck-tab-thumb.ck-tab-done { background-color: var(--ck-accent); color: var(--ck-surface); }
+/* tabs are held and dragged (#116): never a text selection or iOS's long-press menu */
+.ck-cook-recipe { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* the tab being dragged: lifted off the strip as a whole rounded tab with a shadow, following the finger (its translateX is
+   set as it moves). z-index 1 so it passes over the tabs after it (part of the approved hand-built drag, CLAUDE.md) */
+.ck-cook-recipe.ck-cook-recipe-lifted {
+  z-index: 1; border-radius: 14px; background-color: var(--ck-bg); color: var(--ck-fg);
+  box-shadow: 0 0 0 1px var(--ck-strong), var(--ck-lift-shadow);
+}
+.ck-cook-recipe.ck-cook-recipe-lifted::before,
+.ck-cook-recipe.ck-cook-recipe-lifted::after { display: none; }
 
 /* Settings → Version: the build, then a Tomato refresh icon. Tapping the build copies it; tapping the icon checks for a
    new version, and the icon spins while it checks (approved exception: the user asked for a spinning refresh icon

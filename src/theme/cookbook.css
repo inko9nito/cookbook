@@ -91,6 +91,74 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* Fonts being tried (issue #135): Settings → Appearance → Font sets html[data-font] (src/data/font.ts, and the head
+   script in index.html before the first paint). Each swaps the two font tokens; Fredoka and Nunito stay the default.
+   Served from this site (public/fonts, SIL Open Font License), latin only while trying; a face is only fetched once
+   something uses it. */
+@font-face {
+  font-family: 'Funnel Display Variable';
+  font-style: normal;
+  font-display: block;
+  font-weight: 300 800;
+  src: url('/fonts/funnel-display-latin.woff2') format('woff2-variations'), url('/fonts/funnel-display-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Funnel Sans Variable';
+  font-style: normal;
+  font-display: block;
+  font-weight: 300 800;
+  src: url('/fonts/funnel-sans-latin.woff2') format('woff2-variations'), url('/fonts/funnel-sans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Parkinsans Variable';
+  font-style: normal;
+  font-display: block;
+  font-weight: 300 800;
+  src: url('/fonts/parkinsans-latin.woff2') format('woff2-variations'), url('/fonts/parkinsans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Red Hat Display Variable';
+  font-style: normal;
+  font-display: block;
+  font-weight: 300 900;
+  src: url('/fonts/red-hat-display-latin.woff2') format('woff2-variations'), url('/fonts/red-hat-display-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Red Hat Text Variable';
+  font-style: normal;
+  font-display: block;
+  font-weight: 300 700;
+  src: url('/fonts/red-hat-text-latin.woff2') format('woff2-variations'), url('/fonts/red-hat-text-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+[data-font-sample='fredoka'] {
+  --ck-font: 'Nunito Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --ck-font-display: 'Fredoka Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+}
+html[data-font='funnel'],
+[data-font-sample='funnel'] {
+  --ck-font: 'Funnel Sans Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --ck-font-display: 'Funnel Display Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+}
+html[data-font='parkinsans'],
+[data-font-sample='parkinsans'] {
+  --ck-font: 'Parkinsans Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --ck-font-display: 'Parkinsans Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+}
+html[data-font='redhat'],
+[data-font-sample='redhat'] {
+  --ck-font: 'Red Hat Text Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --ck-font-display: 'Red Hat Display Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+}
+/* Settings → Appearance → Font: each row in its own font */
+.ck-font-sample { display: grid; gap: 2px; padding: 4px 0; }
+.ck-font-sample-name { font-family: var(--ck-font-display); font-size: 20px; font-weight: 600; color: var(--ck-fg); }
+.ck-font-sample-text { font-family: var(--ck-font); font-size: 15px; color: var(--ck-fg2); }
+
 /* Fredoka for titles and buttons (issue #21): page and top bar titles, the recipe name, section headings, sheet and
    dialog titles, every button and link-button, and chips. Everything else reads in Nunito (--ck-font). */
 html.ios .navbar .title,

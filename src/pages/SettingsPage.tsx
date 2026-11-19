@@ -8,9 +8,11 @@ import { inlineIcon } from '../components/ui/icons';
 import { appVersion, updateApp } from '../lib/appUpdate';
 import { reopenOnTab } from '../data/startTab';
 import { say, tell } from '../components/ui/toast';
+import { fontName, useFont } from '../data/font';
 
 export default function SettingsPage() {
   const { email, signOut } = useAuth();
+  const font = useFont();
   const confirmSignOut = () =>
     f7.dialog
       .create({
@@ -83,6 +85,11 @@ export default function SettingsPage() {
       <BlockTitle>Groceries</BlockTitle>
       <List strongIos insetIos dividersIos>
         <ListItem link="/grocery-stores/" title="Grocery Stores" />
+      </List>
+      {/* issue #135: trying fonts, this phone only */}
+      <BlockTitle>Appearance</BlockTitle>
+      <List strongIos insetIos dividersIos>
+        <ListItem link="/settings/font/" title="Font" after={fontName(font)} />
       </List>
       {/* the build running: tapping it copies it; its refresh icon brings in a newer one
           and reloads the app (issues #48, #91) */}

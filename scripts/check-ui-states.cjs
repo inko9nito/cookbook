@@ -1298,7 +1298,7 @@ async function swipeLeft(ctx, page, locator) {
       };
     });
     if (t.loose || t.notWhite) throw new Error(`${t.loose + t.notWhite} Settings group(s) not in a white card`);
-    if (t.titles.join() !== 'Account,Import,Groceries,Version,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
+    if (t.titles.join() !== 'Account,Import,Groceries,Appearance,Version,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
     if (t.footers) throw new Error(`Settings has ${t.footers} footers, expected none`);
     // Account is one row: the address, then Sign Out in red at its end
     const acct = await page.evaluate(() => {
@@ -3309,6 +3309,30 @@ async function swipeLeft(ctx, page, locator) {
     const names = await page.locator('#view-settings .page-current .ck-store-list li .item-title').evaluateAll((els) => els.map((e) => e.firstChild.textContent.trim()));
     if (names.join('|') !== 'Acme Market|Corner Grocer') throw new Error(`stores read ${names.join(', ')}`);
   });
+  // Issue #135: Settings → Appearance → Font changes the whole app's font at once, each row drawn in its own font,
+  // and the choice is on the page from the first paint after a reload. Put back to Fredoka for the steps after.
+  const family = (sel) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).fontFamily.split(',')[0].replace(/['"]/g, ''));
+  await step('40t2-font', async () => {
+    await page.locator('#view-settings .page-current .navbar .link.back').tap(); await page.waitForTimeout(900);
+    const row = page.locator('#view-settings .page-current li', { hasText: 'Font' });
+    if ((await row.locator('.item-after').innerText()).trim() !== 'Fredoka') throw new Error('the Font row doesn’t say Fredoka to start with');
+    await row.locator('a').tap(); await page.waitForTimeout(1000);
+    const samples = await page.locator('#view-settings .page-current .ck-font-sample-name').evaluateAll((els) => els.map((e) => getComputedStyle(e).fontFamily.split(',')[0].replace(/['"]/g, '')));
+    if (samples.join('|') !== 'Fredoka Variable|Funnel Display Variable|Parkinsans Variable|Red Hat Display Variable') throw new Error(`the rows are drawn in ${samples.join(', ')}`);
+    await page.locator('#view-settings .page-current li', { hasText: 'Funnel' }).locator('label').tap(); await page.waitForTimeout(600);
+    if ((await family('#view-settings .page-current > .navbar .title')) !== 'Funnel Display Variable') throw new Error('the bar’s title isn’t in Funnel Display');
+    if ((await family('#view-settings .page-current .block-footer')) !== 'Funnel Sans Variable') throw new Error('reading text isn’t in Funnel Sans');
+    const fredoka = await page.locator('#view-settings .page-current .ck-font-sample-name').first().evaluate((e) => getComputedStyle(e).fontFamily);
+    if (!fredoka.startsWith('"Fredoka')) throw new Error(`the Fredoka row turned into ${fredoka}`);
+  });
+  await step('40t3-font-recipes', async () => {
+    await page.reload(); await page.waitForTimeout(1500);
+    if ((await page.evaluate(() => document.documentElement.dataset.font)) !== 'funnel') throw new Error('the font wasn’t kept after a reload');
+    if (!(await page.evaluate(() => document.fonts.check("600 20px 'Funnel Display Variable'")))) throw new Error('Funnel Display isn’t loaded');
+    await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(900);
+    if ((await family('.view.tab-active .page-current > .navbar .title')) !== 'Funnel Display Variable') throw new Error('Recipes isn’t in Funnel');
+  });
+  await page.evaluate(() => { localStorage.removeItem('ck-font'); delete document.documentElement.dataset.font; });
   // Issue #118: an empty list keeps only its title, + and ⋯: no search bar, no By aisle | By recipe, no store line, no
   // instructions; an icon, a few words and one button that opens +'s choices.
   await step('40u-groceries-empty', async () => {

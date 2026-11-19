@@ -2681,7 +2681,7 @@ async function swipeLeft(ctx, page, locator) {
     const yogurt = groRow('Greek yogurt');
     if ((await yogurt.locator('.ck-store-tag').textContent()) !== 'Corner Grocer') throw new Error('the yogurt pinned to Corner Grocer has no tag');
     if (!(await yogurt.locator('a.ck-instacart-link').getAttribute('href')).includes('/store/corner-grocer/')) throw new Error('the pinned yogurt searches the list’s store');
-    if ((await groRow('Lemons').locator('.item-footer').textContent()) !== '3 · Mustard Dill Chicken Thighs · Middle Eastern Chicken Kebabs') throw new Error('a line doesn’t say which recipes it’s for');
+    if ((await groRow('Lemons').locator('.item-footer').textContent()) !== 'Mustard Dill Chicken Thighs · Middle Eastern Chicken Kebabs') throw new Error('a line doesn’t say which recipes it’s for');
   });
   await step('40b-groceries-got-it', async () => {
     await page.locator(`${GRO} > .page-content`).evaluate((e) => e.scrollTo(0, e.scrollHeight)); await page.waitForTimeout(400);

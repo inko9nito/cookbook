@@ -345,13 +345,17 @@ async function swipeLeft(ctx, page, locator) {
     if (blurred.length) throw new Error(`still blurred: ${[...new Set(blurred)].slice(0, 5).join(' | ')}`);
   });
   // #123: iPhone Safari now and then stopped drawing a header (Cookbooks and Settings blank, the Planner's list showing
-  // through under its title) until the app was restarted. Every header has a layer of its own from the start, like the
-  // tab bar, and no empty masked strip for Framework7's glass blur
-  await step('01a2-headers-own-layer', async () => {
+  // through under its title) until the app was restarted: Safari skips a still layer with Framework7's
+  // backface-visibility: hidden. Every header shows its back face and has a layer of its own from the start, and no
+  // empty masked strip for Framework7's glass blur
+  await step('01a2-headers-drawn', async () => {
     const off = await page.evaluate(() => [...document.querySelectorAll('.navbar')].flatMap((n) => {
       const where = n.closest('.view, .popup')?.id || n.closest('.page')?.dataset.name || n.className;
       const bg = n.querySelector(':scope > .navbar-bg');
+      const sub = n.querySelector('.subnavbar');
       return [
+        getComputedStyle(n).backfaceVisibility === 'visible' ? null : `${where}: backface-visibility ${getComputedStyle(n).backfaceVisibility}`,
+        sub && ['::before', '::after'].some((p) => getComputedStyle(sub, p).backfaceVisibility !== 'visible') ? `${where}: the docked bar's line has backface-visibility hidden` : null,
         getComputedStyle(n).willChange.includes('transform') ? null : `${where}: no layer of its own (will-change ${getComputedStyle(n).willChange})`,
         bg && getComputedStyle(bg, '::before').display !== 'none' ? `${where}: the blur strip is still there` : null,
       ].filter(Boolean);

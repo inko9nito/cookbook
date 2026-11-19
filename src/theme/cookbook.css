@@ -251,14 +251,19 @@ html.ios .toast {
   backdrop-filter: none;
 }
 
-/* The header stays drawn (issue #123). Now and then iPhone Safari stopped drawing a header after the app had been used
-   a while (only a fresh start brought it back): on Cookbooks and Settings the whole header went, on the Planner its
-   background did, so the list showed through under the title. The bars that never vanished are the ones Safari always
-   gives a layer of their own (the tab bar, which Framework7 moves in 3D; the Planner's week strip, a swiper). The header
-   only got one because the page scrolls under it, and every popup, dialog or sheet stops the pages scrolling while it's
-   open (Framework7), so the header's layer came and went each time, often with a toast arriving at that moment (#46).
-   So the header has its layer from the start (a hint only: nothing moves, and Framework7's own slide still hides it on
-   scroll), and Framework7's empty strip for its glass blur, with its fade mask, is gone (the blur is off, see above). */
+/* The header stays drawn (issue #123). Now and then iPhone Safari stopped drawing a header (only a fresh start brought it
+   back): on Cookbooks and Settings the whole header went, on the Planner its background, the list showing through under
+   the title. Framework7 gives the header `backface-visibility: hidden`, and Safari skips drawing such a layer while it
+   holds still: whenever the header had a layer of its own (Safari gives it one when the page scrolls under it, and takes
+   it away while a popup, dialog or sheet is open), it went blank, apart from what has a layer of its own inside it (the
+   Recipes chips, the Planner's week strip). With a layer all the time it was blank all the time, showing only mid-slide.
+   The tab bar has the same rule but always carries a 3D transform, so it's drawn. So the header shows its back face like
+   any other element, and has its layer from the start (a hint only: nothing moves, and Framework7's own slide still hides
+   it on scroll), so it's always drawn the same way. Framework7's empty strip for its glass blur, with its fade mask, is
+   gone too (the blur is off, see above). */
+html.ios .navbar,
+html.ios .subnavbar::before,
+html.ios .subnavbar::after { backface-visibility: visible; }
 html.ios .navbar { will-change: transform; }
 html.ios .navbar-bg::before { display: none; }
 

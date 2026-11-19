@@ -854,6 +854,37 @@ html.ios .fab.ck-cooking-fab {
 .ck-cooking-fab-body { display: flex; align-items: center; gap: 8px; white-space: nowrap; font-family: var(--ck-font-display); font-size: 17px; font-weight: 500; }
 .ck-cooking-fab-dot { opacity: 0.6; }
 .ck-cooking-fab-count { font-variant-numeric: tabular-nums; }
+/* Issue #124 (approved exception, the user asked for it): now and then the pill's pot is about to boil over. Every 12s
+   (the first 3s after the pill shows) its lid hops up and rattles three times, tipping one way and then the other, each
+   smaller, and the pot squashes a little as it lands, like the launch loader's cartoon pot. About a second of motion, then
+   still; transforms only, on the two drawings of Lucide's pot (CookingFab's BoilingPot), stacked in one grid cell. */
+.ck-pill-pot { display: grid; flex: none; width: 22px; height: 22px; }
+.ck-pill-pot > svg { grid-area: 1 / 1; display: block; overflow: visible; animation-duration: 12s; animation-iteration-count: infinite; animation-fill-mode: both; }
+.ck-pill-pot-body { transform-origin: 50% 91.67%; animation-name: ck-pill-pot; } /* squashes onto its base */
+.ck-pill-pot-lid { transform-origin: 50% 25%; animation-name: ck-pill-lid; } /* tips about its middle */
+@keyframes ck-pill-lid {
+  0%, 25%      { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+  26.5%        { transform: translateY(-14%) rotate(-12deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+  28%          { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+  29.3%        { transform: translateY(-10%) rotate(9deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+  30.6%        { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+  31.7%        { transform: translateY(-5%) rotate(-5deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+  32.8%, 100%  { transform: translateY(0) rotate(0); }
+}
+@keyframes ck-pill-pot {
+  0%, 27.9%    { transform: scale(1, 1); }
+  28.6%        { transform: scale(1.06, 0.92); }
+  29.5%        { transform: scale(0.98, 1.03); }
+  30.5%        { transform: scale(1, 1); }
+  31.2%        { transform: scale(1.04, 0.95); }
+  32.1%        { transform: scale(0.99, 1.015); }
+  32.7%        { transform: scale(1, 1); }
+  33.4%        { transform: scale(1.02, 0.975); }
+  34.3%, 100%  { transform: scale(1, 1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ck-pill-pot > svg { animation-name: none; }
+}
 
 /* cook mode's top bar: the recipe's name larger than an ordinary bar title */
 html.ios .popup.ck-cook .navbar { --f7-navbar-title-font-size: 21px; --f7-navbar-title-font-weight: 600; }

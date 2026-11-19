@@ -2911,6 +2911,30 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
     if (!(await page.locator(fab).isVisible())) throw new Error('the Cooking pill didn’t come back on Recipes');
   });
+  // Issue #124: now and then the pill's pot is about to boil over: its lid rattles and the pot squashes, about a second
+  // every 12s (the first 3s in), still otherwise; at rest it's Lucide's cooking pot as it was; none with Reduce Motion
+  await step('36b3-cook-pill-pot-boils', async () => {
+    const pot = `${fab} .ck-pill-pot`;
+    const at = (t) => page.locator(pot).evaluate((p, t) => [...p.querySelectorAll('svg')].map((s) => {
+      const a = s.getAnimations()[0];
+      if (!a) return null;
+      a.pause(); a.currentTime = t;
+      return { name: a.animationName, period: a.effect.getComputedTiming().duration, transform: getComputedStyle(s).transform };
+    }), t);
+    const rest = await at(0), mid = await at(3180), after = await at(5000);
+    if (rest.some((r) => !r)) throw new Error('the Cooking pill’s pot doesn’t move');
+    if (rest.map((r) => r.name).join() !== 'ck-pill-pot,ck-pill-lid' || rest.some((r) => r.period !== 12000)) throw new Error(`the pot plays ${JSON.stringify(rest)}`);
+    if (rest.some((r) => r.transform !== 'none' && r.transform !== 'matrix(1, 0, 0, 1, 0, 0)')) throw new Error(`the pot isn’t at rest at first: ${JSON.stringify(rest)}`);
+    if (mid[1].transform === rest[1].transform) throw new Error('the lid doesn’t lift 3s in');
+    if (after.some((r) => r.transform !== 'none' && r.transform !== 'matrix(1, 0, 0, 1, 0, 0)')) throw new Error(`the pot doesn’t settle after its rattle: ${JSON.stringify(after)}`);
+    const lid = await page.locator(`${pot} .ck-pill-pot-lid`).evaluate((s) => s.querySelectorAll('path').length);
+    if (lid !== 2) throw new Error('the lid isn’t Lucide’s');
+    await page.locator(pot).evaluate((p) => p.querySelectorAll('svg').forEach((s) => s.getAnimations().forEach((a) => a.play())));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const still = await page.locator(pot).evaluate((p) => [...p.querySelectorAll('svg')].every((s) => !s.getAnimations().length));
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    if (!still) throw new Error('the pot still rattles with Reduce Motion');
+  });
   await step('36c-cook-second-recipe', async () => {
     await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Corn' }).tap(); await page.waitForTimeout(900);
     // another recipe's footer: a dark chef-hat button with how many are cooking (back to cook mode) beside "Add to

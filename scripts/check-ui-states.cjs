@@ -201,9 +201,13 @@ async function audit(page, name) {
       const left = Math.round(first.left - edge.left), right = Math.round(edge.right - last.right);
       // a header scrolled out of its sheet (Chromium scrolls the scale sheet when the What I have dialog's field takes focus)
       if (top < 0) continue;
-      // a side counts only when something sits at it (a header with only a right-hand button has nothing on the left)
+      // a side counts only when something sits at it (a header with only a right-hand button has nothing on the left).
+      // A popup's bar says which side a button is on (cook mode's right-hand group reaches past the middle, #116)
       const mid = edge.left + edge.width / 2;
-      const sides = [first.left < mid ? left : null, last.right > mid ? right : null].filter((x) => x !== null);
+      const barSide = (side) => c.querySelector(`:scope .navbar .${side} .link`);
+      const sides = c.classList.contains('popup')
+        ? [barSide('left') ? left : null, barSide('right') ? right : null].filter((x) => x !== null)
+        : [first.left < mid ? left : null, last.right > mid ? right : null].filter((x) => x !== null);
       if (c.classList.contains('popup')) {
         if (sides.some((x) => Math.abs(top - x) > 2)) out.push(`popup header buttons are ${top}px from the top but ${left}px / ${right}px from the sides`);
       } else {
@@ -261,17 +265,39 @@ async function swipeLeft(ctx, page, locator) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   let total = 0;
+  let s16ticked = 0;
   // cook mode's X closes the shown recipe (the last one ends cooking); the chevron only tucks it away (issue #85)
   const cookClose = async () => {
     await page.locator('.ck-cook .navbar a[aria-label^="Close"]').tap(); await page.waitForTimeout(1000);
   };
-  // end cooking: X on every recipe (Not now to Mark as made), or the next page load comes back into cook mode
+  // end cooking: X on every recipe, or the next page load comes back into cook mode
   const cookEnd = async () => {
     for (let i = 0; i < 8 && (await page.locator('.popup.ck-cook.modal-in').count()); i++) {
       await cookClose();
-      await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Not now' }).tap({ timeout: 500 }).catch(() => {});
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
     }
+  };
+  // issue #116: no minimize button; swiping cook mode's top bar down tucks it away (Framework7's swipe to close)
+  const cookTuck = async () => {
+    const nav = await page.locator('.ck-cook .navbar .title').boundingBox();
+    const cdp = await ctx.newCDPSession(page);
+    const x = nav.x + nav.width / 2, y = nav.y + nav.height / 2;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 15; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + 20 * i }] }); await page.waitForTimeout(16); }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await cdp.detach(); await page.waitForTimeout(1000);
+  };
+  // a cook-mode tab held (a finger resting on it) and then dragged sideways by dx, in steps (issue #116)
+  const holdTab = async (tab) => {
+    const b = await tab.boundingBox();
+    const cdp = await ctx.newCDPSession(page);
+    const x = b.x + b.width / 2, y = b.y + b.height / 2;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    await page.waitForTimeout(500);
+    return { cdp, x, y };
+  };
+  const dragHeld = async ({ cdp, x, y }, dx) => {
+    for (let i = 1; i <= 16; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + (dx * i) / 16, y }] }); await page.waitForTimeout(24); }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await cdp.detach(); await page.waitForTimeout(600);
   };
   const step = async (name, fn) => {
     try {
@@ -515,7 +541,8 @@ async function swipeLeft(ctx, page, locator) {
       const r = document.querySelector('.sheet-modal.modal-in').getBoundingClientRect();
       const onSheet = !!document.elementFromPoint(r.left + 40, r.top + 20).closest('.sheet-modal.modal-in');
       const above = document.elementFromPoint(40, 120);
-      return { onSheet, dimmed: !!above.closest('.sheet-backdrop.backdrop-in') };
+      // dimmed by its backdrop, or (#116: cook mode is a push card) pushed back and dimmed by Framework7, as iOS stacks sheets
+      return { onSheet, dimmed: !!above.closest('.sheet-backdrop.backdrop-in, .popup.popup-behind') };
     });
     if (!top.onSheet || !top.dimmed) throw new Error(`Adjust amounts isn't on top of cook mode (sheet ${top.onSheet}, backdrop ${top.dimmed})`);
   });
@@ -591,12 +618,55 @@ async function swipeLeft(ctx, page, locator) {
       await page.waitForTimeout(200);
     }
   });
-  await step('16g-cook-mark-as-made', async () => {
-    await cookClose();
-    if (!(await page.locator('.dialog.modal-in', { hasText: 'Mark as made' }).count())) throw new Error('no Mark as made prompt after ticking every step');
+  // issue #116: cook mode is an iOS card over the app (Framework7's push popup): rounded top corners, the app shrunk back
+  // behind it, a grabber; top right a Tomato ✓ and a grey ✕, no minimize
+  await step('16f2-cook-card', async () => {
+    const t = await page.evaluate(() => {
+      const pop = document.querySelector('.popup.ck-cook');
+      const r = pop.getBoundingClientRect();
+      const g = document.querySelector('.ck-cook .ck-grabber').getBoundingClientRect();
+      const views = document.querySelector('#app .views, #app .view').getBoundingClientRect();
+      const btns = [...document.querySelectorAll('.ck-cook .navbar .right .link')].map((a) => a.getAttribute('aria-label') ?? a.textContent.trim());
+      return { push: pop.classList.contains('popup-push'), radius: parseFloat(getComputedStyle(pop).borderTopLeftRadius), top: r.top,
+        grabber: { w: g.width, mid: g.left + g.width / 2, top: g.top - r.top }, behind: views.width, btns,
+        done: getComputedStyle(document.querySelector('.ck-cook .navbar a[aria-label^="Done"]')).backgroundColor };
+    });
+    if (!t.push || t.radius < 12) throw new Error(`cook mode isn't a card (push ${t.push}, corners ${t.radius}px)`);
+    // in a browser tab (Safari's own status bar is above the page), the card starts 20px down, the app peeking out from
+    // 10px; no empty band (#116). The home-screen app keeps the status bar clear instead (not checked here)
+    if (Math.round(t.top) !== 20) throw new Error(`the card starts ${Math.round(t.top)}px from the top, not 20px`);
+    if (t.behind > 392) throw new Error('the app behind the card isn’t shrunk back');
+    if (Math.abs(t.grabber.mid - 393 / 2) > 1 || t.grabber.w !== 36 || t.grabber.top > 10) throw new Error(`the grabber is ${JSON.stringify(t.grabber)}`);
+    if (t.btns.some((b) => /Minimize/.test(b)) || !t.btns.some((b) => /^Done/.test(b)) || !t.btns.some((b) => /^Close/.test(b))) throw new Error(`the top bar's buttons: ${JSON.stringify(t.btns)}`);
+    if (t.done !== 'rgb(228, 87, 46)') throw new Error(`✓ is ${t.done}, not filled Tomato`);
   });
-  await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Not now' }).tap().catch(() => {});
-  await page.waitForTimeout(900);
+  // ✓ on the only recipe: marked as made, cook mode slides down, a toast with Undo
+  await step('16g-cook-done', async () => {
+    const ticked = await page.locator('.ck-cook .tab-active li.ck-done').count();
+    await page.locator('.ck-cook .navbar a[aria-label^="Done"]').tap(); await page.waitForTimeout(250);
+    const all = await page.evaluate(() => [...document.querySelectorAll('.ck-cook .tab-active li')].filter((li) => li.querySelector('input[type=checkbox]')).every((li) => li.classList.contains('ck-done')));
+    if (!all) throw new Error('✓ didn’t tick every ingredient and step before closing');
+    await page.waitForTimeout(1200);
+    if (await page.locator('.popup.ck-cook.modal-in').count()) throw new Error('✓ on the only recipe didn’t close cook mode');
+    if (await page.locator('.dialog.modal-in').count()) throw new Error('✓ asked something');
+    const toast = (await page.locator('.toast.modal-in').innerText().catch(() => '')).replace(/\s+/g, ' ');
+    if (!/Marked as made · \d+×/.test(toast) || !toast.includes('Undo')) throw new Error(`the toast reads "${toast}"`);
+    s16ticked = ticked;
+  });
+  // Undo: the count goes back and cook mode comes back with what was ticked
+  await step('16h-cook-done-undo', async () => {
+    await page.locator('.toast.modal-in .toast-button').tap(); await page.waitForTimeout(1200);
+    if (!(await page.locator('.popup.ck-cook.modal-in').count())) throw new Error('Undo didn’t bring cook mode back');
+    const ticked = await page.locator('.ck-cook .tab-active li.ck-done').count();
+    if (ticked !== s16ticked) throw new Error(`after Undo ${ticked} rows are ticked, not ${s16ticked}`);
+  });
+  // ✕ on the only recipe ends cooking, with no question
+  await step('16i-cook-x-closes', async () => {
+    await cookClose();
+    if (await page.locator('.dialog.modal-in').count()) throw new Error('✕ asked something');
+    if (await page.locator('.popup.ck-cook.modal-in').count()) throw new Error('✕ on the only recipe didn’t close cook mode');
+  });
+  await page.waitForTimeout(600);
 
   // ── photos: add one (opens Crop Photo), pan it, add two more at once, save; then swipe them and open the viewer ──
   const photoFile = (n) => path.resolve(__dirname, '..', 'public', 'photos', n);
@@ -1572,7 +1642,9 @@ async function swipeLeft(ctx, page, locator) {
   // iPhone's insets (59px status bar, 34px home indicator), the top bar's buttons sit below the status bar and the tabs
   // end above the home indicator
   await step('25c2-cook-linked-safe-areas', async () => {
-    await page.addStyleTag({ content: 'html { --f7-safe-area-top: 59px !important; --f7-safe-area-bottom: 34px !important; }' });
+    // the home-screen app on a notched iPhone: a 59px status bar and a 34px home indicator. There the card keeps Framework7's
+    // offset, the status bar's height (in a Safari tab, #116, it starts 10px down instead, and a tab has no top safe area)
+    await page.addStyleTag({ content: 'html { --f7-safe-area-top: 59px !important; --f7-safe-area-bottom: 34px !important; } .popup.ck-cook { --f7-popup-push-offset: 59px !important; }' });
     await page.waitForTimeout(300);
     const t = await page.evaluate(() => {
       const close = document.querySelector('.ck-cook .navbar .right a').getBoundingClientRect();
@@ -1726,6 +1798,86 @@ async function swipeLeft(ctx, page, locator) {
     const left = await page.locator('.ck-cook .ck-cook-recipe').allTextContents();
     const on = await page.locator('.ck-cook .ck-cook-recipe-on').textContent();
     if (left.length !== 4 || left.some((x) => x.includes('Pulled')) || !on.includes('Mustard')) throw new Error(`after Close the tabs are ${JSON.stringify(left)}, showing "${on}"`);
+  });
+  // issue #116: hold a tab and it lifts; drag it and the others make room; it settles where it's let go, and the tap
+  // that ends the drag doesn't switch recipes
+  const tabNames = () => page.locator('.ck-cook .ck-cook-recipe .ck-tab-name').allTextContents();
+  let held = null;
+  let namesBefore = [];
+  await step('25j-cook-tab-held', async () => {
+    await page.locator('.ck-cook .ck-cook-recipes .toolbar-inner').evaluate((e) => e.scrollTo(0, 0)); await page.waitForTimeout(300);
+    namesBefore = await tabNames();
+    held = await holdTab(page.locator('.ck-cook .ck-cook-recipe').first());
+    if (!(await page.locator('.ck-cook .ck-cook-recipe-lifted').count())) throw new Error('holding a tab didn’t lift it');
+  });
+  await step('25j2-cook-tab-dragged', async () => {
+    const shown = await page.locator('.ck-cook .ck-cook-recipe-on .ck-tab-name').textContent();
+    const w = (await page.locator('.ck-cook .ck-cook-recipe').first().boundingBox()).width;
+    await dragHeld(held, w * 2.3);
+    const after = await tabNames();
+    const moved = [...namesBefore.slice(1, 3), namesBefore[0], ...namesBefore.slice(3)];
+    if (JSON.stringify(after) !== JSON.stringify(moved)) throw new Error(`after dragging the first tab two places right the tabs are ${JSON.stringify(after)}`);
+    if (await page.locator('.ck-cook .ck-cook-recipe-lifted').count()) throw new Error('the tab stayed lifted after it was let go');
+    const still = await page.locator('.ck-cook .ck-cook-recipe-on .ck-tab-name').textContent();
+    if (still !== shown) throw new Error(`dropping the tab switched to "${still}"`);
+    const tx = await page.locator('.ck-cook .ck-cook-recipe').evaluateAll((els) => els.map((e) => e.style.transform).filter(Boolean));
+    if (tx.length) throw new Error(`tabs left moved: ${JSON.stringify(tx)}`);
+  });
+  // a quick swipe still scrolls the strip and moves no tab
+  await step('25j3-cook-tabs-quick-swipe', async () => {
+    const before = await tabNames();
+    const tab = page.locator('.ck-cook .ck-cook-recipe').nth(1);
+    const b = await tab.boundingBox();
+    const cdp = await ctx.newCDPSession(page);
+    const x = b.x + b.width / 2, y = b.y + b.height / 2;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 10; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 15 * i, y }] }); await page.waitForTimeout(16); }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await cdp.detach(); await page.waitForTimeout(600);
+    if (JSON.stringify(await tabNames()) !== JSON.stringify(before)) throw new Error('a quick swipe moved a tab');
+    if (await page.locator('.ck-cook .ck-cook-recipe-lifted').count()) throw new Error('a quick swipe lifted a tab');
+  });
+  // the order is kept with the rest of cook mode
+  await step('25j4-cook-tab-order-kept', async () => {
+    const ids = await page.locator('.ck-cook .ck-cook-recipe').evaluateAll((els) => els.map((e) => e.dataset.id));
+    const open = await page.evaluate(() => JSON.parse(localStorage.getItem('cookbook.cookSession') || '{}').open ?? []);
+    if (JSON.stringify(open) !== JSON.stringify(ids)) throw new Error(`the kept order ${JSON.stringify(open)} isn’t the tabs’ ${JSON.stringify(ids)}`);
+  });
+  // ✕: the recipe drops away and its tab folds up; then the tab before it shows, fading in. Nothing is asked
+  await step('25k-cook-x-transition', async () => {
+    const shown = await page.locator('.ck-cook .ck-cook-recipe-on .ck-tab-name').textContent();
+    const w = (await page.locator('.ck-cook .ck-cook-recipe-on').boundingBox()).width;
+    await page.locator('.ck-cook .navbar a[aria-label^="Close"]').tap(); await page.waitForTimeout(140);
+    const mid = await page.evaluate(() => ({
+      tab: document.querySelector('.ck-cook .ck-cook-recipe-on')?.getBoundingClientRect().width ?? 0,
+      body: Number(getComputedStyle(document.querySelector('.ck-cook .tab-active > .ck-split-body')).opacity),
+    }));
+    if (!(mid.tab < w - 10) || !(mid.body < 0.95)) throw new Error(`halfway through ✕ the tab is ${Math.round(mid.tab)}px of ${Math.round(w)} and the recipe at ${mid.body} opacity`);
+    await page.waitForTimeout(900);
+    if ((await tabNames()).includes(shown)) throw new Error(`✕ left "${shown}" open`);
+    if (await page.locator('.dialog.modal-in').count()) throw new Error('✕ asked something');
+  });
+  // ✓: every box ticks and the tab's photo turns into a ✓, then the recipe lifts away; a toast says so, with Undo
+  await step('25l-cook-done-transition', async () => {
+    namesBefore = await tabNames();
+    const shown = await page.locator('.ck-cook .ck-cook-recipe-on .ck-tab-name').textContent();
+    s16ticked = await page.locator('.ck-cook .tab-active li.ck-done').count();
+    await page.locator('.ck-cook .navbar a[aria-label^="Done"]').tap(); await page.waitForTimeout(250);
+    const mid = await page.evaluate(() => ({
+      all: [...document.querySelectorAll('.ck-cook .tab-active li')].filter((li) => li.querySelector('input[type=checkbox]')).every((li) => li.classList.contains('ck-done')),
+      check: !!document.querySelector('.ck-cook .ck-cook-recipe-on .ck-tab-done'),
+    }));
+    if (!mid.all || !mid.check) throw new Error(`while ✓ shows, every box ticked: ${mid.all}, the tab shows ✓: ${mid.check}`);
+    await page.waitForTimeout(1100);
+    if ((await tabNames()).includes(shown)) throw new Error(`✓ left "${shown}" open`);
+    const toast = (await page.locator('.toast.modal-in').innerText().catch(() => '')).replace(/\s+/g, ' ');
+    if (!/Marked as made · \d+×/.test(toast) || !toast.includes('Undo')) throw new Error(`the toast reads "${toast}"`);
+  });
+  await step('25l2-cook-done-undo', async () => {
+    await page.locator('.toast.modal-in .toast-button').tap(); await page.waitForTimeout(900);
+    const after = await tabNames();
+    if (JSON.stringify(after) !== JSON.stringify(namesBefore)) throw new Error(`after Undo the tabs are ${JSON.stringify(after)}, not ${JSON.stringify(namesBefore)}`);
+    const ticked = await page.locator('.ck-cook .tab-active li.ck-done').count();
+    if (ticked !== s16ticked) throw new Error(`after Undo ${ticked} rows are ticked, not ${s16ticked}`);
   });
   // end cooking, or the next page load comes back into cook mode (issue #85)
   await cookEnd();
@@ -2629,15 +2781,15 @@ async function swipeLeft(ctx, page, locator) {
     if (Math.abs(t.fill) > 1) throw new Error(`the ingredients don't fill cook mode (${t.fill}px)`);
     if (t.note !== 'No directions for this recipe.') throw new Error(`the note reads "${t.note}"`);
   });
-  await step('82d-cook-no-directions-done', async () => {
-    // every ingredient ticked counts as done: closing offers Mark as made
+  await step('82d-cook-no-directions-closed', async () => {
+    // issue #116: ✕ only closes, even with every ingredient ticked (✓ is how it's marked as made)
     const rows = page.locator('.ck-cook .ck-pane-ingredients li label');
     for (let n = 0; n < (await rows.count()); n++) { await rows.nth(n).tap(); await page.waitForTimeout(120); }
-    await page.locator('.ck-cook .navbar a[aria-label="Close cook mode"]').tap(); await page.waitForTimeout(700);
-    if (!(await page.locator('.dialog.modal-in', { hasText: 'Done cooking?' }).count())) throw new Error('closing with every ingredient ticked does not offer Mark as made');
+    await page.locator('.ck-cook .navbar a[aria-label="Close cook mode"]').tap(); await page.waitForTimeout(900);
+    if (await page.locator('.dialog.modal-in').count()) throw new Error('✕ asked something');
+    if (await page.locator('.popup.ck-cook.modal-in').count()) throw new Error('✕ didn’t close cook mode');
   });
-  await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Not now' }).tap().catch(() => {});
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(400);
 
   // Issue #85: cook mode stays while you look at other recipes. The chevron tucks it away behind the Cooking bar
   // (bottom centre, above the tab bar, like Instacart's cart bar), which brings it back as it was; Start cooking on
@@ -2651,8 +2803,8 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('#view-recipes .page-current .ck-cta-button').tap(); await page.waitForTimeout(1200);
     await page.locator('.ck-cook .ck-pane-steps .ck-timer-button').first().tap(); await page.waitForTimeout(300);
     await page.locator('.ck-cook .ck-pane-ingredients li').first().locator('label').tap(); await page.waitForTimeout(300);
-    await page.locator('.ck-cook a[aria-label="Minimize cook mode"]').tap(); await page.waitForTimeout(1000);
-    if (await cookOpen()) throw new Error('the chevron didn’t tuck cook mode away');
+    await cookTuck();
+    if (await cookOpen()) throw new Error('swiping the top bar down didn’t tuck cook mode away');
     const cta = await page.locator('#view-recipes .page-current .ck-cta-button').textContent();
     if (cta.trim() !== 'Resume cooking') throw new Error(`the recipe’s button reads "${cta.trim()}" while it’s cooking`);
     // its own Resume cooking button does it here, so no Cooking bar on top of it
@@ -2709,7 +2861,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.waitForTimeout(1050);
     const tabs = await page.locator('.ck-cook .ck-cook-recipe').allTextContents();
     if (tabs.length !== 2 || !(await page.locator('.ck-cook .ck-cook-recipe-on').textContent()).includes('Corn')) throw new Error(`cook mode has the tabs ${JSON.stringify(tabs)}`);
-    await page.locator('.ck-cook a[aria-label="Minimize cook mode"]').tap(); await page.waitForTimeout(1000);
+    await cookTuck();
     await page.goBack(); await page.waitForTimeout(1000);
     const text = (await page.locator(fab).textContent()).replace(/\s+/g, '');
     if (text !== 'Cooking•2') throw new Error(`the Cooking pill reads "${text}", not 2 recipes`);

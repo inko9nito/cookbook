@@ -19,7 +19,7 @@ export type Amounts = { factor: number; picks: UnitPicks };
 export type RunningTimer = { id: number; recipeId: string; label: string; step: number; endsAt: number };
 
 type Session = {
-  /** the recipes open in cook mode, a tab each in the order they were opened, and the one shown */
+  /** the recipes open in cook mode, a tab each in the order along the bar (a new one at the end; #116: drag to move), and the one shown */
   open: string[];
   shown: string;
   /** cook mode is on screen (false: tucked away behind the Cooking button) */
@@ -59,6 +59,12 @@ type Cook = {
   show: (recipeId: string) => void;
   /** close one recipe's tab; the last one ends cooking */
   closeRecipe: (recipeId: string) => void;
+  /** issue #116: drag a tab to another place along the bar */
+  moveRecipe: (recipeId: string, toIndex: number) => void;
+  /** issue #116: ✓ ticks every ingredient and step before the recipe's tab goes */
+  tickAll: (recipeId: string, ing: string[], steps: string[]) => void;
+  /** issue #116, Undo after ✓: the recipe's tab back where it was, with what was ticked and its amounts, cook mode open */
+  restore: (recipeId: string, at: number, ticks: Ticks, amounts: Amounts) => void;
   /** Done cooking: forget it all */
   end: () => void;
   minimize: () => void;
@@ -238,6 +244,23 @@ export function CookProvider({ children }: { children: ReactNode }) {
         // the one before it is shown (or the next, for the first)
         const at = s.open.indexOf(recipeId);
         return { ...s, open: left, shown: s.shown === recipeId ? left[Math.max(0, at - 1)] : s.shown };
+      }),
+    moveRecipe: (recipeId, toIndex) =>
+      update((s) => {
+        const from = s.open.indexOf(recipeId);
+        const to = Math.max(0, Math.min(s.open.length - 1, toIndex));
+        if (from < 0 || from === to) return s;
+        const open = s.open.filter((x) => x !== recipeId);
+        open.splice(to, 0, recipeId);
+        return { ...s, open };
+      }),
+    tickAll: (recipeId, ing, steps) => update((s) => ({ ...s, ticks: { ...s.ticks, [recipeId]: { ing: new Set(ing), steps: new Set(steps) } } })),
+    restore: (recipeId, at, ticks, amounts) =>
+      setSession((s) => {
+        const base: Session = s ?? { open: [], shown: recipeId, expanded: true, ticks: {}, amounts: {}, timers: [] };
+        const open = base.open.filter((x) => x !== recipeId);
+        open.splice(Math.min(at, open.length), 0, recipeId);
+        return { ...base, open, shown: recipeId, expanded: true, ticks: { ...base.ticks, [recipeId]: ticks }, amounts: { ...base.amounts, [recipeId]: amounts } };
       }),
     end: () => setSession(null),
     minimize: () => update((s) => (s.expanded ? { ...s, expanded: false } : s)),

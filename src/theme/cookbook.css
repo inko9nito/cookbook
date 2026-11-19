@@ -1066,8 +1066,11 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 
 /* ── Sign-in screen (Framework7 login screen): the icon, name and one main button, centred on the grey page ── */
 .login-screen.ck-signin { --f7-login-screen-bg-color: var(--ck-bg); --f7-login-screen-content-bg-color: var(--ck-bg); }
+/* Framework7 sizes the login screen's content to fit and centres it on the screen. A min-height of 100% here (plus the
+   padding) made the content taller than that box, so it scrolled: in Safari the sign-in screen could be dragged up and
+   down, and the icon was cut off at the box's top edge. */
 .ck-signin-body {
-  min-height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;

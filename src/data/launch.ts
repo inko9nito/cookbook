@@ -1,6 +1,4 @@
 import { useEffect } from 'react';
-import { useAuth } from './auth';
-import { useStore } from './store';
 
 // ?loader keeps the launch loader on screen to look at (index.html). Read once, as the app loads.
 const keepLoader = new URLSearchParams(location.search).has('loader');
@@ -15,53 +13,54 @@ export function hideLaunchLoader() {
   document.getElementById('ck-launch')?.remove();
 }
 
-// How long the loader waits, once the recipes are there, for the photos on screen to load. They're mostly in the
-// phone's photo cache, so this is usually much less; past it, the app shows with those photos still coming.
-const PHOTO_WAIT_MS = 800;
-
-/** The photos the first screen shows, as their addresses: recipe cards and cookbook plates on screen (CSS backgrounds). */
-function photosOnScreen(): string[] {
-  const urls = new Set<string>();
-  document.querySelectorAll<HTMLElement>('.view.tab-active .page-current [style*="background-image"]').forEach((el) => {
-    const r = el.getBoundingClientRect();
-    if (r.bottom < 0 || r.top > innerHeight || !r.width) return;
-    const m = /url\(["']?(.*?)["']?\)/.exec(el.style.backgroundImage);
-    if (m) urls.add(m[1]);
-  });
-  return [...urls];
-}
-
-/** Resolves once the photo is loaded and ready to draw (or failed: then there's nothing to wait for). */
-function loaded(url: string): Promise<void> {
-  const img = new Image();
-  img.src = url;
-  return img.decode().catch(() => undefined);
-}
-
-/** The first screen is ready: wait (a little) for its photos, so the app appears whole, then take the loader away. */
-async function showApp() {
-  await new Promise((r) => requestAnimationFrame(r)); // the screen's cards are laid out
-  await Promise.race([Promise.all(photosOnScreen().map(loaded)), new Promise((r) => setTimeout(r, PHOTO_WAIT_MS))]);
-  hideLaunchLoader();
-}
-
-// Never longer than this: after it, the screens' own placeholders (issue #35) show what's coming.
+// The most the full-height wait below can add, from the moment the page starts.
 const MAX_MS = 2500;
+const deadline = () => new Promise<void>((r) => setTimeout(r, Math.max(0, MAX_MS - performance.now())));
 
 /**
- * Takes the launch loader away once the first screen has something to show: the recipes (from the phone's cache or the
- * server) and the photos on screen (up to PHOTO_WAIT_MS), or the sign-in screen. Never waiting for the animation.
+ * In the home-screen app the page starts out shorter than the screen and grows to full height a moment later (index.html
+ * lays the loader out on the screen's height meanwhile). Drawn before that, the app was laid out short: its tab bar
+ * floated well above the bottom, with white below it. Resolves once the page is the screen's full height, or has grown
+ * since it started (index.html notes its first height; a moment after it last grew, in case iOS stops short of the
+ * screen), and at once anywhere else.
+ */
+function fullHeight(): Promise<void> {
+  if (!document.documentElement.style.getPropertyValue('--ck-launch-h')) return Promise.resolve(); // not the home-screen app
+  const startHeight = Number(document.documentElement.dataset.ckStartHeight) || 0;
+  const grown = () => innerHeight >= screen.height - 1 || innerHeight > startHeight;
+  return new Promise((resolve) => {
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const done = () => {
+      removeEventListener('resize', check);
+      clearTimeout(settle);
+      resolve();
+    };
+    function check() {
+      if (innerHeight >= screen.height - 1) return done();
+      clearTimeout(settle);
+      settle = setTimeout(done, 300);
+    }
+    addEventListener('resize', check);
+    if (grown()) done(); // it already has
+  });
+}
+
+/**
+ * The pot covers only the app starting up: it goes as soon as the app can draw its first screen (styles and code loaded,
+ * the screen laid out, at full height in the home-screen app). From there the screens' skeletons (issue #35) show while
+ * the recipes load, and photos fill in as they arrive. It doesn't wait for recipes or photos: waiting for photos (by
+ * loading and decoding copies) left them blank in the grid on iPhone Safari.
  */
 export function LaunchLoaderDone() {
-  const { status } = useAuth();
-  const { loading } = useStore();
-  const ready = status === 'signedOut' || (status === 'signedIn' && !loading);
   useEffect(() => {
-    if (ready) void showApp();
-  }, [ready]);
-  useEffect(() => {
-    const t = setTimeout(hideLaunchLoader, MAX_MS);
-    return () => clearTimeout(t);
+    let live = true;
+    requestAnimationFrame(async () => {
+      await Promise.race([fullHeight(), deadline()]);
+      if (live) hideLaunchLoader();
+    });
+    return () => {
+      live = false;
+    };
   }, []);
   return null;
 }

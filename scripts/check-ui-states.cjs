@@ -2866,6 +2866,27 @@ async function swipeLeft(ctx, page, locator) {
       await appCtx.close();
     }
   });
+  // ...and the loader stays until the page has grown to the screen's height, so the app never shows laid out short
+  // (its tab bar floating above the bottom with white below, as on the phone)
+  await step('37d-launch-loader-waits-for-full-height', async () => {
+    const screenSize = { width: 393, height: 852 };
+    const appCtx = await browser.newContext({ viewport: { width: 393, height: 800 }, screen: screenSize });
+    await appCtx.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, 'standalone', { get: () => true });
+      Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false }); // the loader as on the phone
+    });
+    const app = await appCtx.newPage();
+    try {
+      await app.goto(BASE); await app.waitForTimeout(1200); // the recipes are there by now; the page is still short
+      if (!(await app.locator('#ck-launch').count())) throw new Error('the loader went while the page was still short');
+      await app.setViewportSize(screenSize); await app.waitForTimeout(400);
+      if (await app.locator('#ck-launch').count()) throw new Error('the loader stayed after the page reached full height');
+      const bottom = await app.evaluate(() => document.querySelector('.view.tab-active .toolbar, .tabbar').getBoundingClientRect().bottom);
+      if (Math.abs(bottom - screenSize.height) > 1) throw new Error(`the tab bar ends at ${bottom}, not the screen's bottom`);
+    } finally {
+      await appCtx.close();
+    }
+  });
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)
   await step('19-sign-in', async () => {
@@ -2875,6 +2896,9 @@ async function swipeLeft(ctx, page, locator) {
     // one grey page, not a white band behind the content (Framework7 paints login screen content white)
     const bgs = await page.evaluate(() => [...new Set([...document.querySelectorAll('.login-screen, .login-screen .page, .login-screen .page-content')].map((e) => getComputedStyle(e).backgroundColor).filter((c) => c !== 'rgba(0, 0, 0, 0)'))]);
     if (bgs.length !== 1) throw new Error(`sign-in screen has ${bgs.length} background colours: ${bgs.join(', ')}`);
+    // it fits: nothing to scroll, so it can't be dragged up and down with the icon cut off at the top (in Safari it was)
+    const overflow = await page.locator('.login-screen.modal-in .page-content').evaluate((el) => el.scrollHeight - el.clientHeight);
+    if (overflow > 1) throw new Error(`the sign-in screen scrolls (its content is ${overflow}px taller than its box)`);
   });
   await step('19b-signed-in', async () => {
     await page.locator('.ck-signin-button').tap();

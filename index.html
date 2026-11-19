@@ -7,21 +7,9 @@
          first paint is already in them -->
     <link rel="preload" href="/fonts/nunito-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/fredoka-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <script>
-      // Issue #135: the font picked in Settings → Appearance → Font (src/data/font.ts), this phone only. Put on the page
-      // here, before the first paint, with its files fetched first like the two above.
-      (function () {
-        var files = { funnel: ['funnel-display', 'funnel-sans'], parkinsans: ['parkinsans'], redhat: ['red-hat-display', 'red-hat-text'] };
-        var id; try { id = localStorage.getItem('ck-font'); } catch (e) {}
-        if (!files[id]) return;
-        document.documentElement.dataset.font = id;
-        files[id].forEach(function (f) {
-          var l = document.createElement('link');
-          l.rel = 'preload'; l.as = 'font'; l.type = 'font/woff2'; l.crossOrigin = 'anonymous'; l.href = '/fonts/' + f + '-latin.woff2';
-          document.head.appendChild(l);
-        });
-      })();
-    </script>
+    <!-- Issue #135: the font being tried and its sizes (Settings → Appearance → Font, the Aa button), this phone only:
+         put on the page before the first paint, with its files fetched first like the two above -->
+    <script src="/font-trial.js"></script>
     <meta name="theme-color" content="#f7f7f8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <meta name="format-detection" content="telephone=no" />

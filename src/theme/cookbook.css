@@ -91,8 +91,9 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* Fonts being tried (issue #135): Settings → Appearance → Font sets html[data-font] (src/data/font.ts, and the head
-   script in index.html before the first paint). Each swaps the two font tokens; Fredoka and Nunito stay the default.
+/* Fonts being tried (issue #135): public/font-trial.js (run in index.html's head, and by src/data/font.ts) writes
+   the chosen font and its sizes as its own faces, 'ck-display' and 'ck-text', and points the two font tokens at them;
+   Fredoka and Nunito stay the default. The faces below draw each font's own sample (the font page, the Aa sheet).
    Served from this site (public/fonts, SIL Open Font License), latin only while trying; a face is only fetched once
    something uses it. */
 @font-face {
@@ -139,17 +140,14 @@
   --ck-font: 'Nunito Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   --ck-font-display: 'Fredoka Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
 }
-html[data-font='funnel'],
 [data-font-sample='funnel'] {
   --ck-font: 'Funnel Sans Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   --ck-font-display: 'Funnel Display Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
 }
-html[data-font='parkinsans'],
 [data-font-sample='parkinsans'] {
   --ck-font: 'Parkinsans Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   --ck-font-display: 'Parkinsans Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
 }
-html[data-font='redhat'],
 [data-font-sample='redhat'] {
   --ck-font: 'Red Hat Text Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   --ck-font-display: 'Red Hat Display Variable', -apple-system, system-ui, 'SF Pro Text', 'Helvetica Neue', sans-serif;
@@ -158,6 +156,24 @@ html[data-font='redhat'],
 .ck-font-sample { display: grid; gap: 2px; padding: 4px 0; }
 .ck-font-sample-name { font-family: var(--ck-font-display); font-size: 20px; font-weight: 600; color: var(--ck-fg); }
 .ck-font-sample-text { font-family: var(--ck-font); font-size: 15px; color: var(--ck-fg2); }
+/* the Aa button and its sheet (FontFab): a small dark circle like the Cooking pill, on the right edge halfway down */
+html.ios .fab.ck-font-fab {
+  --f7-fab-size: 40px;
+  --f7-fab-margin: 12px;
+  --f7-fab-bg-color: var(--ck-fg);
+  --f7-fab-pressed-bg-color: var(--ck-fg2);
+  --f7-fab-text-color: var(--ck-surface);
+  --f7-fab-box-shadow: var(--ck-toast-shadow); /* it floats over the page's content */
+  --f7-glass-shadow-fab: none; /* Framework7 v9's iOS 26 glass edge and glow */
+}
+.ck-font-picker [data-font-sample] { font-family: var(--ck-font-display); }
+.ck-font-picker .button { font-size: 14px; padding: 0 2px; }
+.ck-size-controls { display: grid; gap: 20px; }
+.ck-size-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; color: var(--ck-fg); margin-bottom: 6px; }
+.ck-size-value { color: var(--ck-muted); font-variant-numeric: tabular-nums; }
+.link.ck-size-reset { justify-self: start; font-size: 15px; color: var(--ck-accent-ink); }
+.ck-font-sheet-foot { display: flex; justify-content: flex-start; }
+.ck-font-sheet-foot .link { font-size: 15px; color: var(--ck-muted); }
 
 /* Fredoka for titles and buttons (issue #21): page and top bar titles, the recipe name, section headings, sheet and
    dialog titles, every button and link-button, and chips. Everything else reads in Nunito (--ck-font). */

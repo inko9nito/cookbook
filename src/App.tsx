@@ -6,6 +6,7 @@ import { AuthProvider } from './data/auth';
 import { SessionGuard, StoreProvider } from './data/store';
 import { CookProvider } from './data/cook';
 import CookMode from './components/CookMode';
+import { FontFab, FontSheet } from './components/FontFab';
 import SignInScreen from './components/SignInScreen';
 import { takeStartTab } from './data/startTab';
 import { LaunchLoaderDone } from './data/launch';
@@ -82,17 +83,29 @@ export default function CookbookApp() {
               </Link>
             </ToolbarPane>
           </Toolbar>
-          <View id="view-recipes" main tab tabActive={startTab === 'recipes'} url="/" {...viewHistory} />
-          <View id="view-cookbooks" name="cookbooks" tab tabActive={startTab === 'cookbooks'} url="/cookbooks/" {...viewHistory} />
-          <View id="view-plan" name="plan" tab tabActive={startTab === 'plan'} url="/plan/" {...viewHistory} />
-          <View id="view-groceries" name="groceries" tab tabActive={startTab === 'groceries'} url="/groceries/" {...viewHistory} />
-          <View id="view-settings" name="settings" tab tabActive={startTab === 'settings'} url="/settings/" {...viewHistory} />
+          <View id="view-recipes" main tab tabActive={startTab === 'recipes'} url="/" {...viewHistory}>
+            <FontFab />
+          </View>
+          <View id="view-cookbooks" name="cookbooks" tab tabActive={startTab === 'cookbooks'} url="/cookbooks/" {...viewHistory}>
+            <FontFab />
+          </View>
+          <View id="view-plan" name="plan" tab tabActive={startTab === 'plan'} url="/plan/" {...viewHistory}>
+            <FontFab />
+          </View>
+          <View id="view-groceries" name="groceries" tab tabActive={startTab === 'groceries'} url="/groceries/" {...viewHistory}>
+            <FontFab />
+          </View>
+          <View id="view-settings" name="settings" tab tabActive={startTab === 'settings'} url="/settings/" {...viewHistory}>
+            <FontFab />
+          </View>
         </Views>
         <SignInScreen />
         <SessionGuard />
         <LaunchLoaderDone />
         {/* issue #85: cook mode lives with the app, so it stays (tucked away) while you look at other recipes */}
         <CookMode />
+        {/* issue #135: switching fonts on the fly while trying them (each tab's View has its Aa button) */}
+        <FontSheet />
       </App>
         </CookProvider>
       </StoreProvider>

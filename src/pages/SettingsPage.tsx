@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { Page, Navbar, NavTitle, List, ListItem, Link, BlockTitle, f7 } from 'framework7-react';
+import { Page, Navbar, NavTitle, List, ListItem, Link, BlockTitle, Toggle, f7 } from 'framework7-react';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAuth } from '../data/auth';
 import { clearCache } from '../data/store';
@@ -8,11 +8,11 @@ import { inlineIcon } from '../components/ui/icons';
 import { appVersion, updateApp } from '../lib/appUpdate';
 import { reopenOnTab } from '../data/startTab';
 import { say, tell } from '../components/ui/toast';
-import { fontName, useFont } from '../data/font';
+import { fontName, setFontButton, useFontTrial } from '../data/font';
 
 export default function SettingsPage() {
   const { email, signOut } = useAuth();
-  const font = useFont();
+  const fontTrial = useFontTrial();
   const confirmSignOut = () =>
     f7.dialog
       .create({
@@ -86,10 +86,13 @@ export default function SettingsPage() {
       <List strongIos insetIos dividersIos>
         <ListItem link="/grocery-stores/" title="Grocery Stores" />
       </List>
-      {/* issue #135: trying fonts, this phone only */}
+      {/* issue #135: trying fonts, this phone only; the Aa button switches them anywhere in the app */}
       <BlockTitle>Appearance</BlockTitle>
       <List strongIos insetIos dividersIos>
-        <ListItem link="/settings/font/" title="Font" after={fontName(font)} />
+        <ListItem link="/settings/font/" title="Font" after={fontName(fontTrial.font)} />
+        <ListItem title="Font Button" className="ck-font-button-row">
+          <Toggle slot="after" checked={fontTrial.button} onToggleChange={() => setFontButton(!fontTrial.button)} />
+        </ListItem>
       </List>
       {/* the build running: tapping it copies it; its refresh icon brings in a newer one
           and reloads the app (issues #48, #91) */}

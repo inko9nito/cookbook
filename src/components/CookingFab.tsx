@@ -36,16 +36,23 @@ export default function CookingFab(_: { slot?: 'fixed' }) {
 }
 
 /**
- * Issue #124: Lucide's cooking pot, split into the pot and its lid, so now and then the lid rattles as if the pot were
- * about to boil over (CSS keyframes in cookbook.css, `.ck-pill-pot`; still with Reduce Motion). At rest it's exactly
- * Lucide's CookingPot at the nav icon's size: the same four paths, 22px, stroke 2. The two drawings sit in one grid cell.
+ * Issue #124: Lucide's cooking pot as the launch loader draws it (index.html): split into the pot and its lid, the lid
+ * turned level and set down on the rim so it can rock both ways. Now and then it plays the loader's boil-over once (CSS
+ * keyframes in cookbook.css, `.ck-pill-pot`; still with Reduce Motion). 22px, stroke 2, like the nav icons; the pot and
+ * the lid's two hinge layers sit in one grid cell.
  */
 function BoilingPot() {
   const svg = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
   return (
     <span className="ck-pill-pot">
       <svg {...svg} className="ck-pill-pot-body"><path d="M2 12h20" /><path d="M20 12v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8" /></svg>
-      <svg {...svg} className="ck-pill-pot-lid"><path d="m4 8 16-4" /><path d="m8.86 6.78-.45-1.81a2 2 0 0 1 1.45-2.43l1.94-.48a2 2 0 0 1 2.43 1.46l.45 1.8" /></svg>
+      <span className="ck-pill-pot-lid">
+        <span>
+          <svg {...svg}>
+            <g transform="translate(0 3.4) rotate(14.04 12 6)"><path d="m4 8 16-4" /><path d="m8.86 6.78-.45-1.81a2 2 0 0 1 1.45-2.43l1.94-.48a2 2 0 0 1 2.43 1.46l.45 1.8" /></g>
+          </svg>
+        </span>
+      </span>
     </span>
   );
 }

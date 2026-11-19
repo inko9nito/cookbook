@@ -854,36 +854,58 @@ html.ios .fab.ck-cooking-fab {
 .ck-cooking-fab-body { display: flex; align-items: center; gap: 8px; white-space: nowrap; font-family: var(--ck-font-display); font-size: 17px; font-weight: 500; }
 .ck-cooking-fab-dot { opacity: 0.6; }
 .ck-cooking-fab-count { font-variant-numeric: tabular-nums; }
-/* Issue #124 (approved exception, the user asked for it): now and then the pill's pot is about to boil over. Every 12s
-   (the first 3s after the pill shows) its lid hops up and rattles three times, tipping one way and then the other, each
-   smaller, and the pot squashes a little as it lands, like the launch loader's cartoon pot. About a second of motion, then
-   still; transforms only, on the two drawings of Lucide's pot (CookingFab's BoilingPot), stacked in one grid cell. */
-.ck-pill-pot { display: grid; flex: none; width: 22px; height: 22px; }
-.ck-pill-pot > svg { grid-area: 1 / 1; display: block; overflow: visible; animation-duration: 12s; animation-iteration-count: infinite; animation-fill-mode: both; }
-.ck-pill-pot-body { transform-origin: 50% 91.67%; animation-name: ck-pill-pot; } /* squashes onto its base */
-.ck-pill-pot-lid { transform-origin: 50% 25%; animation-name: ck-pill-lid; } /* tips about its middle */
-@keyframes ck-pill-lid {
-  0%, 25%      { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
-  26.5%        { transform: translateY(-14%) rotate(-12deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
-  28%          { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
-  29.3%        { transform: translateY(-10%) rotate(9deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
-  30.6%        { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
-  31.7%        { transform: translateY(-5%) rotate(-5deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
-  32.8%, 100%  { transform: translateY(0) rotate(0); }
+/* Issue #124 (approved exception, the user asked for it): now and then the pill's pot is about to boil over, the same
+   way as the launch loader's (index.html): the lid sits level on the pot and rocks, left side up, then right, left,
+   right (the last a bit higher), each side lifting as the other lands, and the pot squashes each time the lid lands.
+   One loader loop (about 2.1s of motion) every 12s, the first 3s after the pill shows; still otherwise. The same
+   keyframes on the loader's timing, the lift and squash bigger so they show at 22px (the loader's pot is 96px). Transforms
+   only, on whole elements: the pot, and the lid in two nested layers, one per hinge (the outer on the lid's left end, the
+   inner on its right), all in one grid cell (CookingFab's BoilingPot). Longhands: the minifier turned a name-less
+   `animation:` shorthand into `none`. */
+.ck-pill-pot, .ck-pill-pot-lid, .ck-pill-pot-lid > span { display: grid; }
+.ck-pill-pot { flex: none; width: 22px; height: 22px; }
+.ck-pill-pot > *, .ck-pill-pot-lid > span { grid-area: 1 / 1; }
+.ck-pill-pot svg { display: block; overflow: visible; }
+.ck-pill-pot-body, .ck-pill-pot-lid, .ck-pill-pot-lid > span {
+  animation-duration: 12s; animation-iteration-count: infinite; animation-fill-mode: both;
 }
+.ck-pill-pot-body { transform-origin: 50% 91.67%; animation-name: ck-pill-pot; } /* squashes onto its base */
+.ck-pill-pot-lid { transform-origin: 15.63% 39.17%; animation-name: ck-pill-lid-right; } /* hinged on the lid's left end */
+.ck-pill-pot-lid > span { transform-origin: 84.38% 39.17%; animation-name: ck-pill-lid-left; } /* hinged on its right end */
+@keyframes ck-pill-lid-left {
+  0%, 25%       { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+  27.01%        { transform: translateY(-6%) rotate(10deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+  29.04%        { transform: translateY(0) rotate(0); }
+  33.42%        { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+  35.27%        { transform: translateY(-4%) rotate(7deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+  37.11%, 100%  { transform: translateY(0) rotate(0); }
+}
+@keyframes ck-pill-lid-right {
+  0%, 28.66%    { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+  30.69%        { transform: translateY(-6%) rotate(-10deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+  32.7%         { transform: translateY(0) rotate(0); }
+  36.74%        { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+  38.74%        { transform: translateY(-9%) rotate(-12deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+  40.77%, 100%  { transform: translateY(0) rotate(0); }
+}
+/* the loader's squash and stretch, about twice as deep */
 @keyframes ck-pill-pot {
-  0%, 27.9%    { transform: scale(1, 1); }
-  28.6%        { transform: scale(1.06, 0.92); }
-  29.5%        { transform: scale(0.98, 1.03); }
-  30.5%        { transform: scale(1, 1); }
-  31.2%        { transform: scale(1.04, 0.95); }
-  32.1%        { transform: scale(0.99, 1.015); }
-  32.7%        { transform: scale(1, 1); }
-  33.4%        { transform: scale(1.02, 0.975); }
-  34.3%, 100%  { transform: scale(1, 1); }
+  0%, 28.85%    { transform: scale(1, 1); }
+  29.41%        { transform: scale(1.07, 0.89); }
+  30.13%        { transform: scale(0.98, 1.03); }
+  30.86%, 32.51% { transform: scale(1, 1); }
+  33.07%        { transform: scale(1.07, 0.89); }
+  33.8%         { transform: scale(0.98, 1.03); }
+  34.54%, 36.92% { transform: scale(1, 1); }
+  37.46%        { transform: scale(1.05, 0.92); }
+  38.21%        { transform: scale(0.99, 1.02); }
+  38.93%, 40.59% { transform: scale(1, 1); }
+  41.22%        { transform: scale(1.1, 0.84); }
+  42.06%        { transform: scale(0.97, 1.05); }
+  42.78%, 100%  { transform: scale(1, 1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ck-pill-pot > svg { animation-name: none; }
+  .ck-pill-pot-body, .ck-pill-pot-lid, .ck-pill-pot-lid > span { animation-name: none; }
 }
 
 /* cook mode's top bar: the recipe's name larger than an ordinary bar title */

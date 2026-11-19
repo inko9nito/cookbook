@@ -2911,29 +2911,35 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
     if (!(await page.locator(fab).isVisible())) throw new Error('the Cooking pill didn’t come back on Recipes');
   });
-  // Issue #124: now and then the pill's pot is about to boil over: its lid rattles and the pot squashes, about a second
-  // every 12s (the first 3s in), still otherwise; at rest it's Lucide's cooking pot as it was; none with Reduce Motion
+  // Issue #124: now and then the pill's pot boils over the way the launch loader's does: its level lid rocks on one end
+  // and then the other, and the pot squashes as it lands, one loader loop every 12s (the first 3s in), still otherwise;
+  // none with Reduce Motion
   await step('36b3-cook-pill-pot-boils', async () => {
     const pot = `${fab} .ck-pill-pot`;
-    const at = (t) => page.locator(pot).evaluate((p, t) => [...p.querySelectorAll('svg')].map((s) => {
-      const a = s.getAnimations()[0];
+    const parts = ['.ck-pill-pot-body', '.ck-pill-pot-lid', '.ck-pill-pot-lid > span'];
+    const at = (t) => page.locator(pot).evaluate((p, [t, parts]) => parts.map((q) => {
+      const el = p.querySelector(q), a = el.getAnimations()[0];
       if (!a) return null;
       a.pause(); a.currentTime = t;
-      return { name: a.animationName, period: a.effect.getComputedTiming().duration, transform: getComputedStyle(s).transform };
-    }), t);
-    const rest = await at(0), mid = await at(3180), after = await at(5000);
+      return { name: a.animationName, period: a.effect.getComputedTiming().duration, transform: getComputedStyle(el).transform };
+    }), [t, parts]);
+    const still = (r) => r.transform === 'none' || r.transform === 'matrix(1, 0, 0, 1, 0, 0)';
+    const rest = await at(0);
     if (rest.some((r) => !r)) throw new Error('the Cooking pill’s pot doesn’t move');
-    if (rest.map((r) => r.name).join() !== 'ck-pill-pot,ck-pill-lid' || rest.some((r) => r.period !== 12000)) throw new Error(`the pot plays ${JSON.stringify(rest)}`);
-    if (rest.some((r) => r.transform !== 'none' && r.transform !== 'matrix(1, 0, 0, 1, 0, 0)')) throw new Error(`the pot isn’t at rest at first: ${JSON.stringify(rest)}`);
-    if (mid[1].transform === rest[1].transform) throw new Error('the lid doesn’t lift 3s in');
-    if (after.some((r) => r.transform !== 'none' && r.transform !== 'matrix(1, 0, 0, 1, 0, 0)')) throw new Error(`the pot doesn’t settle after its rattle: ${JSON.stringify(after)}`);
-    const lid = await page.locator(`${pot} .ck-pill-pot-lid`).evaluate((s) => s.querySelectorAll('path').length);
-    if (lid !== 2) throw new Error('the lid isn’t Lucide’s');
-    await page.locator(pot).evaluate((p) => p.querySelectorAll('svg').forEach((s) => s.getAnimations().forEach((a) => a.play())));
+    if (rest.map((r) => r.name).join() !== 'ck-pill-pot,ck-pill-lid-right,ck-pill-lid-left' || rest.some((r) => r.period !== 12000)) throw new Error(`the pot plays ${JSON.stringify(rest)}`);
+    if (!rest.every(still)) throw new Error(`the pot isn’t at rest at first: ${JSON.stringify(rest)}`);
+    // the loader's order: the lid's left side lifts first (3.24s), then its right (3.68s); the pot squashes as it lands
+    const left = await at(3240), right = await at(3680), squash = await at(3530);
+    if (still(left[2]) || !still(left[1])) throw new Error(`the lid’s left side doesn’t lift first: ${JSON.stringify(left)}`);
+    if (still(right[1]) || !still(right[2])) throw new Error(`the lid’s right side doesn’t lift next: ${JSON.stringify(right)}`);
+    const sy = Number((squash[0].transform.match(/matrix\(([^)]+)\)/) || [])[1]?.split(',')[3]);
+    if (!(sy < 0.92)) throw new Error(`the pot hardly squashes (${squash[0].transform})`);
+    if (!(await at(5500)).every(still)) throw new Error('the pot doesn’t settle after boiling over');
+    await page.locator(pot).evaluate((p) => p.querySelectorAll('*').forEach((s) => s.getAnimations().forEach((a) => a.play())));
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    const still = await page.locator(pot).evaluate((p) => [...p.querySelectorAll('svg')].every((s) => !s.getAnimations().length));
+    const none = await page.locator(pot).evaluate((p) => [...p.querySelectorAll('*')].every((s) => !s.getAnimations().length));
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    if (!still) throw new Error('the pot still rattles with Reduce Motion');
+    if (!none) throw new Error('the pot still boils over with Reduce Motion');
   });
   await step('36c-cook-second-recipe', async () => {
     await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Corn' }).tap(); await page.waitForTimeout(900);

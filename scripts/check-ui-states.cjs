@@ -606,13 +606,100 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.view.tab-active .page-current input[type=file]').setInputFiles(photoFile('seafood-salad.jpg'));
     await page.waitForTimeout(1500);
     if (!(await page.locator('.ck-crop.modal-in .cropper-container').count())) throw new Error('picking one photo did not open Crop Photo');
+    // issue #51: a square, inside the frame, with the rest of the photo dimmed around it
     const f = await page.locator('.ck-crop .cropper-container').boundingBox();
-    if (Math.abs(f.width / f.height - 4 / 3) > 0.02) throw new Error(`crop frame is not 4:3 (${Math.round(f.width)}×${Math.round(f.height)})`);
-    await page.mouse.move(f.x + f.width / 2, f.y + f.height / 2); await page.mouse.down();
-    await page.mouse.move(f.x + f.width / 2 + 60, f.y + f.height / 2, { steps: 5 }); await page.mouse.up();
+    const sq = await page.locator('.ck-crop .cropper-crop-box').boundingBox();
+    if (Math.abs(sq.width - sq.height) > 1) throw new Error(`the crop is not square (${Math.round(sq.width)}×${Math.round(sq.height)})`);
+    if (sq.x - f.x < 8 || sq.y - f.y < 8) throw new Error('the crop square fills the frame: nothing around it shows what is left out');
+    if (!(await page.locator('.ck-crop .cropper-modal').isVisible())) throw new Error('no dimming around the crop square');
+    const covers = () => page.evaluate(() => {
+      const c = document.querySelector('.ck-crop .cropper-canvas').getBoundingClientRect();
+      const b = document.querySelector('.ck-crop .cropper-crop-box').getBoundingClientRect();
+      return c.left <= b.left + 1 && c.top <= b.top + 1 && c.right >= b.right - 1 && c.bottom >= b.bottom - 1;
+    });
+    if (!(await covers())) throw new Error('the photo does not cover the crop square');
+    // the cropper fits the frame even when the frame gets its size after the cropper starts (on the iPhone the popup
+    // could still be hidden as it started, and the square came out tiny, #51)
+    const fits = () => page.evaluate(() => {
+      const fr = document.querySelector('.ck-crop-frame').getBoundingClientRect();
+      const b = document.querySelector('.ck-crop .cropper-container:not(.ck-crop-still) .cropper-crop-box').getBoundingClientRect();
+      return Math.abs(b.width - (Math.min(fr.width, fr.height) - 32)) <= 2;
+    });
+    await page.evaluate(() => { document.querySelector('.ck-crop-frame').style.width = '200px'; }); await page.waitForTimeout(400);
+    if (!(await fits())) throw new Error('the crop square did not follow the frame’s size');
+    await page.evaluate(() => { document.querySelector('.ck-crop-frame').style.width = ''; }); await page.waitForTimeout(400);
+    if (!(await fits())) throw new Error('the crop square did not grow back with the frame');
+    // dragged far past its edge, and zoomed all the way out, it still covers the square
+    await page.mouse.move(sq.x + sq.width / 2, sq.y + sq.height / 2); await page.mouse.down();
+    await page.mouse.move(sq.x + sq.width / 2 + 400, sq.y + sq.height / 2 + 300, { steps: 8 }); await page.mouse.up();
+    for (let i = 0; i < 8; i++) { await page.mouse.wheel(0, 300); await page.waitForTimeout(50); }
+    if (!(await covers())) throw new Error('dragged or zoomed out, the photo no longer covers the crop square');
+    await page.mouse.wheel(0, -400); await page.waitForTimeout(100);
+    await page.mouse.move(sq.x + sq.width / 2, sq.y + sq.height / 2); await page.mouse.down();
+    await page.mouse.move(sq.x + sq.width / 2 - 60, sq.y + sq.height / 2, { steps: 5 }); await page.mouse.up();
+  });
+  // issue #59: Rotate turns the photo a quarter turn left (a landscape photo stands up), the square stays where it is,
+  // and Done keeps the turned photo. #51: it turns smoothly (a still copy turning over the frame), then the copy goes.
+  let rotatedSize;
+  await step('17a-crop-rotated', async () => {
+    const size = () => page.locator('.ck-crop .cropper-container:not(.ck-crop-still) .cropper-canvas img').evaluate((i) => [i.naturalWidth, i.naturalHeight]);
+    const [w, h] = await size();
+    const before = await page.locator('.ck-crop .cropper-crop-box').boundingBox();
+    await page.locator('.ck-crop.modal-in .ck-crop-rotate').tap(); await page.waitForTimeout(120);
+    const mid = await page.evaluate(() => {
+      const still = document.querySelector('.ck-crop-still');
+      if (!still) return null;
+      const r = still.querySelector('.cropper-crop-box').getBoundingClientRect();
+      return { photo: getComputedStyle(still.querySelector('.cropper-wrap-box')).transform, still: getComputedStyle(still).transform, square: [r.x, r.y, r.width, r.height] };
+    });
+    if (!mid || mid.photo === 'none') throw new Error('Rotate did not turn the photo smoothly (no turn under way)');
+    // only the photo turns: the square and the dimming stay put (the user, #51)
+    if (mid.still !== 'none') throw new Error('Rotate turned the frame and its square, not just the photo');
+    if (Math.abs(mid.square[0] - before.x) > 1 || Math.abs(mid.square[1] - before.y) > 1 || Math.abs(mid.square[2] - before.width) > 1) throw new Error('the crop square moved while the photo turned');
+    await page.waitForTimeout(1100);
+    if (await page.locator('.ck-crop-still').count()) throw new Error('the turning copy stayed after Rotate');
+    const [w2, h2] = await size();
+    if (w2 !== h || h2 !== w) throw new Error(`Rotate left the photo ${w2}×${h2} (was ${w}×${h})`);
+    const crop = await page.locator('.ck-crop .cropper-crop-box').boundingBox();
+    if (Math.abs(crop.x - before.x) > 1 || Math.abs(crop.y - before.y) > 1 || Math.abs(crop.width - before.width) > 1) throw new Error('Rotate moved the crop square');
+    const covers = await page.evaluate(() => {
+      const c = document.querySelector('.ck-crop .cropper-canvas').getBoundingClientRect();
+      const b = document.querySelector('.ck-crop .cropper-crop-box').getBoundingClientRect();
+      return c.left <= b.left + 1 && c.top <= b.top + 1 && c.right >= b.right - 1 && c.bottom >= b.bottom - 1;
+    });
+    if (!covers) throw new Error('after Rotate the photo doesn’t cover the square');
+    rotatedSize = [w2, h2];
   });
   await step('17b-photos-added', async () => {
     await page.locator('.ck-crop a', { hasText: 'Done' }).tap(); await page.waitForTimeout(1200);
+    // issue #51: the photo, its thumbnail and the crop are all square
+    const shapes = await page.evaluate(() => ['.ck-edit-photo', '.ck-thumb-on'].map((q) => {
+      const r = document.querySelector(`.view.tab-active .page-current ${q}`).getBoundingClientRect();
+      return Math.abs(r.width - r.height) <= 1;
+    }));
+    if (shapes.includes(false)) throw new Error('the editor’s photo or its thumbnail is not square');
+    const kept = await page.evaluate(() => new Promise((ok) => {
+      const i = new Image();
+      i.onload = () => ok([i.naturalWidth, i.naturalHeight]);
+      i.src = document.querySelector('.view.tab-active .page-current .ck-thumb-on').style.backgroundImage.slice(5, -2);
+    }));
+    if (kept[0] !== kept[1]) throw new Error(`the cropped photo is ${kept.join('×')}, not square`);
+    // the turned photo is the one kept: cropping it again shows it turned
+    if (rotatedSize) {
+      await page.locator('.view.tab-active .page-current .ck-photo-btn[aria-label="Crop photo"]').tap(); await page.waitForTimeout(1500);
+      const again = await page.locator('.ck-crop .cropper-canvas img').evaluate((i) => [i.naturalWidth, i.naturalHeight]);
+      // a photo that already has a crop opens on it, full size (#51: it opened tiny, its size on screen taken for its
+      // size in pixels)
+      const reopened = await page.evaluate(() => {
+        const fr = document.querySelector('.ck-crop-frame').getBoundingClientRect();
+        const b = document.querySelector('.ck-crop .cropper-crop-box').getBoundingClientRect();
+        const c = document.querySelector('.ck-crop .cropper-canvas').getBoundingClientRect();
+        return { fits: Math.abs(b.width - (Math.min(fr.width, fr.height) - 32)) <= 2, covers: c.left <= b.left + 1 && c.top <= b.top + 1 && c.right >= b.right - 1 && c.bottom >= b.bottom - 1 };
+      });
+      if (!reopened.fits || !reopened.covers) throw new Error(`cropping a cropped photo again: ${JSON.stringify(reopened)}`);
+      if (again.join() !== rotatedSize.join()) throw new Error(`cropping again shows the photo ${again.join('×')}, not turned (${rotatedSize.join('×')})`);
+      await page.locator('.ck-crop a', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(1000);
+    }
     await page.locator('.view.tab-active .page-current input[type=file]').setInputFiles([photoFile('corn.jpg'), photoFile('meatballs.jpg')]);
     await page.waitForTimeout(1500);
     if (await page.locator('.ck-crop.modal-in').count()) throw new Error('picking several photos opened Crop Photo');
@@ -623,6 +710,7 @@ async function swipeLeft(ctx, page, locator) {
   await step('17c-recipe-photos-swiped', async () => {
     await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0)); await page.waitForTimeout(400);
     const hero = await page.locator('.view.tab-active .page-current swiper-container').boundingBox();
+    if (Math.abs(hero.width - hero.height) > 2) throw new Error(`the recipe's photos are not square (${Math.round(hero.width)}×${Math.round(hero.height)}), as cropped (#51)`);
     const cdp = await ctx.newCDPSession(page);
     const at = (x) => [{ x: hero.x + x, y: hero.y + hero.height / 2 }];
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(300) });
@@ -704,7 +792,8 @@ async function swipeLeft(ctx, page, locator) {
     const side = await page.evaluate(() => { const li = document.querySelector('.view.tab-active .page-current .ck-edit-list li:not(.ck-group-row)'); return li.querySelector('.sortable-handler').getBoundingClientRect().left - li.getBoundingClientRect().left > li.getBoundingClientRect().width / 2; });
     if (!side) throw new Error('drag handles are on the left');
   });
-  // a long press on a row picks it up: it turns pale Tomato (no grey pressed shade) while held and dragged
+  // a long press on a row picks it up: it lifts off the card, white with a soft shadow (no grey pressed shade, and not
+  // the pale Tomato that read as an error, #78) while held and dragged
   let holdCdp;
   await step('11d-row-held', async () => {
     const li = page.locator('.view.tab-active .page-current .ck-edit-list li:not(.ck-group-row)').nth(2);
@@ -714,9 +803,10 @@ async function swipeLeft(ctx, page, locator) {
     holdCdp = await ctx.newCDPSession(page);
     await holdCdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + 120, y: box.y + box.height / 2 }] });
     await page.waitForTimeout(900);
-    const held = await li.evaluate((e) => ({ sorting: e.classList.contains('sorting'), bg: getComputedStyle(e).backgroundColor, tint: getComputedStyle(e).getPropertyValue('--ck-accent-tint'), link: getComputedStyle(e.querySelector('.item-link')).backgroundColor }));
+    const held = await li.evaluate((e) => ({ sorting: e.classList.contains('sorting'), bg: getComputedStyle(e).backgroundColor, shadow: getComputedStyle(e).boxShadow, link: getComputedStyle(e.querySelector('.item-link')).backgroundColor }));
     if (!held.sorting) throw new Error('long press did not pick the row up');
     if (held.bg === before) throw new Error('held row looks the same as the others');
+    if (held.bg !== 'rgb(255, 255, 255)' || held.shadow === 'none') throw new Error(`held row isn't lifted (white with a shadow): ${held.bg}, ${held.shadow}`);
     if (held.link !== 'rgba(0, 0, 0, 0)') throw new Error(`held row keeps the pressed shade (${held.link})`);
   });
   if (holdCdp) {
@@ -1925,6 +2015,43 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.locator(`${CUR} .ck-shelf`).count()) throw new Error('the shelves stay while searching');
     await field.fill(''); await field.blur(); await page.waitForTimeout(500);
   });
+  // Issue #95: a cookbook sorts too, from its own Sort button (as on Recipes). Manual, the cookbook's own order, is the
+  // default; a sort orders every shelf (and the sections' pages), says so in the header's count, and is remembered.
+  const meatShelf = () => page.locator(`${CUR} .ck-shelf`, { hasText: 'Meat' }).locator('.ck-shelf-row .ck-card-title').allTextContents();
+  const manualMeat = await meatShelf();
+  await step('95a-cookbook-sort-sheet', async () => {
+    await page.locator(`${CUR} > .navbar a[aria-label="Sort recipes"]`).tap(); await page.waitForTimeout(700);
+    const items = await page.locator('.actions-modal.modal-in .actions-button').allTextContents();
+    if (items.join('|') !== 'Manual (as organized)|Newest first|Oldest first|A–Z|Cancel') throw new Error(`the cookbook's sort sheet is ${JSON.stringify(items)}`);
+    const on = await page.locator('.actions-modal.modal-in .actions-button-strong').first().textContent();
+    if (on !== 'Manual (as organized)') throw new Error(`the cookbook starts sorted "${on}", not by hand`);
+  });
+  await step('95b-cookbook-sorted-az', async () => {
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'A–Z' }).tap(); await page.waitForTimeout(900);
+    const az = await meatShelf();
+    const expected = [...manualMeat].sort((a, b) => a.localeCompare(b));
+    if (az.join() !== expected.join() || az.join() === manualMeat.join()) throw new Error(`sorted A–Z, the Meat shelf is ${JSON.stringify(az)} (by hand ${JSON.stringify(manualMeat)})`);
+    const meta = await page.locator(`${CUR} .ck-book-hero-meta`).textContent();
+    if (!meta.includes('6 recipes · 2 sections · A–Z')) throw new Error(`sorted, the header's count reads "${meta}"`);
+    // remembered: still A–Z after a reload
+    await page.reload(); await page.waitForTimeout(2000);
+    await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(900);
+    await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Everything else' }).tap(); await page.waitForTimeout(1000);
+    if ((await meatShelf()).join() !== expected.join()) throw new Error('the cookbook’s sort was not remembered');
+    // a section's page is sorted the same way, and says so
+    await page.locator(`${CUR} .ck-shelf`, { hasText: 'Meat' }).locator('.ck-shelf-all').tap(); await page.waitForTimeout(1000);
+    if ((await cards()).join() !== expected.join()) throw new Error(`the section isn't sorted A–Z: ${JSON.stringify(await cards())}`);
+    const note = await page.locator(`${CUR} .ck-count`).textContent();
+    if (!note.includes('3 recipes · A–Z')) throw new Error(`the section's count reads "${note}"`);
+    await page.locator(`${CUR} > .navbar .link.back`).tap(); await page.waitForTimeout(900);
+  });
+  await step('95c-cookbook-sorted-manual', async () => {
+    await page.locator(`${CUR} > .navbar a[aria-label="Sort recipes"]`).tap(); await page.waitForTimeout(700);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Manual' }).tap(); await page.waitForTimeout(900);
+    if ((await meatShelf()).join() !== manualMeat.join()) throw new Error(`back to Manual, the Meat shelf is ${JSON.stringify(await meatShelf())}`);
+    const meta = await page.locator(`${CUR} .ck-book-hero-meta`).textContent();
+    if (meta.includes('·') && /Manual|A–Z|first/.test(meta)) throw new Error(`in its own order, the count still names a sort: "${meta}"`);
+  });
   await step('26d-section-page', async () => {
     await page.locator(`${CUR} .ck-shelf`, { hasText: 'Meat' }).locator('.ck-shelf-all').tap(); await page.waitForTimeout(1000);
     const sub = await page.locator('.view.tab-active .page-current > .navbar .subtitle').textContent();
@@ -2362,12 +2489,38 @@ async function swipeLeft(ctx, page, locator) {
   await step('67d-planner-add-note', async () => {
     await page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] .ck-plan-add`).tap(); await page.waitForTimeout(700);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'A note' }).tap();
-    await page.waitForSelector('.dialog.modal-in input');
-    await page.locator('.dialog.modal-in input').fill('Leftovers for lunch');
+    await page.waitForSelector('.ck-note-popup.modal-in textarea');
+    // issue #74: its own screen with a big field, focused (the keyboard up), that keeps line breaks
+    const field = page.locator('.ck-note-popup.modal-in textarea');
+    if (!(await field.evaluate((t) => document.activeElement === t))) throw new Error('the note field isn’t focused');
+    const tall = (await field.boundingBox()).height;
+    if (tall < 150) throw new Error(`the note field is ${Math.round(tall)}px tall`);
+    if (!(await page.locator('.ck-note-popup .title').textContent()).startsWith('Note for ')) throw new Error('the note screen isn’t titled Note for …');
+    if (await page.locator('.ck-note-popup .ck-note-remove').count()) throw new Error('a new note offers Remove Note');
+    await field.fill('Leftovers for lunch');
   });
   await step('67e-planner-note-added', async () => {
-    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(900);
+    await page.locator('.ck-note-popup .ck-nav-primary', { hasText: 'Save' }).tap(); await page.waitForTimeout(900);
     if (!(await rowsOn(today0)).includes('Leftovers for lunch')) throw new Error(`today shows ${JSON.stringify(await rowsOn(today0))}`);
+    // the note's square is the design's soft grey with a muted icon, not butter
+    const icon = await page.locator(`${PLAN} li.ck-plan-note .ck-plan-note-icon`).first().evaluate((e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).color]);
+    if (icon.join() !== 'rgb(236, 236, 238),rgb(110, 110, 115)') throw new Error(`a note's icon is ${icon.join(' on ')}`);
+  });
+  // issue #74: tapping a note opens it to change: a longer note, over several lines, kept as written
+  await step('67e2-planner-note-edit', async () => {
+    await page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] li.ck-plan-note`, { hasText: 'Leftovers' }).locator('a.item-link').tap();
+    await page.waitForSelector('.ck-note-popup.modal-in textarea');
+    const field = page.locator('.ck-note-popup.modal-in textarea');
+    if ((await field.inputValue()) !== 'Leftovers for lunch') throw new Error(`the note opened as "${await field.inputValue()}"`);
+    if (!(await page.locator('.ck-note-popup.modal-in .ck-note-remove').count())) throw new Error('no Remove Note');
+    await field.fill('Leftovers for lunch\nThe rest of the chili, with rice from Sunday. Use up the cilantro before it goes.');
+    await page.waitForTimeout(300);
+  });
+  await step('67e3-planner-note-long', async () => {
+    await page.locator('.ck-note-popup .ck-nav-primary', { hasText: 'Save' }).tap(); await page.waitForTimeout(900);
+    const row = page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] li.ck-plan-note`, { hasText: 'Leftovers' });
+    const tall = await row.locator('.item-title').evaluate((t) => Math.round(t.getBoundingClientRect().height));
+    if (tall < 60) throw new Error(`the long note shows in ${tall}px, as if on one line`);
   });
   // swipe → Meal puts it in a slot
   await step('67f-planner-meal-sheet', async () => {
@@ -2971,6 +3124,67 @@ async function swipeLeft(ctx, page, locator) {
     if (await pg.locator('.ck-week-busy').count()) throw new Error('dots on the strip while loading');
   });
 
+  // the launch loader (index.html): the pot whose lid rattles while the app starts. Checks leave it out unless asked
+  // with ?loader, which also keeps it on screen
+  await step('37a-launch-loader', async () => {
+    await page.goto(`${BASE}?loader`); await page.waitForTimeout(1500);
+    if (!(await page.locator('#ck-launch .ck-launch-lid').isVisible())) throw new Error('the launch loader isn’t showing');
+    // the lid rocks in two layers (one per hinge): count the poses of both together
+    const lid = () => page.locator('#ck-launch .ck-launch-lid').evaluate((el) => getComputedStyle(el).transform + getComputedStyle(el.firstElementChild).transform);
+    const seen = new Set();
+    for (let i = 0; i < 12; i++) { seen.add(await lid()); await page.waitForTimeout(90); }
+    if (seen.size < 3) throw new Error('the lid isn’t moving');
+  });
+  await step('37b-launch-loader-gone', async () => {
+    await page.goto(BASE); await page.waitForTimeout(1200);
+    if (await page.locator('#ck-launch').count()) throw new Error('the launch loader is still in the page');
+  });
+  // The home-screen app's page starts out shorter than the screen and grows a moment later: the pot must stay where
+  // iOS's launch image has it (laid out on the full screen) the whole time, not draw higher and then drop.
+  await step('37c-launch-loader-holds-still', async () => {
+    const screenSize = { width: 393, height: 852 };
+    const appCtx = await browser.newContext({ viewport: { width: 393, height: 800 }, screen: screenSize });
+    await appCtx.addInitScript(() => Object.defineProperty(Navigator.prototype, 'standalone', { get: () => true }));
+    const app = await appCtx.newPage();
+    try {
+      await app.goto(`${BASE}?loader`); await app.waitForTimeout(600);
+      const top = async () => (await app.locator('#ck-launch .ck-launch-stage').boundingBox()).y;
+      const short = await top();
+      await app.setViewportSize(screenSize); await app.waitForTimeout(300);
+      const full = await top();
+      const plain = await browser.newPage({ viewport: screenSize }); // the launch image's layout: the full screen
+      await plain.goto(`${BASE}?loader`); await plain.waitForTimeout(600);
+      const image = (await plain.locator('#ck-launch .ck-launch-stage').boundingBox()).y;
+      await plain.close();
+      if (Math.abs(short - image) > 0.5 || Math.abs(full - image) > 0.5) {
+        throw new Error(`the pot moves: ${short.toFixed(1)} while the page is short, ${full.toFixed(1)} once it's full height, ${image.toFixed(1)} in the launch image`);
+      }
+    } finally {
+      await appCtx.close();
+    }
+  });
+  // ...and the loader stays until the page has grown to the screen's height, so the app never shows laid out short
+  // (its tab bar floating above the bottom with white below, as on the phone)
+  await step('37d-launch-loader-waits-for-full-height', async () => {
+    const screenSize = { width: 393, height: 852 };
+    const appCtx = await browser.newContext({ viewport: { width: 393, height: 800 }, screen: screenSize });
+    await appCtx.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, 'standalone', { get: () => true });
+      Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false }); // the loader as on the phone
+    });
+    const app = await appCtx.newPage();
+    try {
+      await app.goto(BASE); await app.waitForTimeout(1200); // the recipes are there by now; the page is still short
+      if (!(await app.locator('#ck-launch').count())) throw new Error('the loader went while the page was still short');
+      await app.setViewportSize(screenSize); await app.waitForTimeout(400);
+      if (await app.locator('#ck-launch').count()) throw new Error('the loader stayed after the page reached full height');
+      const bottom = await app.evaluate(() => document.querySelector('.view.tab-active .toolbar, .tabbar').getBoundingClientRect().bottom);
+      if (Math.abs(bottom - screenSize.height) > 1) throw new Error(`the tab bar ends at ${bottom}, not the screen's bottom`);
+    } finally {
+      await appCtx.close();
+    }
+  });
+
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)
   await step('19-sign-in', async () => {
     await page.goto(`${BASE}?signin`);
@@ -2979,6 +3193,9 @@ async function swipeLeft(ctx, page, locator) {
     // one grey page, not a white band behind the content (Framework7 paints login screen content white)
     const bgs = await page.evaluate(() => [...new Set([...document.querySelectorAll('.login-screen, .login-screen .page, .login-screen .page-content')].map((e) => getComputedStyle(e).backgroundColor).filter((c) => c !== 'rgba(0, 0, 0, 0)'))]);
     if (bgs.length !== 1) throw new Error(`sign-in screen has ${bgs.length} background colours: ${bgs.join(', ')}`);
+    // it fits: nothing to scroll, so it can't be dragged up and down with the icon cut off at the top (in Safari it was)
+    const overflow = await page.locator('.login-screen.modal-in .page-content').evaluate((el) => el.scrollHeight - el.clientHeight);
+    if (overflow > 1) throw new Error(`the sign-in screen scrolls (its content is ${overflow}px taller than its box)`);
   });
   await step('19b-signed-in', async () => {
     await page.locator('.ck-signin-button').tap();

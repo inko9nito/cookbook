@@ -90,11 +90,13 @@ describe('recipes in the database', () => {
 describe('settings', () => {
   test('defaults, then remembered (R1, R2)', async () => {
     const groceries = { groceryStores: [], groceryStore: '', groceryView: 'aisle', groceryAisles: {} };
-    expect(await getSettings(db.sql)).toEqual({ sort: 'newest', filterTags: [], filterMode: 'all', cookbookView: 'grid', ...groceries });
+    expect(await getSettings(db.sql)).toEqual({ sort: 'newest', filterTags: [], filterMode: 'all', cookbookView: 'grid', cookbookSorts: {}, ...groceries });
     await saveSettings(db.sql, { sort: 'az' });
-    expect(await saveSettings(db.sql, { filterTags: ['soup'], filterMode: 'any' })).toEqual({ sort: 'az', filterTags: ['soup'], filterMode: 'any', cookbookView: 'grid', ...groceries });
+    expect(await saveSettings(db.sql, { filterTags: ['soup'], filterMode: 'any' })).toEqual({ sort: 'az', filterTags: ['soup'], filterMode: 'any', cookbookView: 'grid', cookbookSorts: {}, ...groceries });
     // the Cookbooks tab's tiles or list (#25) is remembered the same way
     expect((await saveSettings(db.sql, { cookbookView: 'list' })).cookbookView).toBe('list');
+    // and each cookbook's sort (#95)
+    expect((await saveSettings(db.sql, { cookbookSorts: { b1: 'az' } })).cookbookSorts).toEqual({ b1: 'az' });
     // issue #64: the grocery list's stores, view and aisles picked for things
     const stores = [{ name: 'Acme Market', slug: 'acme-market' }];
     const saved = await saveSettings(db.sql, { groceryStores: stores, groceryStore: 'acme-market', groceryView: 'recipe', groceryAisles: { 'greek yogurt': 'other' } });
@@ -104,5 +106,6 @@ describe('settings', () => {
   test('unknown settings are refused', async () => {
     await expect(saveSettings(db.sql, { sort: 'sideways' } as never)).rejects.toThrow();
     await expect(saveSettings(db.sql, { color: 'red' } as never)).rejects.toThrow();
+    await expect(saveSettings(db.sql, { cookbookSorts: { b1: 'sideways' } } as never)).rejects.toThrow();
   });
 });

@@ -7,6 +7,7 @@ import { CalendarSearch, ChefHat, NotebookPen, Plus, ShoppingCart } from 'lucide
 import WeekStrip from '../components/WeekStrip';
 import RecipePickerPopup from '../components/RecipePickerPopup';
 import { ShopWeekPopup } from '../components/AddGroceriesPopup';
+import NotePopup, { openNote } from '../components/NotePopup';
 import { PlannerRowsSkeleton } from '../components/ui/Skeletons';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { pickDay } from '../components/ui/pickDay';
@@ -61,6 +62,8 @@ export default function PlanPage() {
   const [addMeal, setAddMeal] = useState<Meal | null>(null);
   const [slotFor, setSlotFor] = useState<Planned | null>(null);
   const [shopping, setShopping] = useState(false);
+  // issue #74: the note being written: a new one for `addingTo`, or one already planned
+  const [noteFor, setNoteFor] = useState<{ day: Day; planned?: Planned }>({ day: now });
   const loading = (recipesLoading || plannedLoading) && !loadError;
 
   const byId = new Map(recipes.map((r) => [r.id, r]));
@@ -142,18 +145,20 @@ export default function PlanPage() {
     setAddMeal(null);
     setAdding(true);
   };
-  const addNote = () =>
-    f7.dialog.prompt(`Like “Eating out” or “Leftovers”.`, `Note for ${mediumDate(addingTo)}`, (text: string) => {
-      if (text.trim()) savePlanned(planNote(text, addingTo, newId));
-    });
-  const editNote = (p: Planned) =>
-    f7.dialog.prompt(
-      'Change the note, or clear it to take it off the day.',
-      `Note for ${mediumDate(p.day)}`,
-      (text: string) => (text.trim() ? savePlanned({ ...p, note: text.trim() }) : deletePlanned(p.id)),
-      undefined,
-      p.note,
-    );
+  // issue #74: a note is written in its own screen with a big field (NotePopup), opened and focused in the tap itself so
+  // the keyboard comes up
+  const addNote = () => {
+    setNoteFor({ day: addingTo });
+    openNote();
+  };
+  const editNote = (p: Planned) => {
+    setNoteFor({ day: p.day, planned: p });
+    openNote();
+  };
+  const saveNote = (text: string) => {
+    const p = noteFor.planned;
+    savePlanned(p ? { ...p, note: text } : planNote(text, noteFor.day, newId));
+  };
   const move = (p: Planned) =>
     pickDay({
       title: 'Move to which day?',
@@ -309,6 +314,12 @@ export default function PlanPage() {
       </Actions>
 
       <ShopWeekPopup opened={shopping} day={selected} onClosed={() => setShopping(false)} />
+      <NotePopup
+        title={`Note for ${mediumDate(noteFor.day)}`}
+        note={noteFor.planned?.note ?? ''}
+        onSave={saveNote}
+        onRemove={noteFor.planned ? () => deletePlanned(noteFor.planned!.id) : undefined}
+      />
 
       <RecipePickerPopup
         mode="several"

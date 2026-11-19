@@ -2,17 +2,9 @@
 
 import type { Config, Context } from '@netlify/functions';
 import { getDatabase } from '@netlify/database';
-import { getStore } from '@netlify/blobs';
 import { ZodError } from 'zod';
-import { deleteRecipe, listRecipes, photoKeys, saveRecipe } from '../lib/recipes';
-import { error, isProduction, json, refuseUnlessAdmin } from '../lib/http';
-
-/** Delete stored photos the recipe no longer uses (only on the production deploy; see isProduction). */
-async function dropPhotos(keys: string[], context: Context) {
-  if (!keys.length || !isProduction(context)) return;
-  const photos = getStore('photos');
-  await Promise.all(keys.map((k) => photos.delete(k).catch(() => undefined)));
-}
+import { deleteRecipe, listRecipes, saveRecipe } from '../lib/recipes';
+import { error, json, refuseUnlessAdmin } from '../lib/http';
 
 export default async (req: Request, context: Context) => {
   const refused = await refuseUnlessAdmin(req);
@@ -26,15 +18,13 @@ export default async (req: Request, context: Context) => {
     if (req.method === 'PUT' && id) {
       const body = await req.json();
       if (body?.id !== id) return error(400, 'The recipe id doesn’t match the address.');
-      const { saved, previous } = await saveRecipe(sql, body);
-      const kept = new Set(photoKeys(saved));
-      await dropPhotos(photoKeys(previous).filter((k) => !kept.has(k)), context);
+      // photos it stops using aren't deleted here: the daily clean-up does that a month later (photo-cleanup.mts)
+      const { saved } = await saveRecipe(sql, body);
       return json(saved);
     }
 
     if (req.method === 'DELETE' && id) {
-      const gone = await deleteRecipe(sql, id);
-      await dropPhotos(photoKeys(gone), context);
+      await deleteRecipe(sql, id); // its photos go with the daily clean-up, a month later
       return new Response(null, { status: 204 });
     }
 

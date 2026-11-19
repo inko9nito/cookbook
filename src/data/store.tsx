@@ -10,7 +10,7 @@ import { del, get, set } from 'idb-keyval';
 import { f7 } from 'framework7-react';
 import { ApiError, backend, demoSlow, isDemo } from './api';
 import { useAuth } from './auth';
-import { Settings, type Recipe, type SortKey } from '../lib/recipe';
+import { Settings, type CookbookSort, type Recipe, type SortKey } from '../lib/recipe';
 import type { Cookbook } from '../lib/cookbook';
 import type { Planned } from '../lib/planner';
 import type { GroceryItem } from '../lib/groceries';
@@ -80,8 +80,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Rendered once, in the app: when the API turns this account away (no admin role), or the sign-in has run
- * out, go back to the sign-in screen and forget the cached recipes.
+ * Rendered once, in the app: when the API turns this account away (no admin role), or Identity refused to renew the
+ * sign-in, go back to the sign-in screen and forget the cached recipes. Nothing else signs out (#114): a 401 or 404
+ * from the server, a failing Identity or a bad connection is an error to try again, with the cached recipes on screen.
  */
 export function SessionGuard() {
   const auth = useAuth();
@@ -89,8 +90,8 @@ export function SessionGuard() {
   const recipesQuery = useQuery({ queryKey: RECIPES, queryFn: fetchRecipes, enabled });
   const settingsQuery = useQuery({ queryKey: SETTINGS, queryFn: backend.getSettings, enabled });
   const errors = [recipesQuery.error, settingsQuery.error];
-  const refusal = errors.find((e) => e instanceof ApiError && e.status !== 401 && e.status < 500) as ApiError | undefined;
-  const expired = errors.some((e) => e instanceof ApiError && e.status === 401);
+  const refusal = errors.find((e) => e instanceof ApiError && e.status === 403) as ApiError | undefined;
+  const expired = errors.some((e) => e instanceof ApiError && e.signedOut);
   useEffect(() => {
     if (refusal) clearCache().then(() => auth.refuse(refusal.message));
     else if (expired) clearCache().then(() => auth.refuse('Your sign-in ran out. Sign in again.'));
@@ -173,6 +174,16 @@ export function useStore() {
     setSort: (sort: SortKey) => changeSettings.mutate({ sort }),
     setFilter: (filterTags: string[], filterMode = settings.filterMode) => changeSettings.mutate({ filterTags, filterMode }),
     setCookbookView: (cookbookView: Settings['cookbookView']) => changeSettings.mutate({ cookbookView }),
+    /** issue #95: a cookbook's sort, its manual order unless one was picked */
+    cookbookSort: (cookbookId: string): CookbookSort => settings.cookbookSorts[cookbookId] ?? 'manual',
+    setCookbookSort: (cookbookId: string, sort: CookbookSort) => {
+      // from the latest settings (not this render's), leaving out cookbooks deleted since; manual needs no entry
+      const now = (qc.getQueryData<Settings>(SETTINGS) ?? settings).cookbookSorts;
+      const books = qc.getQueryData<Cookbook[]>(COOKBOOKS);
+      const cookbookSorts = Object.fromEntries(Object.entries(now).filter(([id]) => id !== cookbookId && (!books || books.some((c) => c.id === id))));
+      if (sort !== 'manual') cookbookSorts[cookbookId] = sort;
+      changeSettings.mutate({ cookbookSorts });
+    },
     /** issue #64: any of the grocery list's settings (stores, the store it's shopping at, its view, aisles picked) */
     changeSettings: (patch: Partial<Settings>) => changeSettings.mutate(patch),
   };

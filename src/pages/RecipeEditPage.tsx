@@ -291,9 +291,10 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
     // one photo: straight to cropping it; several: each is centre-cropped, crop any of them after
     if (added.length === 1) setCropping(added[0]);
   };
-  const applyCrop = async (box: NonNullable<Photo['crop']>) => {
+  const applyCrop = async (box: NonNullable<Photo['crop']>, rotated?: string) => {
     if (!cropping) return;
-    const next = await recrop(cropping, box);
+    // issue #59: a photo turned in the cropper keeps the turned one as its original, so a later crop starts from it
+    const next = await recrop(rotated ? { ...cropping, original: rotated } : cropping, box);
     setDraft((d) => ({ ...d, photos: d.photos.map((p) => (p.id === next.id ? next : p)) }));
     setCropping(null);
   };
@@ -324,7 +325,7 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
           : 'Something went wrong. Try again, or update the app in Settings → Version.';
     setScan({ status: 'failed', message });
   };
-  // issue #15: the page's recipe, its link kept as the source, its photo added (cropped to 4:3, to recrop if needed)
+  // issue #15: the page's recipe, its link kept as the source, its photo added (cropped square, to recrop if needed)
   const readLink = async (link: string) => {
     setScan({ status: 'reading' });
     try {
@@ -777,7 +778,7 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
         />
       </List>
 
-      <PhotoCropper photo={cropping} onDone={(box) => void applyCrop(box)} onClose={() => setCropping(null)} />
+      <PhotoCropper photo={cropping} onDone={(box, rotated) => void applyCrop(box, rotated)} onClose={() => setCropping(null)} />
       <IngredientSheet
         ingredient={editingIngredient && editingIngredient.kind !== 'header' ? editingIngredient : null}
         linkedTitle={editingIngredient ? linkedRecipe(editingIngredient, recipes)?.title : undefined}

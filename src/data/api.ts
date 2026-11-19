@@ -11,7 +11,7 @@ import { LinkReading, ReadRecipe, type ReadRequest } from '../lib/read-recipe';
 import {
   demoCookbooks as demoCookbooksSeed, demoGroceries as demoGroceriesSeed, demoPlanned as demoPlannedSeed, demoRecipes as demoRecipesSeed, demoStores,
 } from '../demo/data';
-import { accessToken, SignedOutError } from './identity';
+import { accessToken, currentUser, SignedOutError } from './identity';
 
 export type Backend = {
   listRecipes: () => Promise<Recipe[]>;
@@ -54,11 +54,15 @@ export type Backend = {
   correctGroceryName: (name: Omit<GroceryName, 'by'>) => Promise<GroceryName>;
 };
 
-/** A refusal from the API, with its status (401 signed out, 403 not an admin). */
+/**
+ * A refusal from the API, with its status (403 not an admin). `signedOut` is set only when Identity refused to renew
+ * the sign-in: the one case that signs you out (#114). Anything else, a 401 included, is an error to try again.
+ */
 export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public signedOut = false,
   ) {
     super(message);
   }
@@ -69,23 +73,28 @@ export const isDemo =
 
 // ── the API ──
 
-/** The sign-in as a request header (identity.ts); a refused renewal reads as signed out (401). */
-async function authHeader(force = false): Promise<Record<string, string>> {
+/** The sign-in's access token (identity.ts), or null offline; a refused renewal is the one way to be signed out. */
+async function bearer(force = false): Promise<string | null> {
+  const signedOut = () => new ApiError(401, 'Your sign-in ran out. Sign in again.', true);
+  // gone from the phone: a renewal elsewhere in the app was refused (gotrue-js then clears it)
+  if (!currentUser()) throw signedOut();
   try {
-    const token = await accessToken(force);
-    return token ? { authorization: `Bearer ${token}` } : {};
+    return await accessToken(force);
   } catch (e) {
-    if (e instanceof SignedOutError) throw new ApiError(401, 'Your sign-in ran out. Sign in again.');
+    if (e instanceof SignedOutError) throw signedOut();
     throw e;
   }
 }
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const send = async (force = false) =>
-    fetch(path, { ...init, headers: { ...(init.headers as Record<string, string>), ...(await authHeader(force)) } });
-  let res = await send();
+  const send = (token: string | null) =>
+    fetch(path, { ...init, headers: { ...(init.headers as Record<string, string>), ...(token ? { authorization: `Bearer ${token}` } : {}) } });
+  let token = await bearer();
+  let res = await send(token);
   // a token Identity no longer accepts: renew it once and try again
-  if (res.status === 401) res = await send(true);
+  if (res.status === 401) res = await send((token = await bearer(true)));
+  // no token to send: the renewal couldn't reach Identity (a bad connection), which isn't being signed out (#114)
+  if (res.status === 401 && !token) throw new ApiError(503, 'Couldn’t renew your sign-in. Check your connection and try again.');
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new ApiError(res.status, body?.error ?? `The server said ${res.status}.`);

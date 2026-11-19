@@ -7,6 +7,9 @@
 //   needs it and whenever the app comes back to the front.
 // - A renewal that fails because there's no connection doesn't sign you out (gotrue-js would): the kitchen may be
 //   offline, and the recipes are cached.
+// - Signing out only forgets the sign-in on this phone (in this copy of the app). It never tells Identity to log out:
+//   Identity's logout ends every sign-in the account has, on every phone, in the home-screen app and on every deploy
+//   preview, each of which then showed "Your sign-in ran out" within the hour (#114).
 
 import GoTrue, { type User } from 'gotrue-js';
 
@@ -130,7 +133,11 @@ export async function finishSignIn(params: URLSearchParams): Promise<User> {
   );
 }
 
+/**
+ * Forget the sign-in on this phone. Not gotrue-js's logout(): that asks Identity to end every sign-in of the account,
+ * everywhere (#114). This copy's refresh token is simply dropped; it can't be used without being on the phone.
+ */
 export async function signOut() {
-  const user = currentUser();
-  await user?.logout().catch(() => user.clearSession());
+  currentUser()?.clearSession();
+  localStorage.removeItem(SESSION_KEY);
 }

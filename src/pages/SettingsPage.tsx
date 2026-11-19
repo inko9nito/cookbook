@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { Page, Navbar, NavTitle, List, ListItem, Link, Block, Button, f7 } from 'framework7-react';
+import { Page, Navbar, NavTitle, List, ListItem, Link, Block, f7 } from 'framework7-react';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAuth } from '../data/auth';
 import { clearCache } from '../data/store';
@@ -43,7 +43,7 @@ export default function SettingsPage() {
     setTimeout(() => setRefreshing(false), 30000);
     updateApp({
       beforeReload: async () => {
-        reopenOnTab('settings');
+        reopenOnTab('settings'); // also tells index.html to leave out the cooking pot as the app comes back (#127)
         await shortest;
       },
     });
@@ -80,15 +80,15 @@ export default function SettingsPage() {
         <ListItem link="/settings/prepear/" title="Import" />
         <ListItem link="/settings/style-guide/" title="Appearance" />
       </List>
-      {/* the build running, on the page rather than in a card: tapping it copies it; the round refresh button beside it
+      {/* the build running, on the page rather than in a card: tapping it copies it; the refresh icon beside it
           brings in a newer one and reloads the app (issues #48, #91, #128) */}
       <Block className="ck-version">
         <span className="ck-version-text" role="button" tabIndex={0} onClick={copyVersion} onKeyDown={(e) => e.key === 'Enter' && copyVersion()}>
           {appVersion()}
         </span>
-        <Button raised round className="ck-refresh-button" aria-label="Refresh the app" onClick={refreshApp}>
+        <Link iconOnly className="ck-refresh-button" aria-label="Refresh the app" onClick={refreshApp}>
           <RefreshCw {...inlineIcon} className={`ck-icon ck-refresh ${refreshing ? 'ck-spinning' : ''}`} aria-hidden="true" />
-        </Button>
+        </Link>
       </Block>
     </Page>
   );

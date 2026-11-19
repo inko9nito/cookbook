@@ -1309,8 +1309,9 @@ async function swipeLeft(ctx, page, locator) {
     if (t.cards.join(' | ') !== 'demo@example.com | Import+Appearance') throw new Error(`Settings cards read ${JSON.stringify(t.cards)}`);
     if (t.footers) throw new Error(`Settings has ${t.footers} footers, expected none`);
     if (t.versionInList) throw new Error('the version is still in a card');
-    if (!t.button) throw new Error('no refresh button beside the version');
-    if (t.button.bg !== 'rgb(255, 255, 255)' || t.button.shadow === 'none' || t.button.w !== t.button.h || parseFloat(t.button.radius) < t.button.w / 2) throw new Error(`the refresh button isn't a round white raised button: ${JSON.stringify(t.button)}`);
+    if (!t.button) throw new Error('no refresh icon beside the version');
+    if (t.button.bg !== 'rgba(0, 0, 0, 0)' || t.button.shadow !== 'none') throw new Error(`the refresh icon has a button shape around it: ${JSON.stringify(t.button)}`);
+    if (Math.min(t.button.w, t.button.h) < 44) throw new Error(`the refresh icon's tap target is ${t.button.w}×${t.button.h}px`);
     if (t.button.middle > 2) throw new Error(`the refresh button is ${t.button.middle}px off the version's line`);
     // Account is one row: the address, then Sign Out in red at its end
     const acct = await page.evaluate(() => {
@@ -3515,6 +3516,21 @@ async function swipeLeft(ctx, page, locator) {
     } finally {
       await appCtx.close();
     }
+  });
+
+  // issue #127: after Settings' refresh the app comes back without the cooking pot (the refresh marks the tab to come
+  // back to, and index.html reads that mark): just the plain cover until the app is drawn, then Settings
+  await step('37e-launch-loader-quiet-after-refresh', async () => {
+    await page.goto(`${BASE}?loader`); await page.waitForTimeout(800);
+    if (!(await page.locator('#ck-launch .ck-launch-stage').isVisible())) throw new Error('the pot isn’t showing on an ordinary launch');
+    await page.evaluate(() => sessionStorage.setItem('ck-reopen-tab', 'settings'));
+    await page.reload(); await page.waitForTimeout(1200);
+    if (!(await page.locator('#ck-launch').count())) throw new Error('the loader’s cover is gone after the refresh');
+    if (await page.locator('#ck-launch .ck-launch-stage').isVisible()) throw new Error('the cooking pot shows after the app’s own refresh');
+    const active = await page.evaluate(() => document.querySelector('.view.tab-active')?.id);
+    if (active !== 'view-settings') throw new Error(`after the refresh the app opened on ${active}`);
+    await page.reload(); await page.waitForTimeout(1000);
+    if (!(await page.locator('#ck-launch .ck-launch-stage').isVisible())) throw new Error('the pot stays away on the next ordinary launch');
   });
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)

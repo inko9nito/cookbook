@@ -1217,15 +1217,15 @@ async function swipeLeft(ctx, page, locator) {
   // spins with no dialog or toast, then reloads the app back on Settings, even with nothing newer to get (issue #91:
   // the home-screen app has no other way to reload). A mark left on the page shows it really reloaded.
   await step('13b-settings-refresh-reloads', async () => {
-    const row = page.locator('.view.tab-active .page-current li.ck-version-row');
-    const version = await row.locator('.item-title').textContent();
+    const row = page.locator('.view.tab-active .page-current .ck-version');
+    const version = await row.locator('.ck-version-text').textContent();
     if (!/^\w{5,7} · /.test(version.trim())) throw new Error(`the version reads "${version}"`);
     await row.scrollIntoViewIfNeeded();
-    const target = await row.locator('.ck-refresh-link').evaluate((e) => { const r = e.getBoundingClientRect(); return [r.width, r.height]; });
+    const target = await row.locator('.ck-refresh-button').evaluate((e) => { const r = e.getBoundingClientRect(); return [r.width, r.height]; });
     if (Math.min(...target) < 44) throw new Error(`the refresh icon's tap target is ${target.join('×')}px`);
     await page.evaluate(() => { window.__ckNotReloaded = true; });
     const loaded = page.waitForEvent('load', { timeout: 15000 });
-    await row.locator('.ck-refresh-link').tap(); await page.waitForTimeout(200);
+    await row.locator('.ck-refresh-button').tap(); await page.waitForTimeout(200);
     const spinning = await row.locator('.ck-refresh.ck-spinning').count();
     const popups = await page.locator('.dialog.modal-in, .toast.modal-in').count();
     if (!spinning) throw new Error('the refresh icon does not spin while refreshing');
@@ -1240,9 +1240,9 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('13b2-settings-copy-version', async () => {
     await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(BASE).origin });
-    const row = page.locator('.view.tab-active .page-current li.ck-version-row');
-    const version = (await row.locator('.item-title').textContent()).trim();
-    await row.locator('.item-title').tap(); await page.waitForTimeout(400);
+    const row = page.locator('.view.tab-active .page-current .ck-version');
+    const version = (await row.locator('.ck-version-text').textContent()).trim();
+    await row.locator('.ck-version-text').tap(); await page.waitForTimeout(400);
     const toast = await page.locator('.toast.modal-in').textContent().catch(() => '');
     if (!/Version copied/.test(toast)) throw new Error(`tapping the version shows "${toast}", not a "Version copied" toast`);
     const copied = await page.evaluate(() => navigator.clipboard.readText());
@@ -1254,13 +1254,13 @@ async function swipeLeft(ctx, page, locator) {
   // site is made to say it serves another build; the next app load starts on Recipes again.
   await step('13b3-settings-refresh-stays', async () => {
     await page.route('**/version.json*', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 'fffffff', built: '2030-01-01T00:00:00.000Z' }) }));
-    const row = page.locator('.view.tab-active .page-current li.ck-version-row');
-    await Promise.all([page.waitForEvent('load', { timeout: 15000 }), row.locator('.ck-refresh-link').tap()]);
+    const row = page.locator('.view.tab-active .page-current .ck-version');
+    await Promise.all([page.waitForEvent('load', { timeout: 15000 }), row.locator('.ck-refresh-button').tap()]);
     await page.unroute('**/version.json*');
     await page.waitForTimeout(1200);
     const active = await page.evaluate(() => [document.querySelector('.view.tab-active')?.id, document.querySelector('.tabbar .tab-link-active')?.getAttribute('aria-label')]);
     if (active.join() !== 'view-settings,Settings') throw new Error(`after the update the app opened on ${active.join(' / ')}`);
-    if (!(await page.locator('#view-settings .page-current li.ck-version-row').isVisible())) throw new Error('the Version row is not on screen after the update');
+    if (!(await page.locator('#view-settings .page-current .ck-version').isVisible())) throw new Error('the Version row is not on screen after the update');
     await page.reload(); await page.waitForTimeout(1200);
     const later = await page.evaluate(() => document.querySelector('.view.tab-active')?.id);
     if (later !== 'view-recipes') throw new Error(`opening the app again started on ${later}, not Recipes`);
@@ -1274,11 +1274,11 @@ async function swipeLeft(ctx, page, locator) {
     ['13b5-settings-refresh-registration-hangs', () => { navigator.serviceWorker.getRegistration = () => new Promise(() => {}); }],
   ]) {
     await step(name, async () => {
-      const row = page.locator('.view.tab-active .page-current li.ck-version-row');
+      const row = page.locator('.view.tab-active .page-current .ck-version');
       await page.evaluate(hang);
       await page.evaluate(() => { window.__ckNotReloaded = true; });
       const loaded = page.waitForEvent('load', { timeout: 12000 });
-      await row.locator('.ck-refresh-link').tap();
+      await row.locator('.ck-refresh-button').tap();
       await loaded.catch(() => { throw new Error('with the service worker not answering, the refresh icon never reloaded the app'); });
       await page.waitForTimeout(1200);
       if (await page.evaluate(() => window.__ckNotReloaded)) throw new Error('the app was not reloaded');
@@ -1286,20 +1286,33 @@ async function swipeLeft(ctx, page, locator) {
       if (active !== 'view-settings') throw new Error(`after the refresh the app opened on ${active}`);
     });
   }
-  // every Settings group is a white card under its own title (rows outside the card once sat on the grey page)
+  // issue #128: no group titles; two white cards (the account; Import and Appearance), then the version on the page itself
+  // with a round white refresh button, no card
   await step('13c-settings-groups', async () => {
     const t = await page.evaluate(() => {
       const lists = [...document.querySelectorAll('.view.tab-active .page-current .list')];
+      const v = document.querySelector('.view.tab-active .page-current .ck-version');
+      const b = v?.querySelector('.ck-refresh-button');
       return {
         loose: lists.filter((l) => [...l.children].some((c) => c.tagName === 'LI' || c.classList.contains('item-content'))).length,
         notWhite: lists.filter((l) => getComputedStyle(l.querySelector('ul')).backgroundColor !== 'rgb(255, 255, 255)').length,
+        cards: lists.map((l) => [...l.querySelectorAll('li .item-title')].map((x) => x.textContent).join('+')),
         titles: [...document.querySelectorAll('.view.tab-active .page-current .block-title')].map((x) => x.textContent),
         footers: document.querySelectorAll('.view.tab-active .page-current .block-footer').length,
+        versionInList: !!v?.closest('.list'),
+        button: b && { bg: getComputedStyle(b).backgroundColor, shadow: getComputedStyle(b).boxShadow, radius: getComputedStyle(b).borderRadius, w: b.getBoundingClientRect().width, h: b.getBoundingClientRect().height,
+          right: v.getBoundingClientRect().right - b.getBoundingClientRect().right, middle: Math.abs((b.getBoundingClientRect().top + b.getBoundingClientRect().bottom) / 2 - (v.querySelector('.ck-version-text').getBoundingClientRect().top + v.querySelector('.ck-version-text').getBoundingClientRect().bottom) / 2) },
       };
     });
     if (t.loose || t.notWhite) throw new Error(`${t.loose + t.notWhite} Settings group(s) not in a white card`);
-    if (t.titles.join() !== 'Account,Import,Groceries,Version,Style Guide') throw new Error(`Settings group titles read ${JSON.stringify(t.titles)}`);
+    if (t.titles.length) throw new Error(`Settings still has group titles: ${JSON.stringify(t.titles)}`);
+    if (t.cards.join(' | ') !== 'demo@example.com | Import+Appearance') throw new Error(`Settings cards read ${JSON.stringify(t.cards)}`);
     if (t.footers) throw new Error(`Settings has ${t.footers} footers, expected none`);
+    if (t.versionInList) throw new Error('the version is still in a card');
+    if (!t.button) throw new Error('no refresh icon beside the version');
+    if (t.button.bg !== 'rgba(0, 0, 0, 0)' || t.button.shadow !== 'none') throw new Error(`the refresh icon has a button shape around it: ${JSON.stringify(t.button)}`);
+    if (Math.min(t.button.w, t.button.h) < 44) throw new Error(`the refresh icon's tap target is ${t.button.w}×${t.button.h}px`);
+    if (t.button.middle > 2) throw new Error(`the refresh button is ${t.button.middle}px off the version's line`);
     // Account is one row: the address, then Sign Out in red at its end
     const acct = await page.evaluate(() => {
       const li = document.querySelector('.view.tab-active .page-current li.ck-account-row'); const out = li?.querySelector('.ck-sign-out');
@@ -1316,7 +1329,7 @@ async function swipeLeft(ctx, page, locator) {
   });
   // Settings → Import from Prepear (issue #14): the peek bookmarklet to copy, then the steps
   await step('13d-prepear-import', async () => {
-    await page.locator('.view.tab-active .page-current a', { hasText: 'From Prepear' }).tap(); await page.waitForTimeout(800);
+    await page.locator('.view.tab-active .page-current a', { hasText: 'Import' }).tap(); await page.waitForTimeout(800);
     const href = await page.locator('.view.tab-active .page-current a.ck-bookmarklet').getAttribute('href');
     if (!href || !href.startsWith('javascript:(function')) throw new Error(`the drag link's address is ${String(href).slice(0, 40)}`);
   });
@@ -1391,7 +1404,11 @@ async function swipeLeft(ctx, page, locator) {
   });
   await page.locator('.navbar-current .link.back, .view.tab-active .page-current .navbar .link.back').first().tap(); await page.waitForTimeout(900);
   await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
-  await step('14-style-guide', async () => { await page.locator('.view.tab-active .page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(800); });
+  await step('14-style-guide', async () => {
+    await page.locator('.view.tab-active .page-current a', { hasText: 'Appearance' }).tap(); await page.waitForTimeout(800);
+    const title = (await page.locator('.view.tab-active .page-current .navbar .title').textContent()).trim();
+    if (title !== 'Appearance') throw new Error(`Settings → Appearance opened "${title}"`);
+  });
   for (const tab of ['Cookbooks', 'Plan', 'Groceries']) {
     await step(`15-tab-${tab.toLowerCase()}`, async () => {
       // hold a finger on the tab first: the tab bar must not swell under it (Framework7's iOS 26 touch highlight is off)
@@ -2408,7 +2425,7 @@ async function swipeLeft(ctx, page, locator) {
   await step('26l-tabs-back', async () => {
     await page.goto(BASE); await page.waitForTimeout(1200);
     await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(800);
-    await page.locator('#view-settings .page-current a', { hasText: 'Cookbook' }).tap(); await page.waitForTimeout(900);
+    await page.locator('#view-settings .page-current a', { hasText: 'Appearance' }).tap(); await page.waitForTimeout(900);
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(800);
     await page.locator('#view-cookbooks .page-current .ck-book-tile', { hasText: 'Everything else' }).tap(); await page.waitForTimeout(900);
     const settingsPages = await page.locator('#view-settings > .page').count();
@@ -3349,12 +3366,20 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('#view-plan .page-current > .navbar a[aria-label="Shop this week"]').tap(); await page.waitForTimeout(1000);
     if (!(await page.locator('.ck-shop-week-popup.modal-in').isVisible())) throw new Error('the Planner’s cart didn’t open Shop this week');
   });
+  // issue #129: the stores live on the Groceries tab (⋯ → Your stores, or the store line), not in Settings
   await step('40t-grocery-stores', async () => {
     await page.locator('.ck-shop-week-popup.modal-in .page-current .navbar a', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(800);
     await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(800);
-    await page.locator('#view-settings .page-current li', { hasText: 'Grocery Stores' }).locator('a').tap(); await page.waitForTimeout(1000);
-    const names = await page.locator('#view-settings .page-current .ck-store-list li .item-title').evaluateAll((els) => els.map((e) => e.firstChild.textContent.trim()));
+    if (await page.locator('#view-settings .page-current', { hasText: /Grocer/ }).count()) throw new Error('Settings still has the grocery stores');
+    await page.locator('.tabbar a[aria-label="Groceries"]').tap(); await page.waitForTimeout(800);
+    await page.locator(`${GRO} a[aria-label="More grocery list actions"]`).tap(); await page.waitForTimeout(600);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Your stores' }).tap(); await page.waitForTimeout(1000);
+    const title = (await page.locator('#view-groceries .page-current .navbar .title').textContent()).trim();
+    if (title !== 'Grocery Stores') throw new Error(`⋯ → Your stores opened "${title}" on the Groceries tab`);
+    const names = await page.locator('#view-groceries .page-current .ck-store-list li .item-title').evaluateAll((els) => els.map((e) => e.firstChild.textContent.trim()));
     if (names.join('|') !== 'Acme Market|Corner Grocer') throw new Error(`stores read ${names.join(', ')}`);
+    await page.locator('#view-groceries .page-current .navbar .link.back').tap(); await page.waitForTimeout(900);
+    if (!(await page.locator(`${GRO} a[aria-label="More grocery list actions"]`).count())) throw new Error('back from Grocery Stores didn’t return to the list');
   });
   // Issue #118: an empty list keeps only its title, + and ⋯: no search bar, no By aisle | By recipe, no store line, no
   // instructions; an icon, a few words and one button that opens +'s choices.
@@ -3538,6 +3563,21 @@ async function swipeLeft(ctx, page, locator) {
     } finally {
       await appCtx.close();
     }
+  });
+
+  // issue #127: after Settings' refresh the app comes back without the cooking pot (the refresh marks the tab to come
+  // back to, and index.html reads that mark): just the plain cover until the app is drawn, then Settings
+  await step('37e-launch-loader-quiet-after-refresh', async () => {
+    await page.goto(`${BASE}?loader`); await page.waitForTimeout(800);
+    if (!(await page.locator('#ck-launch .ck-launch-stage').isVisible())) throw new Error('the pot isn’t showing on an ordinary launch');
+    await page.evaluate(() => sessionStorage.setItem('ck-reopen-tab', 'settings'));
+    await page.reload(); await page.waitForTimeout(1200);
+    if (!(await page.locator('#ck-launch').count())) throw new Error('the loader’s cover is gone after the refresh');
+    if (await page.locator('#ck-launch .ck-launch-stage').isVisible()) throw new Error('the cooking pot shows after the app’s own refresh');
+    const active = await page.evaluate(() => document.querySelector('.view.tab-active')?.id);
+    if (active !== 'view-settings') throw new Error(`after the refresh the app opened on ${active}`);
+    await page.reload(); await page.waitForTimeout(1000);
+    if (!(await page.locator('#ck-launch .ck-launch-stage').isVisible())) throw new Error('the pot stays away on the next ordinary launch');
   });
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)

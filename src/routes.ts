@@ -20,7 +20,7 @@ const routes = [
   { path: '/cookbook/:id/section/:sectionId/', component: CookbookPage },
   { path: '/plan/', component: PlanPage },
   { path: '/groceries/', component: GroceriesPage },
-  { path: '/grocery-stores/', component: GroceryStoresPage },
+  { path: '/groceries/stores/', component: GroceryStoresPage },
   { path: '/settings/', component: SettingsPage },
   { path: '/settings/style-guide/', component: StyleGuidePage },
   { path: '/settings/prepear/', component: PrepearImportPage },

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { Page, Navbar, NavTitle, List, ListItem, Link, BlockTitle, f7 } from 'framework7-react';
+import { Page, Navbar, NavTitle, List, ListItem, Link, Block, f7 } from 'framework7-react';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAuth } from '../data/auth';
 import { clearCache } from '../data/store';
@@ -43,7 +43,7 @@ export default function SettingsPage() {
     setTimeout(() => setRefreshing(false), 30000);
     updateApp({
       beforeReload: async () => {
-        reopenOnTab('settings');
+        reopenOnTab('settings'); // also tells index.html to leave out the cooking pot as the app comes back (#127)
         await shortest;
       },
     });
@@ -65,8 +65,8 @@ export default function SettingsPage() {
       <Navbar key="navbar" className="ck-navbar-root">
         <NavTitle>Settings</NavTitle>
       </Navbar>
-      <BlockTitle>Account</BlockTitle>
-      <List strongIos insetIos dividersIos>
+      {/* issue #128: no group titles; the account, then one card of places to go, then the version on the page itself */}
+      <List strongIos insetIos dividersIos className="ck-settings-account">
         {/* one row: who's signed in, and Sign Out beside it (the local demo signs in as demo@example.com) */}
         <ListItem title={email} className="ck-account-row">
           <Link slot="after" className="ck-sign-out" onClick={confirmSignOut}>
@@ -74,40 +74,22 @@ export default function SettingsPage() {
           </Link>
         </ListItem>
       </List>
-      {/* bringing recipes over from Prepear (issue #14) */}
-      <BlockTitle>Import</BlockTitle>
-      <List strongIos insetIos dividersIos>
-        <ListItem link="/settings/prepear/" title="From Prepear" />
+      {/* bringing recipes over from Prepear (issue #14), and the design system (the Style Guide). The grocery stores
+          live on the Groceries tab now (issue #129) */}
+      <List strongIos insetIos dividersIos className="ck-settings-places">
+        <ListItem link="/settings/prepear/" title="Import" />
+        <ListItem link="/settings/style-guide/" title="Appearance" />
       </List>
-      {/* issue #64: the Instacart stores the grocery list's links search */}
-      <BlockTitle>Groceries</BlockTitle>
-      <List strongIos insetIos dividersIos>
-        <ListItem link="/grocery-stores/" title="Grocery Stores" />
-      </List>
-      {/* the build running: tapping it copies it; its refresh icon brings in a newer one
-          and reloads the app (issues #48, #91) */}
-      <BlockTitle>Version</BlockTitle>
-      <List strongIos insetIos dividersIos>
-        <ListItem title={appVersion()} onClick={copyVersion} className="ck-version-row">
-          <Link
-            slot="after"
-            iconOnly
-            className="ck-refresh-link"
-            aria-label="Refresh the app"
-            onClick={(e: Event) => {
-              e.stopPropagation(); // the row copies; this refreshes
-              refreshApp();
-            }}
-          >
-            <RefreshCw {...inlineIcon} className={`ck-icon ck-refresh ${refreshing ? 'ck-spinning' : ''}`} aria-hidden="true" />
-          </Link>
-        </ListItem>
-      </List>
-      {/* the design system, by its name, under its own title like the other groups */}
-      <BlockTitle>Style Guide</BlockTitle>
-      <List strongIos insetIos dividersIos>
-        <ListItem link="/settings/style-guide/" title="Cookbook" />
-      </List>
+      {/* the build running, on the page rather than in a card: tapping it copies it; the refresh icon beside it
+          brings in a newer one and reloads the app (issues #48, #91, #128) */}
+      <Block className="ck-version">
+        <span className="ck-version-text" role="button" tabIndex={0} onClick={copyVersion} onKeyDown={(e) => e.key === 'Enter' && copyVersion()}>
+          {appVersion()}
+        </span>
+        <Link iconOnly className="ck-refresh-button" aria-label="Refresh the app" onClick={refreshApp}>
+          <RefreshCw {...inlineIcon} className={`ck-icon ck-refresh ${refreshing ? 'ck-spinning' : ''}`} aria-hidden="true" />
+        </Link>
+      </Block>
     </Page>
   );
 }

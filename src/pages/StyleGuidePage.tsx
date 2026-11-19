@@ -22,7 +22,7 @@ export default function StyleGuidePage() {
 
   return (
     <Page name="style-guide">
-      <Navbar title="Style Guide" backLink />
+      <Navbar title="Appearance" backLink />
 
       <BlockTitle medium>Colors</BlockTitle>
       <Block>

@@ -3083,6 +3083,57 @@ async function swipeLeft(ctx, page, locator) {
     const names = await page.locator('#view-settings .page-current .ck-store-list li .item-title').evaluateAll((els) => els.map((e) => e.firstChild.textContent.trim()));
     if (names.join('|') !== 'Acme Market|Corner Grocer') throw new Error(`stores read ${names.join(', ')}`);
   });
+  // Issue #118: an empty list keeps only its title, + and ⋯: no search bar, no By aisle | By recipe, no store line, no
+  // instructions; a picture, a few words and one button that opens +'s choices. Each look the Style Guide offers.
+  for (const [n, look] of [['', 'plates'], ['2', 'icon'], ['3', 'tile']]) {
+    await step(`40u${n}-groceries-empty-${look}`, async () => {
+      await page.goto(BASE); await page.waitForTimeout(800);
+      await page.evaluate((l) => localStorage.setItem('cookbook.emptyLook', l), look);
+      await page.reload(); await page.waitForTimeout(1200);
+      await page.locator('.tabbar a[aria-label="Groceries"]').tap(); await page.waitForTimeout(1000);
+      await page.locator(`${GRO} a[aria-label="More grocery list actions"]`).tap(); await page.waitForTimeout(600);
+      await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Clear the list' }).tap(); await page.waitForTimeout(600);
+      await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1200);
+      const empty = page.locator(`${GRO} .ck-empty`);
+      if (!(await empty.count())) throw new Error('an empty list shows no empty state');
+      for (const [sel, what] of [['> .navbar .searchbar', 'a search bar'], ['.ck-grocery-view', 'By aisle | By recipe'], ['.ck-instacart-store', 'the store line']]) {
+        if (await page.locator(`${GRO} ${sel}`).count()) throw new Error(`an empty list still shows ${what}`);
+      }
+      if (await page.locator(GRO).evaluate((el) => el.classList.contains('page-with-subnavbar'))) throw new Error('the page still leaves room for the search bar');
+      const text = (await empty.innerText()).replace(/\s+/g, ' ').trim();
+      if (text.length > 80 || /⋯|→/.test(text)) throw new Error(`the empty state reads like instructions: "${text}"`);
+      // its button: in sight without scrolling, clear of the tab bar
+      const btn = empty.locator(look === 'tile' ? '.ck-empty-tile' : '.ck-empty-button');
+      const box = await btn.boundingBox();
+      const bar = await page.locator('.tabbar').boundingBox();
+      if (!box || box.y + box.height > bar.y - 16) throw new Error(`the empty state's button isn't in sight above the tab bar (${JSON.stringify(box)})`);
+      if (look === 'icon' && Math.abs(await empty.locator('.ck-empty-icon').evaluate((e) => e.offsetWidth - e.offsetHeight)) > 1) throw new Error('the icon look’s circle isn’t round');
+    });
+  }
+  await step('40u4-groceries-empty-add', async () => {
+    await page.locator(`${GRO} .ck-empty .ck-empty-tile`).tap(); await page.waitForTimeout(700);
+    const choices = await page.locator('.actions-modal.modal-in .actions-button').allTextContents();
+    if (!choices.join('|').startsWith('From this week’s plan|From a recipe|Type it in')) throw new Error(`the empty state's button opens ${choices.join(', ')}`);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Type it in' }).tap(); await page.waitForTimeout(600);
+    await page.locator('.dialog.modal-in input').fill('Paper towels');
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
+    // something on the list: the search bar and the views come back
+    if (await page.locator(`${GRO} .ck-empty`).count()) throw new Error('the empty state stays with something on the list');
+    if (!(await page.locator(`${GRO} > .navbar .searchbar`).count()) || !(await page.locator(`${GRO} .ck-grocery-view`).count())) throw new Error('the search bar or the views don’t come back');
+    if (!(await page.locator(GRO).evaluate((el) => el.classList.contains('page-with-subnavbar')))) throw new Error('the list runs under the search bar that came back');
+    await page.evaluate(() => localStorage.removeItem('cookbook.emptyLook'));
+  });
+  // Style Guide → Empty states: all three looks, the picked one ringed
+  await step('40v-style-guide-empty-states', async () => {
+    await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(800);
+    await page.locator('#view-settings .page-current a[href="/settings/style-guide/"]').tap(); await page.waitForTimeout(1000);
+    const samples = page.locator('#view-settings .page-current .ck-empty-sample');
+    if ((await samples.count()) !== 3) throw new Error(`the Style Guide shows ${await samples.count()} empty-state looks`);
+    await page.locator('#view-settings .page-current .ck-empty-pick .button', { hasText: 'Icon' }).tap(); await page.waitForTimeout(400);
+    await page.locator('#view-settings .page-current .ck-empty-sample-on').scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
+    if (!(await page.locator('#view-settings .page-current .ck-empty-sample-on .ck-empty-icon').count())) throw new Error('picking Icon doesn’t ring the icon look');
+    await page.evaluate(() => localStorage.removeItem('cookbook.emptyLook'));
+  });
 
   // Issue #35: while the recipes and cookbooks first load, grey placeholders in their shape: no lone "All" chip, no
   // "0 recipes", no small spinner. ?loading makes the demo's recipes and cookbooks never arrive.

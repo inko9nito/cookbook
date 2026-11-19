@@ -2,6 +2,19 @@
   "detector": {
     "ignoreRules": [],
     "ignoreFiles": [],
-    "ignoreValues": []
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "fredoka variable",
+        "createdAt": "2026-11-19T04:08:29.272Z",
+        "reason": "DESIGN.md typography declares Fredoka (issue #21); this is its variable @font-face family name"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "nunito variable",
+        "createdAt": "2026-11-19T04:08:29.279Z",
+        "reason": "DESIGN.md typography declares Nunito (issue #21); this is its variable @font-face family name"
+      }
+    ]
   }
 }

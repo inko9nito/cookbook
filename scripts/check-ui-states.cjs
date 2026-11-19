@@ -3119,6 +3119,40 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator(GRO).evaluate((el) => el.classList.contains('page-with-subnavbar')))) throw new Error('the list runs under the search bar that came back');
   });
 
+  // Issue #118 on Recipes and Cookbooks: ?empty starts the demo with nothing. Each keeps its title and +, hides what
+  // works on recipes or cookbooks (search, chips, count, sort; count, tiles/list), and its one button opens +'s choices.
+  await step('40w-recipes-empty', async () => {
+    await page.goto(`${BASE}?empty`); await page.waitForTimeout(1500);
+    const pg = '#view-recipes .page-current';
+    if (!(await page.locator(`${pg} .ck-empty`, { hasText: 'No recipes yet' }).count())) throw new Error('no empty state on Recipes');
+    for (const [sel, what] of [['> .navbar .searchbar', 'a search bar'], ['.chip', 'chips'], ['.ck-count', 'a count'], ['a[aria-label="Sort recipes"]', 'the sort button']]) {
+      if (await page.locator(`${pg} ${sel}`).count()) throw new Error(`empty Recipes still shows ${what}`);
+    }
+    if (await page.locator(pg).evaluate((el) => el.classList.contains('page-with-subnavbar'))) throw new Error('empty Recipes leaves room for the search bar');
+    await page.locator(`${pg} .ck-empty-button`).tap(); await page.waitForTimeout(700);
+    const choices = await page.locator('.actions-modal.modal-in .actions-button').allTextContents();
+    if (!choices.join('|').startsWith('From a link|From photos or screenshots|Type it in')) throw new Error(`New recipe opens ${choices.join(', ')}`);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(600);
+  });
+  await step('40x-cookbooks-empty', async () => {
+    await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(1000);
+    const pg = '#view-cookbooks .page-current';
+    if (!(await page.locator(`${pg} .ck-empty`, { hasText: 'No cookbooks yet' }).count())) throw new Error('no empty state on Cookbooks');
+    for (const [sel, what] of [['.ck-count', 'a count'], ['.ck-view-switch', 'the tiles/list switch']]) {
+      if (await page.locator(`${pg} ${sel}`).count()) throw new Error(`empty Cookbooks still shows ${what}`);
+    }
+    if ((await page.locator(`${pg} .ck-empty .button`).count()) !== 1) throw new Error('empty Cookbooks has more than one button');
+  });
+  await step('40x2-cookbooks-empty-new', async () => {
+    await page.locator('#view-cookbooks .page-current .ck-empty-button').tap(); await page.waitForTimeout(700);
+    if ((await page.locator('.dialog.modal-in .dialog-title').textContent()) !== 'New Cookbook') throw new Error('New cookbook doesn’t ask for a name');
+    await page.locator('.dialog.modal-in input').fill('Soups');
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1200);
+    await page.locator('#view-cookbooks .page-current .navbar .left a').first().tap(); await page.waitForTimeout(1000);
+    if (await page.locator('#view-cookbooks .page-current .ck-empty').count()) throw new Error('the empty state stays with a cookbook made');
+    if (!(await page.locator('#view-cookbooks .page-current .ck-view-switch').count())) throw new Error('the tiles/list switch doesn’t come back');
+  });
+
   // Issue #35: while the recipes and cookbooks first load, grey placeholders in their shape: no lone "All" chip, no
   // "0 recipes", no small spinner. ?loading makes the demo's recipes and cookbooks never arrive.
   const noLoadingTells = async (where) => {

@@ -262,7 +262,15 @@ The rules for any screen with nothing to show, so every new screen gets the same
 - **One button:** the main button (bright Tomato pill, 52px) with a +, worded like +'s menu, short: "Add to the list". It opens +'s action sheet.
 - **Place:** centred across, its top about an eighth of the screen down (40px at least), so it sits a little above the middle of what's under the bar. Nothing moves: no animation.
 
-**Where it goes next:** Recipes with no recipes ("No recipes yet", **New recipe**, +'s New recipe sheet), Cookbooks with none ("No cookbooks yet", **New cookbook**), a cookbook with no recipes in it ("Nothing in here yet", **Add recipes**). The Planner's empty days and the recipe page's empty sections are empty *parts* and keep their inline look.
+**Where it's used:**
+
+| Screen | Icon | Title · line | Button (same as +) | Hidden while empty |
+|---|---|---|---|---|
+| Groceries | carrot | Your list is empty · Add ingredients from a recipe or your plan. | Add to the list | search, By aisle \| By recipe, store line |
+| Recipes | soup bowl | No recipes yet · Add one from a link or a photo. | New recipe | search, tag chips, count and sort line, sort button |
+| Cookbooks | book with a heart (the open book is the tab's) | No cookbooks yet · Gather your recipes into cookbooks. | New cookbook | count, tiles/list switch. Import from Prepear stays in Settings → Import |
+
+Next candidate: a cookbook with no recipes in it ("Nothing in here yet", **Add recipes**). The Planner's empty days and the recipe page's empty sections are empty *parts* and keep their inline look.
 
 ### Launch loader
 

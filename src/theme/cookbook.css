@@ -1185,7 +1185,7 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
    on soft grey without one) and its name. Tabs share the width (up to 240px each, the shown one a bigger share); with
    more than fit (each keeps at least 112px, the shown one 132px) the strip scrolls sideways with a swipe, no
    scrollbar, and long names end in … */
-:root { --ck-cook-bar: 56px; }
+.popup.ck-cook { --ck-cook-bar: 56px; }
 html.ios .toolbar.ck-cook-recipes { --f7-toolbar-height: var(--ck-cook-bar); }
 html.ios .toolbar.ck-cook-recipes .toolbar-inner {
   justify-content: flex-start; align-items: flex-start; gap: 2px; padding: 0 14px var(--f7-safe-area-bottom);
@@ -1227,9 +1227,6 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
   position: absolute; top: 6px; left: 0; right: 0; margin: 0 auto;
   width: 36px; height: 5px; border-radius: 9999px; background-color: var(--ck-strong); pointer-events: none;
 }
-/* ✓'s toast (Marked as made · Undo) sits just above cook mode's recipe tabs while they show, instead of covering them */
-html:has(.popup.ck-cook.modal-in .toolbar.ck-cook-recipes) .toast.ck-undo-toast.toast-bottom { bottom: calc(var(--ck-cook-bar) + var(--f7-safe-area-bottom)); }
-html:has(.popup.ck-cook.modal-in .toolbar.ck-cook-recipes) .toast.ck-undo-toast.toast-bottom .toast-content { padding-bottom: var(--f7-toast-padding-vertical); }
 /* a recipe just marked as made: its tab's photo is a Tomato ✓ as the tab goes */
 .ck-cook-recipe .ck-tab-thumb.ck-tab-done { background-color: var(--ck-accent); color: var(--ck-surface); }
 /* tabs are held and dragged (#116): never a text selection or iOS's long-press menu */

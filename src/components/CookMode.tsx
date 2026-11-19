@@ -205,7 +205,6 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
         closeButton: true,
         closeButtonText: 'Undo',
         closeTimeout: 4000,
-        cssClass: 'ck-undo-toast',
         on: {
           // back as it was: the count, and the recipe's tab where it was with what was ticked, cook mode open
           closeButtonClick: () => {

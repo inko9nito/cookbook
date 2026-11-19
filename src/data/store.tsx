@@ -74,8 +74,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Rendered once, in the app: when the API turns this account away (no admin role), or the sign-in has run
- * out, go back to the sign-in screen and forget the cached recipes.
+ * Rendered once, in the app: when the API turns this account away (no admin role), or Identity refused to renew the
+ * sign-in, go back to the sign-in screen and forget the cached recipes. Nothing else signs out (#114): a 401 or 404
+ * from the server, a failing Identity or a bad connection is an error to try again, with the cached recipes on screen.
  */
 export function SessionGuard() {
   const auth = useAuth();
@@ -83,8 +84,8 @@ export function SessionGuard() {
   const recipesQuery = useQuery({ queryKey: RECIPES, queryFn: fetchRecipes, enabled });
   const settingsQuery = useQuery({ queryKey: SETTINGS, queryFn: backend.getSettings, enabled });
   const errors = [recipesQuery.error, settingsQuery.error];
-  const refusal = errors.find((e) => e instanceof ApiError && e.status !== 401 && e.status < 500) as ApiError | undefined;
-  const expired = errors.some((e) => e instanceof ApiError && e.status === 401);
+  const refusal = errors.find((e) => e instanceof ApiError && e.status === 403) as ApiError | undefined;
+  const expired = errors.some((e) => e instanceof ApiError && e.signedOut);
   useEffect(() => {
     if (refusal) clearCache().then(() => auth.refuse(refusal.message));
     else if (expired) clearCache().then(() => auth.refuse('Your sign-in ran out. Sign in again.'));

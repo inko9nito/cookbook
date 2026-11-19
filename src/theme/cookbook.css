@@ -21,6 +21,7 @@
   --ck-bar-shadow: 0 6px 10px -4px rgba(0, 0, 0, 0.07); /* #84: drawn below the bar only (a plain 0 4px 10px showed as a faint line above it too) */
   --ck-lift-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.22); /* a cook-mode tab lifted to be dragged (#116) */
   --ck-tab-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.12); /* the recipe tab shown in cook mode, lifted off the grey strip (#85) */ /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
+  --ck-raised-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* a round white button standing on the grey page (Settings' refresh, #128) */
   --ck-toast-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); /* the dark toast floating over the page */
   /* a cookbook card's soft colours (issue #25): pale and muted, one per cookbook */
   --ck-book-blush: #f6e4dd;
@@ -1313,12 +1314,17 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
 .ck-cook-recipe.ck-cook-recipe-lifted::before,
 .ck-cook-recipe.ck-cook-recipe-lifted::after { display: none; }
 
-/* Settings → Version: the build, then a Tomato refresh icon. Tapping the build copies it; tapping the icon checks for a
-   new version, and the icon spins while it checks (approved exception: the user asked for a spinning refresh icon
-   instead of a dialog). The icon's tap target is 44px, reaching into the row's padding like Sign Out's. */
-.ck-version-row { cursor: pointer; }
-.ck-version-row .link.ck-refresh-link { width: 44px; height: 44px; margin: -12px -12px -12px 0; color: var(--ck-accent-ink); }
-.ck-version-row .ck-refresh { color: var(--ck-accent-ink); }
+/* Settings → Version (issue #128): on the page itself, not in a card: the build on the left, then a round white
+   refresh button with a soft shadow. Tapping the build copies it; tapping the button checks for a new version, and its
+   icon spins while it checks (approved exception: the user asked for a spinning refresh icon instead of a dialog). */
+/* the build lines up with the cards' row text (their 16px inset plus the row's 16px); the button with their right edge */
+.block.ck-version { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-left: calc(var(--f7-block-padding-horizontal) + 16px); }
+.ck-version-text { cursor: pointer; font-size: 15px; color: var(--ck-fg); font-variant-numeric: tabular-nums; }
+.button.ck-refresh-button {
+  flex: none; width: 44px; height: 44px; padding: 0; border-radius: 9999px;
+  background-color: var(--ck-surface); color: var(--ck-accent-ink); --f7-button-raised-box-shadow: var(--ck-raised-shadow);
+}
+.ck-refresh-button .ck-refresh { color: var(--ck-accent-ink); }
 .ck-refresh.ck-spinning { animation: ck-spin 0.9s linear infinite; }
 @keyframes ck-spin { to { transform: rotate(360deg); } }
 

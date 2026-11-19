@@ -27,6 +27,7 @@ import { say } from '../components/ui/toast';
 const aToZ = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
 // the thing to buy leads the row: "White miso paste", its amount in the small print under it
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+const itemsWord = (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`;
 // an action sheet opened from another waits for the first to go
 const after = (f: () => void) => setTimeout(f, 350);
 
@@ -104,20 +105,36 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
   };
   // leaving the list (another tab, the other view): ticked rows gather in Got it
   const regroup = () => setPlaced((m) => (m.size ? new Map() : m));
-  const pin = (line: Line, slug: string | null) =>
+  // #46: a change that moves a row (to another store's group or aisle, or off the list) says so; taking things off
+  // the list can be undone (the same items saved again)
+  const pin = (line: Line, slug: string | null) => {
+    const own = slug && slug !== store?.slug;
     save(saved(line).map((item) => {
       const { store: _old, ...rest } = item;
-      return slug && slug !== store?.slug ? { ...rest, store: slug } : rest;
+      return own ? { ...rest, store: slug } : rest;
     }));
-  const remove = (line: Line) => changeGroceries([], line.parts.map((p) => p.item.id));
-  const moveTo = (line: Line, aisle: Aisle) => changeSettings({ groceryAisles: { ...settings.groceryAisles, [nameKey(line.thing?.item ?? line.name)]: aisle } });
+    say(`Moved “${cap(line.name)}” to ${storeName(own ? slug : store?.slug)}`);
+  };
+  const takeOff = (gone: GroceryItem[], text: string) => {
+    if (!gone.length) return;
+    changeGroceries([], gone.map((g) => g.id));
+    say(text, { undo: () => changeGroceries(gone) });
+  };
+  const remove = (line: Line) => takeOff(saved(line), `Removed “${cap(line.name)}”`);
+  const moveTo = (line: Line, aisle: Aisle) => {
+    changeSettings({ groceryAisles: { ...settings.groceryAisles, [nameKey(line.thing?.item ?? line.name)]: aisle } });
+    say(`Moved “${cap(line.name)}” to ${AISLE_NAMES[aisle]}`);
+  };
   const searchFor = (line: Line, term = line.term) => instacartSearch(term, line.store ?? store?.slug);
   // a choice picked (or opened again: null) on every item of a line
-  const pickFor = (line: Line, choice: string | null) =>
+  const pickFor = (line: Line, choice: string | null) => {
     save(saved(line).map((item) => {
       const { choice: _old, ...rest } = item;
       return choice ? { ...rest, choice } : rest;
     }));
+    // the row takes the picked thing's name (and may join a row for it), or goes back to the recipe's words
+    say(choice ? `Getting “${cap(choice)}”` : `Back to “${cap(line.name)}”`);
+  };
   // the line's words (each ingredient name in it) are this thing from now on: kept on the server, for every recipe
   const nameAs = (line: Line, thing: GroceryThing) => {
     for (const key of new Set(line.parts.map((p) => nameOf(p.name)))) if (key) correct({ key, things: [thing] });
@@ -127,21 +144,27 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
     const was = line.thing;
     f7.dialog.prompt('What to buy, as it’s called in the store. It’s kept for these words in every recipe.', 'Rename', (text: string) => {
       const item = text.trim();
-      if (item && item !== was.item) nameAs(line, { ...was, item, plural: item });
+      if (item && item !== was.item) {
+        nameAs(line, { ...was, item, plural: item });
+        say(`Renamed to “${cap(item)}”`);
+      }
     }, undefined, was.item);
   };
 
   const addTyped = () =>
     f7.dialog.prompt('Like “2 avocados” or “paper towels”.', 'Add to the list', (text: string) => {
-      if (text.trim()) save([{ id: newId(), text: text.trim(), checked: false, createdAt: new Date().toISOString() }]);
+      if (!text.trim()) return;
+      save([{ id: newId(), text: text.trim(), checked: false, createdAt: new Date().toISOString() }]);
+      say(`Added “${text.trim()}”`);
     });
   const clearGot = () => {
     regroup();
-    changeGroceries([], items.filter((g) => g.checked).map((g) => g.id));
+    const gone = items.filter((g) => g.checked);
+    takeOff(gone, `Cleared ${itemsWord(gone.length)} from Got it`);
   };
   const clearAll = () =>
     f7.dialog.confirm('Everything on the grocery list comes off it. Your recipes stay as they are.', 'Clear the list?', () =>
-      changeGroceries([], items.map((g) => g.id)),
+      takeOff(items, 'Cleared the list'),
     );
   const share = async () => {
     const text = listText(linesOf(items, recipes, settings.groceryAisles, names));
@@ -480,7 +503,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
               .filter((l) => l.thing && l.key !== sameAs.key && nameKey(l.thing.item) !== nameKey(sameAs.thing!.item))
               .sort((a, b) => Number(b.aisle === sameAs.aisle) - Number(a.aisle === sameAs.aisle) || a.name.localeCompare(b.name))
               .map((l) => (
-                <ActionsButton key={l.key} onClick={() => nameAs(sameAs, l.thing!)}>
+                <ActionsButton key={l.key} onClick={() => { nameAs(sameAs, l.thing!); say(`“${cap(sameAs.name)}” is now “${cap(l.name)}”`); }}>
                   {cap(l.name)}
                 </ActionsButton>
               ))}

@@ -309,6 +309,15 @@ async function swipeLeft(ctx, page, locator) {
       await page.screenshot({ path: path.join(OUT, `${name}-failed.png`) }).catch(() => {});
     }
   };
+  // #46: what the toast showing says (the newest one), whether it has say()'s check, and waiting for it to go
+  const toastSays = async () => (await page.locator('.toast.modal-in .toast-text').last().textContent().catch(() => '')).trim();
+  const expectToast = async (want, { check = true, undo = false } = {}) => {
+    const said = await toastSays();
+    if (want instanceof RegExp ? !want.test(said) : said !== want) throw new Error(`the toast says "${said}", not "${want}"`);
+    if (check !== !!(await page.locator('.toast.modal-in .ck-toast svg').count())) throw new Error(`"${said}" ${check ? 'has no' : 'has a'} check`);
+    if (undo !== !!(await page.locator('.toast.modal-in .toast-button').count())) throw new Error(`"${said}" ${undo ? 'has no' : 'has an'} Undo`);
+  };
+  const toastGone = () => page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 6000 }).catch(() => {});
 
   await page.goto(BASE);
   await page.waitForTimeout(1000);
@@ -2547,6 +2556,7 @@ async function swipeLeft(ctx, page, locator) {
     if ((await rowsOn(today0)).join() !== 'Corn pudding,Mustard Dill Chicken Thighs,Tahini Sauce') throw new Error(`today shows ${JSON.stringify(await rowsOn(today0))}`);
     const dinner = await page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] .ck-plan-slot`, { hasText: 'Dinner' }).locator('.item-title').count();
     if (dinner !== 2) throw new Error(`today's Dinner has ${dinner} rows, not 2 (Tahini Sauce wasn't added to Dinner)`);
+    await expectToast(/^Added .+ to .+ · Dinner$/);
   });
   // swiping a row offers Move and Remove
   await step('62g-planner-swipe-row', async () => {
@@ -2598,6 +2608,18 @@ async function swipeLeft(ctx, page, locator) {
     await page.waitForTimeout(700);
     await page.locator(`${PLAN} li.swipeout-opened .swipeout-delete`).tap(); await page.waitForTimeout(900);
     if ((await rowsOn(today1)).includes('Tahini Sauce')) throw new Error('Remove left it there');
+    await expectToast(/^Removed “Tahini Sauce” from /, { undo: true });
+  });
+  // #46: Undo puts it back on its day; then it's taken off again for the steps after
+  await step('62j2-planner-remove-undone', async () => {
+    await page.locator('.toast.modal-in .toast-button').tap(); await page.waitForTimeout(900);
+    if (!(await rowsOn(today1)).includes('Tahini Sauce')) throw new Error(`after Undo tomorrow shows ${JSON.stringify(await rowsOn(today1))}`);
+    await toastGone();
+    await swipeLeft(ctx, page, page.locator(`${PLAN} .ck-plan-day[data-day="${today1}"] li.swipeout`, { hasText: 'Tahini Sauce' }));
+    await page.waitForTimeout(700);
+    await page.locator(`${PLAN} li.swipeout-opened .swipeout-delete`).tap(); await page.waitForTimeout(900);
+    if ((await rowsOn(today1)).includes('Tahini Sauce')) throw new Error('Remove left it there the second time');
+    await toastGone();
   });
   // a recipe's page lists the days it's planned for; its ⋯ menu adds it to another day
   await step('62k-recipe-planned', async () => {
@@ -2676,6 +2698,7 @@ async function swipeLeft(ctx, page, locator) {
   await step('67e-planner-note-added', async () => {
     await page.locator('.ck-note-popup .ck-nav-primary', { hasText: 'Save' }).tap(); await page.waitForTimeout(900);
     if (!(await rowsOn(today0)).includes('Leftovers for lunch')) throw new Error(`today shows ${JSON.stringify(await rowsOn(today0))}`);
+    await expectToast(/^Added a note to /);
     // the note's square is the design's soft grey with a muted icon, not butter
     const icon = await page.locator(`${PLAN} li.ck-plan-note .ck-plan-note-icon`).first().evaluate((e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).color]);
     if (icon.join() !== 'rgb(236, 236, 238),rgb(110, 110, 115)') throw new Error(`a note's icon is ${icon.join(' on ')}`);
@@ -2695,6 +2718,7 @@ async function swipeLeft(ctx, page, locator) {
     const row = page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] li.ck-plan-note`, { hasText: 'Leftovers' });
     const tall = await row.locator('.item-title').evaluate((t) => Math.round(t.getBoundingClientRect().height));
     if (tall < 60) throw new Error(`the long note shows in ${tall}px, as if on one line`);
+    await expectToast('Note saved');
   });
   // swipe → Meal puts it in a slot
   await step('67f-planner-meal-sheet', async () => {
@@ -2708,6 +2732,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Lunch' }).tap(); await page.waitForTimeout(900);
     const lunch = await page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] .ck-plan-slot`, { hasText: 'Lunch' }).locator('.item-title').allTextContents();
     if (!lunch.some((t) => t.includes('Leftovers'))) throw new Error(`today's Lunch shows ${JSON.stringify(lunch)}`);
+    await expectToast('Moved to Lunch');
   });
   // the strip follows the agenda: scrolling picks the day at the top, and the last day at the end
   await step('67h-strip-follows-scroll', async () => {
@@ -3058,6 +3083,7 @@ async function swipeLeft(ctx, page, locator) {
     const row = groRow('Lemons');
     if ((await row.locator('.ck-store-tag').textContent()) !== 'Corner Grocer') throw new Error('lemons has no Corner Grocer tag');
     if (!(await row.locator('a.ck-instacart-link').getAttribute('href')).includes('/store/corner-grocer/')) throw new Error('lemons still searches Acme Market');
+    await expectToast('Moved “Lemons” to Corner Grocer');
   });
   // swipe → Edit: another aisle, the same thing as another row, another name, or a choice picked (#64)
   const editRow = async (text) => {
@@ -3075,6 +3101,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Spices & seasonings' }).tap(); await page.waitForTimeout(900);
     const group = await groRow('Honey').evaluate((li) => li.closest('.ck-grocery-group').querySelector('.ck-plan-slot-label').textContent);
     if (group !== 'Spices & seasonings') throw new Error(`honey is under ${group}`);
+    await expectToast('Moved “Honey” to Spices & seasonings');
   });
   await step('40g2-groceries-choice', async () => {
     // a recipe's choice stays as written, its own row; its ↗ asks which to search
@@ -3090,6 +3117,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Get tamari' }).tap(); await page.waitForTimeout(900);
     if (!(await groItems()).some((r) => r.title === 'Tamari' && r.amount === '1 tbsp')) throw new Error('picking tamari didn’t make the row Tamari');
     if (!(await groRow('Tamari').locator('a.ck-instacart-link').getAttribute('href')).includes('k=tamari')) throw new Error('Tamari’s ↗ doesn’t search tamari');
+    await expectToast('Getting “Tamari”');
   });
   await step('40g4-groceries-renamed', async () => {
     await editRow('Fresh dill');
@@ -3097,6 +3125,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.dialog.modal-in input').fill('dill');
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(800);
     if (!(await groTitles()).includes('Dill')) throw new Error(`renaming fresh dill didn’t show Dill (${(await groTitles()).join(', ')})`);
+    await expectToast('Renamed to “Dill”');
   });
   await step('40h-groceries-by-recipe', async () => {
     // the segments' text changes colour at once, with no transition: iPhone Safari held the old colours to the end of
@@ -3154,6 +3183,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.dialog.modal-in input').fill('2 limes');
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(800);
     if (!(await groItems()).some((r) => r.title === 'Limes' && r.amount === '2')) throw new Error('the typed item isn’t on the list');
+    await expectToast('Added “2 limes”');
   });
   await step('40l2-groceries-same-as', async () => {
     // Same thing as…: the other rows, the same aisle's first; picking one makes these words that thing
@@ -3269,6 +3299,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator(`${GRO} a[aria-label="More grocery list actions"]`).tap(); await page.waitForTimeout(600);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Clear the list' }).tap(); await page.waitForTimeout(600);
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1200);
+    await expectToast('Cleared the list', { undo: true });
     const empty = page.locator(`${GRO} .ck-empty`);
     if (!(await empty.count())) throw new Error('an empty list shows no empty state');
     for (const [sel, what] of [['> .navbar .searchbar', 'a search bar'], ['.ck-grocery-view', 'By aisle | By recipe'], ['.ck-instacart-store', 'the store line']]) {
@@ -3282,6 +3313,18 @@ async function swipeLeft(ctx, page, locator) {
     const bar = await page.locator('.tabbar').boundingBox();
     if (!box || box.y + box.height > bar.y - 16) throw new Error(`the empty state's button isn't in sight above the tab bar (${JSON.stringify(box)})`);
     if (Math.abs(await empty.locator('.ck-empty-icon').evaluate((e) => e.offsetWidth - e.offsetHeight)) > 1) throw new Error('the icon’s circle isn’t round');
+  });
+  // #46: Undo brings the whole list back; it's cleared again for the steps after
+  await step('40u1-groceries-clear-undone', async () => {
+    await page.locator('.toast.modal-in .toast-button').tap(); await page.waitForTimeout(1000);
+    if (await page.locator(`${GRO} .ck-empty`).count()) throw new Error('after Undo the list is still empty');
+    if ((await groTitles()).length < 3) throw new Error(`after Undo the list has ${(await groTitles()).length} rows`);
+    await toastGone();
+    await page.locator(`${GRO} a[aria-label="More grocery list actions"]`).tap(); await page.waitForTimeout(600);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Clear the list' }).tap(); await page.waitForTimeout(600);
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1200);
+    if (!(await page.locator(`${GRO} .ck-empty`).count())) throw new Error('clearing again left rows');
+    await toastGone();
   });
   await step('40u2-groceries-empty-add', async () => {
     await page.locator(`${GRO} .ck-empty .ck-empty-button`).tap(); await page.waitForTimeout(700);

@@ -1,7 +1,7 @@
 import { Page, Navbar, List, ListItem, ListButton, BlockFooter, SwipeoutActions, SwipeoutButton, f7 } from 'framework7-react';
 import { useStore } from '../data/store';
 import { storeNameFrom, storeSlugFrom, type GroceryStore } from '../lib/groceries';
-import { tell } from '../components/ui/toast';
+import { say, tell } from '../components/ui/toast';
 
 /**
  * Issue #64: the Instacart stores the grocery list's links search (Settings → Grocery Stores, or the list's store pill).
@@ -31,9 +31,20 @@ export default function GroceryStoresPage() {
           tell('That store is already here', 2000);
           return;
         }
-        f7.dialog.prompt('What to call it on the list.', 'Store Name', (name: string) => saveStores([...stores, { slug, name: name.trim() || storeNameFrom(slug) }]), undefined, storeNameFrom(slug));
+        f7.dialog.prompt('What to call it on the list.', 'Store Name', (name: string) => {
+          const store = { slug, name: name.trim() || storeNameFrom(slug) };
+          saveStores([...stores, store]);
+          say(`Added “${store.name}”`);
+        }, undefined, storeNameFrom(slug));
       },
     );
+
+  // #46: a store deleted can be put back, and the store being shopped with it
+  const removeStore = (s: GroceryStore) => {
+    const was = { groceryStores: stores, groceryStore: settings.groceryStore };
+    saveStores(stores.filter((x) => x.slug !== s.slug));
+    say(`Deleted “${s.name}”`, { undo: () => changeSettings(was) });
+  };
 
   const rename = (s: GroceryStore) =>
     f7.dialog.prompt('What to call it on the list.', 'Store Name', (name: string) => {
@@ -53,7 +64,7 @@ export default function GroceryStoresPage() {
             footer={`instacart.com/store/${s.slug}`}
             after={s.slug === (settings.groceryStore || stores[0]?.slug) ? 'Shopping here' : undefined}
             onClick={() => rename(s)}
-            onSwipeoutDeleted={() => saveStores(stores.filter((x) => x.slug !== s.slug))}
+            onSwipeoutDeleted={() => removeStore(s)}
           >
             <SwipeoutActions right>
               <SwipeoutButton delete>Delete</SwipeoutButton>

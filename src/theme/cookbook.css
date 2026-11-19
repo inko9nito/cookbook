@@ -1111,42 +1111,21 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 .block.ck-list-state p { margin: 0; }
 .button.ck-inline-button { width: auto; padding: 0 20px; }
 
-/* An empty screen (issue #118, DESIGN.md → Empty states): a picture, a title, at most one short line and the screen's
-   main action, centred a little above the middle of what's left under the bar. Three looks while the user picks one. */
+/* An empty screen (issue #118, DESIGN.md → Empty states): one icon on a white circle, a title, at most one short line
+   and the screen's main action, centred a little above the middle of what's left under the bar */
 .ck-empty {
   display: flex; flex-direction: column; align-items: center; text-align: center;
   margin: max(40px, 12vh) auto 32px; padding: 0 32px; max-width: 360px;
+}
+.ck-empty-icon {
+  display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%;
+  background-color: var(--ck-surface); color: var(--ck-fg2);
 }
 .ck-empty-title {
   margin: 20px 0 0; font-family: var(--ck-font-display); font-size: 22px; font-weight: 600; line-height: 1.2; color: var(--ck-fg);
 }
 .ck-empty-text { margin: 6px 0 0; font-size: 15px; line-height: 1.4; color: var(--ck-muted); }
 .button.ck-empty-button { width: auto; margin-top: 24px; padding: 0 26px; gap: 6px; }
-/* plates: the cookbook card's plates, a little bigger, with things to cook on them instead of photos */
-.ck-plates.ck-empty-plates { height: 124px; margin: 0; }
-.ck-empty-plates .ck-plate { color: var(--ck-fg2); }
-.ck-empty-plates .ck-plate-middle { width: 108px; height: 108px; }
-.ck-empty-plates .ck-plate-left,
-.ck-empty-plates .ck-plate-right { width: 76px; height: 76px; }
-.ck-empty-plates .ck-plate-left { margin-right: -24px; }
-.ck-empty-plates .ck-plate-right { margin-left: -24px; }
-/* icon: one big icon on a white circle */
-.ck-empty-icon {
-  display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%;
-  background-color: var(--ck-surface); color: var(--ck-fg2);
-}
-/* add tile: no picture; the dashed tile (like the editor's Add a photo box) is the button, the title muted under it */
-.ck-empty.ck-empty-look-tile { align-items: stretch; max-width: 400px; padding: 0 16px; }
-.link.ck-empty-tile {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 168px;
-  border: 1.5px dashed var(--ck-strong); border-radius: 24px; background-color: var(--ck-surface); color: var(--ck-fg);
-}
-.ck-empty-tile-plus {
-  display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%;
-  background-color: var(--ck-accent); color: var(--ck-surface);
-}
-.ck-empty-tile-label { font-family: var(--ck-font-display); font-size: 19px; font-weight: 500; }
-.ck-empty-look-tile .ck-empty-text { margin-top: 14px; }
 
 /* Unit conversions (issue #6): an amount that converts has a fitted grey underline; tapping it opens the unit sheet
    (radio rows, the recipe's own amount first, "Original"). A picked unit replaces the amount, and its underline turns
@@ -1608,8 +1587,6 @@ html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-store { ba
 .block.ck-week-nav { justify-content: space-between; flex-wrap: nowrap; margin-top: 16px; }
 .link.ck-round-soft { width: 36px; height: 36px; border-radius: 9999px; justify-content: center; background-color: var(--ck-soft); color: var(--ck-fg); }
 
-/* Style Guide → Empty states (issue #118): each look on a grey panel like a screen, the picked one ringed */
-.ck-empty-sample { margin: 0 16px 16px; padding: 16px 0 8px; border-radius: 24px; background-color: var(--ck-bg); border: 1px solid var(--ck-line); }
-.ck-empty-sample.ck-empty-sample-on { border: 2px solid var(--ck-accent); }
-.ck-empty-sample-name { padding: 0 16px; font-size: 13px; font-weight: 700; color: var(--ck-fg2); }
+/* Style Guide → Empty state (issue #118): on a grey panel like a screen */
+.ck-empty-sample { margin: 0 16px 16px; padding: 8px 0 0; border-radius: 24px; background-color: var(--ck-bg); border: 1px solid var(--ck-line); }
 .ck-empty-sample .ck-empty { margin-top: 24px; }

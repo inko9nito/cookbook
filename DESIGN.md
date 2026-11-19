@@ -239,7 +239,7 @@ Where each component's shape comes from:
 
 ### Empty states (issue #118)
 
-The rules for any screen with nothing to show, so every new screen gets the same answer. Component: `EmptyState` (`src/components/ui/EmptyState.tsx`); styles `.ck-empty*` in `cookbook.css`. No new colours: the plates use the cookbooks' soft colours, the button is the main button.
+The rules for any screen with nothing to show, so every new screen gets the same answer. Component: `EmptyState` (`src/components/ui/EmptyState.tsx`); styles `.ck-empty*` in `cookbook.css`. No new colours: the circle is the white surface, the button is the main button.
 
 **Four kinds of "nothing", each with its own answer:**
 
@@ -256,18 +256,13 @@ The rules for any screen with nothing to show, so every new screen gets the same
 - **Never:** instructions or paths through the app ("On a recipe, ⋯ → Add to Grocery List…"), more than one button, or a different set of choices: the button opens exactly what + opens.
 
 **What it says.**
-- **Picture:** three things the screen holds (Lucide icons, `--ck-fg2`), drawn in the look picked (below).
-- **Title:** 2 to 4 words, what isn't here yet, in the screen's own words: "Nothing to buy yet". Fredoka 22px, 600.
+- **Picture:** one Lucide icon for what the screen holds (Groceries: a carrot), 40px in `--ck-fg2`, on a 96px white circle. The user rejected plates here: they belong to cookbooks.
+- **Title:** 2 to 4 plain words, what isn't here yet, said the ordinary way: "Your list is empty" (the user found "Nothing to buy yet" clunky). Fredoka 22px, 600.
 - **One line, optional:** at most about 8 words, where things come from, never how to get there: "Add ingredients from a recipe or your plan." Nunito 15px, muted.
 - **One button:** the main button (bright Tomato pill, 52px) with a +, worded like +'s menu, short: "Add to the list". It opens +'s action sheet.
 - **Place:** centred across, its top about an eighth of the screen down (40px at least), so it sits a little above the middle of what's under the bar. Nothing moves: no animation.
 
-**Three looks, for the user to pick one** (Settings → Style Guide → Empty states shows them side by side; the one picked there is what the app's empty screens show on that phone until it's settled, then the others go):
-- **Plates:** three soft-coloured plates (sage, butter, blush) with white rims and the plate shadow, the middle one big and in front, with the screen's things on them in place of photos, like a cookbook's card. Title, line, button under them.
-- **Icon:** one icon (the first of the three) on a 96px white circle. Title, line, button. The quietest.
-- **Add tile:** no picture: a white tile with a dashed edge (like the editor's Add a photo box), 168px tall, a Tomato + circle and the button's words in it; the whole tile is the button. Only the title, muted, under it; no line.
-
-**Where it goes next** (once a look is picked): Recipes with no recipes ("No recipes yet", **New recipe**, +'s New recipe sheet), Cookbooks with none ("No cookbooks yet", **New cookbook**), a cookbook with no recipes in it ("Nothing in here yet", **Add recipes**). The Planner's empty days and the recipe page's empty sections are empty *parts* and keep their inline look.
+**Where it goes next:** Recipes with no recipes ("No recipes yet", **New recipe**, +'s New recipe sheet), Cookbooks with none ("No cookbooks yet", **New cookbook**), a cookbook with no recipes in it ("Nothing in here yet", **Add recipes**). The Planner's empty days and the recipe page's empty sections are empty *parts* and keep their inline look.
 
 ### Launch loader
 

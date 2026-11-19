@@ -3,7 +3,7 @@ import {
   Page, Navbar, NavTitle, NavRight, Subnavbar, Searchbar, Link, Block, Button, Segmented, List, ListItem, SwipeoutActions,
   SwipeoutButton, Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
-import { ArrowUpRight, Carrot, ChefHat, ChevronDown, Croissant, Ellipsis, Milk, Plus } from 'lucide-react';
+import { ArrowUpRight, Carrot, ChefHat, ChevronDown, Ellipsis, Plus } from 'lucide-react';
 import { showTabbar } from '../components/ui/tabbar';
 import { inlineIcon, navIcon } from '../components/ui/icons';
 import { useAtTop } from '../components/ui/atTop';
@@ -318,8 +318,8 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
         </div>
       ) : empty ? (
         <EmptyState
-          icons={[Carrot, Milk, Croissant]}
-          title="Nothing to buy yet"
+          icon={Carrot}
+          title="Your list is empty"
           text="Add ingredients from a recipe or your plan."
           action={{ label: 'Add to the list', onClick: () => setAddMenu(true) }}
         />

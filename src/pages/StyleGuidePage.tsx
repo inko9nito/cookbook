@@ -2,9 +2,9 @@ import { useState } from 'react';
 import {
   Page, Navbar, BlockTitle, Block, BlockFooter, List, ListItem, ListInput, Chip, Button, Stepper, Segmented, f7,
 } from 'framework7-react';
-import { Carrot, Croissant, Milk } from 'lucide-react';
+import { Carrot } from 'lucide-react';
 import RecipeCard from '../components/ui/RecipeCard';
-import EmptyState, { EMPTY_LOOKS, setEmptyLook, useEmptyLook } from '../components/ui/EmptyState';
+import EmptyState from '../components/ui/EmptyState';
 import { sampleRecipes } from '../demo/data';
 
 const SWATCHES: [string, string][] = [
@@ -18,7 +18,6 @@ const SWATCHES: [string, string][] = [
 export default function StyleGuidePage() {
   const [chip, setChip] = useState('All');
   const [servings, setServings] = useState(8);
-  const emptyLook = useEmptyLook();
   const toast = (text: string) => f7.toast.show({ text, closeTimeout: 1800 });
 
   return (
@@ -118,34 +117,20 @@ export default function StyleGuidePage() {
         </List>
       </div>
 
-      {/* issue #118: the three looks for an empty screen, side by side; the one picked is what the app's empty screens
-          show on this phone (the Groceries list, for now) until the user settles on one */}
-      <BlockTitle medium>Empty states · pick one</BlockTitle>
+      {/* issue #118: what a screen shows with nothing on it (DESIGN.md → Empty states) */}
+      <BlockTitle medium>Empty state</BlockTitle>
       <BlockFooter>
-        What a screen shows with nothing on it yet: a picture, a few words and one button that opens the same choices as
-        the screen’s +. The look picked here is the one the empty grocery list shows on this phone.
+        A screen with nothing on it yet: one icon, a few words and one button that opens the same choices as the screen’s +.
+        Search, view switches and counts are hidden until there’s something to show.
       </BlockFooter>
-      <Block>
-        <Segmented strong className="ck-empty-pick">
-          {EMPTY_LOOKS.map(({ look, name }) => (
-            <Button key={look} active={emptyLook === look} onClick={() => setEmptyLook(look)}>
-              {name}
-            </Button>
-          ))}
-        </Segmented>
-      </Block>
-      {EMPTY_LOOKS.map(({ look, name }) => (
-        <div key={look} className={`ck-empty-sample${emptyLook === look ? ' ck-empty-sample-on' : ''}`}>
-          <div className="ck-empty-sample-name">{`${name}${emptyLook === look ? ' · picked' : ''}`}</div>
-          <EmptyState
-            look={look}
-            icons={[Carrot, Milk, Croissant]}
-            title="Nothing to buy yet"
-            text="Add ingredients from a recipe or your plan."
-            action={{ label: 'Add to the list', onClick: () => toast('Opens the same choices as +') }}
-          />
-        </div>
-      ))}
+      <div className="ck-empty-sample">
+        <EmptyState
+          icon={Carrot}
+          title="Your list is empty"
+          text="Add ingredients from a recipe or your plan."
+          action={{ label: 'Add to the list', onClick: () => toast('Opens the same choices as +') }}
+        />
+      </div>
 
       <BlockTitle medium>Tab bar · DoorDash</BlockTitle>
       <BlockFooter>Docked flat white bar with a hairline on top; Tomato ink for the active tab. It hides on the recipe and edit pages.</BlockFooter>

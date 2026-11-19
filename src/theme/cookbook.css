@@ -546,9 +546,11 @@ html.ios .subnavbar.ck-search-bar .searchbar { flex: none; width: auto; margin: 
 
 /* ── Segmented control: the selected segment always has white text.
    iPhone Safari keeps a tapped button in its hover/pressed state, which showed grey text on the dark segment. ── */
-/* The dark highlight slides over in 200ms (Framework7) while the text turned white/grey in 100ms, so for a moment the
-   text was white on grey and grey on dark. The text now changes colour in step with the slide. */
-html.ios .segmented-strong .button { transition-duration: 200ms; }
+/* The text changes colour at once, as the dark highlight starts to slide (Framework7). iPhone Safari didn't fade the text
+   with Framework7's button transition: it kept the old colours to the end of it and then flipped them, so for 100ms
+   (200ms when the transition was lengthened to match the slide) the new segment read grey on dark and the old one
+   white on grey (the user's recordings, #64). */
+html.ios .segmented-strong .button { transition: none; }
 html.ios .segmented-strong .button.button-active,
 html.ios .segmented-strong .button.button-active:hover,
 html.ios .segmented-strong .button.button-active.active-state {
@@ -1483,25 +1485,32 @@ html.ios .calendar.ck-calendar .toolbar .calendar-month-selector .current-month-
 
 /* ── Groceries (issue #64): the list by aisle or by recipe, its store pill, Instacart's ↗ on each row ── */
 .block.ck-grocery-head { margin: 16px 0 20px; }
-/* one line under the toggle (the user found the top too busy): the note the user asked for, that ↗ leaves for
-   Instacart, and the store it searches, tapped to change it */
+/* one line under the toggle (the user found the top too busy): "Shopping via Instacart at Sprouts", the user's words
+   for the note that ↗ leaves for Instacart, and the store it searches, tapped to change it */
 .link.ck-instacart-store {
   display: inline-flex; align-items: center; gap: 4px; margin-top: 12px;
   font-size: 13px; line-height: 18px; color: var(--ck-muted);
 }
 .link.ck-instacart-store b { font-weight: 600; color: var(--ck-fg); }
-.link.ck-instacart-store .ck-icon:first-child { color: var(--ck-accent-ink); }
-.link.ck-instacart-store .ck-icon:last-child { color: var(--ck-fg2); }
+.link.ck-instacart-store .ck-icon { color: var(--ck-fg2); }
 /* the groups in one column with a fixed gap: on iPhone Safari the gap between groups, made of margins, was lost */
 .ck-grocery-groups { display: flex; flex-direction: column; gap: 24px; padding-bottom: 24px; }
 .ck-grocery-got { justify-content: space-between; flex-wrap: nowrap; }
 .ck-grocery-got .link { font-family: var(--ck-font-display); font-size: 15px; font-weight: 400; color: var(--ck-accent-ink); }
-/* the thing to buy leads (medium weight, wrapping); its amount and recipes are the muted small print under it */
+/* the thing to buy leads (medium weight, wrapping), the recipes it's for are the muted small print under it, and its
+   amount stands on its own at the right, before ↗ (in the small print it ran into the recipes' names) */
 .list.ck-grocery-list li .item-title { font-weight: 500; white-space: normal; }
+.list.ck-grocery-list .item-after { align-items: center; }
+.ck-grocery-amount {
+  max-width: 8em; margin-right: 12px; white-space: normal; text-align: right;
+  font-size: 15px; line-height: 20px; color: var(--ck-fg2); font-variant-numeric: tabular-nums;
+}
+.ck-grocery-amount:last-child { margin-right: 0; }
 /* a row held or swiped open: the page grey, which the muted footer still reads on (Framework7's darker grey didn't) */
 .list.ck-grocery-list { --f7-list-link-pressed-bg-color: var(--ck-bg); --f7-swipeout-active-bg-color: var(--ck-bg); }
 .list.ck-grocery-list li.ck-done .item-title,
-.list.ck-grocery-list li.ck-done .item-footer { text-decoration: line-through; color: var(--ck-done-ink); }
+.list.ck-grocery-list li.ck-done .item-footer,
+.list.ck-grocery-list li.ck-done .ck-grocery-amount { text-decoration: line-through; color: var(--ck-done-ink); }
 /* ↗: Instacart's search for it, a soft round button at the row's end */
 .link.ck-instacart-link {
   display: grid; place-items: center; width: 36px; height: 36px; border-radius: 9999px;

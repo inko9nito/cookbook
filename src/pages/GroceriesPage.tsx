@@ -155,8 +155,11 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
     }
   };
 
-  /** A row: the thing to buy, its amount and recipes under it; tap to tick; ↗ opens Instacart's search for it; swipe for Aisle, Store, Delete. */
-  const row = (line: Line, key: string, title: string, footer: string) => (
+  /**
+   * A row: the thing to buy, the recipes under it, its amount at the right next to ↗ (the user found it lost among the
+   * recipes in the small print); tap to tick; ↗ opens Instacart's search for it; swipe for Edit, Store, Delete.
+   */
+  const row = (line: Line, key: string, title: string, amount: string, footer: string) => (
     <ListItem
       key={key}
       swipeout
@@ -171,6 +174,11 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
         {line.store && line.store !== store?.slug && <span className="ck-store-tag">{storeName(line.store)}</span>}
       </span>
       {footer && <span slot="footer">{footer}</span>}
+      {amount && (
+        <span slot="after" className="ck-grocery-amount">
+          {amount}
+        </span>
+      )}
       {!ticked(line) &&
         (line.choices ? (
           // a choice: ↗ asks which to search
@@ -208,7 +216,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
     </ListItem>
   );
 
-  const lineFooter = (l: Line) => [l.amount, ...l.recipes.map((r) => r.title)].filter(Boolean).join(' · ');
+  const lineFooter = (l: Line) => l.recipes.map((r) => r.title).join(' · ');
 
   const plannedById = new Map(planned.map((p) => [p.id, p]));
   const recipeMeta = (parts: { part: { item: GroceryItem; recipe?: Recipe } }[]) => {
@@ -268,17 +276,16 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
             By recipe
           </Button>
         </Segmented>
-        {/* the user asked for a note that the links leave for Instacart: it's also where the store is picked */}
-        <Link className="ck-instacart-store" onClick={() => setStoreMenu(true)} aria-label={store ? `↗ opens Instacart at ${store.name}. Change the store` : 'Pick the store ↗ opens on Instacart'}>
-          <ArrowUpRight size={14} strokeWidth={2.25} className="ck-icon" aria-hidden="true" />
+        {/* the user asked for a note that the links leave for Instacart, in these words: it's also where the store is picked */}
+        <Link className="ck-instacart-store" onClick={() => setStoreMenu(true)} aria-label={store ? `Shopping via Instacart at ${store.name}. Change the store` : 'Shopping via Instacart. Pick a store'}>
           <span>
             {store ? (
               <>
-                opens Instacart at <b>{store.name}</b>
+                Shopping via Instacart at <b>{store.name}</b>
               </>
             ) : (
               <>
-                opens Instacart · <b>Pick a store</b>
+                Shopping via Instacart · <b>Pick a store</b>
               </>
             )}
           </span>
@@ -312,7 +319,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
             <section key={g.aisle} className="ck-grocery-group">
               <div className="ck-plan-slot-label">{AISLE_NAMES[g.aisle]}</div>
               <List strongIos insetIos dividersIos className="ck-plan-list ck-grocery-list">
-                {g.lines.map((l) => row(l, l.key, l.name, lineFooter(l)))}
+                {g.lines.map((l) => row(l, l.key, l.name, l.amount, lineFooter(l)))}
               </List>
             </section>
           ))}
@@ -323,7 +330,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
                 <Link onClick={clearGot}>Clear</Link>
               </div>
               <List strongIos insetIos dividersIos className="ck-plan-list ck-grocery-list">
-                {shownGot.map((l) => row(l, l.key, l.name, lineFooter(l)))}
+                {shownGot.map((l) => row(l, l.key, l.name, l.amount, lineFooter(l)))}
               </List>
             </section>
           )}
@@ -351,8 +358,8 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
                   {g.parts.map(({ part, line }) => {
                     const others = line.recipes.filter((r) => r.id !== part.recipe?.id).map((r) => r.title);
                     const together = line.parts.length > 1 ? (line.amount ? `${line.amount} in all` : 'Also') + (others.length ? `${line.amount ? ', with' : ' for'} ${others.join(' and ')}` : '') : '';
-                    const footer = [partAmount(part), part.note, together].filter(Boolean).join(' · ');
-                    return row(line, part.item.id, partName(part), footer);
+                    const footer = [part.note, together].filter(Boolean).join(' · ');
+                    return row(line, part.item.id, partName(part), partAmount(part), footer);
                   })}
                 </List>
               </section>
@@ -365,9 +372,10 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
       <Actions opened={addMenu} onActionsClosed={() => setAddMenu(false)}>
         <ActionsGroup>
           <ActionsLabel>Add to the grocery list</ActionsLabel>
-          <ActionsButton onClick={() => setShopWeek(true)}>Shop this week</ActionsButton>
-          <ActionsButton onClick={() => setPicking(true)}>A recipe…</ActionsButton>
-          <ActionsButton onClick={addTyped}>An item</ActionsButton>
+          {/* where the things come from, worded like Recipes' + (From photos or screenshots, From a link, Type it in) */}
+          <ActionsButton onClick={() => setShopWeek(true)}>From this week’s plan</ActionsButton>
+          <ActionsButton onClick={() => setPicking(true)}>From a recipe</ActionsButton>
+          <ActionsButton onClick={addTyped}>Type it in</ActionsButton>
         </ActionsGroup>
         <ActionsGroup>
           <ActionsButton strong>Cancel</ActionsButton>

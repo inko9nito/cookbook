@@ -2640,10 +2640,11 @@ async function swipeLeft(ctx, page, locator) {
   // Dill Chicken and part of tomorrow's kebabs at 8 servings, paper towels, two ticked, yogurt pinned to the 2nd store. ──
   const GRO = '#view-groceries .page-current';
   const groRow = (text) => page.locator(`${GRO} .ck-grocery-list li`, { hasText: text }).first();
-  // each row not ticked: its name (leading, without a store tag) and its small print (amount · recipes)
+  // each row not ticked: its name (leading, without a store tag), its small print (the recipes) and its amount (at the right)
   const groItems = () => page.locator(`${GRO} .ck-grocery-list li:not(.ck-done) .item-title`).evaluateAll((els) => els.map((e) => ({
     title: [...e.childNodes].filter((n) => !(n.classList && n.classList.contains('item-footer'))).map((n) => (n.querySelector ? [...n.childNodes].filter((c) => !(c.classList && c.classList.contains('ck-store-tag'))).map((c) => c.textContent).join('') : n.textContent)).join('').trim(),
     footer: (e.querySelector('.item-footer')?.textContent ?? '').trim(),
+    amount: (e.closest('li').querySelector('.ck-grocery-amount')?.textContent ?? '').trim(),
   })));
   const groTitles = async () => (await groItems()).map((r) => r.title);
   // the space between one group's card and the next group's label (#64: it was lost on the phone)
@@ -2654,17 +2655,27 @@ async function swipeLeft(ctx, page, locator) {
     await page.reload(); await page.waitForTimeout(1200);
     await page.locator('.tabbar a[aria-label="Groceries"]').tap(); await page.waitForTimeout(1000);
     const rows = await groItems();
-    // the thing to buy leads; its amount is the small print under it
-    for (const [name, amount] of [['Lemons', '3 · '], ['Garlic', '10 cloves · '], ['Boneless chicken thighs', '6 lb · '], ['Paper towels', '']]) {
-      if (!rows.some((r) => r.title === name && r.footer.startsWith(amount))) throw new Error(`no "${name}" (${amount}) line (lines: ${rows.map((r) => `${r.title} [${r.footer}]`).join(' | ')})`);
+    // the thing to buy leads, the recipes are the small print under it, and the amount stands at the right (the user
+    // found it lost among the recipes' names in the small print)
+    for (const [name, amount] of [['Lemons', '3'], ['Garlic', '10 cloves'], ['Boneless chicken thighs', '6 lb'], ['Paper towels', '']]) {
+      if (!rows.some((r) => r.title === name && r.amount === amount)) throw new Error(`no "${name}" (${amount}) line (lines: ${rows.map((r) => `${r.title} [${r.amount}] [${r.footer}]`).join(' | ')})`);
     }
+    if (!/^[A-Z]/.test(rows.find((r) => r.title === 'Lemons').footer)) throw new Error(`lemons' small print reads "${rows.find((r) => r.title === 'Lemons').footer}", not its recipes`);
+    // right-aligned, just before ↗, on the row's middle
+    const place = await groRow('Garlic').evaluate((li) => {
+      const a = li.querySelector('.ck-grocery-amount').getBoundingClientRect();
+      const link = li.querySelector('a.ck-instacart-link').getBoundingClientRect();
+      const title = li.querySelector('.item-title').getBoundingClientRect();
+      return { gap: Math.round(link.left - a.right), middle: Math.abs((a.top + a.bottom) / 2 - (link.top + link.bottom) / 2), clear: a.left > title.left + 40 };
+    });
+    if (place.gap < 8 || place.gap > 16 || place.middle > 2 || !place.clear) throw new Error(`garlic's amount isn't at the right before ↗: ${JSON.stringify(place)}`);
     if ((await groGaps()).some((g) => g < 20)) throw new Error(`groups too close together: ${(await groGaps()).join(', ')}px`);
     // + first, then ⋯, as on Recipes and Cookbooks
     const order = await page.locator(`${GRO} > .navbar .right a`).evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
     if (order.join('|') !== 'Add to the grocery list|More grocery list actions') throw new Error(`the bar's buttons read ${order.join(', ')}`);
     const labels = await page.locator(`${GRO} .ck-grocery-group > .ck-plan-slot-label`).allTextContents();
     if (labels[0] !== 'Produce' || !labels.includes('Meat & seafood') || !labels.some((l) => l.startsWith('Got it'))) throw new Error(`aisles read ${labels.join(', ')}`);
-    if ((await page.locator(`${GRO} .ck-instacart-store`).textContent()) !== 'opens Instacart at Acme Market') throw new Error('no note that ↗ opens Instacart at the store');
+    if ((await page.locator(`${GRO} .ck-instacart-store`).textContent()) !== 'Shopping via Instacart at Acme Market') throw new Error(`the store line reads "${await page.locator(`${GRO} .ck-instacart-store`).textContent()}"`);
     const href = await groRow('Lemons').locator('a.ck-instacart-link').getAttribute('href');
     if (href !== 'https://www.instacart.com/store/acme-market/s?k=lemons') throw new Error(`lemons' ↗ goes to ${href}`);
     const yogurt = groRow('Greek yogurt');
@@ -2741,7 +2752,7 @@ async function swipeLeft(ctx, page, locator) {
   await step('40g3-groceries-choice-picked', async () => {
     await editRow('Soy sauce or tamari');
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Get tamari' }).tap(); await page.waitForTimeout(900);
-    if (!(await groItems()).some((r) => r.title === 'Tamari' && r.footer === '1 tbsp')) throw new Error('picking tamari didn’t make the row Tamari');
+    if (!(await groItems()).some((r) => r.title === 'Tamari' && r.amount === '1 tbsp')) throw new Error('picking tamari didn’t make the row Tamari');
     if (!(await groRow('Tamari').locator('a.ck-instacart-link').getAttribute('href')).includes('k=tamari')) throw new Error('Tamari’s ↗ doesn’t search tamari');
   });
   await step('40g4-groceries-renamed', async () => {
@@ -2752,13 +2763,18 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await groTitles()).includes('Dill')) throw new Error(`renaming fresh dill didn’t show Dill (${(await groTitles()).join(', ')})`);
   });
   await step('40h-groceries-by-recipe', async () => {
+    // the segments' text changes colour at once, with no transition: iPhone Safari held the old colours to the end of
+    // one and then flipped them, so the text flashed (the user's recordings, #64)
+    const fades = await page.locator(`${GRO} .ck-grocery-view .button`).evaluateAll((els) => els.map((e) => getComputedStyle(e).transitionDuration));
+    if (fades.some((d) => d.split(',').some((x) => parseFloat(x) > 0))) throw new Error(`the segments' text still fades: ${fades.join(' / ')}`);
     await page.locator(`${GRO} .ck-grocery-view .button`, { hasText: 'By recipe' }).tap(); await page.waitForTimeout(700);
     const heads = await page.locator(`${GRO} .ck-grocery-recipe-head h2`).allTextContents();
     if (heads.join('|') !== 'Mustard Dill Chicken Thighs|Middle Eastern Chicken Kebabs') throw new Error(`recipes read ${heads.join(', ')}`);
     const meta = await page.locator(`${GRO} .ck-grocery-recipe-head .ck-note`).first().textContent();
     if (meta !== '4 servings · Today, dinner') throw new Error(`the first recipe's line reads "${meta}"`);
-    const thighs = await page.locator(`${GRO} .ck-grocery-list li`, { hasText: 'chicken thighs' }).first().locator('.item-footer').textContent();
-    if (thighs !== '2 lb · 6 lb in all, with Middle Eastern Chicken Kebabs') throw new Error(`the thighs' footer reads "${thighs}"`);
+    const thighs = page.locator(`${GRO} .ck-grocery-list li`, { hasText: 'chicken thighs' }).first();
+    const [small, amount] = [await thighs.locator('.item-footer').textContent(), await thighs.locator('.ck-grocery-amount').textContent()];
+    if (amount !== '2 lb' || small !== '6 lb in all, with Middle Eastern Chicken Kebabs') throw new Error(`the thighs read "${amount}" and "${small}"`);
     if ((await groGaps()).some((g) => g < 20)) throw new Error(`recipes too close together: ${(await groGaps()).join(', ')}px`);
   });
   await step('40i-groceries-store-menu', async () => {
@@ -2769,7 +2785,7 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('40j-groceries-switch-store', async () => {
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Corner Grocer' }).tap(); await page.waitForTimeout(800);
-    if ((await page.locator(`${GRO} .ck-instacart-store`).textContent()) !== 'opens Instacart at Corner Grocer') throw new Error('the store line didn’t change');
+    if ((await page.locator(`${GRO} .ck-instacart-store`).textContent()) !== 'Shopping via Instacart at Corner Grocer') throw new Error('the store line didn’t change');
     if (!(await groRow('Garlic').locator('a.ck-instacart-link').getAttribute('href')).includes('/store/corner-grocer/')) throw new Error('rows still search Acme Market');
     // the lemons, pinned to Corner Grocer, are now just with the rest: no tag
     if (await groRow('Lemons').locator('.ck-store-tag').count()) throw new Error('lemons still shows a tag at its own store');
@@ -2792,13 +2808,14 @@ async function swipeLeft(ctx, page, locator) {
   await step('40k-groceries-plus', async () => {
     await page.locator(`${GRO} > .navbar a[aria-label="Add to the grocery list"]`).tap(); await page.waitForTimeout(800);
     const buttons = await page.locator('.actions-modal.modal-in .actions-button').allTextContents();
-    if (buttons.slice(0, 3).join('|') !== 'Shop this week|A recipe…|An item') throw new Error(`+ offers ${buttons.join(', ')}`);
+    // where the things come from, worded alike (as Recipes' +), the user found the first wording confusing
+    if (buttons.slice(0, 3).join('|') !== 'From this week’s plan|From a recipe|Type it in') throw new Error(`+ offers ${buttons.join(', ')}`);
   });
   await step('40l-groceries-add-item', async () => {
-    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'An item' }).tap(); await page.waitForTimeout(800);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Type it in' }).tap(); await page.waitForTimeout(800);
     await page.locator('.dialog.modal-in input').fill('2 limes');
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(800);
-    if (!(await groItems()).some((r) => r.title === 'Limes' && r.footer === '2')) throw new Error('the typed item isn’t on the list');
+    if (!(await groItems()).some((r) => r.title === 'Limes' && r.amount === '2')) throw new Error('the typed item isn’t on the list');
   });
   await step('40l2-groceries-same-as', async () => {
     // Same thing as…: the other rows, the same aisle's first; picking one makes these words that thing
@@ -2812,7 +2829,7 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('40m-shop-week', async () => {
     await page.locator(`${GRO} > .navbar a[aria-label="Add to the grocery list"]`).tap(); await page.waitForTimeout(800);
-    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Shop this week' }).tap(); await page.waitForTimeout(1000);
+    await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'From this week’s plan' }).tap(); await page.waitForTimeout(1000);
     const sheet = page.locator('.ck-shop-week-popup.modal-in .page-current');
     if (!(await sheet.isVisible())) throw new Error('Shop this week didn’t open');
     const mustard = sheet.locator('li', { hasText: 'Mustard Dill' });

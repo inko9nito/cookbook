@@ -1642,7 +1642,9 @@ async function swipeLeft(ctx, page, locator) {
   // iPhone's insets (59px status bar, 34px home indicator), the top bar's buttons sit below the status bar and the tabs
   // end above the home indicator
   await step('25c2-cook-linked-safe-areas', async () => {
-    await page.addStyleTag({ content: 'html { --f7-safe-area-top: 59px !important; --f7-safe-area-bottom: 34px !important; }' });
+    // the home-screen app on a notched iPhone: a 59px status bar and a 34px home indicator. There the card keeps Framework7's
+    // offset, the status bar's height (in a Safari tab, #116, it starts 10px down instead, and a tab has no top safe area)
+    await page.addStyleTag({ content: 'html { --f7-safe-area-top: 59px !important; --f7-safe-area-bottom: 34px !important; } .popup.ck-cook { --f7-popup-push-offset: 59px !important; }' });
     await page.waitForTimeout(300);
     const t = await page.evaluate(() => {
       const close = document.querySelector('.ck-cook .navbar .right a').getBoundingClientRect();

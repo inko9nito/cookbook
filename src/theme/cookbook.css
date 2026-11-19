@@ -1313,12 +1313,15 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
 .ck-cook-recipe.ck-cook-recipe-lifted::before,
 .ck-cook-recipe.ck-cook-recipe-lifted::after { display: none; }
 
-/* Settings → Version: the build, then a Tomato refresh icon. Tapping the build copies it; tapping the icon checks for a
-   new version, and the icon spins while it checks (approved exception: the user asked for a spinning refresh icon
-   instead of a dialog). The icon's tap target is 44px, reaching into the row's padding like Sign Out's. */
-.ck-version-row { cursor: pointer; }
-.ck-version-row .link.ck-refresh-link { width: 44px; height: 44px; margin: -12px -12px -12px 0; color: var(--ck-accent-ink); }
-.ck-version-row .ck-refresh { color: var(--ck-accent-ink); }
+/* Settings → Version (issue #128): on the page itself, not in a card: the build on the left, then the Tomato-ink refresh
+   icon on its own (no button shape: the user wants just the icon). Tapping the build copies it; tapping the icon checks for
+   a new version, and it spins while it checks (approved exception: the user asked for a spinning refresh icon instead of
+   a dialog). The icon's tap target is 44px, reaching into the block's padding so the icon lines up with the cards' chevrons. */
+/* the build lines up with the cards' row text (their 16px inset plus the row's 16px) */
+.block.ck-version { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-left: calc(var(--f7-block-padding-horizontal) + 16px); }
+.ck-version-text { cursor: pointer; font-size: 15px; color: var(--ck-fg); font-variant-numeric: tabular-nums; }
+.ck-version .link.ck-refresh-button { flex: none; width: 44px; height: 44px; margin-right: 1px; color: var(--ck-accent-ink); }
+.ck-refresh-button .ck-refresh { color: var(--ck-accent-ink); }
 .ck-refresh.ck-spinning { animation: ck-spin 0.9s linear infinite; }
 @keyframes ck-spin { to { transform: rotate(360deg); } }
 

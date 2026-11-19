@@ -428,7 +428,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
           <ActionsButton onClick={clearGot} className={got.length ? '' : 'disabled'}>
             {`Clear what you got${got.length ? ` (${got.length})` : ''}`}
           </ActionsButton>
-          <ActionsButton onClick={() => f7router?.navigate('/grocery-stores/')}>Your stores</ActionsButton>
+          <ActionsButton onClick={() => f7router?.navigate('/groceries/stores/')}>Your stores</ActionsButton>
         </ActionsGroup>
         <ActionsGroup>
           <ActionsButton color="red" onClick={clearAll} className={items.length ? '' : 'disabled'}>
@@ -449,7 +449,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
               {s.name}
             </ActionsButton>
           ))}
-          <ActionsButton onClick={() => f7router?.navigate('/grocery-stores/')}>{stores.length ? 'Edit stores…' : 'Add a store…'}</ActionsButton>
+          <ActionsButton onClick={() => f7router?.navigate('/groceries/stores/')}>{stores.length ? 'Edit stores…' : 'Add a store…'}</ActionsButton>
         </ActionsGroup>
         <ActionsGroup>
           <ActionsButton strong>Cancel</ActionsButton>

@@ -22,8 +22,8 @@ import { nameOf, type GroceryThing } from '../lib/grocery-names';
 import { coverPhoto, newId, type Recipe } from '../lib/recipe';
 import { dayName, mealName, today } from '../lib/planner';
 import { friendly } from '../lib/ingredients';
+import { say } from '../components/ui/toast';
 
-const toast = (text: string) => f7.toast.show({ text, closeTimeout: 2200 });
 const aToZ = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
 // the thing to buy leads the row: "White miso paste", its amount in the small print under it
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
@@ -149,7 +149,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
       if (navigator.share) await navigator.share({ title: 'Grocery list', text });
       else {
         await navigator.clipboard.writeText(text);
-        toast('Copied the list');
+        say('Copied the list');
       }
     } catch {
       /* the share sheet was closed */

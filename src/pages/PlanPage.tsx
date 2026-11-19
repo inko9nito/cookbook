@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Page, Navbar, NavTitle, NavRight, Subnavbar, Link, Block, Button, List, ListItem, SwipeoutActions, SwipeoutButton, Segmented,
-  Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
+  Actions, ActionsGroup, ActionsLabel, ActionsButton,
 } from 'framework7-react';
 import { CalendarSearch, ChefHat, NotebookPen, Plus, ShoppingCart } from 'lucide-react';
 import WeekStrip from '../components/WeekStrip';
@@ -23,9 +23,9 @@ import {
   busyDays, dayName, daysBetween, inMeal, mealName, mediumDate, MEALS, plan, planNote, plannedOn, shortDate, slotsOn, today,
   weekDays, weekName, weekRange, weekStart, type Day, type Meal, type Planned,
 } from '../lib/planner';
+import { say } from '../components/ui/toast';
 
 const aToZ = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
-const toast = (text: string) => f7.toast.show({ text, closeTimeout: 2000 });
 
 /** Today on this phone, kept current: the app can stay open past midnight, or come back to the front days later. */
 function useToday() {
@@ -167,7 +167,7 @@ export default function PlanPage() {
       onPick: (day) => {
         if (day === p.day) return;
         savePlanned({ ...p, day });
-        toast(`Moved to ${mediumDate(day)}`);
+        say(`Moved to ${mediumDate(day)}`);
       },
     });
   const jump = () => pickDay({ title: 'Go to which day?', value: selected, busy, onPick: (day) => select(day, false) });

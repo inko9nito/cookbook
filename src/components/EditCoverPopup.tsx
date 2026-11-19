@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Searchbar, Block, Badge, f7 } from 'framework7-react';
+import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, Searchbar, Block, Badge } from 'framework7-react';
 import { Check } from 'lucide-react';
 import { BOOK_COLORS, colorOf, cookbookRecipeIds, coversFromSpots, existing, platesOf, spotsOf, type BookColor, type Cookbook, type CoverSpots } from '../lib/cookbook';
 import { coverPhoto, type Recipe } from '../lib/recipe';
 import { searchByTitle, searchWords } from '../lib/search';
 import { CookbookPlates, type PlateNumber } from './ui/CookbookTile';
 import { photoStyle } from './ui/photo';
+import { tell } from './ui/toast';
 
 type Props = {
   opened: boolean;
@@ -68,7 +69,7 @@ export default function EditCoverPopup({ opened, cookbook, byId, onDone, onClose
     if (at >= 0) return setSpots((s) => s.map((x, i) => (i === at ? null : x)) as CoverSpots);
     const free = spots.indexOf(null);
     if (free < 0) {
-      f7.toast.show({ text: 'All three plates are chosen. Tap a numbered photo to free one.', closeTimeout: 2200 });
+      tell('All three plates are chosen. Tap a numbered photo to free one.', 2200);
       return;
     }
     setSpots((s) => s.map((x, i) => (i === free ? id : x)) as CoverSpots);

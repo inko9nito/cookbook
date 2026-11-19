@@ -1871,6 +1871,16 @@ async function swipeLeft(ctx, page, locator) {
     if ((await tabNames()).includes(shown)) throw new Error(`✓ left "${shown}" open`);
     const toast = (await page.locator('.toast.modal-in').innerText().catch(() => '')).replace(/\s+/g, ' ');
     if (!/Marked as made · \d+×/.test(toast) || !toast.includes('Undo')) throw new Error(`the toast reads "${toast}"`);
+    // #46: the dark pill, as wide as its words, with the Tomato check and Undo as plain Tomato words (no fill)
+    const look = await page.locator('.toast.modal-in').evaluate((el) => {
+      const b = el.querySelector('.toast-button');
+      const cs = getComputedStyle(b);
+      return { check: !!el.querySelector('.ck-toast svg'), width: el.getBoundingClientRect().width, screen: innerWidth, color: cs.color, fill: cs.backgroundColor };
+    });
+    if (!look.check) throw new Error('Marked as made has no check');
+    if (look.width > look.screen - 32) throw new Error(`the toast is ${look.width}px wide on a ${look.screen}px screen`);
+    if (look.color !== 'rgb(242, 128, 92)') throw new Error(`Undo is ${look.color}, not --ck-accent-on-dark`);
+    if (!/rgba\(0, 0, 0, 0\)|transparent/.test(look.fill)) throw new Error(`Undo has a ${look.fill} fill`);
   });
   await step('25l2-cook-done-undo', async () => {
     await page.locator('.toast.modal-in .toast-button').tap(); await page.waitForTimeout(900);
@@ -2222,6 +2232,9 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(900);
     const now = await cards();
     if (now.length !== 4 || now[3] !== 'Corn pudding') throw new Error(`after adding, the section shows ${JSON.stringify(now)}`);
+    const said = (await page.locator('.toast.modal-in .toast-text').allTextContents()).join('|');
+    if (said !== 'Added 1 recipe') throw new Error(`Add Recipes' toast says "${said}"`);
+    await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
   });
   await step('26f-section-more', async () => {
     await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
@@ -2287,9 +2300,10 @@ async function swipeLeft(ctx, page, locator) {
     const line = await book.locator('li.ck-addto-section').last().evaluate((li) => getComputedStyle(li.querySelector('.item-inner'), '::after').display);
     if (line === 'none') throw new Error('no hairline between the last section and the next cookbook');
   });
-  // nothing changes until Done: Cancel leaves it as it was
+  // nothing changes until Done: no toast while ticking, Cancel leaves it as it was
   await step('26i2-add-to-cookbook-cancel', async () => {
     await page.locator('.popup.modal-in .ck-addto-list li', { hasText: 'Dressings and sauces' }).locator('label').tap(); await page.waitForTimeout(500);
+    if (await page.locator('.toast.modal-in').count()) throw new Error('ticking a cookbook shows a toast before Done');
     await page.locator('.popup.modal-in a', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(900);
     await page.locator('.view.tab-active .navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
     await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Add to Cookbook' }).tap(); await page.waitForTimeout(1000);
@@ -2298,7 +2312,12 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('26i3-added-to-cookbook', async () => {
     await page.locator('.popup.modal-in .ck-addto-list li', { hasText: 'Grilling' }).locator('label').tap(); await page.waitForTimeout(500);
+    if (await page.locator('.toast.modal-in').count()) throw new Error('ticking a cookbook shows a toast before Done');
     await page.locator('.popup.modal-in a', { hasText: 'Done' }).tap(); await page.waitForTimeout(700);
+    const said = (await page.locator('.toast.modal-in .toast-text').allTextContents()).join('|');
+    if (said !== 'Added to Grilling') throw new Error(`Add to Cookbook's toast says "${said}"`);
+    await page.screenshot({ path: path.join(OUT, '26i3-added-toast.png') });
+    await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
     // leaving Cookbooks took it back to its first page, so it shows the cookbooks again
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(900);
     const grilling = await page.locator(`${CUR} .ck-book-tile`, { hasText: 'Grilling' }).locator('.ck-book-meta').textContent();
@@ -2317,6 +2336,9 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
     const tiles = await page.locator(`${CUR} .ck-book-tile .ck-book-name`).allTextContents();
     if (tiles.includes('Soups') || tiles.length !== 3) throw new Error(`after deleting, the cookbooks are ${JSON.stringify(tiles)}`);
+    const said = (await page.locator('.toast.modal-in .toast-text').allTextContents()).join('|');
+    if (said !== 'Deleted “Soups”') throw new Error(`deleting a cookbook's toast says "${said}"`);
+    await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
   });
 
   // Issue #41: a recipe's page ends with where it belongs (labels, then the cookbooks and sections it's in, as chips) and
@@ -3191,6 +3213,9 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.locator('.ck-shop-week-popup.modal-in').count()) throw new Error('Shop this week stayed open');
     const after = await groTitles();
     if (after.length <= before || !after.some((t) => /fresh corn kernels/i.test(t))) throw new Error('the week’s ingredients weren’t added');
+    // #46: a toast with the check says what was added
+    const said = (await page.locator('.toast.modal-in .toast-text').allTextContents()).join('|');
+    if (!/^Added \d+ items? to the grocery list$/.test(said) || !(await page.locator('.toast.modal-in .ck-toast svg').count())) throw new Error(`Shop this week's toast says "${said}"`);
     await page.waitForTimeout(2200); // the toast
   });
   await step('40p-recipe-add-popup', async () => {

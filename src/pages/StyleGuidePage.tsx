@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import {
-  Page, Navbar, BlockTitle, Block, BlockFooter, List, ListItem, ListInput, Chip, Button, Stepper, Segmented, f7,
+  Page, Navbar, BlockTitle, Block, BlockFooter, List, ListItem, ListInput, Chip, Button, Stepper, Segmented,
 } from 'framework7-react';
 import { Carrot } from 'lucide-react';
 import RecipeCard from '../components/ui/RecipeCard';
 import EmptyState from '../components/ui/EmptyState';
 import { sampleRecipes } from '../demo/data';
+import { tell } from '../components/ui/toast';
 
 const SWATCHES: [string, string][] = [
   ['Background', '--ck-bg'], ['Surface', '--ck-surface'], ['Soft', '--ck-soft'], ['Text', '--ck-fg'],
@@ -18,7 +19,6 @@ const SWATCHES: [string, string][] = [
 export default function StyleGuidePage() {
   const [chip, setChip] = useState('All');
   const [servings, setServings] = useState(8);
-  const toast = (text: string) => f7.toast.show({ text, closeTimeout: 1800 });
 
   return (
     <Page name="style-guide">
@@ -128,7 +128,7 @@ export default function StyleGuidePage() {
           icon={Carrot}
           title="Your list is empty"
           text="Add ingredients from a recipe or your plan."
-          action={{ label: 'Add to the list', onClick: () => toast('Opens the same choices as +') }}
+          action={{ label: 'Add to the list', onClick: () => tell('Opens the same choices as +') }}
         />
       </div>
 

@@ -1,6 +1,7 @@
 import { Page, Navbar, List, ListItem, ListButton, BlockFooter, SwipeoutActions, SwipeoutButton, f7 } from 'framework7-react';
 import { useStore } from '../data/store';
 import { storeNameFrom, storeSlugFrom, type GroceryStore } from '../lib/groceries';
+import { tell } from '../components/ui/toast';
 
 /**
  * Issue #64: the Instacart stores the grocery list's links search (Settings → Grocery Stores, or the list's store pill).
@@ -27,7 +28,7 @@ export default function GroceryStoresPage() {
           return;
         }
         if (stores.some((s) => s.slug === slug)) {
-          f7.toast.show({ text: 'That store is already here', closeTimeout: 2000 });
+          tell('That store is already here', 2000);
           return;
         }
         f7.dialog.prompt('What to call it on the list.', 'Store Name', (name: string) => saveStores([...stores, { slug, name: name.trim() || storeNameFrom(slug) }]), undefined, storeNameFrom(slug));

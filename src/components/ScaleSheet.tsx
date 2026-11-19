@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sheet, Toolbar, Link, PageContent, Block, BlockFooter, List, ListItem, Stepper, Chip, Button, Segmented, f7 } from 'framework7-react';
 import type { Ingredient, Recipe } from '../lib/recipe';
 import { amountValue, friendly, scaleAmount, unitFor } from '../lib/ingredients';
+import { say } from './ui/toast';
 
 type Props = {
   opened: boolean;
@@ -53,7 +54,7 @@ export default function ScaleSheet({ opened, recipe, factor, onFactor, onClose, 
         setMatched({ id: i.id, have });
         onFactor(n / base);
         // the result line is at the top of the sheet, which may be scrolled away after picking a row further down
-        f7.toast.show({ text: `Scaled ×${friendly(n / base)} to match ${have} ${i.name}`, closeTimeout: 2200 });
+        say(`Scaled ×${friendly(n / base)} to match ${have} ${i.name}`);
       },
       undefined,
       matched?.id === i.id ? scaleAmount(i.amount, factor).split('–')[0] : '',

@@ -2912,8 +2912,9 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator(fab).isVisible())) throw new Error('the Cooking pill didn’t come back on Recipes');
   });
   // Issue #124: now and then the pill's pot boils over the way the launch loader's does. At rest the lid is ajar, as in
-  // Lucide's icon; it drops shut, rocks on one end and then the other, the pot squashing as it lands, and pops open
-  // again: every 12s (the first 3s in), still otherwise; still and ajar with Reduce Motion
+  // Lucide's icon; it drops shut, rocks on one end and then the other, the pot squashing as it lands, and its last right
+  // upswing stops ajar (it doesn't land and open again): every 12s (the first 3s in), still otherwise; still and ajar
+  // with Reduce Motion
   await step('36b3-cook-pill-pot-boils', async () => {
     const pot = `${fab} .ck-pill-pot`;
     const parts = ['.ck-pill-pot-body', '.ck-pill-pot-open', '.ck-pill-pot-lid', '.ck-pill-pot-lid > span'];
@@ -2940,8 +2941,13 @@ async function swipeLeft(ctx, page, locator) {
       const sy = Number((((await at(t))[0].transform.match(/matrix\(([^)]+)\)/) || [])[1] || '').split(',')[3]);
       if (!(sy < 0.92)) throw new Error(`the pot hardly squashes at ${t}ms (scale ${sy})`);
     }
-    const after = await at(5500);
-    if (!ajar(after[1]) || !still(after[0]) || !still(after[2]) || !still(after[3])) throw new Error(`the lid doesn’t pop open again after boiling over: ${JSON.stringify(after)}`);
+    // the last right upswing (4.41s on) ends ajar and stays: the lid never shuts again, the pot doesn't squash again
+    for (const t of [4700, 4900, 5200, 5500, 8000, 11900]) {
+      const r = await at(t);
+      if (!ajar(r[1]) || !still(r[0]) || !still(r[2]) || !still(r[3])) throw new Error(`at ${t}ms the lid isn’t resting ajar after its last upswing: ${JSON.stringify(r)}`);
+    }
+    const up = await at(4500);
+    if (still(up[1]) || ajar(up[1])) throw new Error(`the lid doesn’t swing up into place at the end: ${JSON.stringify(up)}`);
     await page.locator(pot).evaluate((p) => p.querySelectorAll('*').forEach((s) => s.getAnimations().forEach((a) => a.play())));
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const calm = await page.locator(pot).evaluate((p) => ({

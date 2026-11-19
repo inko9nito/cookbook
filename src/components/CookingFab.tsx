@@ -37,9 +37,9 @@ export default function CookingFab(_: { slot?: 'fixed' }) {
 
 /**
  * Issue #124: Lucide's cooking pot, split into the pot and its lid. At rest it's Lucide's icon, the lid ajar (the outer
- * layer, `.ck-pill-pot-open`, lifts and tips the loader's level lid back to where Lucide draws it). Now and then the lid
- * drops shut onto the rim, plays the launch loader's boil-over once (index.html) and pops open again (CSS keyframes in
- * cookbook.css, `.ck-pill-pot`; still and ajar with Reduce Motion). 22px, stroke 2, like the nav icons; the pot and the
+ * layer, `.ck-pill-pot-open`, tips the loader's level lid up on its left end to where Lucide draws it). Now and then the
+ * lid drops shut onto the rim and plays the launch loader's boil-over (index.html), its last right upswing stopping
+ * ajar (CSS keyframes in cookbook.css, `.ck-pill-pot`; still and ajar with Reduce Motion). 22px, stroke 2, like the nav icons; the pot and the
  * lid's layers sit in one grid cell.
  */
 function BoilingPot() {

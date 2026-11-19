@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Popup, Page, Navbar, NavLeft, NavTitle, NavRight, Link, List, ListItem, AccordionContent, f7 } from 'framework7-react';
 import { BookOpen, Plus } from 'lucide-react';
 import { useCookbooks, useStore } from '../data/store';
-import { byName, emptyCookbook, platePhotos, isIn, recipeIdsOf, toggleIn, withRecipeIds, type Cookbook } from '../lib/cookbook';
+import { addToNote, byName, emptyCookbook, platePhotos, isIn, recipeIdsOf, toggleIn, withRecipeIds, type Cookbook } from '../lib/cookbook';
 import { newId, type Recipe } from '../lib/recipe';
 import { inlineIcon } from './ui/icons';
 import { photoStyle } from './ui/photo';
+import { say } from './ui/toast';
 
 type Props = { opened: boolean; recipe: Recipe; onClosed: () => void };
 
@@ -14,8 +15,8 @@ type Props = { opened: boolean; recipe: Recipe; onClosed: () => void };
  * A cookbook with sections is a Framework7 accordion row (issue #83: all of them open made the list very long): tapping it
  * opens its sections under it (Uncategorized first), each with its own box, since a recipe can be in several; closed, a
  * muted line under its name says which ones it's in. All start closed each time. Nothing changes until Done: ticks, unticks and a "New Cookbook" (it starts with this recipe in it)
- * are kept here, then Done saves the cookbooks that changed. Cancel, or swiping the popup away, leaves everything as it
- * was.
+ * are kept here, then Done saves the cookbooks that changed and a toast says where the recipe went. Cancel, or swiping
+ * the popup away, leaves everything as it was.
  */
 export default function AddToCookbookPopup({ opened, recipe, onClosed }: Props) {
   const { recipes } = useStore();
@@ -53,7 +54,9 @@ export default function AddToCookbookPopup({ opened, recipe, onClosed }: Props) 
 
   const done = () => {
     const edits = [...changed.values()].filter((c) => JSON.stringify(c) !== JSON.stringify(original(c.id)));
+    const note = addToNote(recipe.id, cookbooks, [...edits, ...made]);
     for (const c of [...edits, ...made]) saveCookbook(c);
+    if (note) say(note);
   };
 
   const thumb = (cover?: string) => (

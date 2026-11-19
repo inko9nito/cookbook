@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Page, Navbar, NavTitle, NavRight, Subnavbar, Link, Block, Button, List, ListItem, SwipeoutActions, SwipeoutButton, Segmented,
-  Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
+  Actions, ActionsGroup, ActionsLabel, ActionsButton,
 } from 'framework7-react';
 import { CalendarSearch, ChefHat, NotebookPen, Plus, ShoppingCart } from 'lucide-react';
 import WeekStrip from '../components/WeekStrip';
@@ -23,9 +23,9 @@ import {
   busyDays, dayName, daysBetween, inMeal, mealName, mediumDate, MEALS, plan, planNote, plannedOn, shortDate, slotsOn, today,
   weekDays, weekName, weekRange, weekStart, type Day, type Meal, type Planned,
 } from '../lib/planner';
+import { say } from '../components/ui/toast';
 
 const aToZ = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
-const toast = (text: string) => f7.toast.show({ text, closeTimeout: 2000 });
 
 /** Today on this phone, kept current: the app can stay open past midnight, or come back to the front days later. */
 function useToday() {
@@ -155,9 +155,22 @@ export default function PlanPage() {
     setNoteFor({ day: p.day, planned: p });
     openNote();
   };
+  // #46: what changes on the Planner says so; taking something off it can be undone (saved again, the same id)
   const saveNote = (text: string) => {
     const p = noteFor.planned;
+    if (p && p.note === text) return;
     savePlanned(p ? { ...p, note: text } : planNote(text, noteFor.day, newId));
+    say(p ? 'Note saved' : `Added a note to ${mediumDate(noteFor.day)}`);
+  };
+  const takeOff = (p: Planned) => {
+    deletePlanned(p.id);
+    const what = p.recipeId ? `“${byId.get(p.recipeId)?.title ?? 'the recipe'}”` : 'the note';
+    say(`Removed ${what} from ${mediumDate(p.day)}`, { undo: () => savePlanned(p) });
+  };
+  const toMeal = (p: Planned, m: Meal | null) => {
+    if ((p.meal ?? null) === m) return;
+    savePlanned(inMeal(p, m));
+    say(m ? `Moved to ${mealName(m)}` : 'Moved to any time');
   };
   const move = (p: Planned) =>
     pickDay({
@@ -167,7 +180,7 @@ export default function PlanPage() {
       onPick: (day) => {
         if (day === p.day) return;
         savePlanned({ ...p, day });
-        toast(`Moved to ${mediumDate(day)}`);
+        say(`Moved to ${mediumDate(day)}`);
       },
     });
   const jump = () => pickDay({ title: 'Go to which day?', value: selected, busy, onPick: (day) => select(day, false) });
@@ -186,7 +199,7 @@ export default function PlanPage() {
     );
     if (!p.recipeId) {
       return (
-        <ListItem key={p.id} swipeout link="#" noChevron className="ck-plan-note" title={p.note} onClick={() => editNote(p)} onSwipeoutDeleted={() => deletePlanned(p.id)}>
+        <ListItem key={p.id} swipeout link="#" noChevron className="ck-plan-note" title={p.note} onClick={() => editNote(p)} onSwipeoutDeleted={() => takeOff(p)}>
           <span slot="media" className="ck-picker-thumb ck-plan-note-icon" aria-hidden="true">
             <NotebookPen size={18} strokeWidth={1.75} />
           </span>
@@ -205,7 +218,7 @@ export default function PlanPage() {
         link={`/recipe/${r.id}/${p.servings ? `?servings=${p.servings}` : ''}`}
         title={r.title}
         footer={meta || undefined}
-        onSwipeoutDeleted={() => deletePlanned(p.id)}
+        onSwipeoutDeleted={() => takeOff(p)}
       >
         <span slot="media" className={`ck-picker-thumb ck-photo${photo ? '' : ' ck-photo-empty'}`} style={photoStyle(photo)} aria-hidden="true">
           {!photo && <ChefHat size={16} strokeWidth={1.5} />}
@@ -303,7 +316,7 @@ export default function PlanPage() {
         <ActionsGroup>
           <ActionsLabel>Which meal?</ActionsLabel>
           {[...MEALS, null].map((m) => (
-            <ActionsButton key={m ?? 'day'} strong={(slotFor?.meal ?? null) === m} onClick={() => slotFor && savePlanned(inMeal(slotFor, m))}>
+            <ActionsButton key={m ?? 'day'} strong={(slotFor?.meal ?? null) === m} onClick={() => slotFor && toMeal(slotFor, m)}>
               {m ? mealName(m) : 'Any time'}
             </ActionsButton>
           ))}
@@ -318,7 +331,7 @@ export default function PlanPage() {
         title={`Note for ${mediumDate(noteFor.day)}`}
         note={noteFor.planned?.note ?? ''}
         onSave={saveNote}
-        onRemove={noteFor.planned ? () => deletePlanned(noteFor.planned!.id) : undefined}
+        onRemove={noteFor.planned ? () => takeOff(noteFor.planned!) : undefined}
       />
 
       <RecipePickerPopup
@@ -340,6 +353,10 @@ export default function PlanPage() {
         footer={(r) => (plannedOn(shown, addingTo).some((p) => p.recipeId === r.id) ? 'Already planned that day' : undefined)}
         onDone={(ids) => {
           ids.forEach((id, place) => savePlanned(plan(id, addingTo, newId, { meal: addMeal ?? undefined, place })));
+          if (ids.length) {
+            const what = ids.length === 1 ? `“${byId.get(ids[0])?.title ?? 'the recipe'}”` : `${ids.length} recipes`;
+            say(`Added ${what} to ${[mediumDate(addingTo), addMeal && mealName(addMeal)].filter(Boolean).join(' · ')}`);
+          }
           setAdding(false);
         }}
         onClosed={() => setAdding(false)}

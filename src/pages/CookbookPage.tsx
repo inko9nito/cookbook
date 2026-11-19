@@ -7,6 +7,7 @@ import { ArrowUpDown, Ellipsis, Plus } from 'lucide-react';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAtTop } from '../components/ui/atTop';
+import { say } from '../components/ui/toast';
 import RecipeCard from '../components/ui/RecipeCard';
 import { CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import RecipePickerPopup from '../components/RecipePickerPopup';
@@ -14,7 +15,7 @@ import EditCoverPopup from '../components/EditCoverPopup';
 import { CookbookPlates } from '../components/ui/CookbookTile';
 import OrganizePopup from '../components/OrganizePopup';
 import { useCookbooks, useStore } from '../data/store';
-import { colorOf, platePhotos, cookbookRecipeIds, coversOf, existing, recipeIdsOf, withRecipeIds, type BookColor, type Cookbook } from '../lib/cookbook';
+import { changeNote, colorOf, platePhotos, cookbookRecipeIds, coversOf, existing, recipeIdsOf, withRecipeIds, type BookColor, type Cookbook } from '../lib/cookbook';
 import { CookbookSort, newId, SORT_LABELS, sortRecipes, type Recipe } from '../lib/recipe';
 import { searchByTitle, searchWords } from '../lib/search';
 import CookingFab from '../components/CookingFab';
@@ -196,12 +197,14 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         () => {
           save({ ...book, recipeIds: [...new Set([...book.recipeIds, ...section.recipeIds])], sections: book.sections.filter((s) => s.id !== section.id) });
           f7router?.back();
+          say(`Deleted “${section.name}”`);
         },
       );
     } else {
       f7.dialog.confirm('Its recipes stay in Recipes.', `Delete “${book.name}”?`, () => {
         deleteCookbook(book.id);
         f7router?.back();
+        say(`Deleted “${book.name}”`);
       });
     }
   };
@@ -397,7 +400,9 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         footer={elsewhere}
         onDone={(ids) => {
           // ids no longer a recipe (deleted elsewhere) drop out here too
+          const note = changeNote(placeIds.filter((id) => byId.has(id)), ids.filter((id) => byId.has(id)));
           save(withRecipeIds(book, placeId, ids));
+          if (note) say(note);
           setAdding(false);
         }}
         onClosed={() => setAdding(false)}

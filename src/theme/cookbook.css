@@ -21,6 +21,7 @@
   --ck-bar-shadow: 0 6px 10px -4px rgba(0, 0, 0, 0.07); /* #84: drawn below the bar only (a plain 0 4px 10px showed as a faint line above it too) */
   --ck-lift-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.22); /* a cook-mode tab lifted to be dragged (#116) */
   --ck-tab-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.12); /* the recipe tab shown in cook mode, lifted off the grey strip (#85) */ /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
+  --ck-toast-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); /* the dark toast floating over the page */
   /* a cookbook card's soft colours (issue #25): pale and muted, one per cookbook */
   --ck-book-blush: #f6e4dd;
   --ck-book-sage: #e3ebdf;
@@ -42,6 +43,7 @@
   --ck-day-dot-gap: 3px;      /* from a day's circle to its dot (something planned), in both */
   --ck-sheet-inset: 24px;     /* a sheet's content and its plain-text header, from every edge: top, sides, bottom (#55) */
   --ck-accent-ink: #c4421c; /* Tomato for text: passes 4.5:1 on white and on the grey page */
+  --ck-accent-on-dark: #f2805c; /* Tomato for text on the dark toast (Undo): passes 4.5:1 on --ck-fg */
   --ck-accent-tint: color-mix(in srgb, var(--ck-accent) 13%, var(--ck-surface));
   --ck-error: #d1291f; /* also the destructive red (Delete, Discard): 5.2:1 on white, 4.8:1 on the grey page */
   /* Two Google Fonts, served from this site (see @font-face below), picked in issue #21: Nunito for reading (body
@@ -243,9 +245,41 @@ html.ios .searchbar input[type='search'],
 html.ios .searchbar input[type='text'],
 html.ios .searchbar-disable-button,
 html.ios .fab > a,
-html.ios .fab-buttons a {
+html.ios .fab-buttons a,
+html.ios .toast {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+/* Toast (from another of the user's apps): a small dark pill, as wide as its words, centred and floating just above the tab
+   bar, with a Tomato check for something done (say() in src/components/ui/toast.ts). Framework7's toast is otherwise a
+   full-width glass bar along the bottom; its own slide-in stays. Spacing, corners and colours only. */
+html.ios .toast {
+  --f7-toast-bg-color: var(--ck-fg);
+  --f7-toast-text-color: var(--ck-surface);
+  --f7-toast-font-size: 15px;
+  --f7-toast-border-radius: 16px;
+  --f7-toast-padding-horizontal: 16px;
+  --f7-toast-padding-vertical: 12px;
+  left: 16px;
+  right: 16px;
+  width: fit-content;
+  max-width: 420px;
+  margin: 0 auto calc(var(--f7-tabbar-icons-height) + var(--f7-safe-area-bottom) + 12px);
+  border-radius: var(--f7-toast-border-radius);
+  box-shadow: var(--ck-toast-shadow);
+  font-weight: 600;
+}
+html.ios .toast.toast-bottom .toast-content { padding-bottom: var(--f7-toast-padding-vertical); }
+.ck-toast { display: flex; align-items: center; gap: 8px; }
+.ck-toast svg { flex: none; stroke: var(--ck-accent); }
+/* Undo (say(text, { undo })): Framework7's toast button, as plain Tomato words at the end of the pill */
+html.ios .toast .toast-button {
+  --f7-button-bg-color: transparent;
+  --f7-button-text-color: var(--ck-accent-on-dark);
+  --f7-button-font-size: 15px;
+  --f7-button-font-weight: 600;
+  margin-left: 8px;
 }
 
 /* Navbar (RED): title on the left in the same row as separate soft grey round buttons */

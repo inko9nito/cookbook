@@ -13,8 +13,8 @@ import { useGroceries, useNamed, usePlanner, useStore } from '../data/store';
 import { inlineIcon } from './ui/icons';
 import { photoStyle } from './ui/photo';
 import { AddRowsSkeleton } from './ui/Skeletons';
+import { say } from './ui/toast';
 
-const toast = (text: string) => f7.toast.show({ text, closeTimeout: 2200 });
 const itemsWord = (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`;
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const ingredientNames = (rs: Recipe[]) => rs.flatMap((r) => r.ingredients.filter((i) => i.kind !== 'header' && i.name.trim()).map((i) => i.name));
@@ -128,7 +128,7 @@ export function AddRecipePopup({ recipe, servings: startServings, onClosed }: { 
     if (!ticked.length || naming) return;
     changeGroceries(newItems(ticked.flatMap((r) => r.adds), newId));
     if (popup.current.el) f7.popup.close(popup.current.el);
-    toast(`Added ${itemsWord(ticked.length)} to the grocery list`);
+    say(`Added ${itemsWord(ticked.length)} to the grocery list`);
   };
 
   return (
@@ -327,7 +327,7 @@ export function ShopWeekPopup({ opened, day, onClosed }: { opened: boolean; day?
     if (!ticks.ticked.length || naming) return;
     changeGroceries(newItems(ticks.ticked.flatMap((r) => r.adds), newId));
     if (popup.current.el) f7.popup.close(popup.current.el);
-    toast(`Added ${itemsWord(ticks.ticked.length)} to the grocery list`);
+    say(`Added ${itemsWord(ticks.ticked.length)} to the grocery list`);
   };
   const label = [weekName(start, now), weekRange(start, now)].filter(Boolean).join(' · ');
 

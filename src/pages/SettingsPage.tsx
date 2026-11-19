@@ -7,6 +7,7 @@ import { clearCache } from '../data/store';
 import { inlineIcon } from '../components/ui/icons';
 import { appVersion, updateApp } from '../lib/appUpdate';
 import { reopenOnTab } from '../data/startTab';
+import { say, tell } from '../components/ui/toast';
 
 export default function SettingsPage() {
   const { email, signOut } = useAuth();
@@ -50,13 +51,12 @@ export default function SettingsPage() {
 
   // issue #48: tapping the version itself copies it (for a bug report), with a toast to say so
   const copyVersion = async () => {
-    let text = 'Version copied';
     try {
       await navigator.clipboard.writeText(appVersion());
+      say('Version copied');
     } catch {
-      text = 'Couldn’t copy the version';
+      tell('Couldn’t copy the version');
     }
-    f7.toast.show({ text, closeTimeout: 2000 });
   };
 
   return (

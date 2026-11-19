@@ -22,6 +22,7 @@ import { formatMinutes } from '../components/ui/RecipeCard';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
 import { useCook } from '../data/cook';
+import { say, tell } from '../components/ui/toast';
 
 /** Splits the ingredient list at group rows: [{ label, items }]. Rows before the first group get no label. */
 function groupIngredients(list: Ingredient[]) {
@@ -131,7 +132,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
     );
   }
 
-  const soon = (what: string) => f7.toast.show({ text: `${what} comes in a later phase`, closeTimeout: 1500 });
+  const soon = (what: string) => tell(`${what} comes in a later phase`, 1500);
   const places = placesOfRecipe(cookbooks, recipe.id);
   // issue #62: the days it's planned for, from today on
   const planDays = upcomingDaysOf(planned, recipe.id, today());
@@ -146,7 +147,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
         const add = (meal?: Meal) => {
           savePlanned(plan(recipe.id, day, newId, { meal, servings }));
           const what = [mediumDate(day), meal && mealName(meal), servings && `${friendly(servings)} servings`].filter(Boolean).join(' · ');
-          f7.toast.show({ text: `Added to ${what}`, closeTimeout: 2000 });
+          say(`Added to ${what}`);
         };
         const sheet = f7.actions.create({
           buttons: [
@@ -397,6 +398,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
               f7.dialog.confirm(deleteText(recipe.title, usedIn(recipe.id, recipes).map((r) => r.title)), 'Delete Recipe', () => {
                 deleteRecipe(recipe.id);
                 f7router?.back();
+                say(`Deleted “${recipe.title}”`);
               })
             }
           >

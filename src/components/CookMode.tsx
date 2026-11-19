@@ -17,6 +17,7 @@ import type { PaneScroll } from '../data/cookSession';
 import ScaleSheet from './ScaleSheet';
 import { ConvertibleAmount, toggleTarget, type ConvertTarget } from './UnitChoices';
 import UnitSheet from './UnitSheet';
+import { say } from './ui/toast';
 
 const SPLIT_KEY = 'cookbook.cookSplit';
 const MIN_SPLIT = 0.18;
@@ -199,21 +200,13 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
     }
     setDoneId(null);
     busy.current = false;
-    f7.toast
-      .create({
-        text: `Marked as made · ${made}×`,
-        closeButton: true,
-        closeButtonText: 'Undo',
-        closeTimeout: 4000,
-        on: {
-          // back as it was: the count, and the recipe's tab where it was with what was ticked, cook mode open
-          closeButtonClick: () => {
-            saveRecipe(r);
-            cook.restore(r.id, at, ticks, amounts);
-          },
-        },
-      })
-      .open();
+    say(`Marked as made · ${made}×`, {
+      // back as it was: the count, and the recipe's tab where it was with what was ticked, cook mode open
+      undo: () => {
+        saveRecipe(r);
+        cook.restore(r.id, at, ticks, amounts);
+      },
+    });
   };
 
   return (

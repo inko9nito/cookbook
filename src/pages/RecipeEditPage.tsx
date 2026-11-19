@@ -16,6 +16,7 @@ import { ApiError, backend } from '../data/api';
 import PhotoCropper from '../components/PhotoCropper';
 import { EditRowsSkeleton } from '../components/ui/Skeletons';
 import { hideTabbar } from '../components/ui/tabbar';
+import { say } from '../components/ui/toast';
 
 type Props = {
   /** `?at=ingredients` or `?at=directions` (issue #82: a recipe page's Add ingredients / Add directions) opens it there */
@@ -380,15 +381,18 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
   const save = () => {
     const { sourceUrl, ...rest } = draft;
     const link = sourceUrl?.trim().slice(0, 2000);
+    const title = draft.title.trim() || 'Untitled recipe';
     saveRecipe({
       ...rest,
       ...(link ? { sourceUrl: link } : {}),
-      title: draft.title.trim() || 'Untitled recipe',
+      title,
       minutes: draft.prepMinutes + draft.cookMinutes,
       // a step left empty (Return pressed at the end of the last one) isn't kept
       steps: draft.steps.filter((s) => s.kind === 'header' || s.text.trim()),
     });
     f7router?.back();
+    // a new recipe lands in the list, maybe out of sight (by the sort); an edit shows on the recipe itself
+    if (isNew) say(`Added “${title}”`);
   };
   const cancel = () => (dirty ? setDiscardOpen(true) : f7router?.back());
   // issue #82: opened from a recipe page's Add directions (or Add ingredients), the editor starts at that section

@@ -10,6 +10,7 @@ import type { Cookbook } from '../lib/cookbook';
 import { newId } from '../lib/recipe';
 import { ApiError, backend } from '../data/api';
 import { useCookbooks, useStore } from '../data/store';
+import { say } from '../components/ui/toast';
 
 /*
   Settings → Import from Prepear (issue #14, docs/PLAN.md §6). Prepear has no export, so the recipes come out
@@ -30,7 +31,7 @@ const peekBookmarklet = bookmarklet(prepearPeek);
 const copy = async (code: string) => {
   try {
     await navigator.clipboard.writeText(code);
-    f7.toast.show({ text: 'Bookmarklet copied', closeTimeout: 1800 });
+    say('Bookmarklet copied');
   } catch {
     f7.dialog.alert('This browser wouldn’t let the app copy. Try again from Safari.', 'Couldn’t copy');
   }

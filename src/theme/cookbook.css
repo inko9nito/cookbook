@@ -1227,6 +1227,13 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
   position: absolute; top: 6px; left: 0; right: 0; margin: 0 auto;
   width: 36px; height: 5px; border-radius: 9999px; background-color: var(--ck-strong); pointer-events: none;
 }
+/* How far down the card starts. Framework7 keeps the iPhone's status bar clear above it (the black strip with the time,
+   as in the user's mockup), which is right in the home-screen app. In Safari the page starts below Safari's own status
+   bar, and Framework7 falls back to 44px there: an empty black band (#116). There, the card starts 10px down, with the
+   app peeking out behind it (Framework7's own card offset, a px value it reads to size the app behind) */
+@media not all and (display-mode: standalone) {
+  .popup.ck-cook { --f7-popup-push-offset: 10px; }
+}
 /* a recipe just marked as made: its tab's photo is a Tomato ✓ as the tab goes */
 .ck-cook-recipe .ck-tab-thumb.ck-tab-done { background-color: var(--ck-accent); color: var(--ck-surface); }
 /* tabs are held and dragged (#116): never a text selection or iOS's long-press menu */

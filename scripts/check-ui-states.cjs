@@ -632,7 +632,9 @@ async function swipeLeft(ctx, page, locator) {
         done: getComputedStyle(document.querySelector('.ck-cook .navbar a[aria-label^="Done"]')).backgroundColor };
     });
     if (!t.push || t.radius < 12) throw new Error(`cook mode isn't a card (push ${t.push}, corners ${t.radius}px)`);
-    if (t.top < 20) throw new Error(`the card starts ${Math.round(t.top)}px from the top, not under the clock`);
+    // in a browser tab (Safari's own status bar is above the page), the card starts 20px down, the app peeking out from
+    // 10px; no empty band (#116). The home-screen app keeps the status bar clear instead (not checked here)
+    if (Math.round(t.top) !== 20) throw new Error(`the card starts ${Math.round(t.top)}px from the top, not 20px`);
     if (t.behind > 392) throw new Error('the app behind the card isn’t shrunk back');
     if (Math.abs(t.grabber.mid - 393 / 2) > 1 || t.grabber.w !== 36 || t.grabber.top > 10) throw new Error(`the grabber is ${JSON.stringify(t.grabber)}`);
     if (t.btns.some((b) => /Minimize/.test(b)) || !t.btns.some((b) => /^Done/.test(b)) || !t.btns.some((b) => /^Close/.test(b))) throw new Error(`the top bar's buttons: ${JSON.stringify(t.btns)}`);

@@ -7,6 +7,7 @@ import { BookOpen, CalendarDays, CookingPot, Ellipsis, Plus, Star, ChevronDown, 
 import ScaleSheet from '../components/ScaleSheet';
 import RecipePhotos from '../components/RecipePhotos';
 import AddToCookbookPopup from '../components/AddToCookbookPopup';
+import { AddRecipePopup } from '../components/AddGroceriesPopup';
 import { useCookbooks, usePlanner, useStore } from '../data/store';
 import { showInPlanner } from '../data/plannerNav';
 import { busyDays, mealName, MEALS, mediumDate, plan, today, upcomingDaysOf, type Day, type Meal } from '../lib/planner';
@@ -106,6 +107,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const [scaleOpen, setScaleOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [addingToCookbook, setAddingToCookbook] = useState(false);
+  const [addingToList, setAddingToList] = useState(false);
   // issue #6: the tapped amount (its popover is open), and units picked for some ingredients until the recipe is
   // closed; cook mode shows and changes the same picks
   const [converting, setConverting] = useState<ConvertTarget | null>(null);
@@ -376,13 +378,15 @@ export default function RecipePage({ f7route, f7router }: Props) {
       <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setScaleOpen(false)} />
 
       <AddToCookbookPopup opened={addingToCookbook} recipe={recipe} onClosed={() => setAddingToCookbook(false)} />
+      {/* issue #64: its ingredients onto the grocery list, at the servings shown */}
+      <AddRecipePopup recipe={addingToList ? recipe : null} servings={Math.round(recipe.servings * factor * 100) / 100} onClosed={() => setAddingToList(false)} />
 
       <Actions opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>
         <ActionsGroup>
           <ActionsButton onClick={() => f7router?.navigate(`/recipe/${recipe.id}/edit/`)}>Edit Recipe</ActionsButton>
           <ActionsButton onClick={() => setAddingToCookbook(true)}>Add to Cookbook</ActionsButton>
           <ActionsButton onClick={addToPlanner}>Add to Planner</ActionsButton>
-          <ActionsButton onClick={() => soon('The grocery list')}>Add to Grocery List</ActionsButton>
+          <ActionsButton onClick={() => setAddingToList(true)}>Add to Grocery List</ActionsButton>
           <ActionsButton onClick={() => soon('Sharing')}>Share</ActionsButton>
           <ActionsButton onClick={() => soon('Duplicating')}>Duplicate</ActionsButton>
         </ActionsGroup>

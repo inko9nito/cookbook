@@ -3,7 +3,7 @@
 // Volume converts to volume and weight to weight; there's no cups-to-grams, which would need each ingredient's density.
 
 import { parseIngredient } from 'parse-ingredient';
-import { readAmount } from './ingredients';
+import { readAmount, unitFor } from './ingredients';
 
 type Kind = 'volume' | 'weight';
 type UnitDef = {
@@ -182,7 +182,22 @@ export function neaterAmount(amount: string, unit: string): Converted | null {
   return join(express(base.low, best), base.high === null ? null : express(base.high, best));
 }
 
-export const formatConverted = (c: Converted) => `${c.approx ? 'about ' : ''}${c.amount} ${c.unit}`;
+/**
+ * Issue #64 (adding up a grocery list): an amount as a number in another unit of the same kind, so it can be added to
+ * it: "2 tbsp" in cups → 0.125, "1–2 lb" in oz → 16–32. Null when the units don't convert into each other (or aren't
+ * units we know) or the amount isn't a number.
+ */
+export function amountIn(amount: string, unit: string, target: string): { low: number; high: number | null } | null {
+  const id = unitId(unit);
+  const to = unitId(target);
+  if (!id || !to || UNITS[id].kind !== UNITS[to].kind) return null;
+  const base = baseOf(amount, id);
+  if (!base) return null;
+  const size = UNITS[to].size;
+  return { low: base.low / size, high: base.high === null ? null : base.high / size };
+}
+
+export const formatConverted = (c: Converted) =>`${c.approx ? 'about ' : ''}${c.amount} ${c.unit}`;
 
 /**
  * The amount in a unit picked from its conversions (the recipe page remembers the pick while it's open): "4 tbsp" in
@@ -196,4 +211,15 @@ export function convertTo(amount: string, unit: string, targetId: string): Conve
   const base = baseOf(amount, id);
   if (!base) return null;
   return join(express(base.low, targetId), base.high === null ? null : express(base.high, targetId));
+}
+
+/**
+ * Issue #64: a unit in its short form, agreeing with the amount ("tablespoons" → "tbsp", "cups" → "cup" for ½), for the
+ * grocery list, where the amount is the small print under the name. Units we don't convert (clove, can) as unitFor.
+ */
+export function shortUnit(unit: string, amount: string): string {
+  const id = unitId(unit);
+  if (!id) return unitFor(unit, amount);
+  const a = readAmount(amount);
+  return a && (a.high ?? a.low) > 1 ? UNITS[id].many : UNITS[id].one;
 }

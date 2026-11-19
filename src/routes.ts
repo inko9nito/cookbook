@@ -5,6 +5,7 @@ import CookbooksPage from './pages/CookbooksPage';
 import CookbookPage from './pages/CookbookPage';
 import PlanPage from './pages/PlanPage';
 import GroceriesPage from './pages/GroceriesPage';
+import GroceryStoresPage from './pages/GroceryStoresPage';
 import SettingsPage from './pages/SettingsPage';
 import StyleGuidePage from './pages/StyleGuidePage';
 import PrepearImportPage from './pages/PrepearImportPage';
@@ -19,6 +20,7 @@ const routes = [
   { path: '/cookbook/:id/section/:sectionId/', component: CookbookPage },
   { path: '/plan/', component: PlanPage },
   { path: '/groceries/', component: GroceriesPage },
+  { path: '/grocery-stores/', component: GroceryStoresPage },
   { path: '/settings/', component: SettingsPage },
   { path: '/settings/style-guide/', component: StyleGuidePage },
   { path: '/settings/prepear/', component: PrepearImportPage },

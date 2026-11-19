@@ -242,14 +242,14 @@ Bottom tab bar (Framework7 tabbar, with a `View` per tab so each tab keeps its o
    - **Meal Plans** *(later, #26)*: templates. They may join the Planner under a `Segmented` control (Planner | Meal Plans).
    - A template page shows the guide, then days grouped by week with prep tips.
    - **Add to Calendar** asks for a start date (`Calendar` picker) and places the template's recipes onto real days.
-4. **Groceries** *(maybe later)*
+4. **Groceries** *(built in issue #64: a grocery list by aisle or by recipe; each item's ↗ opens Instacart's search at a store)*
 
 **Recipe detail** (pushed page)
 - Large photo (tap → `Photo Browser`), title, source link, star rating, "Made it N times", and Prep / Cook / Total time.
 - **Action row** under the title, with icon buttons like Apple's apps:
   - **Cookbook:** a `Popup` with a cover grid. Tap to toggle a check mark, "+ New Cookbook" at the top, and pick a section if the cookbook has sections.
   - **Plan** (built in #62 as ⋯ → Add to Planner): Framework7's Calendar in a sheet. Tap a day to add the recipe there.
-  - **Groceries** *(later)*: a `Sheet` with a servings stepper and an ingredient checklist (untick what I have).
+  - **Groceries** *(built in #64 as ⋯ → Add to Grocery List)*: a `Sheet` with a servings stepper and an ingredient checklist (untick what I have).
   - **Share:** the iOS share sheet via the Web Share API, sending a link or the recipe as text.
 - **Servings stepper / ×½ ×2 ×3 chips** that scale ingredients live, ranges included (R5).
 - Ingredients you can tap to check off while cooking, then numbered steps with section headers, then notes.

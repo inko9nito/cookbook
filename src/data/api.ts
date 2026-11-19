@@ -5,8 +5,12 @@
 import { Settings, type Recipe } from '../lib/recipe';
 import type { Cookbook } from '../lib/cookbook';
 import { today, type Planned } from '../lib/planner';
+import type { GroceryChange, GroceryItem } from '../lib/groceries';
+import { nameOf, ruleThings, type GroceryName } from '../lib/grocery-names';
 import { LinkReading, ReadRecipe, type ReadRequest } from '../lib/read-recipe';
-import { demoCookbooks as demoCookbooksSeed, demoPlanned as demoPlannedSeed, demoRecipes as demoRecipesSeed } from '../demo/data';
+import {
+  demoCookbooks as demoCookbooksSeed, demoGroceries as demoGroceriesSeed, demoPlanned as demoPlannedSeed, demoRecipes as demoRecipesSeed, demoStores,
+} from '../demo/data';
 import { accessToken, currentUser, SignedOutError } from './identity';
 
 export type Backend = {
@@ -36,6 +40,18 @@ export type Backend = {
   /** plan a recipe for a day, or move it to another day (the same id) */
   savePlanned: (p: Planned) => Promise<Planned>;
   deletePlanned: (id: string) => Promise<void>;
+  /** issue #64: the grocery list */
+  listGroceries: () => Promise<GroceryItem[]>;
+  /** save some items (new or changed) and take some off, in one go */
+  changeGroceries: (change: GroceryChange) => Promise<void>;
+  /** issue #64: what each ingredient is on the grocery list, every name known so far */
+  listGroceryNames: () => Promise<GroceryName[]>;
+  /** these names (at most 60), the new ones named by Claude now; with why, when Claude couldn't be asked */
+  nameGroceries: (names: string[]) => Promise<{ names: GroceryName[]; error?: string }>;
+  /** name a whole library's ingredients in the background (on the server) */
+  backfillGroceryNames: (names: string[]) => Promise<void>;
+  /** a correction from the phone (Same as…, Rename…), which Claude never overwrites */
+  correctGroceryName: (name: Omit<GroceryName, 'by'>) => Promise<GroceryName>;
 };
 
 /**
@@ -146,6 +162,14 @@ const http: Backend = {
   listPlanned: () => call<Planned[]>('/api/planner'),
   savePlanned: (p) => call<Planned>(`/api/planner/${encodeURIComponent(p.id)}`, jsonInit('PUT', p)),
   deletePlanned: (id) => call<void>(`/api/planner/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  listGroceries: () => call<GroceryItem[]>('/api/groceries'),
+  changeGroceries: (change) => call<void>('/api/groceries', jsonInit('POST', change)),
+  listGroceryNames: () => call<GroceryName[]>('/api/grocery-names'),
+  nameGroceries: (names) => call<{ names: GroceryName[]; error?: string }>('/api/grocery-names', jsonInit('POST', { names })),
+  backfillGroceryNames: async (names) => {
+    await call<unknown>('/api/grocery-names', jsonInit('POST', { backfill: names }));
+  },
+  correctGroceryName: (name) => call<GroceryName>('/api/grocery-names', jsonInit('PUT', name)),
   // the reading runs in a background function (it can take longer than an ordinary call may); ask for it every 2s
   readRecipe: async (images) => {
     const { id } = await call<{ id?: unknown }>('/api/read-recipe', jsonInit('POST', { images }));
@@ -200,17 +224,23 @@ const demoLinkReading: ReadRecipe = {
 };
 
 const DEMO_SETTINGS = 'cookbook.demoSettings';
+// the demo shops at two made-up stores (issue #64), so the grocery list's store choices show without setting them up
+const DEMO_DEFAULTS = { groceryStores: demoStores, groceryStore: demoStores[0].slug };
 const readDemoSettings = (): Settings => {
   try {
-    return Settings.parse(JSON.parse(localStorage.getItem(DEMO_SETTINGS) ?? '{}'));
+    return Settings.parse({ ...DEMO_DEFAULTS, ...JSON.parse(localStorage.getItem(DEMO_SETTINGS) ?? '{}') });
   } catch {
-    return Settings.parse({});
+    return Settings.parse(DEMO_DEFAULTS);
   }
 };
 
 let demoRecipes: Recipe[] = demoRecipesSeed();
 let demoCookbooks: Cookbook[] = demoCookbooksSeed();
 let demoPlanned: Planned[] = demoPlannedSeed(today());
+let demoGroceries: GroceryItem[] = demoGroceriesSeed(demoRecipes);
+// the demo names ingredients by the general rules where the site asks Claude (issue #64)
+const demoNames = new Map<string, GroceryName>();
+const demoName = (name: string): GroceryName => demoNames.get(nameOf(name)) ?? { key: nameOf(name), things: ruleThings(name), by: 'claude' };
 // the Prepear export kept by an import on this page (locally: the sample file, until the page reloads)
 let demoKeptExport: string | null = null;
 const demoKnown = (ids: string[]) => [...new Set(ids)].filter((i) => demoRecipes.some((r) => r.id === i));
@@ -233,8 +263,9 @@ const demo: Backend = {
       recipeIds: out(c.recipeIds),
       sections: c.sections.map((s) => ({ ...s, coverRecipeId: cover(s.coverRecipeId), recipeIds: out(s.recipeIds) })),
     }));
-    // and every day it was planned for
+    // and every day it was planned for, and the grocery list
     demoPlanned = demoPlanned.filter((p) => p.recipeId !== id);
+    demoGroceries = demoGroceries.filter((g) => g.recipeId !== id);
   },
   getSettings: async () => readDemoSettings(),
   saveSettings: async (patch) => {
@@ -305,6 +336,27 @@ const demo: Backend = {
   deletePlanned: async (id) => {
     demoPlanned = demoPlanned.filter((x) => x.id !== id);
   },
+  listGroceries: async () => structuredClone(demoGroceries).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)),
+  changeGroceries: async ({ save = [], remove = [] }) => {
+    const known = save.filter((g) => !g.recipeId || demoRecipes.some((r) => r.id === g.recipeId));
+    demoGroceries = demoGroceries.filter((g) => !remove.includes(g.id));
+    for (const g of known) demoGroceries = demoGroceries.some((x) => x.id === g.id) ? demoGroceries.map((x) => (x.id === g.id ? g : x)) : [...demoGroceries, g];
+  },
+  listGroceryNames: async () => [...demoNames.values()],
+  nameGroceries: async (names) => {
+    await new Promise((r) => setTimeout(r, 150));
+    const named = names.filter((n) => nameOf(n)).map((n) => demoName(n));
+    for (const n of named) demoNames.set(n.key, n);
+    return { names: named };
+  },
+  backfillGroceryNames: async (names) => {
+    for (const n of names) if (nameOf(n)) demoNames.set(nameOf(n), demoName(n));
+  },
+  correctGroceryName: async (name) => {
+    const kept: GroceryName = { ...name, by: 'you' };
+    demoNames.set(kept.key, kept);
+    return kept;
+  },
 };
 
 /**
@@ -332,6 +384,8 @@ const neverLoading = (b: Backend): Backend => ({
   listRecipes: () => new Promise(() => {}),
   listCookbooks: () => new Promise(() => {}),
   listPlanned: () => new Promise(() => {}),
+  listGroceries: () => new Promise(() => {}),
+  listGroceryNames: () => new Promise(() => {}),
 });
 
 export const backend: Backend = isDemo ? (demoLoading ? neverLoading(demo) : demoSlow ? slowly(demo) : demo) : http;

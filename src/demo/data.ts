@@ -3,6 +3,7 @@
 import type { Ingredient, Recipe, Step } from '../lib/recipe';
 import { addDays, type Day, type Planned } from '../lib/planner';
 import type { Cookbook } from '../lib/cookbook';
+import type { GroceryItem } from '../lib/groceries';
 
 let nextRow = 1000;
 const rowId = () => `s${nextRow++}`;
@@ -171,7 +172,7 @@ export const sampleRecipes: Recipe[] = [
       ing('1', 'large', 'onion', 'sliced'),
       ing('4', 'cloves', 'garlic', 'smashed'),
       ing('2', 'tbsp', 'tomato paste'),
-      ing('1', 'cup', 'dry red wine'),
+      ing('1', 'cup', 'dry red wine or beef stock'),
       ing('2', 'cups', 'beef broth'),
       ing('3', 'sprigs', 'fresh thyme'),
       ing('2', '', 'bay leaves'),
@@ -305,3 +306,38 @@ export const demoPlanned = (now: Day): Planned[] => {
     at(addDays(now, 7), 4, { recipeId: '3' }),
   ];
 };
+
+/**
+ * The demo backend's grocery list (issue #64): today's dinner (Mustard Dill Chicken, from the Planner) and part of
+ * tomorrow's kebabs at 8 servings, so the chicken thighs, garlic and lemons add up; something typed; something ticked;
+ * and yogurt pinned to the second store. Recipes and ingredients by id only.
+ */
+export const demoGroceries = (recipes: Recipe[]): GroceryItem[] => {
+  let n = 0;
+  const at = () => `2026-11-18T09:00:${String(n).padStart(2, '0')}.000Z`;
+  const from = (recipeId: string, names: string[], extra: Partial<GroceryItem> = {}): GroceryItem[] => {
+    const r = recipes.find((x) => x.id === recipeId);
+    if (!r) return [];
+    return names.flatMap((name) => {
+      const i = r.ingredients.find((x) => x.name === name);
+      return i ? [{ id: `gr-${++n}`, recipeId, ingredientId: i.id, checked: false, createdAt: at(), ...extra }] : [];
+    });
+  };
+  const typed = (text: string, extra: Partial<GroceryItem> = {}): GroceryItem => ({ id: `gr-${++n}`, text, checked: false, createdAt: at(), ...extra });
+  return [
+    ...from('5', ['boneless chicken thighs', 'Dijon mustard', 'garlic', 'fresh dill', 'lemon', 'honey'], { plannedId: 'pl-0' }),
+    ...from('2', ['boneless chicken thighs', 'garlic', 'red onion', 'bell peppers', 'warm pitas', 'lemon'], { servings: 8, plannedId: 'pl-2' }),
+    ...from('2', ['plain whole milk Greek yogurt'], { servings: 8, plannedId: 'pl-2', store: 'corner-grocer' }),
+    typed('paper towels'),
+    // a choice, as written until one is picked (issue #64)
+    typed('1 tbsp soy sauce or tamari'),
+    typed('2 avocados', { checked: true }),
+    ...from('5', ['whole-grain mustard'], { checked: true, plannedId: 'pl-0' }),
+  ];
+};
+
+/** The demo's Instacart stores (made-up names; the real ones are set in Settings on the phone). */
+export const demoStores = [
+  { name: 'Acme Market', slug: 'acme-market' },
+  { name: 'Corner Grocer', slug: 'corner-grocer' },
+];

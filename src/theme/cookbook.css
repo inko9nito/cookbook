@@ -514,7 +514,8 @@ html.ios .subnavbar.ck-docked-bar .subnavbar-inner { flex-direction: column; ali
    hairline; the chips run to the screen's edges as they scroll sideways */
 .page.ck-recipes-page { --f7-subnavbar-height: calc(4px + 44px + 12px + var(--f7-chip-height) + 12px); }
 .page.ck-recipes-page.ck-no-chips,
-.page.ck-cookbook-page { --f7-subnavbar-height: calc(4px + 44px + 12px); }
+.page.ck-cookbook-page,
+.page.ck-groceries { --f7-subnavbar-height: calc(4px + 44px + 12px); }
 html.ios .subnavbar.ck-search-bar .searchbar { flex: none; width: auto; margin: 4px 16px 0; }
 .subnavbar.ck-search-bar .ck-chips-scroll { flex: none; margin-top: 12px; padding: 0 16px; }
 /* the count line starts the scrolling content, a little under the hairline */
@@ -547,6 +548,11 @@ html.ios .subnavbar.ck-search-bar .searchbar { flex: none; width: auto; margin: 
 
 /* ── Segmented control: the selected segment always has white text.
    iPhone Safari keeps a tapped button in its hover/pressed state, which showed grey text on the dark segment. ── */
+/* The text changes colour at once, as the dark highlight starts to slide (Framework7). iPhone Safari didn't fade the text
+   with Framework7's button transition: it kept the old colours to the end of it and then flipped them, so for 100ms
+   (200ms when the transition was lengthened to match the slide) the new segment read grey on dark and the old one
+   white on grey (the user's recordings, #64). */
+html.ios .segmented-strong .button { transition: none; }
 html.ios .segmented-strong .button.button-active,
 html.ios .segmented-strong .button.button-active:hover,
 html.ios .segmented-strong .button.button-active.active-state {
@@ -1504,3 +1510,63 @@ html.ios .calendar.ck-calendar .toolbar .calendar-month-selector .current-month-
    field that wraps (Source link, From a Link) ran under it. Text in a field with a clear button stops short of it. */
 .item-input-wrap:has(> .input-clear-button) > textarea,
 .item-input-wrap:has(> .input-clear-button) > input { padding-right: calc(var(--f7-input-clear-button-size) + 8px); }
+
+/* ── Groceries (issue #64): the list by aisle or by recipe, its store pill, Instacart's ↗ on each row ── */
+.block.ck-grocery-head { margin: 16px 0 20px; }
+/* one line under the toggle (the user found the top too busy): "Shopping via Instacart at Sprouts", the user's words
+   for the note that ↗ leaves for Instacart, and the store it searches, tapped to change it */
+.link.ck-instacart-store {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 12px;
+  font-size: 13px; line-height: 18px; color: var(--ck-muted);
+}
+.link.ck-instacart-store b { font-weight: 600; color: var(--ck-fg); }
+.link.ck-instacart-store .ck-icon { color: var(--ck-fg2); }
+/* the groups in one column with a fixed gap: on iPhone Safari the gap between groups, made of margins, was lost */
+.ck-grocery-groups { display: flex; flex-direction: column; gap: 24px; padding-bottom: 24px; }
+.ck-grocery-got { justify-content: space-between; flex-wrap: nowrap; }
+.ck-grocery-got .link { font-family: var(--ck-font-display); font-size: 15px; font-weight: 400; color: var(--ck-accent-ink); }
+/* the thing to buy leads (medium weight, wrapping), the recipes it's for are the muted small print under it, and its
+   amount stands on its own at the right, before ↗ (in the small print it ran into the recipes' names) */
+.list.ck-grocery-list li .item-title { font-weight: 500; white-space: normal; }
+.list.ck-grocery-list .item-after { align-items: center; }
+.ck-grocery-amount {
+  max-width: 8em; margin-right: 12px; white-space: normal; text-align: right;
+  font-size: 15px; line-height: 20px; color: var(--ck-fg2); font-variant-numeric: tabular-nums;
+}
+/* a row held or swiped open: the page grey, which the muted footer still reads on (Framework7's darker grey didn't) */
+.list.ck-grocery-list { --f7-list-link-pressed-bg-color: var(--ck-bg); --f7-swipeout-active-bg-color: var(--ck-bg); }
+.list.ck-grocery-list li.ck-done .item-title,
+.list.ck-grocery-list li.ck-done .item-footer,
+.list.ck-grocery-list li.ck-done .ck-grocery-amount { text-decoration: line-through; color: var(--ck-done-ink); }
+/* ↗: Instacart's search for it, a soft round button at the row's end. A ticked row keeps it, hidden (not seen, tapped
+   or read out), so the row's amount stays where it was: the amounts in a card all end on one line (the user saw a
+   ticked row's amount out of line with the rest, and moving when ticked) */
+.list.ck-grocery-list li.ck-done .link.ck-instacart-link { visibility: hidden; }
+.link.ck-instacart-link {
+  display: grid; place-items: center; width: 36px; height: 36px; border-radius: 9999px;
+  background-color: var(--ck-bg); color: var(--ck-accent-ink);
+}
+/* an item pinned to another store than the list's */
+.ck-store-tag {
+  display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px; vertical-align: 1px;
+  font-size: 12px; font-weight: 600; line-height: 18px; background-color: var(--ck-book-blush); color: var(--ck-fg2);
+}
+/* swiping a row: Edit in muted grey, Store in dark grey (as the Planner's Meal and Move), Delete in red */
+html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-edit { background-color: var(--ck-muted); }
+html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-store { background-color: var(--ck-fg2); }
+/* by recipe: each recipe's thumbnail, name and servings over its card */
+.ck-grocery-recipe-head { display: flex; align-items: center; gap: 12px; padding: 0 16px; margin-bottom: 10px; }
+.ck-grocery-recipe-head h2 { margin: 0; font-family: var(--ck-font-display); font-size: 18px; font-weight: 500; line-height: 22px; color: var(--ck-fg); }
+.ck-grocery-recipe-head .ck-note { margin: 0; padding: 0; font-size: 13px; }
+/* the add screens (full-screen popups like Add Recipes: a recipe, Shop this week): the recipe's name over the
+   servings, small titles over the rows, a choice's Pick one at the end of its row, the week's arrows */
+.block.ck-add-head { margin: 16px 0 0; }
+.ck-add-recipe-name { margin: 0; font-family: var(--ck-font-display); font-size: 20px; font-weight: 500; line-height: 24px; color: var(--ck-fg); }
+.popup.ck-add-popup .block-title.ck-add-label { margin-top: 24px; }
+.popup.ck-add-popup .list.ck-add-list li .item-title { white-space: normal; }
+.link.ck-choice-link {
+  display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border-radius: 9999px;
+  font-size: 14px; font-weight: 600; background-color: var(--ck-soft); color: var(--ck-fg);
+}
+.block.ck-week-nav { justify-content: space-between; flex-wrap: nowrap; margin-top: 16px; }
+.link.ck-round-soft { width: 36px; height: 36px; border-radius: 9999px; justify-content: center; background-color: var(--ck-soft); color: var(--ck-fg); }

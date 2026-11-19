@@ -2647,6 +2647,12 @@ async function swipeLeft(ctx, page, locator) {
     amount: (e.closest('li').querySelector('.ck-grocery-amount')?.textContent ?? '').trim(),
   })));
   const groTitles = async () => (await groItems()).map((r) => r.title);
+  // where each amount on the list ends: one line for all, ticked rows too (the user saw a ticked row's amount out of line)
+  const amountEdges = () => page.locator(`${GRO} .ck-grocery-amount`).evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().right)));
+  const amountsInLine = async (what) => {
+    const edges = await amountEdges();
+    if (!edges.length || Math.max(...edges) - Math.min(...edges) > 1) throw new Error(`${what}: the amounts end at ${[...new Set(edges)].join(', ')}px, not on one line`);
+  };
   // the space between one group's card and the next group's label (#64: it was lost on the phone)
   const groGaps = () => page.locator(`${GRO} .ck-grocery-group`).evaluateAll((els) => els.slice(1).map((el) => Math.round(el.getBoundingClientRect().top - el.previousElementSibling.getBoundingClientRect().bottom)));
   await step('40a-groceries-by-aisle', async () => {
@@ -2687,7 +2693,10 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator(`${GRO} > .page-content`).evaluate((e) => e.scrollTo(0, e.scrollHeight)); await page.waitForTimeout(400);
     const got = await page.locator(`${GRO} .ck-grocery-got span`).textContent();
     if (got !== 'Got it · 2') throw new Error(`the ticked group reads "${got}"`);
-    if (await page.locator(`${GRO} li.ck-done a.ck-instacart-link`).count()) throw new Error('ticked rows still have ↗');
+    // a ticked row's ↗ is hidden, but keeps its space so its amount stays in line with the rest
+    const arrows = page.locator(`${GRO} li.ck-done a.ck-instacart-link`);
+    for (let i = 0; i < (await arrows.count()); i++) if (await arrows.nth(i).isVisible()) throw new Error('ticked rows still show ↗');
+    await amountsInLine('by aisle, with Got it');
   });
   await step('40c-groceries-tick', async () => {
     await groRow('Paper towels').locator('.item-title').tap(); await page.waitForTimeout(600);
@@ -2776,6 +2785,8 @@ async function swipeLeft(ctx, page, locator) {
     const [small, amount] = [await thighs.locator('.item-footer').textContent(), await thighs.locator('.ck-grocery-amount').textContent()];
     if (amount !== '2 lb' || small !== '6 lb in all, with Middle Eastern Chicken Kebabs') throw new Error(`the thighs read "${amount}" and "${small}"`);
     if ((await groGaps()).some((g) => g < 20)) throw new Error(`recipes too close together: ${(await groGaps()).join(', ')}px`);
+    // the first recipe's card has a ticked row among the others
+    await amountsInLine('by recipe');
   });
   await step('40i-groceries-store-menu', async () => {
     await page.locator(`${GRO} .ck-grocery-view .button`, { hasText: 'By aisle' }).tap(); await page.waitForTimeout(500);

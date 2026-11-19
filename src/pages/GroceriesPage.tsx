@@ -179,29 +179,29 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
           {amount}
         </span>
       )}
-      {!ticked(line) &&
-        (line.choices ? (
-          // a choice: ↗ asks which to search
-          <Link
-            slot="after"
-            className="ck-instacart-link"
-            onClick={() => setSearching(line)}
-            aria-label={`Find ${line.name} on Instacart: pick which`}
-          >
-            <ArrowUpRight {...inlineIcon} />
-          </Link>
-        ) : (
-          <Link
-            slot="after"
-            external
-            target="_blank"
-            href={searchFor(line)}
-            className="ck-instacart-link"
-            aria-label={`Find ${line.name} on Instacart${line.store ?? store?.slug ? ` at ${storeName(line.store ?? store?.slug)}` : ''}`}
-          >
-            <ArrowUpRight {...inlineIcon} />
-          </Link>
-        ))}
+      {/* ↗ stays on a ticked row, hidden (cookbook.css), so its amount keeps its place: every amount ends on one line */}
+      {line.choices ? (
+        // a choice: ↗ asks which to search
+        <Link
+          slot="after"
+          className="ck-instacart-link"
+          onClick={() => setSearching(line)}
+          aria-label={`Find ${line.name} on Instacart: pick which`}
+        >
+          <ArrowUpRight {...inlineIcon} />
+        </Link>
+      ) : (
+        <Link
+          slot="after"
+          external
+          target="_blank"
+          href={searchFor(line)}
+          className="ck-instacart-link"
+          aria-label={`Find ${line.name} on Instacart${line.store ?? store?.slug ? ` at ${storeName(line.store ?? store?.slug)}` : ''}`}
+        >
+          <ArrowUpRight {...inlineIcon} />
+        </Link>
+      )}
       <SwipeoutActions right>
         <SwipeoutButton close className="ck-grocery-edit" onClick={() => setEditing(line)}>
           Edit

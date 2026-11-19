@@ -1505,13 +1505,15 @@ html.ios .calendar.ck-calendar .toolbar .calendar-month-selector .current-month-
   max-width: 8em; margin-right: 12px; white-space: normal; text-align: right;
   font-size: 15px; line-height: 20px; color: var(--ck-fg2); font-variant-numeric: tabular-nums;
 }
-.ck-grocery-amount:last-child { margin-right: 0; }
 /* a row held or swiped open: the page grey, which the muted footer still reads on (Framework7's darker grey didn't) */
 .list.ck-grocery-list { --f7-list-link-pressed-bg-color: var(--ck-bg); --f7-swipeout-active-bg-color: var(--ck-bg); }
 .list.ck-grocery-list li.ck-done .item-title,
 .list.ck-grocery-list li.ck-done .item-footer,
 .list.ck-grocery-list li.ck-done .ck-grocery-amount { text-decoration: line-through; color: var(--ck-done-ink); }
-/* ↗: Instacart's search for it, a soft round button at the row's end */
+/* ↗: Instacart's search for it, a soft round button at the row's end. A ticked row keeps it, hidden (not seen, tapped
+   or read out), so the row's amount stays where it was: the amounts in a card all end on one line (the user saw a
+   ticked row's amount out of line with the rest, and moving when ticked) */
+.list.ck-grocery-list li.ck-done .link.ck-instacart-link { visibility: hidden; }
 .link.ck-instacart-link {
   display: grid; place-items: center; width: 36px; height: 36px; border-radius: 9999px;
   background-color: var(--ck-bg); color: var(--ck-accent-ink);

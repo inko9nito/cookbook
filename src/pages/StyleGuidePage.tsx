@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import {
-  Page, Navbar, BlockTitle, Block, BlockFooter, List, ListItem, ListInput, Chip, Button, Stepper, Segmented,
+  Page, Navbar, BlockTitle, Block, BlockFooter, List, ListItem, ListInput, Chip, Button, Stepper, Segmented, f7,
 } from 'framework7-react';
+import { Carrot } from 'lucide-react';
 import RecipeCard from '../components/ui/RecipeCard';
+import EmptyState from '../components/ui/EmptyState';
 import { sampleRecipes } from '../demo/data';
 
 const SWATCHES: [string, string][] = [
@@ -16,6 +18,7 @@ const SWATCHES: [string, string][] = [
 export default function StyleGuidePage() {
   const [chip, setChip] = useState('All');
   const [servings, setServings] = useState(8);
+  const toast = (text: string) => f7.toast.show({ text, closeTimeout: 1800 });
 
   return (
     <Page name="style-guide">
@@ -112,6 +115,21 @@ export default function StyleGuidePage() {
           <ListInput label="Recipe name" type="text" placeholder="Name of recipe" errorMessage="Give your recipe a name to save it" errorMessageForce />
           <ListInput type="textarea" placeholder="Add one ingredient per line, or paste your ingredient list here" />
         </List>
+      </div>
+
+      {/* issue #118: what a screen shows with nothing on it (DESIGN.md → Empty states) */}
+      <BlockTitle medium>Empty state</BlockTitle>
+      <BlockFooter>
+        A screen with nothing on it yet: one icon, a few words and one button that opens the same choices as the screen’s +.
+        Search, view switches and counts are hidden until there’s something to show.
+      </BlockFooter>
+      <div className="ck-empty-sample">
+        <EmptyState
+          icon={Carrot}
+          title="Your list is empty"
+          text="Add ingredients from a recipe or your plan."
+          action={{ label: 'Add to the list', onClick: () => toast('Opens the same choices as +') }}
+        />
       </div>
 
       <BlockTitle medium>Tab bar · DoorDash</BlockTitle>

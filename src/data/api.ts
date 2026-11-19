@@ -234,10 +234,12 @@ const readDemoSettings = (): Settings => {
   }
 };
 
-let demoRecipes: Recipe[] = demoRecipesSeed();
-let demoCookbooks: Cookbook[] = demoCookbooksSeed();
-let demoPlanned: Planned[] = demoPlannedSeed(today());
-let demoGroceries: GroceryItem[] = demoGroceriesSeed(demoRecipes);
+// `?empty` (the demo only, for the UI check, issue #118): no recipes, cookbooks, plans or groceries, as on a new account
+const demoEmpty = typeof location !== 'undefined' && new URLSearchParams(location.search).has('empty');
+let demoRecipes: Recipe[] = demoEmpty ? [] : demoRecipesSeed();
+let demoCookbooks: Cookbook[] = demoEmpty ? [] : demoCookbooksSeed();
+let demoPlanned: Planned[] = demoEmpty ? [] : demoPlannedSeed(today());
+let demoGroceries: GroceryItem[] = demoEmpty ? [] : demoGroceriesSeed(demoRecipes);
 // the demo names ingredients by the general rules where the site asks Claude (issue #64)
 const demoNames = new Map<string, GroceryName>();
 const demoName = (name: string): GroceryName => demoNames.get(nameOf(name)) ?? { key: nameOf(name), things: ruleThings(name), by: 'claude' };

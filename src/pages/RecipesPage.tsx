@@ -3,7 +3,7 @@ import {
   Page, Navbar, NavTitle, NavRight, Subnavbar, Link, Searchbar,
   Block, BlockFooter, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton, Button,
 } from 'framework7-react';
-import { ArrowUpDown, Plus } from 'lucide-react';
+import { ArrowUpDown, Plus, Soup } from 'lucide-react';
 import { useStore } from '../data/store';
 import { COURSES, SORT_LABELS, SortKey, sortRecipes } from '../lib/recipe';
 import { navIcon } from '../components/ui/icons';
@@ -14,6 +14,7 @@ import { ChipsSkeleton, CountSkeleton, RecipeGridSkeleton } from '../components/
 import { searchByTitle, searchWords } from '../lib/search';
 import { MAX_READ_IMAGES } from '../lib/read-recipe';
 import CookingFab from '../components/CookingFab';
+import EmptyState from '../components/ui/EmptyState';
 import FromLinkPopup, { openFromLink } from '../components/FromLinkPopup';
 
 const label = (t: string) => t[0].toUpperCase() + t.slice(1);
@@ -48,11 +49,20 @@ export default function RecipesPage({ f7router }: Props) {
   const words = searchWords(query);
   const found = searchByTitle(shown, words);
   const toggleTag = (t: string) => setFilter(tags.includes(t) ? tags.filter((x) => x !== t) : [...tags, t]);
+  // no recipes at all (issue #118): only the title and + stay; search, chips, the count and sort go until there's one
+  const empty = !loading && !loadError && !recipes.length;
 
   return (
     // the title row slides away while scrolling down and comes back on scrolling up; the search bar and chips under it
     // stay (Framework7's hideNavbarOnScroll moves the navbar up by its own height, leaving the subnavbar showing)
-    <Page name="recipes" className={`ck-recipes-page${loadError ? ' ck-no-chips' : ''}${atTop ? ' ck-at-top' : ''}`} hideNavbarOnScroll onPageInit={onPageInit} onPageAfterIn={showTabbar}>
+    <Page
+      name="recipes"
+      className={`ck-recipes-page${loadError ? ' ck-no-chips' : ''}${atTop ? ' ck-at-top' : ''}`}
+      hideNavbarOnScroll
+      withSubnavbar={!empty}
+      onPageInit={onPageInit}
+      onPageAfterIn={showTabbar}
+    >
       {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
       <CookingFab slot="fixed" />
       <Navbar key="navbar" className="ck-navbar-root">
@@ -62,47 +72,60 @@ export default function RecipesPage({ f7router }: Props) {
           <Link iconOnly onClick={() => setNewOpen(true)} aria-label="New recipe" className="ck-nav-primary">
             <Plus {...navIcon} />
           </Link>
-          <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
-            <ArrowUpDown {...navIcon} />
-          </Link>
+          {!empty && (
+            <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
+              <ArrowUpDown {...navIcon} />
+            </Link>
+          )}
         </NavRight>
         {/* issue #63: the search bar and the tag chips stay under the title while the recipes scroll (Framework7's
             subnavbar, like the Planner's week strip), so searching or filtering never needs a scroll back up.
             customSearch: it only says what's typed, and the page filters (so the count can say "6 of 240", and chips
             tapped mid-search filter too). No backdrop: the user wants no overlay while searching. */}
-        <Subnavbar className="ck-docked-bar ck-search-bar">
-          <Searchbar
-            customSearch
-            backdrop={false}
-            disableButton={false}
-            placeholder="Search recipes"
-            onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
-            onSearchbarClear={() => setQuery('')}
-          />
-          {/* issue #35: until the recipes arrive, grey placeholders stand in for the chips (no lone "All" chip); if they
-              can't be loaded, there are no chips */}
-          {!loadError && (
-            <div className="ck-chips ck-chips-scroll">
-              {loading ? (
-                <ChipsSkeleton />
-              ) : (
-                <>
-                  <Chip text="All" className={`ck-chip ${tags.length === 0 ? 'ck-chip-on' : ''}`} onClick={() => setFilter([])} />
-                  {allTags.map((t) => (
-                    <Chip key={t} text={label(t)} className={`ck-chip ${tags.includes(t) ? 'ck-chip-on' : ''}`} onClick={() => toggleTag(t)} />
-                  ))}
-                </>
-              )}
-            </div>
-          )}
-        </Subnavbar>
+        {!empty && (
+          <Subnavbar className="ck-docked-bar ck-search-bar">
+            <Searchbar
+              customSearch
+              backdrop={false}
+              disableButton={false}
+              placeholder="Search recipes"
+              onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
+              onSearchbarClear={() => setQuery('')}
+            />
+            {/* issue #35: until the recipes arrive, grey placeholders stand in for the chips (no lone "All" chip); if they
+                can't be loaded, there are no chips */}
+            {!loadError && (
+              <div className="ck-chips ck-chips-scroll">
+                {loading ? (
+                  <ChipsSkeleton />
+                ) : (
+                  <>
+                    <Chip text="All" className={`ck-chip ${tags.length === 0 ? 'ck-chip-on' : ''}`} onClick={() => setFilter([])} />
+                    {allTags.map((t) => (
+                      <Chip key={t} text={label(t)} className={`ck-chip ${tags.includes(t) ? 'ck-chip-on' : ''}`} onClick={() => toggleTag(t)} />
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </Subnavbar>
+        )}
       </Navbar>
 
       {/* Every block here has a key: Page drops the ones that aren't shown (loading, error) and lists the rest by
           position, so without keys React rebuilds the blocks below whenever loading ends. Until the recipes arrive, the
           count and the tiles are grey placeholders (issue #35, no "0 recipes"); if they can't be loaded, only the error
           shows. */}
-      {!loadError && (
+      {empty && (
+        <EmptyState
+          key="empty"
+          icon={Soup}
+          title="No recipes yet"
+          text="Add one from a link or a photo."
+          action={{ label: 'New recipe', onClick: () => setNewOpen(true) }}
+        />
+      )}
+      {!loadError && !empty && (
         <Block key="count" className="ck-count">
           {loading ? (
             <CountSkeleton />

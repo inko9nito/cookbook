@@ -239,6 +239,41 @@ Where each component's shape comes from:
 - **New recipe (issue #17):** the Recipes **+** opens a Framework7 action sheet titled "New recipe": **From photos or screenshots** (iOS's picker: photo library, camera or files; up to four) and **Type it in** (the empty editor), then Cancel. Picked photos open the New Recipe editor at once with a white inset card at the top: the photos as 54px 3:4 thumbnails (10px corners; tap one for Framework7's Photo Browser, to check the recipe against it), a bold Fredoka 17px status (Reading the recipe… / Recipe read / No recipe found / Couldn't read the recipe, the last in `--ck-error`) over a 14px `--ck-fg2` line, and Framework7's moving (infinite) progress bar while reading. While Claude reads them, grey placeholder rows (issue #35's skeletons, in the editor's soft cards) stand where the ingredients and steps will go; then the editor fills in ("Read from your photo. Check the recipe against it before saving."), with the dish photo cropped out of a screenshot as the cover when there is one. Nothing found, or a failure, says so in the card (a failure has a main **Try again** button), and the editor stays usable throughout.
 - **From a link (issue #15):** the first choice in that sheet. It opens **From a Link**, a Framework7 popup like Add to Cookbook (Cancel / title / **Import**, the main button, greyed until there's a link), appearing without the slide so its field can be focused as it opens (the keyboard already up). It has one field, **Link** (a resizable textarea with a URL keyboard, `https://` placeholder), showing the whole address: the one place to paste, with iOS's own Paste. A web app can't read the clipboard without that Paste button, so there's no separate Paste row (it only brought up the button, which looked like a bug). Under the field, Framework7's input info says "Tap here and choose Paste, or type the link." while it's empty and "From example.com" with a link; typed words get the input's error message ("That isn't a link. …") and Import stays grey. A link to a page already imported (the same address, ignoring `www.`, tracking bits and a trailing slash) shows a row "Already in your recipes" with that recipe's name, which opens it; Import still imports it again. On Import the editor opens with the same card as for photos, a soft 54px 3:4 tile with a Lucide globe (`--ck-fg2`) standing in for the photos and the site's address under the text as a 14px semibold `--ck-accent-ink` link to the page. Then it fills in like a photo reading, with the page's photo as the cover (centre-cropped to a square, to recrop with the crop button) and the link kept as the recipe's source. In the editor, **Source link** under Source shows the whole address, wrapped onto as many lines as it takes (a resizable textarea with a URL keyboard); the recipe page shows only the site's name, linked to it.
 
+### Empty states (issue #118)
+
+The rules for any screen with nothing to show, so every new screen gets the same answer. Component: `EmptyState` (`src/components/ui/EmptyState.tsx`); styles `.ck-empty*` in `cookbook.css`. No new colours: the circle is the white surface, the button is the main button.
+
+**Four kinds of "nothing", each with its own answer:**
+
+| Kind | When | What shows |
+|---|---|---|
+| **Empty screen** | the screen's whole collection has nothing in it yet (the grocery list, the recipes, the cookbooks) | the empty state below |
+| **Empty part** | one part of a screen that has other things on it (a recipe without directions, a day with nothing planned, an empty shelf or section) | inline and small: a muted line and a small soft pill to add it (issue #82). Never the big empty state |
+| **No matches** | a search or filter finds nothing | the search bar and filters stay (they're how you got here); one muted line, "Nothing on the list matches “x”". No picture, no button |
+| **Loading** / **Couldn't load** | first load / the server didn't answer | skeletons in the screen's shape (issue #35) / one line and **Try again** |
+
+**An empty screen: what stays, what goes.**
+- **Stays:** the title, the tab bar, the Cooking pill, and the bar's **+** (it's where the main action always is). **⋯** stays only if something in it still works on an empty screen (Groceries: Your stores).
+- **Goes:** everything that works on things that aren't there yet: the search bar, view switches (By aisle | By recipe), sort and filter chips, counts ("0 recipes"), the store line, group headings, Clear and Share. They all come back with the first thing added. Framework7's subnavbar goes with its search bar (`Page withSubnavbar`), so no gap is left where it was.
+- **Never:** instructions or paths through the app ("On a recipe, ⋯ → Add to Grocery List…"), more than one button, or a different set of choices: the button opens exactly what + opens.
+
+**What it says.**
+- **Picture:** one Lucide icon for what the screen holds (Groceries: a carrot), 40px in `--ck-fg2`, on a 96px white circle. The user rejected plates here: they belong to cookbooks.
+- **Title:** 2 to 4 plain words, what isn't here yet, said the ordinary way: "Your list is empty" (the user found "Nothing to buy yet" clunky). Fredoka 22px, 600.
+- **One line, optional:** at most about 8 words, where things come from, never how to get there: "Add ingredients from a recipe or your plan." Nunito 15px, muted.
+- **One button:** the main button (bright Tomato pill, 52px) with a +, worded like +'s menu, short: "Add to the list". It opens +'s action sheet.
+- **Place:** centred across, its top about an eighth of the screen down (40px at least), so it sits a little above the middle of what's under the bar. Nothing moves: no animation.
+
+**Where it's used:**
+
+| Screen | Icon | Title · line | Button (same as +) | Hidden while empty |
+|---|---|---|---|---|
+| Groceries | carrot | Your list is empty · Add ingredients from a recipe or your plan. | Add to the list | search, By aisle \| By recipe, store line |
+| Recipes | soup bowl | No recipes yet · Add one from a link or a photo. | New recipe | search, tag chips, count and sort line, sort button |
+| Cookbooks | book with a heart (the open book is the tab's) | No cookbooks yet · Gather your recipes into cookbooks. | New cookbook | count, tiles/list switch. Import from Prepear stays in Settings → Import |
+
+Next candidate: a cookbook with no recipes in it ("Nothing in here yet", **Add recipes**). The Planner's empty days and the recipe page's empty sections are empty *parts* and keep their inline look.
+
 ### Launch loader
 
 While the app starts, the app icon's cooking pot (Lucide's `cooking-pot`, Tomato strokes, 1.75 wide on its 24px grid, 96px across) sits a little above the middle of the grey page, and its **lid rocks like a cartoon pot about to boil over**. The lid is turned level and hovers just above the rim (in the icon it hangs ajar). Over a 2.8s loop it tips up on the left, then the right, then the left, then the right a bit higher, then rests still for about 0.9s before starting again. Each side starts up as the other lands, like a seesaw, so it flows. Up eases out and down eases in, softly, and the pot squashes each time the lid lands and stretches back up before it settles, like a cartoon. No steam. With reduced motion it's the still pot. Before the page has even loaded, iOS shows a launch image of this same pot, still with the lid at rest and in exactly the same place, so the home-screen app never opens on a blank screen and the lid simply starts rocking when the page takes over. It goes in one frame, no fade, as soon as the app can draw its first screen (laid out at full height); the screens' skeletons then show while recipes and photos load; inside screens, loading is always skeletons (issue #35).
@@ -246,6 +281,7 @@ While the app starts, the app icon's cooking pot (Lucide's `cooking-pot`, Tomato
 ## Do's and Don'ts
 
 - Never hard-code a color in a component. Use `var(--ck-*)`.
+- A screen with nothing on it uses `EmptyState` and the rules in **Empty states**: hide what works on things that aren't there, a few words, one button that opens +'s choices. No instructions.
 - One accent per screen area: Tomato is for the main action and selection states, not decoration.
 - Framework7 still owns layout, motion, gestures, sheets and z-index (see `CLAUDE.md`).
 - **Scrolling content fades where it meets a bar's edge** (#85), never cut off hard: over its last 16px or so it fades into the page colour (a CSS mask), with that much room at the end so the last item can scroll clear of the fade. Cook mode does it at the divider, under the top bar and above the recipe tabs; do the same in new places where a pane scrolls up to a bar.

@@ -1112,6 +1112,22 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 .block.ck-list-state p { margin: 0; }
 .button.ck-inline-button { width: auto; padding: 0 20px; }
 
+/* An empty screen (issue #118, DESIGN.md → Empty states): one icon on a white circle, a title, at most one short line
+   and the screen's main action, centred a little above the middle of what's left under the bar */
+.ck-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  margin: max(40px, 12vh) auto 32px; padding: 0 32px; max-width: 360px;
+}
+.ck-empty-icon {
+  display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%;
+  background-color: var(--ck-surface); color: var(--ck-fg2);
+}
+.ck-empty-title {
+  margin: 20px 0 0; font-family: var(--ck-font-display); font-size: 22px; font-weight: 600; line-height: 1.2; color: var(--ck-fg);
+}
+.ck-empty-text { margin: 6px 0 0; font-size: 15px; line-height: 1.4; color: var(--ck-muted); }
+.button.ck-empty-button { width: auto; margin-top: 24px; padding: 0 26px; gap: 6px; }
+
 /* Unit conversions (issue #6): an amount that converts has a fitted grey underline; tapping it opens the unit sheet
    (radio rows, the recipe's own amount first, "Original"). A picked unit replaces the amount, and its underline turns
    Tomato to show it's converted */
@@ -1596,3 +1612,7 @@ html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-store { ba
 }
 .block.ck-week-nav { justify-content: space-between; flex-wrap: nowrap; margin-top: 16px; }
 .link.ck-round-soft { width: 36px; height: 36px; border-radius: 9999px; justify-content: center; background-color: var(--ck-soft); color: var(--ck-fg); }
+
+/* Style Guide → Empty state (issue #118): on a grey panel like a screen */
+.ck-empty-sample { margin: 0 16px 16px; padding: 8px 0 0; border-radius: 24px; background-color: var(--ck-bg); border: 1px solid var(--ck-line); }
+.ck-empty-sample .ck-empty { margin-top: 24px; }

@@ -1,5 +1,5 @@
 import { Page, Navbar, NavTitle, NavRight, Link, Block, Button, List, ListItem, f7 } from 'framework7-react';
-import { LayoutGrid, List as ListIcon, Plus } from 'lucide-react';
+import { BookHeart, LayoutGrid, List as ListIcon, Plus } from 'lucide-react';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import CookbookTile, { CookbookThumb } from '../components/ui/CookbookTile';
@@ -8,6 +8,7 @@ import { useCookbooks, useStore } from '../data/store';
 import { byName, colorOf, cookbookRecipeIds, emptyCookbook, existing, platePhotos, type Cookbook } from '../lib/cookbook';
 import { newId } from '../lib/recipe';
 import CookingFab from '../components/CookingFab';
+import EmptyState from '../components/ui/EmptyState';
 
 type Props = { f7router?: { navigate: (url: string) => void } };
 
@@ -24,7 +25,7 @@ export function promptNewCookbook(onMade: (id: string) => void, save: ReturnType
 /**
  * The Cookbooks tab (issue #25): every cookbook A–Z, as cards two to a row (its soft colour, three recipes as plates,
  * the name and counts), or as a list (each row a small square in its colour with its first plate). The button next to + switches between them, remembered like the
- * recipe sort. + makes a new cookbook. With none yet, a note and the way to bring in Prepear's.
+ * recipe sort. + makes a new cookbook. With none yet, the empty state (issue #118), its button the same as +.
  */
 export default function CookbooksPage({ f7router }: Props) {
   const { recipes, loading: recipesLoading, settings, setCookbookView } = useStore();
@@ -34,6 +35,8 @@ export default function CookbooksPage({ f7router }: Props) {
   const loading = (booksLoading || recipesLoading) && !loadError;
   const byId = new Map(recipes.map((r) => [r.id, r]));
   const sorted = [...cookbooks].sort(byName);
+  // no cookbooks (issue #118): only the title and + stay; the count and the tiles/list switch go until there's one
+  const empty = !loading && !loadError && sorted.length === 0;
   const add = () => promptNewCookbook((id) => f7router?.navigate(`/cookbook/${id}/`), saveCookbook);
   const about = (c: Cookbook) => {
     const ids = cookbookRecipeIds(c);
@@ -53,9 +56,11 @@ export default function CookbooksPage({ f7router }: Props) {
             <Plus {...navIcon} />
           </Link>
           {/* shows the other view: the list icon while tiles show, the grid icon while the list shows */}
-          <Link iconOnly onClick={() => setCookbookView(asList ? 'grid' : 'list')} aria-label={asList ? 'Show as tiles' : 'Show as a list'} className="ck-view-switch">
-            {asList ? <LayoutGrid {...navIcon} /> : <ListIcon {...navIcon} />}
-          </Link>
+          {!empty && (
+            <Link iconOnly onClick={() => setCookbookView(asList ? 'grid' : 'list')} aria-label={asList ? 'Show as tiles' : 'Show as a list'} className="ck-view-switch">
+              {asList ? <LayoutGrid {...navIcon} /> : <ListIcon {...navIcon} />}
+            </Link>
+          )}
         </NavRight>
       </Navbar>
 
@@ -75,16 +80,14 @@ export default function CookbooksPage({ f7router }: Props) {
           </Button>
         </Block>
       )}
-      {!loading && !loadError && sorted.length === 0 && (
-        <Block key="empty" className="ck-list-state ck-books-empty">
-          <p className="ck-note">No cookbooks yet. Make one, or bring in your cookbooks from Prepear.</p>
-          <Button round fill className="ck-main ck-inline-button" onClick={add}>
-            New cookbook
-          </Button>
-          <Button round className="ck-soft ck-inline-button" href="/settings/prepear/">
-            Import from Prepear
-          </Button>
-        </Block>
+      {empty && (
+        <EmptyState
+          key="empty"
+          icon={BookHeart}
+          title="No cookbooks yet"
+          text="Gather your recipes into cookbooks."
+          action={{ label: 'New cookbook', onClick: add }}
+        />
       )}
       {!loading && !asList && sorted.length > 0 && (
         <Block key="grid" className="ck-card-grid ck-book-grid">

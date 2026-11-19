@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Page, Navbar, NavTitle, NavRight, Subnavbar, Searchbar, Link, Block, Button, Segmented, List, ListItem, SwipeoutActions,
   SwipeoutButton, Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
 } from 'framework7-react';
-import { ArrowUpRight, ChefHat, ChevronDown, Ellipsis, Plus } from 'lucide-react';
+import { ArrowUpRight, Carrot, ChefHat, ChevronDown, Ellipsis, Plus } from 'lucide-react';
 import { showTabbar } from '../components/ui/tabbar';
 import { inlineIcon, navIcon } from '../components/ui/icons';
 import { useAtTop } from '../components/ui/atTop';
 import { photoStyle } from '../components/ui/photo';
 import { PlannerRowsSkeleton } from '../components/ui/Skeletons';
+import EmptyState from '../components/ui/EmptyState';
 import CookingFab from '../components/CookingFab';
 import RecipePickerPopup from '../components/RecipePickerPopup';
 import { AddRecipePopup, ShopWeekPopup } from '../components/AddGroceriesPopup';
@@ -229,6 +230,12 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
   };
 
   const nothing = query.trim() && !shownToGet.length && !shownGot.length;
+  // nothing on the list at all (issue #118): only the title, + and ⋯ stay; search, the views and the store line go,
+  // since there's nothing for them to work on, and the empty state's one button opens +'s choices
+  const empty = !loading && !loadError && !lines.length;
+  useEffect(() => {
+    if (empty) setQuery('');
+  }, [empty]);
   const recipeGroups = byRecipe(lines)
     .map((g) => ({ ...g, parts: g.parts.filter(({ line }) => matches(line) || (!!g.recipe && g.recipe.title.toLowerCase().includes(query.trim().toLowerCase()))) }))
     .filter((g) => g.parts.length);
@@ -240,6 +247,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
       onPageInit={onPageInit}
       onPageAfterIn={showTabbar}
       onPageTabHide={regroup}
+      withSubnavbar={!empty}
     >
       {/* issue #85: back to tucked-away cook mode; part of the page, so it slides with it */}
       <CookingFab slot="fixed" />
@@ -255,43 +263,47 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
           </Link>
         </NavRight>
         {/* the search bar stays under the title while the list scrolls, as on Recipes; it finds a thing or a recipe */}
-        <Subnavbar className="ck-docked-bar ck-search-bar">
-          <Searchbar
-            customSearch
-            backdrop={false}
-            disableButton={false}
-            placeholder="Search the list"
-            onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
-            onSearchbarClear={() => setQuery('')}
-          />
-        </Subnavbar>
+        {!empty && (
+          <Subnavbar className="ck-docked-bar ck-search-bar">
+            <Searchbar
+              customSearch
+              backdrop={false}
+              disableButton={false}
+              placeholder="Search the list"
+              onSearchbarSearch={(_sb, q) => setQuery(String(q ?? ''))}
+              onSearchbarClear={() => setQuery('')}
+            />
+          </Subnavbar>
+        )}
       </Navbar>
 
-      <Block className="ck-grocery-head">
-        <Segmented strong className="ck-grocery-view">
-          <Button active={view === 'aisle'} onClick={() => { regroup(); changeSettings({ groceryView: 'aisle' }); }}>
-            By aisle
-          </Button>
-          <Button active={view === 'recipe'} onClick={() => { regroup(); changeSettings({ groceryView: 'recipe' }); }}>
-            By recipe
-          </Button>
-        </Segmented>
-        {/* the user asked for a note that the links leave for Instacart, in these words: it's also where the store is picked */}
-        <Link className="ck-instacart-store" onClick={() => setStoreMenu(true)} aria-label={store ? `Shopping via Instacart at ${store.name}. Change the store` : 'Shopping via Instacart. Pick a store'}>
-          <span>
-            {store ? (
-              <>
-                Shopping via Instacart at <b>{store.name}</b>
-              </>
-            ) : (
-              <>
-                Shopping via Instacart · <b>Pick a store</b>
-              </>
-            )}
-          </span>
-          <ChevronDown size={14} strokeWidth={2.25} className="ck-icon" aria-hidden="true" />
-        </Link>
-      </Block>
+      {!empty && (
+        <Block className="ck-grocery-head">
+          <Segmented strong className="ck-grocery-view">
+            <Button active={view === 'aisle'} onClick={() => { regroup(); changeSettings({ groceryView: 'aisle' }); }}>
+              By aisle
+            </Button>
+            <Button active={view === 'recipe'} onClick={() => { regroup(); changeSettings({ groceryView: 'recipe' }); }}>
+              By recipe
+            </Button>
+          </Segmented>
+          {/* the user asked for a note that the links leave for Instacart, in these words: it's also where the store is picked */}
+          <Link className="ck-instacart-store" onClick={() => setStoreMenu(true)} aria-label={store ? `Shopping via Instacart at ${store.name}. Change the store` : 'Shopping via Instacart. Pick a store'}>
+            <span>
+              {store ? (
+                <>
+                  Shopping via Instacart at <b>{store.name}</b>
+                </>
+              ) : (
+                <>
+                  Shopping via Instacart · <b>Pick a store</b>
+                </>
+              )}
+            </span>
+            <ChevronDown size={14} strokeWidth={2.25} className="ck-icon" aria-hidden="true" />
+          </Link>
+        </Block>
+      )}
 
       {loadError ? (
         <Block className="ck-list-state">
@@ -304,10 +316,13 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
         <div className="ck-grocery-groups">
           <PlannerRowsSkeleton />
         </div>
-      ) : !lines.length ? (
-        <Block>
-          <p className="ck-note">Nothing on the list yet. On a recipe, ⋯ → Add to Grocery List adds its ingredients; + here adds this week’s planned recipes or anything else.</p>
-        </Block>
+      ) : empty ? (
+        <EmptyState
+          icon={Carrot}
+          title="Your list is empty"
+          text="Add ingredients from a recipe or your plan."
+          action={{ label: 'Add to the list', onClick: () => setAddMenu(true) }}
+        />
       ) : nothing ? (
         <Block>
           <p className="ck-note">{`Nothing on the list matches “${query.trim()}”.`}</p>

@@ -855,23 +855,33 @@ html.ios .fab.ck-cooking-fab {
 .ck-cooking-fab-dot { opacity: 0.6; }
 .ck-cooking-fab-count { font-variant-numeric: tabular-nums; }
 /* Issue #124 (approved exception, the user asked for it): now and then the pill's pot is about to boil over, the same
-   way as the launch loader's (index.html): the lid sits level on the pot and rocks, left side up, then right, left,
-   right (the last a bit higher), each side lifting as the other lands, and the pot squashes each time the lid lands.
-   One loader loop (about 2.1s of motion) every 12s, the first 3s after the pill shows; still otherwise. The same
-   keyframes on the loader's timing, the lift and squash bigger so they show at 22px (the loader's pot is 96px). Transforms
-   only, on whole elements: the pot, and the lid in two nested layers, one per hinge (the outer on the lid's left end, the
-   inner on its right), all in one grid cell (CookingFab's BoilingPot). Longhands: the minifier turned a name-less
-   `animation:` shorthand into `none`. */
-.ck-pill-pot, .ck-pill-pot-lid, .ck-pill-pot-lid > span { display: grid; }
+   way as the launch loader's (index.html). At rest the lid is ajar, as in Lucide's icon (and the app icon). Every 12s
+   (the first 3s after the pill shows) it drops shut onto the rim and the pot squashes; then the loader's loop: the lid
+   rocks, left side up, then right, left, right (the last a bit higher), each side lifting as the other lands, the pot
+   squashing each time it lands; then the lid pops back open. About 2.6s of motion, still otherwise. The loader's
+   keyframes on the loader's timing, the lift and squash bigger so they show at 22px (the loader's pot is 96px).
+   Transforms only, on whole elements: the pot, and the lid in three nested layers: open (ajar ↔ shut: lifts and tips the
+   level lid to Lucide's spot, rotating about the lid's middle), then one per hinge (the left end, then the right). All in
+   one grid cell (CookingFab's BoilingPot). Longhands: the minifier turned a name-less `animation:` shorthand into `none`. */
+.ck-pill-pot, .ck-pill-pot span { display: grid; }
 .ck-pill-pot { flex: none; width: 22px; height: 22px; }
-.ck-pill-pot > *, .ck-pill-pot-lid > span { grid-area: 1 / 1; }
+.ck-pill-pot > *, .ck-pill-pot span > * { grid-area: 1 / 1; }
 .ck-pill-pot svg { display: block; overflow: visible; }
-.ck-pill-pot-body, .ck-pill-pot-lid, .ck-pill-pot-lid > span {
+.ck-pill-pot-body, .ck-pill-pot-open, .ck-pill-pot-lid, .ck-pill-pot-lid > span {
   animation-duration: 12s; animation-iteration-count: infinite; animation-fill-mode: both;
 }
 .ck-pill-pot-body { transform-origin: 50% 91.67%; animation-name: ck-pill-pot; } /* squashes onto its base */
+/* ajar: the loader's level lid (translate(0 3.4) rotate(14.04 12 6) in the drawing) undone, 3.4 of 24 being 14.17% */
+.ck-pill-pot-open { transform-origin: 50% 25%; transform: rotate(-14.04deg) translateY(-14.17%); animation-name: ck-pill-lid-open; }
 .ck-pill-pot-lid { transform-origin: 15.63% 39.17%; animation-name: ck-pill-lid-right; } /* hinged on the lid's left end */
 .ck-pill-pot-lid > span { transform-origin: 84.38% 39.17%; animation-name: ck-pill-lid-left; } /* hinged on its right end */
+/* drops shut (falling: eases in), and after the loop pops back open (eases out, a little past ajar and back) */
+@keyframes ck-pill-lid-open {
+  0%, 23%       { transform: rotate(-14.04deg) translateY(-14.17%); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
+  24.4%         { transform: rotate(0) translateY(0); }
+  43.2%         { transform: rotate(0) translateY(0); animation-timing-function: cubic-bezier(0.3, 1.45, 0.5, 1); }
+  45%, 100%     { transform: rotate(-14.04deg) translateY(-14.17%); }
+}
 @keyframes ck-pill-lid-left {
   0%, 25%       { transform: translateY(0) rotate(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
   27.01%        { transform: translateY(-6%) rotate(10deg); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.55); }
@@ -890,7 +900,10 @@ html.ios .fab.ck-cooking-fab {
 }
 /* the loader's squash and stretch, about twice as deep */
 @keyframes ck-pill-pot {
-  0%, 28.85%    { transform: scale(1, 1); }
+  0%, 24.3%     { transform: scale(1, 1); }
+  24.9%         { transform: scale(1.06, 0.9); } /* the lid dropping shut */
+  25.6%         { transform: scale(0.98, 1.03); }
+  26.3%, 28.85% { transform: scale(1, 1); }
   29.41%        { transform: scale(1.07, 0.89); }
   30.13%        { transform: scale(0.98, 1.03); }
   30.86%, 32.51% { transform: scale(1, 1); }
@@ -905,7 +918,7 @@ html.ios .fab.ck-cooking-fab {
   42.78%, 100%  { transform: scale(1, 1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ck-pill-pot-body, .ck-pill-pot-lid, .ck-pill-pot-lid > span { animation-name: none; }
+  .ck-pill-pot-body, .ck-pill-pot-open, .ck-pill-pot-lid, .ck-pill-pot-lid > span { animation-name: none; } /* ajar */
 }
 
 /* cook mode's top bar: the recipe's name larger than an ordinary bar title */

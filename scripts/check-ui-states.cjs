@@ -2911,12 +2911,12 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
     if (!(await page.locator(fab).isVisible())) throw new Error('the Cooking pill didn’t come back on Recipes');
   });
-  // Issue #124: now and then the pill's pot boils over the way the launch loader's does: its level lid rocks on one end
-  // and then the other, and the pot squashes as it lands, one loader loop every 12s (the first 3s in), still otherwise;
-  // none with Reduce Motion
+  // Issue #124: now and then the pill's pot boils over the way the launch loader's does. At rest the lid is ajar, as in
+  // Lucide's icon; it drops shut, rocks on one end and then the other, the pot squashing as it lands, and pops open
+  // again: every 12s (the first 3s in), still otherwise; still and ajar with Reduce Motion
   await step('36b3-cook-pill-pot-boils', async () => {
     const pot = `${fab} .ck-pill-pot`;
-    const parts = ['.ck-pill-pot-body', '.ck-pill-pot-lid', '.ck-pill-pot-lid > span'];
+    const parts = ['.ck-pill-pot-body', '.ck-pill-pot-open', '.ck-pill-pot-lid', '.ck-pill-pot-lid > span'];
     const at = (t) => page.locator(pot).evaluate((p, [t, parts]) => parts.map((q) => {
       const el = p.querySelector(q), a = el.getAnimations()[0];
       if (!a) return null;
@@ -2924,22 +2924,33 @@ async function swipeLeft(ctx, page, locator) {
       return { name: a.animationName, period: a.effect.getComputedTiming().duration, transform: getComputedStyle(el).transform };
     }), [t, parts]);
     const still = (r) => r.transform === 'none' || r.transform === 'matrix(1, 0, 0, 1, 0, 0)';
+    // ajar: tipped up to the right (Lucide's -14°) and lifted, as Lucide draws it
+    const ajar = (r) => { const m = (r.transform.match(/matrix\(([^)]+)\)/) || [])[1]?.split(',').map(Number); return !!m && Math.abs(Math.atan2(m[1], m[0]) * 180 / Math.PI + 14.04) < 0.1; };
     const rest = await at(0);
     if (rest.some((r) => !r)) throw new Error('the Cooking pill’s pot doesn’t move');
-    if (rest.map((r) => r.name).join() !== 'ck-pill-pot,ck-pill-lid-right,ck-pill-lid-left' || rest.some((r) => r.period !== 12000)) throw new Error(`the pot plays ${JSON.stringify(rest)}`);
-    if (!rest.every(still)) throw new Error(`the pot isn’t at rest at first: ${JSON.stringify(rest)}`);
-    // the loader's order: the lid's left side lifts first (3.24s), then its right (3.68s); the pot squashes as it lands
-    const left = await at(3240), right = await at(3680), squash = await at(3530);
-    if (still(left[2]) || !still(left[1])) throw new Error(`the lid’s left side doesn’t lift first: ${JSON.stringify(left)}`);
-    if (still(right[1]) || !still(right[2])) throw new Error(`the lid’s right side doesn’t lift next: ${JSON.stringify(right)}`);
-    const sy = Number((squash[0].transform.match(/matrix\(([^)]+)\)/) || [])[1]?.split(',')[3]);
-    if (!(sy < 0.92)) throw new Error(`the pot hardly squashes (${squash[0].transform})`);
-    if (!(await at(5500)).every(still)) throw new Error('the pot doesn’t settle after boiling over');
+    if (rest.map((r) => r.name).join() !== 'ck-pill-pot,ck-pill-lid-open,ck-pill-lid-right,ck-pill-lid-left' || rest.some((r) => r.period !== 12000)) throw new Error(`the pot plays ${JSON.stringify(rest)}`);
+    if (!ajar(rest[1]) || !still(rest[0]) || !still(rest[2]) || !still(rest[3])) throw new Error(`the pot isn’t at rest with its lid ajar at first: ${JSON.stringify(rest)}`);
+    // the lid drops shut (2.93s), then the loader's order: its left side lifts first (3.24s), then its right (3.68s); the
+    // pot squashes as it lands (2.99s shutting, 3.53s)
+    const shut = await at(2930), left = await at(3240), right = await at(3680);
+    if (!still(shut[1])) throw new Error(`the lid doesn’t drop shut before it rocks: ${JSON.stringify(shut)}`);
+    if (!still(left[1]) || still(left[3]) || !still(left[2])) throw new Error(`the lid’s left side doesn’t lift first: ${JSON.stringify(left)}`);
+    if (still(right[2]) || !still(right[3])) throw new Error(`the lid’s right side doesn’t lift next: ${JSON.stringify(right)}`);
+    for (const t of [2990, 3530]) {
+      const sy = Number((((await at(t))[0].transform.match(/matrix\(([^)]+)\)/) || [])[1] || '').split(',')[3]);
+      if (!(sy < 0.92)) throw new Error(`the pot hardly squashes at ${t}ms (scale ${sy})`);
+    }
+    const after = await at(5500);
+    if (!ajar(after[1]) || !still(after[0]) || !still(after[2]) || !still(after[3])) throw new Error(`the lid doesn’t pop open again after boiling over: ${JSON.stringify(after)}`);
     await page.locator(pot).evaluate((p) => p.querySelectorAll('*').forEach((s) => s.getAnimations().forEach((a) => a.play())));
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    const none = await page.locator(pot).evaluate((p) => [...p.querySelectorAll('*')].every((s) => !s.getAnimations().length));
+    const calm = await page.locator(pot).evaluate((p) => ({
+      none: [...p.querySelectorAll('*')].every((s) => !s.getAnimations().length),
+      transform: getComputedStyle(p.querySelector('.ck-pill-pot-open')).transform,
+    }));
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    if (!none) throw new Error('the pot still boils over with Reduce Motion');
+    if (!calm.none) throw new Error('the pot still boils over with Reduce Motion');
+    if (!ajar(calm)) throw new Error(`with Reduce Motion the lid isn’t ajar (${calm.transform})`);
   });
   await step('36c-cook-second-recipe', async () => {
     await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Corn' }).tap(); await page.waitForTimeout(900);

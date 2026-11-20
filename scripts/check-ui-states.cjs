@@ -3309,37 +3309,43 @@ async function swipeLeft(ctx, page, locator) {
     const names = await page.locator('#view-settings .page-current .ck-store-list li .item-title').evaluateAll((els) => els.map((e) => e.firstChild.textContent.trim()));
     if (names.join('|') !== 'Acme Market|Corner Grocer') throw new Error(`stores read ${names.join(', ')}`);
   });
-  // Issue #135: Settings → Appearance → Font changes the whole app's font at once, each row drawn in its own font; each
-  // font has its own sizes (sliders for titles and for reading text, scaling the font itself with size-adjust); the
-  // choice is on the page from the first paint after a reload. The Aa button switches fonts anywhere (hidden in
-  // automated checks until turned on). Put back to Fredoka for the steps after.
+  // Issue #135: the app's font is Parkinsans at 90%, from the CSS alone. Settings → Appearance → Font picks another for
+  // the whole app at once, each row drawn in its own font; each font has its own sizes (sliders for titles and for
+  // reading text, scaling the font itself with size-adjust); the choice is on the page from the first paint after a
+  // reload. Put back to Parkinsans for the steps after.
   const family = (sel) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).fontFamily.split(',')[0].replace(/['"]/g, ''));
-  const trialCss = () => page.evaluate(() => document.getElementById('ck-font-trial')?.textContent ?? '');
+  const fontsCss = () => page.evaluate(() => document.getElementById('ck-fonts')?.textContent ?? '');
+  const sizesRead = () => page.locator('#view-settings .page-current .ck-size-value').allInnerTexts();
   const tapRange = async (label, at) => {
-    const bar = page.locator('.view.tab-active .page-current .ck-size-row, .sheet-modal.modal-in .ck-size-row', { hasText: label }).locator('.range-slider');
+    const bar = page.locator('.view.tab-active .page-current .ck-size-row', { hasText: label }).locator('.range-slider');
     const box = await bar.boundingBox();
     await page.touchscreen.tap(box.x + box.width * at, box.y + box.height / 2); await page.waitForTimeout(400);
   };
   await step('40t2-font', async () => {
     await page.locator('#view-settings .page-current .navbar .link.back').tap(); await page.waitForTimeout(900);
-    const row = page.locator('#view-settings .page-current li', { hasText: /^Font\s*Fredoka/ });
-    if (!(await row.count())) throw new Error('the Font row doesn’t say Fredoka to start with');
+    if ((await family('#view-settings .page-current > .navbar .title')) !== 'Parkinsans Variable') throw new Error('the app isn’t in Parkinsans');
+    if (await fontsCss()) throw new Error('the usual font and sizes write faces of their own');
+    if (await page.locator('.fab.ck-font-fab').count()) throw new Error('the Aa button is still there');
+    const row = page.locator('#view-settings .page-current li', { hasText: /^Font\s*Parkinsans/ });
+    if (!(await row.count())) throw new Error('the Font row doesn’t say Parkinsans');
     await row.locator('a').tap(); await page.waitForTimeout(1000);
     const samples = await page.locator('#view-settings .page-current .ck-font-sample-name').evaluateAll((els) => els.map((e) => getComputedStyle(e).fontFamily.split(',')[0].replace(/['"]/g, '')));
-    if (samples.join('|') !== 'Fredoka Variable|Funnel Display Variable|Parkinsans Variable|Red Hat Display Variable') throw new Error(`the rows are drawn in ${samples.join(', ')}`);
+    if (samples.join('|') !== 'Parkinsans Variable|Funnel Display Variable|Red Hat Display Variable|Fredoka Variable') throw new Error(`the rows are drawn in ${samples.join(', ')}`);
+    if ((await sizesRead()).join('|') !== '90%|90%') throw new Error(`Parkinsans’ sizes read ${(await sizesRead()).join(', ')}, not 90%`);
+    if (!(await page.locator('#view-settings .page-current .ck-size-reset.disabled').count())) throw new Error('Reset sizes is on at the usual sizes');
     await page.locator('#view-settings .page-current li', { hasText: 'Funnel' }).locator('label').tap(); await page.waitForTimeout(600);
-    if ((await family('#view-settings .page-current > .navbar .title')) !== 'ck-display') throw new Error('the bar’s title isn’t in the font being tried');
-    if ((await family('#view-settings .page-current .block-footer')) !== 'ck-text') throw new Error('reading text isn’t in the font being tried');
-    if (!/funnel-display[\s\S]*funnel-sans/.test(await trialCss())) throw new Error('the font being tried isn’t Funnel');
-    const fredoka = await page.locator('#view-settings .page-current .ck-font-sample-name').first().evaluate((e) => getComputedStyle(e).fontFamily);
-    if (!fredoka.startsWith('"Fredoka')) throw new Error(`the Fredoka row turned into ${fredoka}`);
+    if ((await family('#view-settings .page-current > .navbar .title')) !== 'ck-display') throw new Error('the bar’s title isn’t in the font picked');
+    if ((await family('#view-settings .page-current .block-footer')) !== 'ck-text') throw new Error('reading text isn’t in the font picked');
+    if (!/funnel-display[\s\S]*funnel-sans/.test(await fontsCss())) throw new Error('the font picked isn’t Funnel');
+    if ((await sizesRead()).join('|') !== '100%|100%') throw new Error(`Funnel starts at ${(await sizesRead()).join(', ')}, not its own 100%`);
+    const parkinsans = await page.locator('#view-settings .page-current .ck-font-sample-name').first().evaluate((e) => getComputedStyle(e).fontFamily);
+    if (!parkinsans.startsWith('"Parkinsans')) throw new Error(`the Parkinsans row turned into ${parkinsans}`);
     // the titles slider, near its right end: Funnel's titles grow, its reading text stays
     const before = await page.locator('#view-settings .page-current > .navbar .title').evaluate((e) => e.getBoundingClientRect().width);
     await tapRange('Titles and buttons', 0.9);
-    const shown = (await page.locator('#view-settings .page-current .ck-size-row', { hasText: 'Titles and buttons' }).locator('.ck-size-value').innerText()).trim();
-    const pct = Number(shown.replace('%', ''));
-    if (!(pct > 110)) throw new Error(`the titles slider reads ${shown} after moving it right`);
-    const css = await trialCss();
+    const pct = Number((await sizesRead())[0].replace('%', ''));
+    if (!(pct > 110)) throw new Error(`the titles slider reads ${pct}% after moving it right`);
+    const css = await fontsCss();
     if (!css.includes(`size-adjust: ${pct}%`) || !css.includes('size-adjust: 100%')) throw new Error('the sizes aren’t on the fonts');
     const after = await page.locator('#view-settings .page-current > .navbar .title').evaluate((e) => e.getBoundingClientRect().width);
     if (!(after > before * 1.05)) throw new Error(`the bar’s title didn’t grow (${before.toFixed(0)} → ${after.toFixed(0)}px)`);
@@ -3347,40 +3353,25 @@ async function swipeLeft(ctx, page, locator) {
   await step('40t3-font-recipes', async () => {
     await page.reload(); await page.waitForTimeout(1500);
     if ((await page.evaluate(() => document.documentElement.dataset.font)) !== 'funnel') throw new Error('the font wasn’t kept after a reload');
-    if (!/size-adjust: 1[1-2]\d%/.test(await trialCss())) throw new Error('the titles’ size wasn’t kept after a reload');
-    if (!(await page.evaluate(() => document.fonts.check("600 20px 'ck-display'")))) throw new Error('the font being tried isn’t loaded');
+    if (!/size-adjust: 1[1-2]\d%/.test(await fontsCss())) throw new Error('the titles’ size wasn’t kept after a reload');
+    if (!(await page.evaluate(() => document.fonts.check("600 20px 'ck-display'")))) throw new Error('the font picked isn’t loaded');
     await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(900);
-    if ((await family('.view.tab-active .page-current > .navbar .title')) !== 'ck-display') throw new Error('Recipes isn’t in the font being tried');
-    if (await page.locator('.fab.ck-font-fab').count()) throw new Error('the Aa button shows in automated checks before it’s turned on');
+    if ((await family('.view.tab-active .page-current > .navbar .title')) !== 'ck-display') throw new Error('Recipes isn’t in the font picked');
   });
-  await step('40t4-font-button', async () => {
+  await step('40t4-font-back', async () => {
     await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(800);
-    await page.locator('#view-settings .page-current li.ck-font-button-row .toggle').tap(); await page.waitForTimeout(500);
-    await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(900);
-    const fab = page.locator('.view.tab-active .fab.ck-font-fab');
-    if (!(await fab.isVisible())) throw new Error('turning the Font Button on doesn’t show the Aa button');
-    await fab.tap(); await page.waitForTimeout(800);
-    const sheet = page.locator('.sheet-modal.ck-font-sheet.modal-in');
-    if (!(await sheet.isVisible())) throw new Error('the Aa button doesn’t open the font sheet');
-    if (await page.locator('.sheet-backdrop.backdrop-in').count()) throw new Error('the font sheet dims the screen behind it');
-    const picks = await sheet.locator('.ck-font-picker [data-font-sample]').evaluateAll((els) => els.map((e) => getComputedStyle(e).fontFamily.split(',')[0].replace(/['"]/g, '')));
-    if (picks.join('|') !== 'Fredoka Variable|Funnel Display Variable|Parkinsans Variable|Red Hat Display Variable') throw new Error(`the font picks are drawn in ${picks.join(', ')}`);
-    await sheet.locator('.ck-font-picker .button', { hasText: 'Parkinsans' }).tap(); await page.waitForTimeout(500);
-    if ((await page.evaluate(() => document.documentElement.dataset.font)) !== 'parkinsans') throw new Error('picking Parkinsans in the sheet didn’t change the font');
-    const vals = await sheet.locator('.ck-size-value').allInnerTexts();
-    if (vals.join('|') !== '100%|100%') throw new Error(`Parkinsans starts at ${vals.join(', ')}, not its own 100%`);
-    // the slider's knob sits where its value is, though the sheet was hidden when it was drawn
-    const knob = await sheet.locator('.ck-size-row').first().evaluate((r) => { const b = r.querySelector('.range-slider').getBoundingClientRect(), k = r.querySelector('.range-knob-wrap').getBoundingClientRect(); return (k.left + k.width / 2 - b.left) / b.width; });
-    if (Math.abs(knob - (100 - 80) / 45) > 0.06) throw new Error(`the slider’s knob is at ${(knob * 100).toFixed(0)}% of the way along, not at 100%`);
-    await tapRange('Reading text', 0.1);
-    if (!/'ck-display'[^}]*size-adjust: 100%[^}]*parkinsans[\s\S]*'ck-text'[^}]*size-adjust: (8\d|9\d)%/.test(await trialCss())) throw new Error('Reading text didn’t get smaller');
+    await page.locator('#view-settings .page-current li', { hasText: /^Font/ }).locator('a').tap(); await page.waitForTimeout(1000);
+    await page.locator('#view-settings .page-current li', { hasText: 'Parkinsans' }).locator('label').tap(); await page.waitForTimeout(600);
+    if (await fontsCss()) throw new Error('back on Parkinsans at 90%, faces of its own are still written');
+    if ((await family('#view-settings .page-current > .navbar .title')) !== 'Parkinsans Variable') throw new Error('back on Parkinsans, the title isn’t');
+    // Funnel kept its own sizes
+    await page.locator('#view-settings .page-current li', { hasText: 'Funnel' }).locator('label').tap(); await page.waitForTimeout(500);
+    if (!(Number((await sizesRead())[0].replace('%', '')) > 110)) throw new Error('Funnel forgot its titles’ size');
+    await page.locator('#view-settings .page-current .ck-size-reset').tap(); await page.waitForTimeout(400);
+    if ((await sizesRead()).join('|') !== '100%|100%') throw new Error('Reset sizes didn’t put Funnel back to 100%');
+    await page.locator('#view-settings .page-current li', { hasText: 'Parkinsans' }).locator('label').tap(); await page.waitForTimeout(500);
   });
-  await step('40t5-font-button-hide', async () => {
-    await page.locator('.sheet-modal.ck-font-sheet.modal-in .ck-font-sheet-foot .link', { hasText: 'Hide button' }).tap(); await page.waitForTimeout(800);
-    if (await page.locator('.fab.ck-font-fab').count()) throw new Error('Hide button left the Aa button');
-    if (await page.locator('.sheet-modal.ck-font-sheet.modal-in').count()) throw new Error('Hide button left the sheet open');
-  });
-  await page.evaluate(() => { localStorage.removeItem('ck-font-trial'); window.ckFontTrial.save(window.ckFontTrial.read()); });
+  await page.evaluate(() => { localStorage.removeItem('ck-fonts'); window.ckFonts.save(window.ckFonts.read()); });
   await page.reload(); await page.waitForTimeout(1200);
   // Issue #118: an empty list keeps only its title, + and ⋯: no search bar, no By aisle | By recipe, no store line, no
   // instructions; an icon, a few words and one button that opens +'s choices.

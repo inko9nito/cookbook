@@ -1,16 +1,14 @@
 import { Page, Navbar, List, ListItem, BlockFooter, BlockTitle } from 'framework7-react';
-import { FONTS, fontName, setFont, useFontTrial } from '../data/font';
+import { FONTS, fontName, setFont, useFontChoice } from '../data/font';
 import FontSizeControls from '../components/FontSizeControls';
 
 /**
- * Settings → Appearance → Font (issue #135): the fonts the user is choosing between. Each row is drawn in its own
- * font (title in the font for titles and buttons, a line in the font for reading), and picking one changes the whole
- * app at once, so it can be tried around the app. Under them, the chosen font's sizes. The Aa button (FontFab) has the
- * same, anywhere in the app.
+ * Settings → Appearance → Font (issue #135): the app's font, Parkinsans unless another is picked, kept so the user can
+ * switch at any time. Each row is drawn in its own font (title in the font for titles and buttons, a line in the font
+ * for reading), and picking one changes the whole app at once. Under them, the chosen font's sizes.
  */
 export default function FontPage() {
-  const trial = useFontTrial();
-  const font = trial.font;
+  const { font } = useFontChoice();
   return (
     <Page name="font">
       <Navbar title="Font" backLink />
@@ -32,9 +30,9 @@ export default function FontPage() {
           </ListItem>
         ))}
       </List>
-      <BlockFooter>Only on this phone. Fredoka is the font the app has used until now.</BlockFooter>
+      <BlockFooter>Only on this phone.</BlockFooter>
       <BlockTitle>{fontName(font)} Sizes</BlockTitle>
-      <FontSizeControls card />
+      <FontSizeControls />
     </Page>
   );
 }

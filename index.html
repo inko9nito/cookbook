@@ -3,13 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <!-- the app fonts (Nunito for text, Fredoka for titles and buttons: src/theme/cookbook.css): fetched first, so the
-         first paint is already in them -->
-    <link rel="preload" href="/fonts/nunito-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/fredoka-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <!-- Issue #135: the font being tried and its sizes (Settings → Appearance → Font, the Aa button), this phone only:
-         put on the page before the first paint, with its files fetched first like the two above -->
-    <script src="/font-trial.js"></script>
+    <!-- the app's font (Parkinsans, for titles and for reading: src/theme/cookbook.css): fetched first, so the first
+         paint is already in it -->
+    <link rel="preload" href="/fonts/parkinsans-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Issue #135: another font or other sizes picked in Settings → Appearance → Font, this phone only: put on the
+         page before the first paint, with its files fetched first like the one above -->
+    <script src="/fonts.js"></script>
     <meta name="theme-color" content="#f7f7f8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <meta name="format-detection" content="telephone=no" />

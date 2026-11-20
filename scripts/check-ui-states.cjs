@@ -1249,8 +1249,20 @@ async function swipeLeft(ctx, page, locator) {
     const version = await row.locator('.ck-version-text').textContent();
     if (!/^\w{5,7} · /.test(version.trim())) throw new Error(`the version reads "${version}"`);
     await row.scrollIntoViewIfNeeded();
-    const target = await row.locator('.ck-refresh-button').evaluate((e) => { const r = e.getBoundingClientRect(); return [r.width, r.height]; });
-    if (Math.min(...target) < 44) throw new Error(`the refresh icon's tap target is ${target.join('×')}px`);
+    // issue #138: 44px was too small to hit on the phone. The tap target takes most of the empty space around the icon
+    // (at least 120 × 64), stays on screen and clear of the build (which copies), and the icon still lines up with the
+    // cards' chevrons
+    const box = await page.evaluate(() => {
+      const r = (s) => document.querySelector(`.view.tab-active .page-current ${s}`).getBoundingClientRect();
+      return { target: r('.ck-version .ck-refresh-button'), icon: r('.ck-version .ck-refresh'), text: r('.ck-version-text'),
+        row: r('.ck-version'), chevron: (() => { const e = document.querySelector('.view.tab-active .page-current .ck-settings-places .item-link .item-inner');
+          const c = getComputedStyle(e, '::before'); return e.getBoundingClientRect().right - parseFloat(c.right) - parseFloat(c.width) / 2; })(), width: innerWidth };
+    });
+    const { target, icon, text } = box;
+    if (target.width < 120 || target.height < 64) throw new Error(`the refresh icon's tap target is ${Math.round(target.width)}×${Math.round(target.height)}px`);
+    if (target.right > box.width + 0.5 || target.left < text.right + 8) throw new Error('the refresh tap target runs off the screen or into the build');
+    if (Math.abs((icon.left + icon.right) / 2 - box.chevron) > 3) throw new Error(`the refresh icon (centre ${Math.round((icon.left + icon.right) / 2)}) is not lined up with the chevrons (${Math.round(box.chevron)})`);
+    if (Math.abs((icon.top + icon.bottom) / 2 - (box.row.top + box.row.bottom) / 2) > 1) throw new Error('the refresh icon is not centred on the version row');
     await page.evaluate(() => { window.__ckNotReloaded = true; });
     const loaded = page.waitForEvent('load', { timeout: 15000 });
     await row.locator('.ck-refresh-button').tap(); await page.waitForTimeout(200);

@@ -1463,11 +1463,16 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
 /* Settings → Version (issue #128): on the page itself, not in a card: the build on the left, then the Tomato-ink refresh
    icon on its own (no button shape: the user wants just the icon). Tapping the build copies it; tapping the icon checks for
    a new version, and it spins while it checks (approved exception: the user asked for a spinning refresh icon instead of
-   a dialog). The icon's tap target is 44px, reaching into the block's padding so the icon lines up with the cards' chevrons. */
+   a dialog). Issue #138: the icon's tap target is big (128 × 72px), most of the empty space around it: it reaches left
+   towards the build, into the space above and below, and right to the screen's edge, with the icon kept in place at its
+   right end, lined up with the cards' chevrons (negative margins, so the row's height and the icon don't move). */
 /* the build lines up with the cards' row text (their 16px inset plus the row's 16px) */
 .block.ck-version { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-left: calc(var(--f7-block-padding-horizontal) + 16px); }
 .ck-version-text { cursor: pointer; font-size: 15px; color: var(--ck-fg); font-variant-numeric: tabular-nums; }
-.ck-version .link.ck-refresh-button { flex: none; width: 44px; height: 44px; margin-right: 1px; color: var(--ck-accent-ink); }
+.ck-version .link.ck-refresh-button {
+  flex: none; width: 128px; height: 72px; margin: -14px calc(-1 * var(--f7-block-padding-horizontal)) -14px 0;
+  justify-content: flex-end; padding-right: calc(var(--f7-block-padding-horizontal) + 14px); color: var(--ck-accent-ink);
+}
 .ck-refresh-button .ck-refresh { color: var(--ck-accent-ink); }
 .ck-refresh.ck-spinning { animation: ck-spin 0.9s linear infinite; }
 @keyframes ck-spin { to { transform: rotate(360deg); } }

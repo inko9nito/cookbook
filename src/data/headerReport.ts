@@ -9,20 +9,6 @@
 
 declare const __APP_VERSION__: string;
 
-// Test modes for the fix (?t141=a, b or c, kept for the tab's session; ?t141=off ends it): see cookbook.css
-export const headerTest = (() => {
-  try {
-    const asked = new URLSearchParams(location.search).get('t141');
-    if (asked === 'off') sessionStorage.removeItem('ck-t141');
-    else if (asked && /^[abc]$/.test(asked)) sessionStorage.setItem('ck-t141', asked);
-    const mode = sessionStorage.getItem('ck-t141') ?? '';
-    if (mode) document.documentElement.classList.add(`ck-t141-${mode}`);
-    return mode;
-  } catch {
-    return '';
-  }
-})();
-
 export const headerReportOn = (() => {
   try {
     if (location.hostname.startsWith('deploy-preview-')) return true;
@@ -75,7 +61,7 @@ function hit(label: string, el: Element | null): string {
 export function headerReport(pageEl: Element | null): string {
   const out: string[] = [];
   const add = (s: string) => out.push(s);
-  add(`#141 header report · ${typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '?'} · test ${headerTest || 'none'} · ${new Date().toISOString()}`);
+  add(`#141 header report · ${typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '?'} · ${new Date().toISOString()}`);
   add(`ua: ${navigator.userAgent}`);
   const vv = window.visualViewport;
   add(`standalone: ${(navigator as { standalone?: boolean }).standalone ?? matchMedia('(display-mode: standalone)').matches} · dpr ${devicePixelRatio} · screen ${screen.width}×${screen.height} · inner ${innerWidth}×${innerHeight}` +

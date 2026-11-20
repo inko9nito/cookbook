@@ -385,12 +385,45 @@ async function swipeLeft(ctx, page, locator) {
       return [
         getComputedStyle(n).backfaceVisibility === 'visible' ? null : `${where}: backface-visibility ${getComputedStyle(n).backfaceVisibility}`,
         sub && ['::before', '::after'].some((p) => getComputedStyle(sub, p).backfaceVisibility !== 'visible') ? `${where}: the docked bar's line has backface-visibility hidden` : null,
-        getComputedStyle(n).willChange.includes('transform') ? null : `${where}: no layer of its own (will-change ${getComputedStyle(n).willChange})`,
+        // #141: a header with the content below it (not over the scrolling layer) has no layer of its own; see 01a3
+        n.closest('.views') && !n.closest('.page-with-subnavbar') && !n.matches('.navbar-transparent, .ck-hero-bar') && !n.parentElement.querySelector(':scope > .page-content.hide-navbar-on-scroll')
+          ? (getComputedStyle(n).willChange === 'auto' ? null : `${where}: a layer of its own over content that starts below it (will-change ${getComputedStyle(n).willChange})`)
+          : getComputedStyle(n).willChange.includes('transform') ? null : `${where}: no layer of its own (will-change ${getComputedStyle(n).willChange})`,
         bg && getComputedStyle(bg, '::before').display !== 'none' ? `${where}: the blur strip is still there` : null,
       ].filter(Boolean);
     }));
     if (!off.length && !(await page.locator('.navbar').count())) throw new Error('no headers found');
     if (off.length) throw new Error([...new Set(off)].slice(0, 5).join(' | '));
+  });
+  // #141: on tab pages whose header stays put (Cookbooks, Settings and its pages), the content starts below the header
+  // instead of scrolling under it: iPhone Safari stopped painting a header over scrolling content that changed. Pages
+  // whose header slides away (Recipes) or has a docked bar (Plan, Groceries) keep the content under it.
+  await step('01a3-content-below-fixed-headers', async () => {
+    const where = async () => page.evaluate(() => {
+      const p = document.querySelector('.view.tab-active .page-current');
+      const n = p.querySelector(':scope > .navbar'), c = p.querySelector(':scope > .page-content');
+      return { name: p.dataset.name, gap: Math.round(c.getBoundingClientRect().top - n.getBoundingClientRect().bottom), contentTop: Math.round(c.getBoundingClientRect().top), pad: getComputedStyle(c).paddingTop };
+    });
+    const out = [];
+    const below = async (tab, ...links) => {
+      await page.locator(`.tabbar a[aria-label="${tab}"]`).tap(); await page.waitForTimeout(800);
+      for (const l of links) { await page.locator('.view.tab-active .page-current a', { hasText: l }).first().tap(); await page.waitForTimeout(900); }
+      const w = await where();
+      if (w.gap !== 0) out.push(`${w.name}: the content starts ${w.gap}px from the header's bottom, not right under it`);
+      if (w.pad !== '0px') out.push(`${w.name}: the content is still padded down by ${w.pad}`);
+    };
+    const under = async (tab) => {
+      await page.locator(`.tabbar a[aria-label="${tab}"]`).tap(); await page.waitForTimeout(800);
+      const w = await where();
+      if (w.contentTop !== 0) out.push(`${w.name}: the content starts ${w.contentTop}px down, not under the header`);
+    };
+    await below('Cookbooks');
+    await below('Settings');
+    await below('Settings', 'Appearance');
+    await under('Recipes');
+    await under('Plan');
+    await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
+    if (out.length) throw new Error(out.join(' | '));
   });
   // the search bar must filter the grid on screen (it once kept filtering a copy React had replaced when loading ended)
   await step('01b-recipes-search', async () => {

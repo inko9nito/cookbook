@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonContent, IonSearchbar, IonChip, IonSkeletonText,
-  useIonActionSheet, useIonRouter,
+  useIonRouter,
 } from '@ionic/react';
-import { ArrowUpDown, Plus } from 'lucide-react';
+import { ArrowUpDown, Camera, Link2, PenLine, Plus } from 'lucide-react';
 import { useStore } from '../data/store';
 import { SORT_LABELS, sortRecipes, type SortKey } from '../lib/recipe';
 import { say } from '../components/ui/toast';
@@ -14,7 +14,6 @@ export default function RecipesPage() {
   const { recipes, loading, sort, setSort, settings, setFilter } = useStore();
   const filterTags = settings.filterTags;
   const [query, setQuery] = useState('');
-  const [sheet] = useIonActionSheet();
   const router = useIonRouter();
   const tags = useMemo(() => [...new Set(recipes.flatMap((r) => r.tags))].sort((a, b) => a.localeCompare(b)), [recipes]);
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -23,17 +22,15 @@ export default function RecipesPage() {
   );
   const toggleTag = (t: string) => setFilter(filterTags.includes(t) ? filterTags.filter((x) => x !== t) : [...filterTags, t]);
 
-  // + : Ionic's action sheet, the same three ways in as the app
-  const add = () =>
-    sheet({
-      header: 'New recipe',
-      buttons: [
-        { text: 'From photos or screenshots', handler: () => say('Reading photos isn’t in the trial') },
-        { text: 'From a link', handler: () => say('Reading links isn’t in the trial') },
-        { text: 'Type it in', handler: () => router.push('/recipes/recipe/new/edit', 'forward') },
-        { text: 'Cancel', role: 'cancel' },
+  // + : the app's pull-down menu (#39), the same three ways in
+  const add = (el: Element) =>
+    openMenu(el, [
+      [
+        { label: 'From photos or screenshots', icon: Camera, onClick: () => say('Reading photos isn’t in the trial') },
+        { label: 'From a link', icon: Link2, onClick: () => say('Reading links isn’t in the trial') },
+        { label: 'Type it in', icon: PenLine, onClick: () => router.push('/recipe/new/edit', 'forward') },
       ],
-    });
+    ]);
 
   return (
     <IonPage className="ck-ion-anchor">
@@ -41,7 +38,7 @@ export default function RecipesPage() {
         <IonToolbar>
           <IonTitle className="ck-ion-title">Recipes</IonTitle>
           <IonButtons slot="end">
-            <BarButton label="New recipe" icon={Plus} primary onClick={add} />
+            <BarButton label="New recipe" icon={Plus} primary onClick={(e) => add(e.currentTarget)} />
             <BarButton
               label="Sort recipes"
               icon={ArrowUpDown}
@@ -54,8 +51,7 @@ export default function RecipesPage() {
             />
           </IonButtons>
         </IonToolbar>
-        <IonToolbar className="ck-ion-subbar">
-          <div className="ck-ion-subbar-stack">
+        <div className="ck-ion-header-extra">
             <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search recipes" />
           <div className="ck-ion-chips">
             <IonChip className={filterTags.length ? '' : 'ck-ion-chip-on'} onClick={() => setFilter([])}>
@@ -67,8 +63,7 @@ export default function RecipesPage() {
               </IonChip>
             ))}
           </div>
-          </div>
-        </IonToolbar>
+        </div>
       </IonHeader>
       <IonContent>
         <p className="ck-note ck-ion-count">{loading ? ' ' : `${shown.length} ${shown.length === 1 ? 'recipe' : 'recipes'} · ${SORT_LABELS[sort]}`}</p>
@@ -81,7 +76,7 @@ export default function RecipesPage() {
                   <IonSkeletonText animated style={{ width: '40%', height: 12 }} />
                 </div>
               ))
-            : shown.map((r) => <RecipeCard key={r.id} recipe={r} href={`/recipes/recipe/${r.id}`} />)}
+            : shown.map((r) => <RecipeCard key={r.id} recipe={r} href={`/recipe/${r.id}`} />)}
         </div>
         <div className="ck-ion-toast-anchor" />
         <CookingPill />

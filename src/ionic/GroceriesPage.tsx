@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonContent, IonList, IonItem, IonCheckbox, IonSearchbar,
-  IonSegment, IonSegmentButton, IonLabel, IonItemSliding, IonItemOptions, IonItemOption, IonNote, useIonActionSheet,
+  IonSegment, IonSegmentButton, IonLabel, IonItemSliding, IonItemOptions, IonItemOption, IonNote,
   useIonViewWillLeave,
 } from '@ionic/react';
-import { ArrowUpRight, ChevronDown, Ellipsis, Plus, Share, Trash2 } from 'lucide-react';
+import { ArrowUpRight, ChefHat, ChevronDown, Ellipsis, PenLine, Plus, Share, Trash2 } from 'lucide-react';
 import { useGroceries, useNamed, useStore } from '../data/store';
 import { AISLE_NAMES, byAisle, byRecipe, instacartSearch, itemNames, linesOf, listText, nameKey, type GroceryItem, type Line } from '../lib/groceries';
 import { newId } from '../lib/recipe';
@@ -22,7 +22,6 @@ const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 export default function GroceriesPage() {
   const { recipes, settings, changeSettings, loading: recipesLoading } = useStore();
   const { items, changeGroceries, loading: listLoading } = useGroceries();
-  const [sheet] = useIonActionSheet();
   const prompt = usePrompt();
   const [query, setQuery] = useState('');
   const [placed, setPlaced] = useState<Map<string, boolean>>(new Map());
@@ -57,22 +56,20 @@ export default function GroceriesPage() {
   };
   const ticked = (line: Line) => line.parts.every((p) => real.get(p.item.id)?.checked);
 
-  const add = () =>
-    sheet({
-      buttons: [
-        { text: 'Add a recipe…', handler: () => setAdding(true) },
+  const add = (el: Element) =>
+    openMenu(el, [
+      [
+        { label: 'Add a recipe', icon: ChefHat, onClick: () => setAdding(true) },
         {
-          text: 'Type an item…',
-          handler: () => {
-            setTimeout(async () => {
-              const text = await prompt('Add to the list', 'Like “2 avocados” or “paper towels”.', '', 'Add');
-              if (text) changeGroceries([{ id: newId(), text, checked: false, createdAt: new Date().toISOString() }]);
-            }, 300);
+          label: 'Type an item',
+          icon: PenLine,
+          onClick: async () => {
+            const text = await prompt('Add to the list', 'Like “2 avocados” or “paper towels”.', '', 'Add');
+            if (text) changeGroceries([{ id: newId(), text, checked: false, createdAt: new Date().toISOString() }]);
           },
         },
-        { text: 'Cancel', role: 'cancel' },
       ],
-    });
+    ]);
   const more = (el: Element) =>
     openMenu(el, [
       [{ label: 'Share list', icon: Share, onClick: () => navigator.share?.({ text: listText(lines) }).catch(() => {}) }],
@@ -120,12 +117,11 @@ export default function GroceriesPage() {
         <IonToolbar>
           <IonTitle className="ck-ion-title">Groceries</IonTitle>
           <IonButtons slot="end">
-            <BarButton label="Add to the list" icon={Plus} primary onClick={add} />
+            <BarButton label="Add to the list" icon={Plus} primary onClick={(e) => add(e.currentTarget)} />
             <BarButton label="More actions" icon={Ellipsis} onClick={(e) => more(e.currentTarget)} />
           </IonButtons>
         </IonToolbar>
-        <IonToolbar className="ck-ion-subbar">
-          <div className="ck-ion-subbar-stack">
+        <div className="ck-ion-header-extra">
             <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search the list" />
           <IonSegment
             value={view}
@@ -142,8 +138,7 @@ export default function GroceriesPage() {
               <IonLabel>By recipe</IonLabel>
             </IonSegmentButton>
           </IonSegment>
-          </div>
-        </IonToolbar>
+        </div>
       </IonHeader>
       <IonContent>
         {stores.length > 0 && (

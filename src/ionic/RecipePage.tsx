@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   IonPage, IonHeader, IonToolbar, IonButtons, IonBackButton, IonContent, IonFooter, IonButton, IonChip, IonList, IonItem,
-  IonLabel, useIonActionSheet, useIonRouter,
+  IonLabel, useIonRouter,
 } from '@ionic/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination } from 'swiper/modules';
@@ -50,8 +50,8 @@ export default function RecipePage() {
   const { planned, savePlanned } = usePlanner();
   const cook = useCook();
   const confirm = useConfirm();
-  const [sheet] = useIonActionSheet();
   const leaving = useRef<Recipe | null>(null);
+  const moreButton = useRef<Element | null>(null);
   const recipe = leaving.current ?? recipes.find((r) => r.id === id);
   const [ownFactor, setOwnFactor] = useState(1);
   const [ownPicks, setOwnPicks] = useState<UnitPicks>({});
@@ -68,7 +68,7 @@ export default function RecipePage() {
         <IonHeader className="ck-ion-header">
           <IonToolbar>
             <IonButtons slot="start">
-              <IonBackButton defaultHref={`/${tab}`} text="" />
+              <IonBackButton defaultHref="/recipes" text="" />
             </IonButtons>
           </IonToolbar>
         </IonHeader>
@@ -96,15 +96,10 @@ export default function RecipePage() {
     savePlanned(plan(recipe.id, day, newId, { meal, servings }));
     say(`Added to ${[mediumDate(day), meal && mealName(meal)].filter(Boolean).join(' · ')}`);
   };
+  // which meal: the app's menu (#39), from the ⋯ the Add to Planner came from
   const pickMeal = (day: Day) =>
-    sheet({
-      header: mediumDate(day),
-      buttons: [
-        ...MEALS.map((m) => ({ text: mealName(m), handler: () => addPlanned(day, m) })),
-        { text: 'Any time that day', handler: () => addPlanned(day) },
-        { text: 'Cancel', role: 'cancel' },
-      ],
-    });
+    moreButton.current &&
+    openMenu(moreButton.current, [[...MEALS, null].map((m) => ({ label: m ? mealName(m) : 'Any time', onClick: () => addPlanned(day, m ?? undefined) }))]);
   const remove = async () => {
     const users = usedIn(recipe.id, recipes).map((r) => `“${r.title}”`);
     const ok = await confirm(`Delete “${recipe.title}”?`, users.length ? `It’s an ingredient in ${users.join(', ')}. That line stays, without the link.` : '', 'Delete', true);
@@ -147,14 +142,15 @@ export default function RecipePage() {
       <IonHeader collapse="fade" className="ck-ion-header ck-ion-photo-bar">
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref={`/${tab}`} text="" className="ck-ion-round-back" />
+            <IonBackButton defaultHref="/recipes" text="" className="ck-ion-round-back" />
           </IonButtons>
           <IonButtons slot="end">
-            <BarButton label="More actions" icon={Ellipsis} onClick={(e) => more(e.currentTarget)} />
+            <BarButton label="More actions" icon={Ellipsis} onClick={(e) => ((moreButton.current = e.currentTarget), more(e.currentTarget))} />
           </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen className="ck-ion-recipe">
+        <div className="ck-hero-wrap">
         {recipe.photos.length ? (
           <Swiper modules={[Pagination]} pagination={recipe.photos.length > 1} className="ck-ion-hero">
             {recipe.photos.map((p, i) => (
@@ -168,6 +164,7 @@ export default function RecipePage() {
             <ChefHat size={40} strokeWidth={1.5} />
           </div>
         )}
+        </div>
 
         <div className="ck-panel">
           <div className="ck-panel-head">
@@ -286,7 +283,7 @@ export default function RecipePage() {
               </div>
               <div className="ck-ion-chips ck-ion-chips-wrap">
                 {places.map((p) => (
-                  <IonChip key={p.key} className={`ck-tint-${colorOf(p.cookbook)}`} onClick={() => router.push(`/cookbooks/${p.cookbook.id}`, 'forward')}>
+                  <IonChip key={p.key} className={`ck-tint-${colorOf(p.cookbook)}`} onClick={() => router.push(`/cookbook/${p.cookbook.id}`, 'forward')}>
                     <BookOpen size={16} strokeWidth={1.75} />
                     {p.label}
                   </IonChip>

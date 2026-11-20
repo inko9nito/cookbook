@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { IonButton, IonFab, IonPopover, IonContent, IonList, IonItem, IonLabel, useIonAlert, useIonRouter, useIonToast } from '@ionic/react';
+import { IonButton, IonFab, IonPopover, IonContent, IonList, IonItem, IonLabel, createAnimation, useIonAlert, useIonRouter, useIonToast, type Animation } from '@ionic/react';
 import { BookOpen, Check, ChefHat, Star, type LucideIcon } from 'lucide-react';
 import { coverPhoto, type Recipe } from '../lib/recipe';
 import { photoStyle } from '../components/ui/photo';
@@ -20,7 +20,7 @@ export function useTab(): TabName {
   const first = useLocation().pathname.split('/')[1];
   return (['recipes', 'cookbooks', 'plan', 'groceries', 'settings'].includes(first) ? first : 'recipes') as TabName;
 }
-export const recipePath = (tab: TabName, id: string) => `/${tab === 'settings' || tab === 'groceries' ? 'recipes' : tab}/recipe/${id}`;
+export const recipePath = (_tab: TabName, id: string) => `/recipe/${id}`;
 
 // ── bar buttons: separate round buttons (the agreed design), Ionic's buttons underneath ──
 
@@ -41,6 +41,62 @@ let showMenu: ((m: MenuRequest) => void) | null = null;
 /** open a menu under the element tapped */
 export const openMenu = (el: Element, groups: MenuItem[][]) => showMenu?.({ el, groups: groups.filter((g) => g.length) });
 
+/**
+ * How a menu comes and goes (#39, the app's tuned popover): it grows straight out of the button tapped and shrinks back
+ * into it, quickly, with iOS's ease. Ionic's animation API (an overlay's enter/leave animation), placed under the button
+ * when it fits (else above), lined up with the button's side of the screen.
+ */
+const IOS_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+let menuOrigin = 'right top';
+function menuEnter(baseEl: HTMLElement, opts?: { event?: { target?: Element } }): Animation {
+  const root = baseEl.shadowRoot ?? baseEl;
+  const content = root.querySelector<HTMLElement>('.popover-content')!;
+  const wrapper = root.querySelector<HTMLElement>('.popover-wrapper')!;
+  const target = opts?.event?.target;
+  if (target) {
+    const r = target.getBoundingClientRect();
+    const w = content.offsetWidth;
+    const h = content.offsetHeight;
+    const below = r.bottom + 6 + h <= window.innerHeight - 12;
+    const right = r.left + r.width / 2 > window.innerWidth / 2;
+    content.style.top = `${below ? r.bottom + 6 : Math.max(12, r.top - 6 - h)}px`;
+    content.style.left = `${right ? Math.max(8, r.right - w) : Math.min(r.left, window.innerWidth - 8 - w)}px`;
+    menuOrigin = `${right ? 'right' : 'left'} ${below ? 'top' : 'bottom'}`;
+  }
+  return createAnimation()
+    .addElement(baseEl)
+    .duration(reduceMotion() ? 0 : 260)
+    .easing(IOS_EASE)
+    .addAnimation([
+      createAnimation().addElement(wrapper).fromTo('opacity', '0', '1'),
+      createAnimation()
+        .addElement(content)
+        .beforeStyles({ 'transform-origin': menuOrigin })
+        .keyframes([
+          { offset: 0, transform: 'scale(0.2)', opacity: '0' },
+          { offset: 0.35, opacity: '1' },
+          { offset: 1, transform: 'scale(1)', opacity: '1' },
+        ]),
+    ]);
+}
+function menuLeave(baseEl: HTMLElement): Animation {
+  const root = baseEl.shadowRoot ?? baseEl;
+  return createAnimation()
+    .addElement(baseEl)
+    .duration(reduceMotion() ? 0 : 180)
+    .easing('cubic-bezier(0.4, 0, 1, 1)')
+    .addAnimation([
+      createAnimation().addElement(root.querySelector<HTMLElement>('.popover-wrapper')!).fromTo('opacity', '1', '0'),
+      createAnimation()
+        .addElement(root.querySelector<HTMLElement>('.popover-content')!)
+        .keyframes([
+          { offset: 0, transform: 'scale(1)', opacity: '1' },
+          { offset: 1, transform: 'scale(0.2)', opacity: '0' },
+        ]),
+    ]);
+}
+
 export function MenuHost() {
   const [menu, setMenu] = useState<MenuRequest | null>(null);
   const [open, setOpen] = useState(false);
@@ -58,8 +114,8 @@ export function MenuHost() {
       isOpen={open}
       event={menu ? { target: menu.el } : undefined}
       arrow={false}
-      side="bottom"
-      alignment="end"
+      enterAnimation={menuEnter}
+      leaveAnimation={menuLeave}
       className="ck-ion-menu"
       onDidDismiss={() => setOpen(false)}
     >
@@ -97,8 +153,8 @@ type ToastEvent = { html: string; closeTimeout: number; undo?: () => void };
 function toastAnchor(): HTMLElement | undefined {
   const cook = document.querySelector<HTMLElement>('ion-modal.ck-ion-cook.show-modal');
   if (cook) return cook.querySelector<HTMLElement>('ion-footer') ?? undefined;
-  const pages = [...document.querySelectorAll<HTMLElement>('ion-router-outlet > .ion-page:not(.ion-page-hidden)')];
-  return pages.at(-1)?.querySelector<HTMLElement>(':scope > ion-footer') ?? document.querySelector<HTMLElement>('ion-tab-bar') ?? undefined;
+  const top = document.querySelector<HTMLElement>('ion-app > ion-router-outlet > .ion-page:not(.ion-page-hidden)');
+  return top?.querySelector<HTMLElement>(':scope > ion-footer') ?? top?.querySelector<HTMLElement>('ion-tab-bar') ?? document.querySelector<HTMLElement>('ion-tab-bar') ?? undefined;
 }
 
 export function Bridge() {

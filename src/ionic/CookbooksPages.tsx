@@ -34,7 +34,7 @@ export function CookbooksPage() {
     if (!name) return;
     const c = emptyCookbook(name, newId);
     saveCookbook(c);
-    router.push(`/cookbooks/${c.id}`, 'forward');
+    router.push(`/cookbook/${c.id}`, 'forward');
   };
   return (
     <IonPage className="ck-ion-anchor">
@@ -60,11 +60,11 @@ export function CookbooksPage() {
             {sorted.map((c) => (
               <a
                 key={c.id}
-                href={`/ionic/cookbooks/${c.id}`}
+                href={`/ionic/cookbook/${c.id}`}
                 className={`ck-card ck-book-tile ck-ion-book-tile ck-tint-${colorOf(c)}`}
                 onClick={(e) => {
                   e.preventDefault();
-                  router.push(`/cookbooks/${c.id}`, 'forward');
+                  router.push(`/cookbook/${c.id}`, 'forward');
                 }}
               >
                 <Plates photos={platePhotos(c, byId)} />
@@ -78,7 +78,7 @@ export function CookbooksPage() {
             {sorted.map((c) => {
               const photo = platePhotos(c, byId)[0];
               return (
-                <IonItem key={c.id} button detail routerLink={`/cookbooks/${c.id}`}>
+                <IonItem key={c.id} button detail routerLink={`/cookbook/${c.id}`}>
                   <span slot="start" className={`ck-ion-thumb ck-ion-thumb-round ck-tint-${colorOf(c)}${photo ? ' ck-photo' : ''}`} style={photoStyle(photo)}>
                     {!photo && <BookOpen size={16} strokeWidth={1.5} />}
                   </span>
@@ -112,6 +112,10 @@ export function CookbookPage() {
   const book = leaving.current ?? cookbooks.find((c) => c.id === id);
   const [solid, setSolid] = useState(false);
   const [titled, setTitled] = useState(false);
+  // #90: the header's search hands over to one docked in the bar once it reaches the bar, so it's always there
+  const [docked, setDocked] = useState(false);
+  const bar = useRef<HTMLIonToolbarElement>(null);
+  const heroSearch = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(false);
   const [organizing, setOrganizing] = useState(false);
@@ -173,17 +177,23 @@ export function CookbookPage() {
   return (
     <IonPage className="ck-ion-anchor">
       <IonHeader className={`ck-ion-header ck-ion-hero-bar${solid ? ' ck-ion-solid' : ''}`}>
-        <IonToolbar>
+        <IonToolbar ref={bar}>
           <IonButtons slot="start">
             <IonBackButton defaultHref="/cookbooks" text="" className="ck-ion-round-back" />
           </IonButtons>
-          <IonTitle className={`ck-ion-title-small ck-ion-hero-title${titled ? ' ck-ion-titled' : ''}`}>{book.name}</IonTitle>
+          {/* the name only once it has gone under the bar: never in both places, and nothing for Ionic's transition to show */}
+          <IonTitle className="ck-ion-title-small ck-ion-hero-title">{titled ? book.name : ''}</IonTitle>
           <IonButtons slot="end">
             <BarButton label="Add recipes" icon={Plus} primary onClick={() => setAdding(true)} />
             <BarButton label="Sort" icon={ArrowUpDown} onClick={(e) => sortMenu(e.currentTarget)} />
             <BarButton label="More actions" icon={Ellipsis} onClick={(e) => more(e.currentTarget)} />
           </IonButtons>
         </IonToolbar>
+        {docked && (
+          <div className="ck-ion-header-extra">
+            <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search this cookbook" />
+          </div>
+        )}
       </IonHeader>
       <IonContent
         fullscreen
@@ -191,15 +201,21 @@ export function CookbookPage() {
         scrollEvents
         onIonScroll={(e) => {
           const y = e.detail.scrollTop;
+          const barBottom = bar.current?.getBoundingClientRect().bottom ?? 56;
+          const search = heroSearch.current?.getBoundingClientRect().top ?? Infinity;
           setSolid(y > 150);
           setTitled(y > 210);
+          // the pill (16pt into its box) has reached the bar
+          setDocked(search + 16 < barBottom + 4);
         }}
       >
         <section className={`ck-ion-book-hero ck-tint-${colorOf(book)}`}>
           <Plates photos={platePhotos(book, byId)} />
           <h1 className="ck-ion-book-title">{book.name}</h1>
           <p className="ck-ion-book-meta">{countOf(book, byId)}</p>
-          <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search this cookbook" className="ck-ion-hero-search" />
+          <div ref={heroSearch} className={docked ? 'ck-ion-handed-over' : ''}>
+            <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search this cookbook" className="ck-ion-hero-search" />
+          </div>
         </section>
         {shelves.length === 0 ? (
           <p className="ck-note ion-padding">{words.length ? 'Nothing matches.' : 'No recipes in this cookbook yet.'}</p>
@@ -216,7 +232,7 @@ export function CookbookPage() {
               {s.recipes.length ? (
                 <div className={s.name ? 'ck-ion-shelf-row' : 'ck-ion-grid'}>
                   {s.recipes.map((r) => (
-                    <RecipeCard key={r.id} recipe={r} href={`/cookbooks/recipe/${r.id}`} />
+                    <RecipeCard key={r.id} recipe={r} href={`/recipe/${r.id}`} />
                   ))}
                 </div>
               ) : (

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonContent, IonList, IonItem, IonLabel, IonItemSliding,
-  IonItemOptions, IonItemOption, IonNote, useIonActionSheet, useIonRouter,
+  IonItemOptions, IonItemOption, IonNote, useIonRouter,
 } from '@ionic/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperClass } from 'swiper/types';
@@ -15,7 +15,7 @@ import { coverPhoto, newId } from '../lib/recipe';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { photoStyle } from '../components/ui/photo';
 import { say } from '../components/ui/toast';
-import { BarButton, CookingPill } from './ui';
+import { BarButton, CookingPill, openMenu } from './ui';
 import { DaySheet, NoteModal, RecipePickerModal } from './modals';
 
 const WEEKS = 26; // weeks either side of this one in the strip
@@ -30,7 +30,6 @@ export default function PlanPage() {
   const { recipes } = useStore();
   const { planned, savePlanned, deletePlanned } = usePlanner();
   const router = useIonRouter();
-  const [sheet] = useIonActionSheet();
   const [picked, setPicked] = useState<Day>(now);
   const content = useRef<HTMLIonContentElement>(null);
   const busy = busyDays(planned);
@@ -53,25 +52,16 @@ export default function PlanPage() {
     if (at >= 0 && swiper.current && swiper.current.activeIndex !== at) swiper.current.slideTo(at);
     requestAnimationFrame(() => scrollToDay(day));
   };
-  const addTo = (day: Day) =>
-    sheet({
-      header: dayName(day, now),
-      buttons: [
-        { text: 'A recipe', handler: () => void slotThen((meal) => setAdding({ day, meal })) },
-        { text: 'A note', handler: () => void slotThen((meal) => setNoteFor({ day, meal })) },
-        { text: 'Cancel', role: 'cancel' },
+  // + on a day: the app's menus (#39), what to add, then for which meal, each from the + tapped
+  const addTo = (el: Element, day: Day) =>
+    openMenu(el, [
+      [
+        { label: 'Add recipe', icon: ChefHat, onClick: () => mealThen(el, (meal) => setAdding({ day, meal })) },
+        { label: 'Add note', icon: NotebookPen, onClick: () => mealThen(el, (meal) => setNoteFor({ day, meal })) },
       ],
-    });
-  // which meal (a second action sheet, after the first has gone)
-  const slotThen = (then: (meal?: Meal) => void) =>
-    setTimeout(
-      () =>
-        sheet({
-          header: 'For which meal?',
-          buttons: [...MEALS.map((m) => ({ text: mealName(m), handler: () => then(m) })), { text: 'Any time that day', handler: () => then() }, { text: 'Cancel', role: 'cancel' }],
-        }),
-      300,
-    );
+    ]);
+  const mealThen = (el: Element, then: (meal?: Meal) => void) =>
+    setTimeout(() => openMenu(el, [[...MEALS, null].map((m) => ({ label: m ? mealName(m) : 'Any time', onClick: () => then(m ?? undefined) }))]), 250);
 
   return (
     <IonPage className="ck-ion-anchor">
@@ -82,7 +72,7 @@ export default function PlanPage() {
             <BarButton label="Go to a day" icon={CalendarSearch} onClick={() => setGoTo(true)} />
           </IonButtons>
         </IonToolbar>
-        <IonToolbar className="ck-ion-subbar ck-ion-week-bar">
+        <div className="ck-ion-header-extra ck-ion-week-bar">
           <div className="ck-ion-week-name">
             {weekName(shownWeek, now) ?? 'Week of'} · {weekRange(shownWeek, now)}
           </div>
@@ -109,7 +99,7 @@ export default function PlanPage() {
               </SwiperSlide>
             ))}
           </Swiper>
-        </IonToolbar>
+        </div>
       </IonHeader>
       <IonContent ref={content}>
         {weekDays(shownWeek).map((d) => {
@@ -120,7 +110,7 @@ export default function PlanPage() {
                 <h2>
                   {dayName(d, now)} <span className="ck-note">{shortDate(d)}</span>
                 </h2>
-                <IonButton fill="clear" className="ck-ion-icon-button" aria-label={`Add to ${dayName(d, now)}`} onClick={() => addTo(d)}>
+                <IonButton fill="clear" className="ck-ion-icon-button" aria-label={`Add to ${dayName(d, now)}`} onClick={(e) => addTo(e.currentTarget, d)}>
                   <Plus size={22} />
                 </IonButton>
               </div>
@@ -137,7 +127,7 @@ export default function PlanPage() {
                           <IonItem
                             button
                             detail
-                            onClick={() => (r ? router.push(`/plan/recipe/${r.id}`, 'forward') : setNoteFor({ day: p.day, meal: p.meal, item: p }))}
+                            onClick={() => (r ? router.push(`/recipe/${r.id}`, 'forward') : setNoteFor({ day: p.day, meal: p.meal, item: p }))}
                           >
                             <span slot="start" className={`ck-ion-thumb${photo ? ' ck-photo' : ' ck-photo-empty'}`} style={photoStyle(photo)}>
                               {!photo && (r ? <ChefHat size={16} strokeWidth={1.5} /> : <NotebookPen size={16} strokeWidth={1.5} />)}

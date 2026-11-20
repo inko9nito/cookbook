@@ -117,7 +117,7 @@ ion-toast.ck-ion-toast {
 }
 
 /* ── menus (#39): no arrow, white rows, thin lines between rows, a thick band between groups, icons right ── */
-ion-popover.ck-ion-menu { --width: 250px; --border-radius: 14px; --box-shadow: var(--ck-menu-shadow); --backdrop-opacity: 0; }
+ion-popover.ck-ion-menu { --width: 270px; --border-radius: 14px; --box-shadow: var(--ck-menu-shadow); --backdrop-opacity: 0; }
 ion-popover.ck-ion-menu ion-content { --background: var(--ck-soft); }
 ion-popover.ck-ion-menu ion-list.ck-ion-menu-group { padding: 0; margin: 0; }
 ion-popover.ck-ion-menu ion-list.ck-ion-menu-group + ion-list.ck-ion-menu-group { margin-top: 8px; }
@@ -295,3 +295,23 @@ ion-content.ck-ion-recipe::part(scroll), ion-content.ck-ion-book::part(scroll) {
 /* the search field with what's under it (chips, the view switch), stacked */
 .ck-ion-subbar-stack { display: block; width: 100%; }
 ion-item .ck-ion-accent-text, ion-label.ck-ion-accent-text { color: var(--ck-accent-ink); }
+
+/* ── under the bar: the search field and what goes with it (chips, the view switch, the week strip), in the header
+   but not in Ionic's toolbar, which sized itself short on the iPhone and cut the chips in half ── */
+.ck-ion-header-extra { display: block; background: var(--ck-bg); padding: 0 0 12px; }
+/* one search field everywhere: soft grey pill, the placeholder on the left (the app's look) */
+.ck-ion-header-extra ion-searchbar, ion-searchbar.ck-ion-card-search, ion-searchbar.ck-ion-hero-search {
+  --background: var(--ck-soft); --border-radius: 20px; --placeholder-color: var(--ck-fg2); --placeholder-opacity: 1; --icon-color: var(--ck-fg2);
+  --box-shadow: none; padding: 0 16px; min-height: 0; height: 44px; text-align: start;
+}
+ion-searchbar.ck-ion-hero-search { --background: var(--ck-surface); padding: 16px 0 4px; height: auto; }
+.ck-ion-handed-over { visibility: hidden; }
+.ck-ion-header-extra .ck-ion-chips { padding-top: 12px; }
+.ck-ion-header-extra .ck-ion-segment { margin-top: 12px; }
+.ck-ion-week-bar { padding-bottom: 6px; }
+/* the view switch as the app has it: the picked side dark with white text */
+ion-segment.ck-ion-segment, ion-content.ck-ion-sheet-content ion-segment { --background: var(--ck-soft); }
+ion-segment.ck-ion-segment ion-segment-button, ion-content.ck-ion-sheet-content ion-segment ion-segment-button {
+  --indicator-color: var(--ck-fg); --color: var(--ck-fg2); --color-checked: var(--ck-surface); --indicator-box-shadow: none;
+  font-weight: 600; min-height: 36px;
+}

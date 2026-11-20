@@ -29,7 +29,10 @@ import CookMode from './CookMode';
  * every screen, sheet, menu, swipe and transition is Ionic's (iOS mode), in the agreed design.
  */
 
-setupIonicReact({ mode: 'ios', swipeBackEnabled: true });
+// Ionic's own swipe-back is off: Safari (the tab and the home-screen app) has its own back swipe, and the two together
+// slid two copies of the pages at once (the user's recording). Safari's swipe goes back in the history; Ionic then shows
+// the page under it at once (history.ts).
+setupIonicReact({ mode: 'ios', swipeBackEnabled: false });
 installHistory();
 
 const TABS = [
@@ -54,34 +57,43 @@ function SignIn() {
   );
 }
 
+/** the tab bar and each tab's first page */
 function Tabs() {
   return (
+    <IonTabs>
+      <IonRouterOutlet>
+        <Route path="/recipes" element={<RecipesPage />} />
+        <Route path="/cookbooks" element={<CookbooksPage />} />
+        <Route path="/plan" element={<PlanPage />} />
+        <Route path="/groceries" element={<GroceriesPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/" element={<Navigate to="/recipes" replace />} />
+      </IonRouterOutlet>
+      <IonTabBar slot="bottom" className="ck-ion-tabbar">
+        {TABS.map(({ tab, label, icon: Icon }) => (
+          <IonTabButton key={tab} tab={tab} href={`/${tab}`} aria-label={label}>
+            <Icon size={26} strokeWidth={1.75} />
+          </IonTabButton>
+        ))}
+      </IonTabBar>
+    </IonTabs>
+  );
+}
+
+/**
+ * Pages opened from a tab (a recipe, a cookbook, the editor, Settings' pages) are pushed over the whole tab view, so they
+ * slide in over the tab bar and cover it, as iOS apps do; back slides them away to the tab as it was.
+ */
+function Screens() {
+  return (
     <IonReactRouter basename="/ionic">
-      <IonTabs>
-        <IonRouterOutlet>
-          <Route path="/recipes" element={<RecipesPage />} />
-          <Route path="/recipes/recipe/:id" element={<RecipePage />} />
-          <Route path="/recipes/recipe/:id/edit" element={<EditPage />} />
-          <Route path="/cookbooks" element={<CookbooksPage />} />
-          <Route path="/cookbooks/:id" element={<CookbookPage />} />
-          <Route path="/cookbooks/recipe/:id" element={<RecipePage />} />
-          <Route path="/cookbooks/recipe/:id/edit" element={<EditPage />} />
-          <Route path="/plan" element={<PlanPage />} />
-          <Route path="/plan/recipe/:id" element={<RecipePage />} />
-          <Route path="/plan/recipe/:id/edit" element={<EditPage />} />
-          <Route path="/groceries" element={<GroceriesPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/settings/appearance" element={<AppearancePage />} />
-          <Route path="/" element={<Navigate to="/recipes" replace />} />
-        </IonRouterOutlet>
-        <IonTabBar slot="bottom" className="ck-ion-tabbar">
-          {TABS.map(({ tab, label, icon: Icon }) => (
-            <IonTabButton key={tab} tab={tab} href={`/${tab}`} aria-label={label}>
-              <Icon size={26} strokeWidth={1.75} />
-            </IonTabButton>
-          ))}
-        </IonTabBar>
-      </IonTabs>
+      <IonRouterOutlet>
+        <Route path="/recipe/:id" element={<RecipePage />} />
+        <Route path="/recipe/:id/edit" element={<EditPage />} />
+        <Route path="/cookbook/:id" element={<CookbookPage />} />
+        <Route path="/settings/appearance" element={<AppearancePage />} />
+        <Route path="/*" element={<Tabs />} />
+      </IonRouterOutlet>
       <CookMode />
     </IonReactRouter>
   );
@@ -92,7 +104,7 @@ function App() {
   if (auth.status === 'checking') return null;
   return (
     <IonApp>
-      {auth.status === 'signedOut' ? <SignIn /> : <Tabs />}
+      {auth.status === 'signedOut' ? <SignIn /> : <Screens />}
       <MenuHost />
       <Bridge />
       <SessionGuard />

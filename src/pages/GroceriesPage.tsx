@@ -301,8 +301,12 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
         )}
       </Navbar>
 
+      {/* keys on everything below: Page leaves out what isn't shown (the head while the list is empty) and lists the
+          rest by position, so without keys React rebuilt every menu and popup after it when the list stopped being
+          empty, and the one still open (Shop this week, which Framework7 had moved to the app's root) took the whole
+          app down with it: a blank screen (#140; see RecipesPage) */}
       {!empty && (
-        <Block className="ck-grocery-head">
+        <Block key="head" className="ck-grocery-head">
           <Segmented strong className="ck-grocery-view">
             <Button active={view === 'aisle'} onClick={() => { regroup(); changeSettings({ groceryView: 'aisle' }); }}>
               By aisle
@@ -330,30 +334,31 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
       )}
 
       {loadError ? (
-        <Block className="ck-list-state">
+        <Block key="error" className="ck-list-state">
           <p className="ck-note">Couldn’t load the grocery list. {loadError}</p>
           <Button round className="ck-soft ck-inline-button" onClick={() => reload()}>
             Try again
           </Button>
         </Block>
       ) : loading ? (
-        <div className="ck-grocery-groups">
+        <div key="loading" className="ck-grocery-groups">
           <PlannerRowsSkeleton />
         </div>
       ) : empty ? (
         <EmptyState
+          key="empty"
           icon={Carrot}
           title="Your list is empty"
           text="Add ingredients from a recipe or your plan."
           action={{ label: 'Add to the list', onClick: () => setAddMenu(true) }}
         />
       ) : nothing ? (
-        <Block>
+        <Block key="nothing">
           <p className="ck-note">{`Nothing on the list matches “${query.trim()}”.`}</p>
         </Block>
       ) : view === 'aisle' ? (
         // one column with a fixed gap between groups (the gap was lost between margins on iPhone Safari)
-        <div className="ck-grocery-groups">
+        <div key="by-aisle" className="ck-grocery-groups">
           {byAisle(shownToGet).map((g) => (
             <section key={g.aisle} className="ck-grocery-group">
               <div className="ck-plan-slot-label">{AISLE_NAMES[g.aisle]}</div>
@@ -375,7 +380,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
           )}
         </div>
       ) : (
-        <div className="ck-grocery-groups">
+        <div key="by-recipe" className="ck-grocery-groups">
           {recipeGroups.map((g) => {
             const photo = g.recipe && coverPhoto(g.recipe);
             return (
@@ -409,6 +414,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
 
       {/* + : this week's planned recipes, a recipe, or something typed */}
       <Menu
+        key="add-menu"
         opened={addMenu}
         onClosed={() => setAddMenu(false)}
         groups={[
@@ -422,6 +428,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
       />
 
       <Menu
+        key="more-menu"
         opened={moreMenu}
         onClosed={() => setMoreMenu(false)}
         groups={[
@@ -438,6 +445,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
 
       {/* the store the list's links search */}
       <Menu
+        key="store-menu"
         opened={storeMenu}
         onClosed={() => setStoreMenu(false)}
         title={stores.length ? undefined : 'Add the stores you shop at on Instacart'}
@@ -449,6 +457,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
 
       {/* swipe → Store: this one thing at another store */}
       <Menu
+        key="pin-menu"
         opened={!!pinning}
         onClosed={() => setPinning(null)}
         title={pinning ? `Which store for ${pinning.name}?` : ''}
@@ -463,6 +472,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
 
       {/* swipe → Edit: pick a choice, another aisle, the same thing as another row, another name */}
       <Menu
+        key="edit-menu"
         opened={!!editing}
         onClosed={() => setEditing(null)}
         groups={[
@@ -482,6 +492,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
 
       {/* Edit → Same thing as…: this row's words are that row's thing, for every recipe */}
       <Menu
+        key="same-as-menu"
         opened={!!sameAs}
         onClosed={() => setSameAs(null)}
         title={sameAs ? `${cap(sameAs.name)} is the same thing as…` : ''}
@@ -500,6 +511,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
 
       {/* ↗ on a choice: which to search on Instacart */}
       <Menu
+        key="search-menu"
         opened={!!searching}
         onClosed={() => setSearching(null)}
         title="Search Instacart for"
@@ -514,6 +526,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
 
       {/* Edit → Move to another aisle: the app guessed wrong; kept for that thing */}
       <Menu
+        key="aisle-menu"
         opened={!!moving}
         onClosed={() => setMoving(null)}
         title={moving ? `Which aisle for ${moving.name}?` : ''}
@@ -521,6 +534,7 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
       />
 
       <RecipePickerPopup
+        key="pick-recipe"
         mode="one"
         opened={picking}
         title="Add a recipe’s ingredients"
@@ -532,8 +546,8 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
         }}
         onClosed={() => setPicking(false)}
       />
-      <AddRecipePopup recipe={adding} onClosed={() => setAdding(null)} />
-      <ShopWeekPopup opened={shopWeek} onClosed={() => setShopWeek(false)} />
+      <AddRecipePopup key="add-recipe" recipe={adding} onClosed={() => setAdding(null)} />
+      <ShopWeekPopup key="shop-week" opened={shopWeek} onClosed={() => setShopWeek(false)} />
     </Page>
   );
 }

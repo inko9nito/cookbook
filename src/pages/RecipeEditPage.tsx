@@ -782,8 +782,12 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
         />
       </List>
 
-      <PhotoCropper photo={cropping} onDone={(box, rotated) => void applyCrop(box, rotated)} onClose={() => setCropping(null)} />
+      {/* keys: Page leaves out the blocks above that aren't shown (the reading placeholders, an empty ingredient or step
+          list) and lists the rest by position; without keys an open sheet or popup was rebuilt when one came or went,
+          and React couldn't take it out of where Framework7 had moved it (#140, the whole app went blank) */}
+      <PhotoCropper key="cropper" photo={cropping} onDone={(box, rotated) => void applyCrop(box, rotated)} onClose={() => setCropping(null)} />
       <IngredientSheet
+        key="ingredient-sheet"
         ingredient={editingIngredient && editingIngredient.kind !== 'header' ? editingIngredient : null}
         linkedTitle={editingIngredient ? linkedRecipe(editingIngredient, recipes)?.title : undefined}
         onLink={() => setLinkOpen(true)}
@@ -795,9 +799,9 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
         }}
         onClose={() => setEditingIngredientId(null)}
       />
-      <RecipeLinkPopup opened={linkOpen} recipes={others} current={editingIngredient?.recipeId} onPick={linkRecipe} onClosed={() => setLinkOpen(false)} />
+      <RecipeLinkPopup key="link-recipe" opened={linkOpen} recipes={others} current={editingIngredient?.recipeId} onPick={linkRecipe} onClosed={() => setLinkOpen(false)} />
 
-      <Actions opened={discardOpen} onActionsClosed={() => setDiscardOpen(false)}>
+      <Actions key="discard" opened={discardOpen} onActionsClosed={() => setDiscardOpen(false)}>
         <ActionsGroup>
           <ActionsButton color="red" onClick={() => f7router?.back()}>
             Discard Changes

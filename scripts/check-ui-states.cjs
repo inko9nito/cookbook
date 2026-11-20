@@ -3541,6 +3541,27 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator(`${GRO} > .navbar .searchbar`).count()) || !(await page.locator(`${GRO} .ck-grocery-view`).count())) throw new Error('the search bar or the views don’t come back');
     if (!(await page.locator(GRO).evaluate((el) => el.classList.contains('page-with-subnavbar')))) throw new Error('the list runs under the search bar that came back');
   });
+  // #140: adding the week to an empty list rebuilt the still-open Shop this week popup, React couldn't take it out of
+  // where Framework7 had moved it, and the whole app went blank until it was closed and opened again
+  await step('40u3-groceries-empty-shop-week', async () => {
+    await page.locator(`${GRO} a[aria-label="More grocery list actions"]`).tap(); await page.waitForTimeout(600);
+    await page.locator(MENU_ROW, { hasText: 'Clear all' }).tap(); await page.waitForTimeout(600);
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1200);
+    await toastGone();
+    if (!(await page.locator(`${GRO} .ck-empty`).count())) throw new Error('the list isn’t empty to start with');
+    const crashes = errors.length;
+    await page.locator(`${GRO} .ck-empty .ck-empty-button`).tap(); await page.waitForTimeout(700);
+    await page.locator(MENU_ROW, { hasText: 'From this week’s plan' }).tap(); await page.waitForTimeout(1000);
+    const sheet = page.locator('.ck-shop-week-popup.modal-in .page-current');
+    await sheet.locator('.navbar a', { hasText: 'Next' }).tap(); await page.waitForTimeout(1000);
+    await sheet.locator('.navbar a', { hasText: 'Add' }).tap(); await page.waitForTimeout(1500);
+    if (errors.length > crashes) throw new Error(`adding to an empty list threw: ${errors.slice(crashes).join(' | ')}`);
+    if (!(await page.locator('#app .tabbar').count())) throw new Error('the app went blank');
+    if (await page.locator('.ck-shop-week-popup.modal-in').count()) throw new Error('Shop this week stayed open');
+    if (await page.locator(`${GRO} .ck-empty`).count()) throw new Error('the empty state stays with the week on the list');
+    if (!(await groTitles()).some((t) => /fresh corn kernels/i.test(t))) throw new Error('the week’s ingredients aren’t on the list');
+    await toastGone();
+  });
 
   // Issue #118 on Recipes and Cookbooks: ?empty starts the demo with nothing. Each keeps its title and +, hides what
   // works on recipes or cookbooks (search, chips, count, sort; count, tiles/list), and its one button opens +'s choices.

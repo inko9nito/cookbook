@@ -364,6 +364,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
       )}
 
       <Menu
+        key="more-menu"
         opened={moreOpen}
         onClosed={() => setMoreOpen(false)}
         groups={[
@@ -381,6 +382,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
       />
 
       <Menu
+        key="sort-menu"
         opened={sortOpen}
         onClosed={() => setSortOpen(false)}
         groups={[

@@ -547,7 +547,14 @@ async function swipeLeft(ctx, page, locator) {
   await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
   await step('05d-recipe-scaled', async () => { await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 420)); });
   await step('06-recipe-bottom', async () => { await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 99999)); });
-  await step('07-more-actions', async () => { await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); });
+  await step('07-more-actions', async () => {
+    await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(500);
+    // #39: the user's order and words, in four groups with a thick band between them
+    const groups = await page.locator('.popover.modal-in .ck-menu-list').evaluateAll((ls) => ls.map((l) => [...l.querySelectorAll('.item-title')].map((t) => t.textContent).join('|')));
+    if (groups.join(' / ') !== 'Edit / Add to Cookbook|Add to Planner|Add to Grocery List / Duplicate|Share / Delete') throw new Error(`the recipe menu reads ${groups.join(' / ')}`);
+    const band = await page.locator('.popover.modal-in .ck-menu-list').nth(1).evaluate((l) => getComputedStyle(l).borderTopWidth);
+    if (band !== '8px') throw new Error(`the band between groups is ${band}`);
+  });
   await closeMenu().catch(() => {});
   await page.waitForTimeout(500);
 
@@ -718,7 +725,7 @@ async function swipeLeft(ctx, page, locator) {
   // ── photos: add one (opens Crop Photo), pan it, add two more at once, save; then swipe them and open the viewer ──
   const photoFile = (n) => path.resolve(__dirname, '..', 'public', 'photos', n);
   await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(500);
-  await page.locator(MENU_ROW, { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(900);
+  await page.locator(MENU_ROW, { hasText: /^Edit$/ }).tap(); await page.waitForTimeout(900);
   await step('17-crop-photo', async () => {
     await page.locator('.view.tab-active .page-current input[type=file]').setInputFiles(photoFile('seafood-salad.jpg'));
     await page.waitForTimeout(1500);
@@ -853,7 +860,7 @@ async function swipeLeft(ctx, page, locator) {
   await step('08-edit-page', async () => {
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap();
     await page.waitForTimeout(500);
-    await page.locator(MENU_ROW, { hasText: 'Edit Recipe' }).tap();
+    await page.locator(MENU_ROW, { hasText: /^Edit$/ }).tap();
     await page.waitForTimeout(900);
   });
   await step('09-edit-row-swiped', async () => {
@@ -1765,7 +1772,7 @@ async function swipeLeft(ctx, page, locator) {
   // links itself
   await step('25e-edit-linked', async () => {
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
-    await page.locator(MENU_ROW, { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1200);
+    await page.locator(MENU_ROW, { hasText: /^Edit$/ }).tap(); await page.waitForTimeout(1200);
     const footer = await page.locator('.view.tab-active .page-current .ck-edit-list li', { hasText: 'tahini sauce' }).locator('.item-footer').textContent();
     if (!footer.includes('Recipe: Tahini Sauce')) throw new Error(`the linked row's footer reads "${footer}"`);
     await page.locator('.view.tab-active .page-current .ck-edit-list li', { hasText: 'warm pitas' }).locator('.item-link').first().tap(); await page.waitForTimeout(900);
@@ -1813,7 +1820,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.goto(BASE); await page.waitForTimeout(1200);
     await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Kebabs' }).tap(); await page.waitForTimeout(1000);
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
-    await page.locator(MENU_ROW, { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1200);
+    await page.locator(MENU_ROW, { hasText: /^Edit$/ }).tap(); await page.waitForTimeout(1200);
     await link(page.locator('.view.tab-active .page-current .ck-edit-list li', { hasText: 'warm pitas' }), 'Corn pudding');
     await link(page.locator('.view.tab-active .page-current .ck-edit-list li', { hasText: 'fresh parsley' }), 'Mustard Dill');
     await link(page.locator('.view.tab-active .page-current .ck-edit-list li').filter({ hasText: /^1 lemon/ }), 'Pulled Beef');
@@ -1959,7 +1966,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.goto(BASE); await page.waitForTimeout(1200);
     await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(1000);
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
-    await page.locator(MENU_ROW, { hasText: 'Delete Recipe' }).tap(); await page.waitForTimeout(700);
+    await page.locator(MENU_ROW, { hasText: /^Delete$/ }).tap(); await page.waitForTimeout(700);
     const text = await page.locator('.dialog.modal-in .dialog-text').textContent();
     if (!text.includes('ingredient in “Middle Eastern Chicken Kebabs”')) throw new Error(`the delete question reads "${text}"`);
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(500);
@@ -2248,7 +2255,7 @@ async function swipeLeft(ctx, page, locator) {
   await step('95a-cookbook-sort-sheet', async () => {
     await page.locator(`${CUR} > .navbar a[aria-label="Sort recipes"]`).tap(); await page.waitForTimeout(700);
     const items = await page.locator(MENU_ROW).allTextContents();
-    if (items.join('|') !== 'Manual (as organized)|Newest first|Oldest first|A–Z') throw new Error(`the cookbook's sort sheet is ${JSON.stringify(items)}`);
+    if (items.join('|') !== 'Manual (as organized)|Newest first|Oldest first|A–Z|Most cooked') throw new Error(`the cookbook's sort sheet is ${JSON.stringify(items)}`);
     const on = await page.locator(MENU_PICKED).first().textContent();
     if (on !== 'Manual (as organized)') throw new Error(`the cookbook starts sorted "${on}", not by hand`);
   });
@@ -2590,14 +2597,20 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator(`${PLAN} .ck-week-label`).textContent()).startsWith('This week')) throw new Error('Today didn’t come back to this week');
     if (!(await page.locator(`${PLAN} .swiper-slide-active .ck-week-day.ck-week-today.ck-week-selected`).count())) throw new Error('Today didn’t pick today');
   });
-  // + adds to the picked day: recipes or a note (#67), then the recipe picker with a meal choice, ticks, Done
+  // a day's + adds to it: a recipe or a note (#67), then the recipe picker with a meal choice, ticks, Done. #39: the bar
+  // has no + (a day has to be picked first), and the menu has no header and opens under the + tapped
   await step('62e0-planner-add-menu', async () => {
-    await page.locator(`${PLAN} > .navbar a.ck-nav-primary`).tap(); await page.waitForTimeout(700);
+    if (await page.locator(`${PLAN} > .navbar a.ck-nav-primary`).count()) throw new Error('the Planner\'s bar still has a +');
+    const plus = page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] .ck-plan-add`);
+    await plus.tap(); await page.waitForTimeout(700);
     const buttons = await page.locator(MENU_ROW).allTextContents();
-    if (buttons.join() !== 'Recipes,A note') throw new Error(`+ offers ${JSON.stringify(buttons)}`);
+    if (buttons.join() !== 'Add recipe,Add note') throw new Error(`+ offers ${JSON.stringify(buttons)}`);
+    if (await page.locator(MENU_TITLE).count()) throw new Error('the add menu has a header');
+    const [b, m] = [await plus.boundingBox(), await page.locator('.popover.modal-in').boundingBox()];
+    if (m.y < b.y + b.height - 1 || m.y > b.y + b.height + 20) throw new Error(`the menu opens at ${Math.round(m.y)}px, not under the + (${Math.round(b.y + b.height)}px)`);
   });
   await step('62e-planner-add', async () => {
-    await page.locator(MENU_ROW, { hasText: 'Recipes' }).tap(); await page.waitForTimeout(900);
+    await page.locator(MENU_ROW, { hasText: 'Add recipe' }).tap(); await page.waitForTimeout(900);
     if ((await page.locator('.popup.modal-in .navbar .title').textContent()) !== 'Add to Today') throw new Error('the picker isn’t titled Add to Today');
     const meals = await page.locator('.popup.modal-in .ck-meal-choice .button').allTextContents();
     if (meals.join() !== 'Any time,Breakfast,Lunch,Dinner') throw new Error(`the meal choice is ${JSON.stringify(meals)}`);
@@ -2736,10 +2749,10 @@ async function swipeLeft(ctx, page, locator) {
     const meta = await page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] li`, { hasText: 'Kebabs' }).locator('.item-footer').textContent();
     if (!meta.startsWith('8 servings')) throw new Error(`added from the recipe page, it reads "${meta}"`);
   });
-  // a note for a day: + → A note
+  // a note for a day: + → Add note
   await step('67d-planner-add-note', async () => {
     await page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] .ck-plan-add`).tap(); await page.waitForTimeout(700);
-    await page.locator(MENU_ROW, { hasText: 'A note' }).tap();
+    await page.locator(MENU_ROW, { hasText: 'Add note' }).tap();
     await page.waitForSelector('.ck-note-popup.modal-in textarea');
     // issue #74: its own screen with a big field, focused (the keyboard up), that keeps line breaks
     const field = page.locator('.ck-note-popup.modal-in textarea');
@@ -2825,7 +2838,6 @@ async function swipeLeft(ctx, page, locator) {
       const c = li.querySelector('.item-content').getBoundingClientRect(), m = li.querySelector('.ck-picker-thumb').getBoundingClientRect();
       return {
         todayFill: css('.swiper-slide-active .ck-week-today.ck-week-selected .ck-week-num', 'backgroundColor'),
-        plus: css('.navbar .ck-nav-primary', 'backgroundColor'),
         title: css('.ck-plan-list li:not(.ck-plan-note) .item-title', 'fontWeight'),
         dayName: css('.ck-plan-day-head h2', 'fontWeight'),
         empty: css('.ck-plan-day-empty:not(.ck-plan-day-today) h2', 'color'),
@@ -2834,7 +2846,7 @@ async function swipeLeft(ctx, page, locator) {
         lastLine: getComputedStyle(pg.querySelector('.ck-plan-list li:last-child .item-inner'), '::after').display,
       };
     });
-    if (look.todayFill !== look.plus) throw new Error(`today's date is ${look.todayFill}, the + is ${look.plus}`);
+    if (look.todayFill !== 'rgb(228, 87, 46)') throw new Error(`today's date is ${look.todayFill}, not bright Tomato`);
     if (look.title !== '600') throw new Error(`a recipe's name is weight ${look.title}`);
     if (look.dayName !== '500') throw new Error(`a day's name is weight ${look.dayName}`);
     if (look.empty !== 'rgb(110, 110, 115)') throw new Error(`an empty day's name is ${look.empty}, not muted`);
@@ -2849,7 +2861,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.goto(BASE); await page.waitForTimeout(1200);
     await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Tahini Sauce' }).tap(); await page.waitForTimeout(1000);
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
-    await page.locator(MENU_ROW, { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1000);
+    await page.locator(MENU_ROW, { hasText: /^Edit$/ }).tap(); await page.waitForTimeout(1000);
     for (let n = 0; n < 2; n++) {
       const li = page.locator('.view.tab-active .page-current .ck-edit-list li.ck-step-row').first();
       await swipeLeft(ctx, page, li); await page.waitForTimeout(600);
@@ -3022,7 +3034,7 @@ async function swipeLeft(ctx, page, locator) {
   await step('36c2-cook-pill-not-in-editor', async () => {
     await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Corn' }).tap(); await page.waitForTimeout(900);
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(600);
-    await page.locator(MENU_ROW, { hasText: 'Edit Recipe' }).tap(); await page.waitForTimeout(1000);
+    await page.locator(MENU_ROW, { hasText: /^Edit$/ }).tap(); await page.waitForTimeout(1000);
     if (await page.locator(fab).isVisible()) throw new Error('the Cooking pill shows over the recipe editor');
     await page.goBack(); await page.waitForTimeout(900);
     await page.goBack(); await page.waitForTimeout(900);
@@ -3395,9 +3407,12 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.locator('#view-settings .page-current', { hasText: /Grocer/ }).count()) throw new Error('Settings still has the grocery stores');
     await page.locator('.tabbar a[aria-label="Groceries"]').tap(); await page.waitForTimeout(800);
     await page.locator(`${GRO} a[aria-label="More grocery list actions"]`).tap(); await page.waitForTimeout(600);
-    await page.locator(MENU_ROW, { hasText: 'Your stores' }).tap(); await page.waitForTimeout(1000);
+    // #39: Share, Edit stores, then a thick band, then the two clears
+    const groups = await page.locator('.popover.modal-in .ck-menu-list').evaluateAll((ls) => ls.map((l) => [...l.querySelectorAll('.item-title')].map((t) => t.textContent.replace(/ \(\d+\)$/, '')).join('|')));
+    if (groups.join(' / ') !== 'Share|Edit stores / Clear completed|Clear all') throw new Error(`Groceries' ⋯ reads ${groups.join(' / ')}`);
+    await page.locator(MENU_ROW, { hasText: 'Edit stores' }).tap(); await page.waitForTimeout(1000);
     const title = (await page.locator('#view-groceries .page-current .navbar .title').textContent()).trim();
-    if (title !== 'Grocery Stores') throw new Error(`⋯ → Your stores opened "${title}" on the Groceries tab`);
+    if (title !== 'Grocery Stores') throw new Error(`⋯ → Edit stores opened "${title}" on the Groceries tab`);
     const names = await page.locator('#view-groceries .page-current .ck-store-list li .item-title').evaluateAll((els) => els.map((e) => e.firstChild.textContent.trim()));
     if (names.join('|') !== 'Acme Market|Corner Grocer') throw new Error(`stores read ${names.join(', ')}`);
     await page.locator('#view-groceries .page-current .navbar .link.back').tap(); await page.waitForTimeout(900);
@@ -3480,7 +3495,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.reload(); await page.waitForTimeout(1200);
     await page.locator('.tabbar a[aria-label="Groceries"]').tap(); await page.waitForTimeout(1000);
     await page.locator(`${GRO} a[aria-label="More grocery list actions"]`).tap(); await page.waitForTimeout(600);
-    await page.locator(MENU_ROW, { hasText: 'Clear the list' }).tap(); await page.waitForTimeout(600);
+    await page.locator(MENU_ROW, { hasText: 'Clear all' }).tap(); await page.waitForTimeout(600);
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1200);
     await expectToast('Cleared the list', { undo: true });
     const empty = page.locator(`${GRO} .ck-empty`);
@@ -3504,7 +3519,7 @@ async function swipeLeft(ctx, page, locator) {
     if ((await groTitles()).length < 3) throw new Error(`after Undo the list has ${(await groTitles()).length} rows`);
     await toastGone();
     await page.locator(`${GRO} a[aria-label="More grocery list actions"]`).tap(); await page.waitForTimeout(600);
-    await page.locator(MENU_ROW, { hasText: 'Clear the list' }).tap(); await page.waitForTimeout(600);
+    await page.locator(MENU_ROW, { hasText: 'Clear all' }).tap(); await page.waitForTimeout(600);
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1200);
     if (!(await page.locator(`${GRO} .ck-empty`).count())) throw new Error('clearing again left rows');
     await toastGone();

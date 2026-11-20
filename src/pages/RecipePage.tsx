@@ -386,17 +386,19 @@ export default function RecipePage({ f7route, f7router }: Props) {
         opened={moreOpen}
         onClosed={() => setMoreOpen(false)}
         groups={[
+          [{ label: 'Edit', icon: Pencil, onClick: () => f7router?.navigate(`/recipe/${recipe.id}/edit/`) }],
           [
-            { label: 'Edit Recipe', icon: Pencil, onClick: () => f7router?.navigate(`/recipe/${recipe.id}/edit/`) },
             { label: 'Add to Cookbook', icon: BookPlus, onClick: () => setAddingToCookbook(true) },
             { label: 'Add to Planner', icon: CalendarPlus, onClick: addToPlanner },
             { label: 'Add to Grocery List', icon: ShoppingCart, onClick: () => setAddingToList(true) },
-            { label: 'Share', icon: Share, onClick: () => soon('Sharing') },
+          ],
+          [
             { label: 'Duplicate', icon: Copy, onClick: () => soon('Duplicating') },
+            { label: 'Share', icon: Share, onClick: () => soon('Sharing') },
           ],
           [
             {
-              label: 'Delete Recipe',
+              label: 'Delete',
               icon: Trash2,
               danger: true,
               onClick: () =>

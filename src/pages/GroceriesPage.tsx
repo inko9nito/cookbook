@@ -426,11 +426,13 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
         onClosed={() => setMoreMenu(false)}
         groups={[
           [
-            { label: 'Share the list', icon: Share, disabled: !toGet.length, onClick: share },
-            { label: `Clear what you got${got.length ? ` (${got.length})` : ''}`, icon: ListChecks, disabled: !got.length, onClick: clearGot },
-            { label: 'Your stores', icon: Store, onClick: () => f7router?.navigate('/groceries/stores/') },
+            { label: 'Share', icon: Share, disabled: !toGet.length, onClick: share },
+            { label: 'Edit stores', icon: Store, onClick: () => f7router?.navigate('/groceries/stores/') },
           ],
-          [{ label: 'Clear the list', icon: Trash2, danger: true, disabled: !items.length, onClick: clearAll }],
+          [
+            { label: `Clear completed${got.length ? ` (${got.length})` : ''}`, icon: ListChecks, disabled: !got.length, onClick: clearGot },
+            { label: 'Clear all', icon: Trash2, danger: true, disabled: !items.length, onClick: clearAll },
+          ],
         ]}
       />
 

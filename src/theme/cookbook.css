@@ -1818,8 +1818,8 @@ html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-store { ba
 .ck-empty-sample .ck-empty { margin-top: 24px; }
 
 /* ── Menus (issue #39, src/components/ui/Menu.tsx): an iOS pull-down menu from the button tapped. Rows in the text
-   colour with the icon on the right, a thin line between each (the delete row too), red only to delete or clear, a ✓ on
-   the left of the picked choice. Flat white with a hairline and a soft shadow, no blur (see "Not iOS 26"). ── */
+   colour with the icon on the right, a thin line between rows and a thick band between groups, red only to delete or
+   clear, a ✓ on the left of the picked choice. Flat white with a hairline and a soft shadow, no blur (see "Not iOS 26"). ── */
 html.ios .popover.ck-menu {
   --f7-popover-width: 250px;
   --f7-popover-border-radius: 14px;
@@ -1856,6 +1856,11 @@ html.ios .popover-backdrop { background: transparent; }
   html.ios .popover.ck-menu .popover-inner { transition-duration: 0ms !important; }
 }
 html.ios .popover.ck-menu .item-title { white-space: normal; }
+/* groups: a thick soft band between them (#39), thin lines between rows */
+html.ios .popover.ck-menu .ck-menu-list + .ck-menu-list { border-top: 8px solid var(--ck-soft); }
+/* a small gap from the button, as iOS leaves */
+html.ios .popover.ck-menu.popover-on-bottom { margin-top: 6px; }
+html.ios .popover.ck-menu.popover-on-top { margin-top: -6px; }
 html.ios .popover.ck-menu .item-after { color: var(--ck-fg2); }
 html.ios .popover.ck-menu .ck-menu-check { width: 22px; color: var(--ck-accent-ink); }
 html.ios .popover.ck-menu .ck-menu-danger .item-title,

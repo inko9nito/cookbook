@@ -44,6 +44,9 @@ describe('sorting (R1, and in a cookbook #95)', () => {
     expect(order('newest')).toBe('cba');
     expect(order('oldest')).toBe('abc');
     expect(order('az')).toBe('abc');
+    // most cooked first, ties newest first (#39)
+    expect(sortRecipes([{ ...list[0], timesMade: 2 }, list[1], { ...list[2], timesMade: 5 }], 'cooked').map((r) => r.id).join('')).toBe('abc');
+    expect(order('cooked')).toBe('cba');
     // a new array: the cookbook's own order is never changed in place
     expect(list.map((r) => r.id).join('')).toBe('bca');
   });

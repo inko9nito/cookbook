@@ -247,9 +247,6 @@ export default function PlanPage() {
           <Link iconOnly onClick={jump} aria-label="Go to a day">
             <CalendarSearch {...navIcon} />
           </Link>
-          <Link iconOnly onClick={() => addTo(selected)} aria-label={`Add to ${mediumDate(selected)}`} className="ck-nav-primary">
-            <Plus {...navIcon} />
-          </Link>
         </NavRight>
         <Subnavbar className="ck-docked-bar ck-week-bar">
           <div className="ck-week-label">{label}</div>
@@ -303,11 +300,11 @@ export default function PlanPage() {
       <Menu
         opened={addMenu}
         onClosed={() => setAddMenu(false)}
-        title={`Add to ${mediumDate(addingTo)}`}
         groups={[
           [
-            { label: 'Recipes', icon: ChefHat, onClick: addRecipes },
-            { label: 'A note', icon: NotebookPen, onClick: addNote },
+            // no header: it opens from the day's own + (#39; the bar's + went, a day has to be picked first)
+            { label: 'Add recipe', icon: ChefHat, onClick: addRecipes },
+            { label: 'Add note', icon: NotebookPen, onClick: addNote },
           ],
         ]}
       />

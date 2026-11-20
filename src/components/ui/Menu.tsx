@@ -4,8 +4,9 @@ import { Check, type LucideIcon } from 'lucide-react';
 
 /**
  * Every options menu and choice menu in the app (issue #39): an iOS pull-down menu (a Framework7 Popover) from the
- * button that was tapped. Rows in the text colour with their Lucide icon on the right, a thin line between each, red
- * only for a row that deletes or clears (last), a ✓ on the left of the picked choice. No header on an options menu;
+ * button that was tapped, under it when it fits. Rows in the text colour with their Lucide icon on the right, a thin line
+ * between rows and a thick one between groups, red only for a row that deletes or clears (last), a ✓ on the left of the
+ * picked choice. No header on an options menu;
  * a choice menu may say what it's choosing ("Which aisle for eggs?").
  */
 export type MenuItem = {
@@ -42,7 +43,7 @@ type F7Popover = {
   open: (target?: Element, animate?: boolean) => void;
   close: () => void;
   opened: boolean;
-  params: { targetX?: number; targetY?: number };
+  params: { targetX?: number; targetY?: number; verticalPosition?: 'auto' | 'top' | 'bottom' };
   $targetEl: unknown;
   targetEl: unknown;
 };
@@ -54,13 +55,17 @@ type Props = {
   title?: string;
   /** open in the middle of the screen, not from what was tapped (a question after a sheet that's closing) */
   centered?: boolean;
-  /** rows in order; groups only keep related rows together, and a destructive row goes last */
+  /** rows in order, in groups with a thick line between them (#39); a destructive row goes last */
   groups: (MenuItem | false | null | undefined)[][];
 };
 
 const iconProps = { size: 22, strokeWidth: 1.75, className: 'ck-icon' } as const;
 
 export default function Menu({ opened, onClosed, title, centered, groups }: Props) {
+  const lists = groups.map((g) => g.filter((i): i is MenuItem => !!i)).filter((g) => g.length);
+  const rows = lists.flat();
+  const anyCheck = rows.some((i) => i.checked !== undefined);
+
   // Framework7's Popover reads targetEl only when it's made, so it's opened here, from what was tapped
   const popover = useRef<{ f7Popover: () => F7Popover | null } | null>(null);
   useEffect(() => {
@@ -68,41 +73,48 @@ export default function Menu({ opened, onClosed, title, centered, groups }: Prop
     if (!p) return;
     if (opened && !p.opened) {
       const target = centered ? null : onScreen(tapped);
-      if (target) p.open(target, true);
+      if (target) {
+        // under the button, as iOS opens its menus; above it only when it doesn't fit under (Framework7 tries above
+        // first, which put the Planner's menu over the day before the + tapped, #39)
+        const r = target.getBoundingClientRect();
+        const height = (title ? 36 : 0) + rows.length * 45 + (lists.length - 1) * 8 + 12;
+        p.params.verticalPosition = innerHeight - r.bottom >= height ? 'bottom' : r.top >= height ? 'top' : 'auto';
+        p.open(target, true);
+      }
       else {
         // nothing to open from (a menu opened from another menu): the middle of the screen
         p.$targetEl = null;
         p.targetEl = null;
         p.params.targetX = window.innerWidth / 2;
         p.params.targetY = window.innerHeight / 2;
+        p.params.verticalPosition = 'auto';
         p.open(undefined, true);
       }
     }
     if (!opened && p.opened) p.close();
   }, [opened]);
 
-  const rows = groups.flatMap((g) => g.filter((i): i is MenuItem => !!i));
-  const anyCheck = rows.some((i) => i.checked !== undefined);
-
   return (
     <Popover ref={popover as never} onPopoverClosed={onClosed} backdrop closeByBackdropClick className="ck-menu">
       {title && <div className="ck-menu-title">{title}</div>}
-      <List dividersIos className="ck-menu-list">
-        {rows.map((i, k) => (
-          <ListItem
-            key={k}
-            link
-            noChevron
-            popoverClose
-            title={i.label}
-            className={`${i.danger ? 'ck-menu-danger' : ''} ${i.disabled ? 'disabled' : ''}`}
-            onClick={i.onClick}
-          >
-            {anyCheck && <span slot="media" className="ck-menu-check">{i.checked && <Check {...iconProps} />}</span>}
-            {i.icon && <span slot="after"><i.icon {...iconProps} /></span>}
-          </ListItem>
-        ))}
-      </List>
+      {lists.map((list, n) => (
+        <List key={n} dividersIos className="ck-menu-list">
+          {list.map((i, k) => (
+            <ListItem
+              key={k}
+              link
+              noChevron
+              popoverClose
+              title={i.label}
+              className={`${i.danger ? 'ck-menu-danger' : ''} ${i.disabled ? 'disabled' : ''}`}
+              onClick={i.onClick}
+            >
+              {anyCheck && <span slot="media" className="ck-menu-check">{i.checked && <Check {...iconProps} />}</span>}
+              {i.icon && <span slot="after"><i.icon {...iconProps} /></span>}
+            </ListItem>
+          ))}
+        </List>
+      ))}
     </Popover>
   );
 }

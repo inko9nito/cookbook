@@ -43,15 +43,17 @@ export default function StyleGuidePage() {
         opened={menu}
         onClosed={() => setMenu(false)}
         groups={[
+          [{ label: 'Edit', icon: Pencil }],
           [
-            { label: 'Edit Recipe', icon: Pencil },
             { label: 'Add to Cookbook', icon: BookPlus },
             { label: 'Add to Planner', icon: CalendarPlus },
             { label: 'Add to Grocery List', icon: ShoppingCart },
-            { label: 'Share', icon: Share },
-            { label: 'Duplicate', icon: Copy },
           ],
-          [{ label: 'Delete Recipe', icon: Trash2, danger: true }],
+          [
+            { label: 'Duplicate', icon: Copy },
+            { label: 'Share', icon: Share },
+          ],
+          [{ label: 'Delete', icon: Trash2, danger: true }],
         ]}
       />
 

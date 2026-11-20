@@ -1827,6 +1827,8 @@ html.ios .popover.ck-menu {
   --f7-list-item-min-height: 44px;
   --f7-list-font-size: 17px;
   --f7-list-item-title-font-size: 17px;
+  /* one step lighter than the app's other text, as iOS's own menus (the user's pick, #39) */
+  --f7-list-item-title-font-weight: 400;
   --f7-list-margin-vertical: 0px;
   --f7-list-item-padding-horizontal: 16px;
   --f7-list-item-media-margin: 8px;

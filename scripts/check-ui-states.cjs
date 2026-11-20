@@ -554,6 +554,8 @@ async function swipeLeft(ctx, page, locator) {
     if (groups.join(' / ') !== 'Edit / Add to Cookbook|Add to Planner|Add to Grocery List / Duplicate|Share / Delete') throw new Error(`the recipe menu reads ${groups.join(' / ')}`);
     const band = await page.locator('.popover.modal-in .ck-menu-list').nth(1).evaluate((l) => getComputedStyle(l).borderTopWidth);
     if (band !== '8px') throw new Error(`the band between groups is ${band}`);
+    const weight = await page.locator('.popover.modal-in .item-title').first().evaluate((t) => getComputedStyle(t).fontWeight);
+    if (weight !== '400') throw new Error(`menu rows are at weight ${weight}, not 400 (#39)`);
   });
   await closeMenu().catch(() => {});
   await page.waitForTimeout(500);

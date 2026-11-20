@@ -59,7 +59,8 @@ type Props = {
   groups: (MenuItem | false | null | undefined)[][];
 };
 
-const iconProps = { size: 22, strokeWidth: 1.75, className: 'ck-icon' } as const;
+// thinner than elsewhere, to go with the menu's lighter text
+const iconProps = { size: 22, strokeWidth: 1.5, className: 'ck-icon' } as const;
 
 export default function Menu({ opened, onClosed, title, centered, groups }: Props) {
   const lists = groups.map((g) => g.filter((i): i is MenuItem => !!i)).filter((g) => g.length);

@@ -10,7 +10,7 @@ import { newId } from '../lib/recipe';
 import CookingFab from '../components/CookingFab';
 import EmptyState from '../components/ui/EmptyState';
 import { say, tell } from '../components/ui/toast';
-import { copyText, headerReport, headerReportOn } from '../data/headerReport';
+import { copyText, headerReport, headerReportOn, headerTest } from '../data/headerReport';
 
 type Props = { f7router?: { navigate: (url: string) => void } };
 
@@ -82,7 +82,7 @@ export default function CookbooksPage({ f7router }: Props) {
           {/* temporary, issue #141: deploy previews only (see headerReport.ts) */}
           {headerReportOn && (
             <Link className="ck-report-link" onClick={(e: { target: EventTarget | null }) => reportHeader((e.target as Element | null)?.closest('.page') ?? null)}>
-              Copy report (#141)
+              Copy report (#141{headerTest ? ` · test ${headerTest}` : ''})
             </Link>
           )}
         </Block>

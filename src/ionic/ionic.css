@@ -138,12 +138,12 @@ ion-toast.ck-ion-toast::part(icon) { color: var(--ck-accent); font-size: 18px; m
 ion-toast.ck-ion-toast::part(button) { font-weight: 700; text-transform: none; }
 
 /* ── menus (#39): no arrow, white rows, thin lines between rows, a thick band between groups, icons right ── */
-ion-popover.ck-ion-menu { --width: 270px; --border-radius: 14px; --box-shadow: var(--ck-menu-shadow); --backdrop-opacity: 0; }
+ion-popover.ck-ion-menu { --width: 250px; --border-radius: 14px; --box-shadow: 0 0 0 1px var(--ck-line), var(--ck-menu-shadow); --backdrop-opacity: 0; } /* v1's */
 ion-popover.ck-ion-menu ion-content { --background: var(--ck-soft); }
 ion-popover.ck-ion-menu ion-list.ck-ion-menu-group { padding: 0; margin: 0; }
 ion-popover.ck-ion-menu ion-list.ck-ion-menu-group + ion-list.ck-ion-menu-group { margin-top: 8px; }
-ion-popover.ck-ion-menu ion-item { --min-height: 44px; --background: var(--ck-surface); font-size: 16px; }
-ion-popover.ck-ion-menu ion-item svg { color: var(--ck-fg); }
+ion-popover.ck-ion-menu ion-item { --min-height: 48px; --padding-start: 16px; --inner-padding-end: 16px; --background: var(--ck-surface); font-size: 17px; font-weight: 400; }
+ion-popover.ck-ion-menu ion-item svg { color: var(--ck-fg2); }
 ion-popover.ck-ion-menu ion-item.ck-ion-danger, ion-popover.ck-ion-menu ion-item.ck-ion-danger svg { --color: var(--ck-error); color: var(--ck-error); }
 .ck-ion-menu-check { width: 20px; display: grid; place-items: center; margin-inline-end: 4px; color: var(--ck-fg); }
 
@@ -518,3 +518,14 @@ ion-list.ck-ion-ing-list .ck-bullet { margin: 15px 12px 0 6px; }
 a.ck-source-link { display: inline-flex; align-items: center; gap: 6px; color: var(--ck-accent-ink); text-decoration: none; }
 /* the chip rows under Labels, Cookbooks and Planned sit where v1's did (its chips came 5px lower, the next heading 4px after) */
 .ck-panel-rest .ck-ion-chips-wrap { margin-top: 5px; margin-bottom: 4px; }
+
+/* sheets as v1's: white, 32px corners, no handle; the title 24px in on a 72px header with Done in Tomato ink; their
+   content 24px in from the sides */
+ion-modal.ck-ion-sheet { --background: var(--ck-surface); --border-radius: 32px; }
+ion-modal.ck-ion-sheet ion-content, ion-modal.ck-ion-sheet ion-content.ck-ion-sheet-content { --background: var(--ck-surface); }
+ion-modal.ck-ion-sheet .ck-ion-sheet-header ion-toolbar { --background: var(--ck-surface); --min-height: 72px; --padding-top: 0; --padding-bottom: 0; --padding-start: 24px; --padding-end: 14px; padding-top: 0; }
+ion-modal.ck-ion-sheet .ck-ion-sheet-header ion-title { padding-inline: 0; color: var(--ck-fg); }
+ion-modal.ck-ion-sheet .ck-ion-sheet-header ion-button { --color: var(--ck-accent-ink); font-size: 17px; font-weight: 500; text-transform: none; }
+ion-content.ck-ion-sheet-content ion-segment.ck-ion-strong-segment { margin: 18px 24px 0; width: auto; }
+ion-button.ck-ion-step { --background: var(--ck-soft); --box-shadow: none; width: 34px; height: 34px; min-height: 34px; margin: 0; }
+ion-modal.ck-ion-sheet.ck-ion-sheet ion-header ion-toolbar:first-of-type { padding-top: 0 !important; padding-bottom: 0 !important; } /* Ionic leaves room for its handle, which v1's sheets don't have */

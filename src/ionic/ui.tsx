@@ -99,10 +99,13 @@ function menuEnter(baseEl: HTMLElement, opts?: { event?: { target?: Element } })
     const w = content.offsetWidth;
     const h = content.offsetHeight;
     const below = r.bottom + 6 + h <= window.innerHeight - 12;
-    const right = r.left + r.width / 2 > window.innerWidth / 2;
+    // as v1 (Framework7's popover): centred under the button, kept 5px inside the screen's edges, so it grows out of
+    // the button wherever that ends up
+    const cx = r.left + r.width / 2;
+    const left = Math.min(Math.max(5, cx - w / 2), window.innerWidth - 5 - w);
     content.style.top = `${below ? r.bottom + 6 : Math.max(12, r.top - 6 - h)}px`;
-    content.style.left = `${right ? Math.max(8, r.right - w) : Math.min(r.left, window.innerWidth - 8 - w)}px`;
-    menuOrigin = `${right ? 'right' : 'left'} ${below ? 'top' : 'bottom'}`;
+    content.style.left = `${left}px`;
+    menuOrigin = `${Math.round(cx - left)}px ${below ? 'top' : 'bottom'}`;
   }
   return createAnimation()
     .addElement(baseEl)
@@ -175,7 +178,7 @@ export function MenuHost() {
               >
                 {item.checked !== undefined && <span className="ck-ion-menu-check" slot="start">{item.checked && <Check size={18} strokeWidth={2.5} />}</span>}
                 <IonLabel>{item.label}</IonLabel>
-                {item.icon && <item.icon slot="end" size={20} strokeWidth={1.5} />}
+                {item.icon && <item.icon slot="end" size={22} strokeWidth={1.75} />}
               </IonItem>
             ))}
           </IonList>

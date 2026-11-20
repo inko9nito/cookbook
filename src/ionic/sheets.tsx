@@ -59,7 +59,7 @@ export function ScaleSheet({ open, recipe, factor, onFactor, onClose }: { open: 
     });
   };
   return (
-    <IonModal isOpen={open} onDidDismiss={onClose} breakpoints={[0, 0.55, 0.92]} initialBreakpoint={0.55} className="ck-ion-sheet">
+    <IonModal isOpen={open} onDidDismiss={onClose} breakpoints={[0, 0.4, 0.92]} initialBreakpoint={0.4} handle={false} className="ck-ion-sheet">
       <IonHeader className="ck-ion-sheet-header">
         <IonToolbar>
           <IonTitle className="ck-ion-title-small">Adjust amounts</IonTitle>
@@ -71,7 +71,7 @@ export function ScaleSheet({ open, recipe, factor, onFactor, onClose }: { open: 
         </IonToolbar>
       </IonHeader>
       <IonContent className="ck-ion-sheet-content">
-        <IonSegment value={mode} onIonChange={(e) => setMode(e.detail.value as 'servings' | 'have')}>
+        <IonSegment value={mode} onIonChange={(e) => setMode(e.detail.value as 'servings' | 'have')} className="ck-ion-strong-segment">
           <IonSegmentButton value="servings">
             <IonLabel>Servings</IonLabel>
           </IonSegmentButton>
@@ -174,6 +174,7 @@ export function UnitSheet({ target, factor, picks, onPick, onClosed }: { target:
       breakpoints={[0, 0.45]}
       initialBreakpoint={0.45}
       backdropBreakpoint={0.5}
+      handle={false}
       className="ck-ion-sheet ck-ion-unit-sheet"
     >
       <IonHeader className="ck-ion-sheet-header">

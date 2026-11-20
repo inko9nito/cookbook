@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import {
-  IonSearchbar, IonChip, IonSkeletonText, useIonRouter,
+  IonSearchbar, IonChip, useIonRouter,
 } from '@ionic/react';
 import { ArrowUpDown, Camera, Link2, PenLine, Plus } from 'lucide-react';
 import { useAccount, useStore } from '../data/store';
 import { COURSES, SORT_LABELS, sortRecipes, type SortKey } from '../lib/recipe';
 import { say } from './toast';
 import { TabPage } from './scroll';
+import { ChipsSkeleton, CountSkeleton, RecipeGridSkeleton } from './Skeletons';
 import { BarButton, CookingPill, RecipeCard, openMenu } from './ui';
 
 /** Recipes: the title, + and sort in the bar, the search field and the label chips under it, then the grid. */
@@ -62,9 +63,14 @@ export default function RecipesPage() {
         <>
           <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search recipes" />
           <div className="ck-ion-chips">
-            <IonChip className={filterTags.length ? '' : 'ck-ion-chip-on'} onClick={() => setFilter([])}>
-              All
-            </IonChip>
+            {/* #35: until the recipes arrive, grey pills where the chips go (no lone All chip) */}
+            {loading ? (
+              <ChipsSkeleton />
+            ) : (
+              <IonChip className={filterTags.length ? '' : 'ck-ion-chip-on'} onClick={() => setFilter([])}>
+                All
+              </IonChip>
+            )}
             {tags.map((t) => (
               <IonChip key={t} className={filterTags.includes(t) ? 'ck-ion-chip-on' : ''} onClick={() => toggleTag(t)}>
                 {t[0].toUpperCase() + t.slice(1)}
@@ -74,18 +80,14 @@ export default function RecipesPage() {
         </>
       }
     >
-        <p className="ck-note ck-ion-count">{loading ? ' ' : `${shown.length} ${shown.length === 1 ? 'recipe' : 'recipes'} · ${SORT_LABELS[sort]}`}</p>
-        <div className="ck-ion-grid">
-          {loading
-            ? Array.from({ length: 6 }, (_, i) => (
-                <div key={i} className="ck-card">
-                  <IonSkeletonText animated className="ck-card-photo" />
-                  <IonSkeletonText animated style={{ width: '80%', height: 14, marginTop: 10 }} />
-                  <IonSkeletonText animated style={{ width: '40%', height: 12 }} />
-                </div>
-              ))
-            : shown.map((r) => <RecipeCard key={r.id} recipe={r} href={`/recipes/recipe/${r.id}`} />)}
-        </div>
+        <p className="ck-note ck-ion-count">{loading ? <CountSkeleton /> : `${shown.length} ${shown.length === 1 ? 'recipe' : 'recipes'} · ${SORT_LABELS[sort]}`}</p>
+        {loading ? (
+          <RecipeGridSkeleton />
+        ) : (
+          <div className="ck-ion-grid">
+            {shown.map((r) => <RecipeCard key={r.id} recipe={r} href={`/recipes/recipe/${r.id}`} />)}
+          </div>
+        )}
         <div className="ck-ion-toast-anchor" />
         <CookingPill />
       

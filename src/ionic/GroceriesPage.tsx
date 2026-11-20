@@ -12,6 +12,7 @@ import { say, tell } from './toast';
 import { TabPage } from './scroll';
 import { BarButton, CookingPill, openMenu, usePrompt } from './ui';
 import { AddFromRecipeModal } from './modals';
+import { RowSkeleton } from './Skeletons';
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
@@ -169,6 +170,7 @@ export default function GroceriesPage() {
         </div>
         {!loading && !lines.length && <p className="ck-note ion-padding">The list is empty. + adds a recipe’s ingredients or anything you type.</p>}
         <div className="ck-grocery-groups">
+          {loading && <RowSkeleton />}
           {view === 'aisle'
             ? byAisle(toGet).map((g) => (
                 <section key={g.aisle} className="ck-grocery-group">

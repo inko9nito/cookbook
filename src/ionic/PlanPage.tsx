@@ -17,6 +17,7 @@ import { friendly } from '../lib/ingredients';
 import { TabPage } from './scroll';
 import { BarButton, CookingPill, openMenu } from './ui';
 import { DaySheet, NoteModal, RecipePickerModal } from './modals';
+import { RowSkeleton } from './Skeletons';
 
 const WEEKS = 26; // weeks either side of this one in the strip
 
@@ -27,8 +28,8 @@ const WEEKS = 26; // weeks either side of this one in the strip
  */
 export default function PlanPage() {
   const now = today();
-  const { recipes } = useStore();
-  const { planned, savePlanned, deletePlanned } = usePlanner();
+  const { recipes, loading: recipesLoading } = useStore();
+  const { planned, loading: plannedLoading, savePlanned, deletePlanned } = usePlanner();
   const router = useIonRouter();
   const [picked, setPicked] = useState<Day>(now);
   const content = useRef<HTMLIonContentElement>(null);
@@ -60,7 +61,7 @@ export default function PlanPage() {
     await c.scrollToPoint(0, to, smooth ? 400 : 0);
     return true;
   };
-  const ready = recipes.length > 0 || planned.length > 0;
+  const ready = !recipesLoading && !plannedLoading;
   // once the page is on screen (Ionic's lifecycle: measured before that, it was laid out at nothing) and the plans are in
   const entered = useRef(false);
   const opened = useRef(false);
@@ -185,7 +186,8 @@ export default function PlanPage() {
                   <Plus size={18} strokeWidth={2} />
                 </button>
               </div>
-              {slots.length === 0 && <p className="ck-note ck-plan-empty">Nothing planned</p>}
+              {/* #35: until the plans are in, each day shows a grey row (v1), not "Nothing planned" */}
+              {!ready ? <RowSkeleton /> : slots.length === 0 && <p className="ck-note ck-plan-empty">Nothing planned</p>}
               {slots.map((slot) => (
                 <div key={slot.meal ?? 'day'} className="ck-plan-slot">
                   {slot.meal && <div className="ck-plan-slot-label">{mealName(slot.meal)}</div>}

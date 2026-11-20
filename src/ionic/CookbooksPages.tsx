@@ -14,6 +14,7 @@ import { say, tell } from './toast';
 // how many recipes a section's shelf shows (v1); See all opens the rest
 const SHELF = 12;
 import { TabPage, barOnScroll, useScrollStyle } from './scroll';
+import { CookbookGridSkeleton, CountSkeleton, RecipeGridSkeleton } from './Skeletons';
 import { BarButton, CookingPill, Plates, RecipeCard, openMenu, useConfirm, usePrompt } from './ui';
 import { AddRecipesModal, OrganizeModal } from './modals';
 
@@ -49,13 +50,9 @@ export function CookbooksPage() {
         </>
       }
     >
-        <p className="ck-note ck-ion-count ck-ion-count-loose">{loading ? ' ' : `${sorted.length} ${sorted.length === 1 ? 'cookbook' : 'cookbooks'}`}</p>
+        <p className="ck-note ck-ion-count ck-ion-count-loose">{loading ? <CountSkeleton text="12 cookbooks" /> : `${sorted.length} ${sorted.length === 1 ? 'cookbook' : 'cookbooks'}`}</p>
         {loading ? (
-          <div className="ck-ion-grid ck-ion-book-grid">
-            {[0, 1, 2, 3].map((i) => (
-              <IonSkeletonText key={i} animated className="ck-ion-tile-skeleton" />
-            ))}
-          </div>
+          <CookbookGridSkeleton />
         ) : grid ? (
           <div className="ck-ion-grid ck-ion-book-grid">
             {sorted.map((c) => (
@@ -270,14 +267,7 @@ export function CookbookPage() {
           </div>
         </section>
         {recipesLoading ? (
-          <div className="ck-ion-grid ck-ion-grid-top">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="ck-card">
-                <IonSkeletonText animated className="ck-card-photo" />
-                <IonSkeletonText animated style={{ width: '70%', height: 14, marginTop: 10 }} />
-              </div>
-            ))}
-          </div>
+          <RecipeGridSkeleton className="ck-ion-grid-top" />
         ) : !all.length ? (
           <p className="ck-note ion-padding">No recipes in this cookbook yet.</p>
         ) : searching || !book.sections.length ? (

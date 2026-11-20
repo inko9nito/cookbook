@@ -322,12 +322,12 @@ async function swipeLeft(ctx, page, locator) {
   // #141: Delete goes one step at a time: the dialog has gone before the page slides back, and the toast comes only once
   // the page has gone. Start watching before OK; deleteOrder() says what was out of order.
   const watchDelete = (view) => page.evaluate((view) => {
-    const w = (window.__ckDel = { slide: null, toast: null, pages: document.querySelector(view).querySelectorAll(':scope > .page').length });
+    const w = (window.__ckDel = { slide: null, toast: null, leaving: document.querySelector(view).querySelector(':scope > .page-current') });
     const t0 = performance.now();
     const look = () => {
       const v = document.querySelector(view);
       if (w.slide === null && v.classList.contains('router-transition')) w.slide = { dialog: !!document.querySelector('.dialog') };
-      if (w.toast === null && document.querySelector('.toast')) w.toast = { pages: v.querySelectorAll(':scope > .page').length, sliding: v.classList.contains('router-transition') };
+      if (w.toast === null && document.querySelector('.toast')) w.toast = { gone: !w.leaving.isConnected, sliding: v.classList.contains('router-transition') };
       if (performance.now() - t0 < 4000) requestAnimationFrame(look);
     };
     requestAnimationFrame(look);
@@ -337,7 +337,7 @@ async function swipeLeft(ctx, page, locator) {
     if (!w.slide) out.push('the page never slid back');
     else if (w.slide.dialog) out.push('the page slid back with the dialog still there');
     if (!w.toast) out.push('no toast');
-    else if (w.toast.sliding || w.toast.pages !== w.pages - 1) out.push(`the toast came before the page had gone (${w.toast.pages} of ${w.pages} pages left, sliding ${w.toast.sliding})`);
+    else if (w.toast.sliding || !w.toast.gone) out.push(`the toast came before the page had gone (sliding ${w.toast.sliding}, page gone ${w.toast.gone})`);
     return out;
   });
   // a pull-down menu closes when the dimmed page around it is tapped (an action sheet has Cancel)

@@ -1,8 +1,24 @@
 import type { CSSProperties } from 'react';
 import type { Photo } from '../../lib/recipe';
 
+/**
+ * Temporary, issue #141: on deploy previews (or locally), ?t141=nophotos leaves every photo out for the tab's session
+ * (?t141=off brings them back), to see whether the photos are why iPhone Safari stops drawing headers.
+ */
+export const photosOff = (() => {
+  try {
+    if (!/^(deploy-preview-|localhost$|127\.0\.0\.1$)/.test(location.hostname)) return false;
+    const asked = new URLSearchParams(location.search).get('t141');
+    if (asked === 'nophotos') sessionStorage.setItem('ck-t141', 'nophotos');
+    if (asked === 'off') sessionStorage.removeItem('ck-t141');
+    return sessionStorage.getItem('ck-t141') === 'nophotos';
+  } catch {
+    return false;
+  }
+})();
+
 /** Background-image style for a recipe photo; empty when the recipe has no photo (the placeholder tone shows instead). */
-export const photoStyle = (photo?: string): CSSProperties => (photo ? { backgroundImage: `url(${photo})` } : {});
+export const photoStyle = (photo?: string): CSSProperties => (photo && !photosOff ? { backgroundImage: `url(${photo})` } : {});
 
 /**
  * Every recipe photo is square (issue #51; 4:3 before): the recipe page, the cards, the editor and the crop square all

@@ -7,6 +7,8 @@
  * key names. Remove once #141 is understood.
  */
 
+import { photosOff } from '../components/ui/photo';
+
 declare const __APP_VERSION__: string;
 
 export const headerReportOn = (() => {
@@ -58,10 +60,41 @@ function hit(label: string, el: Element | null): string {
   return `${label}: ${at && (el === at || el.contains(at)) ? 'itself' : 'SOMETHING ELSE'} → ${path.join(' < ')}`;
 }
 
-export function headerReport(pageEl: Element | null): string {
+// the photos' real sizes (they're shown as CSS backgrounds): how many the whole app holds and the current page shows, and
+// the pixel size of a sample from this page, with what each takes once decoded. No addresses (a photo's address opens it).
+async function photoReport(pageEl: Element | null): Promise<string[]> {
+  const urlsIn = (root: ParentNode) =>
+    new Set([...root.querySelectorAll<HTMLElement>('[style*="background-image"]')].map((e) => e.style.backgroundImage.match(/url\("?(.*?)"?\)/)?.[1]).filter((u): u is string => !!u));
+  const all = urlsIn(document);
+  const here = pageEl ? urlsIn(pageEl) : new Set<string>();
+  const sample = [...here].slice(0, 8);
+  const sizes = await Promise.all(
+    sample.map(
+      (u) =>
+        new Promise<[number, number]>((done) => {
+          const img = new Image();
+          img.onload = () => done([img.naturalWidth, img.naturalHeight]);
+          img.onerror = () => done([0, 0]);
+          img.src = u;
+        }),
+    ),
+  );
+  const mb = (w: number, h: number) => (w * h * 4) / 1e6;
+  const avg = sizes.length ? sizes.reduce((t, [w, h]) => t + mb(w, h), 0) / sizes.length : 0;
+  const shown = pageEl ? [...pageEl.querySelectorAll<HTMLElement>('[style*="background-image"]')].slice(0, 8).map((e) => `${Math.round(e.getBoundingClientRect().width)}×${Math.round(e.getBoundingClientRect().height)}`) : [];
+  return [
+    `photos: ${photosOff ? 'OFF (test)' : 'on'} · ${all.size} different in the app's pages · ${here.size} on this page`,
+    `  sizes on this page: ${sizes.map(([w, h]) => `${w}×${h} (${mb(w, h).toFixed(1)} MB decoded)`).join(', ') || 'none'}`,
+    `  shown at (points): ${shown.join(', ') || 'none'}`,
+    `  if all ${all.size} are decoded: about ${Math.round(avg * all.size)} MB`,
+  ];
+}
+
+export async function headerReport(pageEl: Element | null): Promise<string> {
   const out: string[] = [];
   const add = (s: string) => out.push(s);
   add(`#141 header report · ${typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '?'} · ${new Date().toISOString()}`);
+  (await photoReport(pageEl)).forEach(add);
   add(`ua: ${navigator.userAgent}`);
   const vv = window.visualViewport;
   add(`standalone: ${(navigator as { standalone?: boolean }).standalone ?? matchMedia('(display-mode: standalone)').matches} · dpr ${devicePixelRatio} · screen ${screen.width}×${screen.height} · inner ${innerWidth}×${innerHeight}` +
@@ -108,6 +141,22 @@ export function headerReport(pageEl: Element | null): string {
   navbar.querySelectorAll('.right .link, .left .link').forEach((l, i) => add(`  ${hit(`button ${i + 1}`, l)}`));
   add(`  ${hit('header', navbar)}`);
   return out.join('\n');
+}
+
+/**
+ * Copies text that takes a moment to make: Safari only lets a page write to the clipboard in the tap itself, so the text
+ * goes in as a promise (ClipboardItem); falls back to copying it once made.
+ */
+export async function copyLater(text: Promise<string>): Promise<boolean> {
+  try {
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': text.then((t) => new Blob([t], { type: 'text/plain' })) })]);
+      return true;
+    }
+  } catch {
+    // fall through
+  }
+  return copyText(await text);
 }
 
 /** Copies the text (Safari allows it in a tap); falls back to a hidden text box when the clipboard API refuses. */

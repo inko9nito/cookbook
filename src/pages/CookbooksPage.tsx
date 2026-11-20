@@ -9,15 +9,16 @@ import { byName, colorOf, cookbookRecipeIds, emptyCookbook, existing, platePhoto
 import { newId } from '../lib/recipe';
 import CookingFab from '../components/CookingFab';
 import EmptyState from '../components/ui/EmptyState';
+import { photosOff } from '../components/ui/photo';
 import { say, tell } from '../components/ui/toast';
-import { copyText, headerReport, headerReportOn } from '../data/headerReport';
+import { copyLater, headerReport, headerReportOn } from '../data/headerReport';
 
 type Props = { f7router?: { navigate: (url: string) => void } };
 
 // issue #141 (temporary): copy the header report, then switch off the header's own drawing layer (the #123 will-change)
 // to see whether the title comes back
 async function reportHeader(pageEl: Element | null) {
-  const copied = await copyText(headerReport(pageEl));
+  const copied = await copyLater(headerReport(pageEl));
   pageEl?.querySelector<HTMLElement>(':scope > .navbar')?.style.setProperty('will-change', 'auto');
   if (copied) say('Report copied. Paste it in #141');
   else tell('Couldn’t copy the report');
@@ -82,7 +83,7 @@ export default function CookbooksPage({ f7router }: Props) {
           {/* temporary, issue #141: deploy previews only (see headerReport.ts) */}
           {headerReportOn && (
             <Link className="ck-report-link" onClick={(e: { target: EventTarget | null }) => reportHeader((e.target as Element | null)?.closest('.page') ?? null)}>
-              Copy report (#141)
+              Copy report (#141{photosOff ? ' · no photos' : ''})
             </Link>
           )}
         </Block>

@@ -303,16 +303,17 @@ export function DaySheet({ open, title, busy, value, onPick, onClose }: { open: 
     >
       <div className="ck-ion-auto-inner">
         <div className="ck-ion-sheet-title ck-ion-day-sheet-title">{title}</div>
+        {/* the month as Ionic's calendar heads it (the user's pick): month and year on the left, ‹ › on the right */}
         <div className="ck-month-bar">
-          <div className="ck-month-pill">
+          <span className="ck-month-name">{monthName(months[shown])}</span>
+          <span className="ck-month-arrows">
             <button type="button" className="ck-ion-plain-button ck-month-arrow" aria-label="Previous month" onClick={() => swiper.current?.slidePrev()}>
               <ChevronLeft size={24} strokeWidth={2.25} />
             </button>
-            <span className="ck-month-name">{monthName(months[shown])}</span>
             <button type="button" className="ck-ion-plain-button ck-month-arrow" aria-label="Next month" onClick={() => swiper.current?.slideNext()}>
               <ChevronRight size={24} strokeWidth={2.25} />
             </button>
-          </div>
+          </span>
         </div>
         <div className="ck-month-week">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
@@ -359,7 +360,7 @@ const addMonths = (first: Day, n: number): Day => {
   const d = new Date(Number(first.slice(0, 4)), Number(first.slice(5, 7)) - 1 + n, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
 };
-const monthName = (first: Day) => new Date(Number(first.slice(0, 4)), Number(first.slice(5, 7)) - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+const monthName = (first: Day) => new Date(Number(first.slice(0, 4)), Number(first.slice(5, 7)) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 /** a month's six weeks from Monday: its days, and nothing in the cells of the months either side (as iOS's Calendar) */
 const monthCells = (first: Day): (Day | null)[] => {
   const lead = (new Date(Number(first.slice(0, 4)), Number(first.slice(5, 7)) - 1, 1).getDay() + 6) % 7;

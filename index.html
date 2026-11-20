@@ -70,6 +70,7 @@
       }
       /* one 28 x 24 grid for every layer: Lucide's 24px grid with room at the sides for the lid as it tips */
       .ck-launch-stage { position: relative; width: 112px; height: 96px; }
+      .ck-launch-quiet .ck-launch-stage { visibility: hidden; } /* after the app's own refresh: no pot (#127) */
       .ck-launch-stage div, .ck-launch-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
       .ck-launch-stage svg {
         overflow: visible;
@@ -144,8 +145,15 @@
       // In automated checks (check:ui) the loader stays out of the way, unless the check asks for it with ?loader.
       (function () {
         var q = new URLSearchParams(location.search), el = document.getElementById('ck-launch');
-        if (navigator.webdriver && !q.has('loader')) el.remove();
-        else if (q.get('loader') === 'slow') el.style.setProperty('--ck-boil', '11.2s');
+        if (navigator.webdriver && !q.has('loader')) return el.remove();
+        if (q.get('loader') === 'slow') el.style.setProperty('--ck-boil', '11.2s');
+        // issue #127: the app reloading itself (Settings' refresh; it marks the tab to come back to) shows no pot, only
+        // the plain cover until the app is drawn: the pot is for opening the app, and after a refresh the icon just stops
+        try {
+          if (sessionStorage.getItem('ck-reopen-tab')) el.classList.add('ck-launch-quiet');
+        } catch (e) {
+          /* no storage: the pot shows as on any launch */
+        }
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>

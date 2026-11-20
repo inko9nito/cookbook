@@ -4,7 +4,7 @@ import { storeNameFrom, storeSlugFrom, type GroceryStore } from '../lib/grocerie
 import { say, tell } from '../components/ui/toast';
 
 /**
- * Issue #64: the Instacart stores the grocery list's links search (Settings → Grocery Stores, or the list's store pill).
+ * Issue #64: the Instacart stores the grocery list's links search (the Groceries tab: ⋯ → Your stores, or the store line; issue #129 moved it out of Settings).
  * Kept in the app's settings on the server, not in the code: the repo is public. A store is added from its Instacart
  * link (Share → Copy on the store's page in Instacart); its name can be changed by tapping it; swipe to delete.
  */
@@ -74,7 +74,7 @@ export default function GroceryStoresPage() {
         <ListButton onClick={add}>Add a Store</ListButton>
       </List>
       <BlockFooter>
-        The grocery list’s links open Instacart and search the store you’re shopping at. Pick it from the list’s “Shopping at” button; swipe a
+        The grocery list’s links open Instacart and search the store you’re shopping at. Pick it from the list’s “Shopping via Instacart at” line; swipe a
         single item to get it from another store.
       </BlockFooter>
     </Page>

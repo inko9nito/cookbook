@@ -52,20 +52,22 @@ type Props = {
   onClosed: () => void;
   /** only for a choice menu: what it's choosing */
   title?: string;
+  /** open in the middle of the screen, not from what was tapped (a question after a sheet that's closing) */
+  centered?: boolean;
   /** rows in order; groups only keep related rows together, and a destructive row goes last */
   groups: (MenuItem | false | null | undefined)[][];
 };
 
 const iconProps = { size: 22, strokeWidth: 1.75, className: 'ck-icon' } as const;
 
-export default function Menu({ opened, onClosed, title, groups }: Props) {
+export default function Menu({ opened, onClosed, title, centered, groups }: Props) {
   // Framework7's Popover reads targetEl only when it's made, so it's opened here, from what was tapped
   const popover = useRef<{ f7Popover: () => F7Popover | null } | null>(null);
   useEffect(() => {
     const p = popover.current?.f7Popover();
     if (!p) return;
     if (opened && !p.opened) {
-      const target = onScreen(tapped);
+      const target = centered ? null : onScreen(tapped);
       if (target) p.open(target, true);
       else {
         // nothing to open from (a menu opened from another menu): the middle of the screen

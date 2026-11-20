@@ -111,6 +111,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
   });
   const [scaleOpen, setScaleOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [mealFor, setMealFor] = useState<Day | null>(null);
   const [addingToCookbook, setAddingToCookbook] = useState(false);
   const [addingToList, setAddingToList] = useState(false);
   // issue #6: the tapped amount (its popover is open), and units picked for some ingredients until the recipe is
@@ -146,27 +147,15 @@ export default function RecipePage({ f7route, f7router }: Props) {
     pickDay({
       title: 'Plan for which day?',
       busy: busyDays(planned.filter((p) => p.recipeId === recipe.id)),
-      onPick: (day) => {
-        const servings = scaled ? Math.round(recipe.servings * factor * 100) / 100 : undefined;
-        const add = (meal?: Meal) => {
-          savePlanned(plan(recipe.id, day, newId, { meal, servings }));
-          const what = [mediumDate(day), meal && mealName(meal), servings && `${friendly(servings)} servings`].filter(Boolean).join(' · ');
-          say(`Added to ${what}`);
-        };
-        const sheet = f7.actions.create({
-          buttons: [
-            [
-              { text: `${mediumDate(day)}: which meal?`, label: true },
-              ...MEALS.map((m) => ({ text: mealName(m), onClick: () => add(m) })),
-              { text: 'Any time', onClick: () => add() },
-            ],
-            [{ text: 'Cancel', strong: true }],
-          ],
-          on: { closed: () => sheet.destroy() },
-        });
-        sheet.open();
-      },
+      // then which meal (a choice menu, opened in the middle of the screen: the calendar sheet it came from is gone)
+      onPick: (day) => setMealFor(day),
     });
+  const addPlanned = (day: Day, meal?: Meal) => {
+    const servings = scaled ? Math.round(recipe.servings * factor * 100) / 100 : undefined;
+    savePlanned(plan(recipe.id, day, newId, { meal, servings }));
+    const what = [mediumDate(day), meal && mealName(meal), servings && `${friendly(servings)} servings`].filter(Boolean).join(' · ');
+    say(`Added to ${what}`);
+  };
   // a Planned chip opens the Planner on that day: back to the Planner in the Plan tab, or over to it
   const showDay = (day: Day) => {
     showInPlanner(day);
@@ -386,6 +375,13 @@ export default function RecipePage({ f7route, f7router }: Props) {
       {/* issue #64: its ingredients onto the grocery list, at the servings shown */}
       <AddRecipePopup recipe={addingToList ? recipe : null} servings={Math.round(recipe.servings * factor * 100) / 100} onClosed={() => setAddingToList(false)} />
 
+      <Menu
+        opened={!!mealFor}
+        onClosed={() => setMealFor(null)}
+        centered
+        title={mealFor ? `${mediumDate(mealFor)}: which meal?` : ''}
+        groups={[[...MEALS, null].map((m) => ({ label: m ? mealName(m) : 'Any time', onClick: () => mealFor && addPlanned(mealFor, m ?? undefined) }))]}
+      />
       <Menu
         opened={moreOpen}
         onClosed={() => setMoreOpen(false)}

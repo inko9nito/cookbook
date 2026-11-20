@@ -286,7 +286,7 @@ Next candidate: a cookbook with no recipes in it ("Nothing in here yet", **Add r
 
 ### Crash screen (issue #140)
 
-If the app crashes, it never goes blank: `CrashBoundary` (`src/components/CrashScreen.tsx`, around the whole app in `App.tsx`) shows the empty state's shape on the plain grey page, centred on the screen (`.ck-crash`): Lucide's `triangle-alert` on the white circle, **Something went wrong**, one line (Reload picks up where you were.), and the main button **Reload** with a ↻, which opens the app again on the tab it was on. Under it, small and muted (13px, `--ck-muted`, selectable), the error itself, for a screenshot in an issue. Framework7 has gone with the crashed app, so it's plain markup with Framework7's button classes; no new colours, nothing moves.
+If the app crashes, it never goes blank: `CrashBoundary` (`src/components/CrashScreen.tsx`, around the whole app in `App.tsx`) shows the empty state's shape on the plain grey page, centred on the screen (`.ck-crash`): Lucide's `triangle-alert` on the white circle, **Something went wrong**, one line saying what Reload does (Reload restarts the app on the tab you were on. Not "where you were": an open popup, the scroll and unsaved edits in the editor are gone), and the main button **Reload** with a ↻, which opens the app again on the tab it was on. Under it, small and muted (13px, `--ck-muted`, selectable), the error itself, for a screenshot in an issue. Framework7 has gone with the crashed app, so it's plain markup with Framework7's button classes; no new colours, nothing moves.
 
 ### Launch loader
 

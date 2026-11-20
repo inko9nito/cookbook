@@ -46,7 +46,6 @@ function CrashScreen({ error, tab }: { error: Error; tab: TabId | null }) {
           <TriangleAlert size={40} strokeWidth={1.75} />
         </span>
         <h1 className="ck-empty-title">Something went wrong</h1>
-        <p className="ck-empty-text">Reload restarts the app on the tab you were on.</p>
         <button type="button" className="button button-large button-fill button-round ck-main ck-empty-button" onClick={reload}>
           <RotateCw size={20} strokeWidth={2.5} aria-hidden="true" />
           Reload

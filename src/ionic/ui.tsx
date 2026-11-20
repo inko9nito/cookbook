@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { IonButton, IonFab, IonPopover, IonContent, IonList, IonItem, IonLabel, createAnimation, useIonAlert, useIonRouter, useIonToast, type Animation } from '@ionic/react';
-import { BookOpen, Check, ChefHat, Star, type LucideIcon } from 'lucide-react';
+import { IonButton, IonFab, IonFooter, IonPopover, IonContent, IonList, IonItem, IonLabel, createAnimation, useIonAlert, useIonRouter, useIonToast, type Animation } from '@ionic/react';
+import { BookOpen, CalendarDays, Check, ChefHat, Settings, ShoppingCart, Star, type LucideIcon } from 'lucide-react';
 import { coverPhoto, type Recipe } from '../lib/recipe';
 import { photoStyle } from '../components/ui/photo';
 import { formatMinutes } from '../components/ui/RecipeCard';
@@ -20,7 +20,47 @@ export function useTab(): TabName {
   const first = useLocation().pathname.split('/')[1];
   return (['recipes', 'cookbooks', 'plan', 'groceries', 'settings'].includes(first) ? first : 'recipes') as TabName;
 }
-export const recipePath = (_tab: TabName, id: string) => `/recipe/${id}`;
+export const recipePath = (tab: TabName, id: string) => `/${tab === 'settings' || tab === 'groceries' ? 'recipes' : tab}/recipe/${id}`;
+
+export const TABS: { tab: TabName; label: string; icon: LucideIcon }[] = [
+  { tab: 'recipes', label: 'Recipes', icon: ChefHat },
+  { tab: 'cookbooks', label: 'Cookbooks', icon: BookOpen },
+  { tab: 'plan', label: 'Plan', icon: CalendarDays },
+  { tab: 'groceries', label: 'Groceries', icon: ShoppingCart },
+  { tab: 'settings', label: 'Settings', icon: Settings },
+];
+
+/**
+ * The tab bar, drawn by each tab's first page (a footer of the page), so a page pushed over it covers it as iOS does.
+ * Its buttons press Ionic's own (hidden) tab buttons, which switch tabs and keep each tab's stack. Tapping the tab
+ * you're on scrolls its page to the top.
+ */
+export function TabBar({ current }: { current: TabName }) {
+  return (
+    <IonFooter className="ck-ion-tabbar">
+      <nav className="ck-ion-tabbar-row" aria-label="Tabs">
+        {TABS.map(({ tab, label, icon: Icon }) => (
+          <button
+            key={tab}
+            type="button"
+            className={`ck-ion-tab${tab === current ? ' ck-ion-tab-on' : ''}`}
+            aria-label={label}
+            aria-current={tab === current ? 'page' : undefined}
+            onClick={(e) => {
+              if (tab === current) {
+                (e.currentTarget.closest('.ion-page')?.querySelector(':scope > ion-content') as HTMLIonContentElement | null)?.scrollToTop(300);
+                return;
+              }
+              document.querySelector<HTMLElement>(`ion-tab-bar.ck-ion-tabbar-engine ion-tab-button[aria-label="${label}"]`)?.click();
+            }}
+          >
+            <Icon size={26} strokeWidth={1.75} />
+          </button>
+        ))}
+      </nav>
+    </IonFooter>
+  );
+}
 
 // ── bar buttons: separate round buttons (the agreed design), Ionic's buttons underneath ──
 
@@ -148,13 +188,14 @@ export function MenuHost() {
 // ── toasts and alerts from the shared code (toast.ts and cook.tsx send events when there's no Framework7) ──
 
 type ToastEvent = { html: string; closeTimeout: number; undo?: () => void };
+const CHECK_ICON = `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>')}`;
 
 /** the toast sits just above what's at the bottom: cook mode's recipe tabs, a page's footer (Start cooking), the tab bar */
 function toastAnchor(): HTMLElement | undefined {
   const cook = document.querySelector<HTMLElement>('ion-modal.ck-ion-cook.show-modal');
   if (cook) return cook.querySelector<HTMLElement>('ion-footer') ?? undefined;
-  const top = document.querySelector<HTMLElement>('ion-app > ion-router-outlet > .ion-page:not(.ion-page-hidden)');
-  return top?.querySelector<HTMLElement>(':scope > ion-footer') ?? top?.querySelector<HTMLElement>('ion-tab-bar') ?? document.querySelector<HTMLElement>('ion-tab-bar') ?? undefined;
+  const page = document.querySelector<HTMLElement>('ion-tabs ion-router-outlet > .ion-page:not(.ion-page-hidden)');
+  return page?.querySelector<HTMLElement>(':scope > ion-footer') ?? undefined;
 }
 
 export function Bridge() {
@@ -170,7 +211,9 @@ export function Bridge() {
         duration: t.closeTimeout,
         position: 'bottom',
         positionAnchor: toastAnchor(),
-        cssClass: `ck-ion-toast${t.html.includes('<svg') ? ' ck-ion-toast-done' : ''}`,
+        cssClass: 'ck-ion-toast',
+        // something done has the app's Tomato check (Lucide's), as say() draws it
+        icon: t.html.includes('<svg') ? CHECK_ICON : undefined,
         swipeGesture: 'vertical',
         buttons: t.undo ? [{ text: 'Undo', handler: t.undo }] : [],
       });

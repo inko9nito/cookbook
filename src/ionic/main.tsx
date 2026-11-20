@@ -1,8 +1,8 @@
+import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Navigate, Route } from 'react-router-dom';
 import { IonApp, IonRouterOutlet, IonTabs, IonTabBar, IonTabButton, IonButton, setupIonicReact } from '@ionic/react';
-import { IonReactRouter } from '@ionic/react-router';
-import { BookOpen, CalendarDays, ChefHat, Settings, ShoppingCart } from 'lucide-react';
+import { IonReactMemoryRouter, IonReactRouter } from '@ionic/react-router';
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
 import '@ionic/react/css/structure.css';
@@ -14,7 +14,7 @@ import { AuthProvider, useAuth } from '../data/auth';
 import { SessionGuard, StoreProvider } from '../data/store';
 import { CookProvider } from '../data/cook';
 import { installHistory } from './history';
-import { Bridge, MenuHost } from './ui';
+import { Bridge, MenuHost, TABS } from './ui';
 import RecipesPage from './RecipesPage';
 import RecipePage from './RecipePage';
 import EditPage from './EditPage';
@@ -29,19 +29,18 @@ import CookMode from './CookMode';
  * every screen, sheet, menu, swipe and transition is Ionic's (iOS mode), in the agreed design.
  */
 
-// Ionic's own swipe-back is off: Safari (the tab and the home-screen app) has its own back swipe, and the two together
-// slid two copies of the pages at once (the user's recording). Safari's swipe goes back in the history; Ionic then shows
-// the page under it at once (history.ts).
-setupIonicReact({ mode: 'ios', swipeBackEnabled: false });
+// Back swipe: one gesture only, never two at once (both together slid two copies of the pages, the user's recording).
+// - Home Screen app: Ionic's own swipe, the live page following the finger with its shadow and parallax. The pages keep
+//   their history inside the app (a memory router), so iOS has no page of the site to go back to and stays out of it.
+// - Safari tab: Safari's swipe, which can't be turned off there; the pages are browser history entries, Safari slides
+//   back through them and Ionic then shows the page at once (history.ts).
+const standalone =
+  matchMedia('(display-mode: standalone)').matches ||
+  (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+  new URLSearchParams(location.search).has('standalone'); // ?standalone: the Home Screen app's way, in a browser (checks)
+setupIonicReact({ mode: 'ios', swipeBackEnabled: standalone });
 installHistory();
 
-const TABS = [
-  { tab: 'recipes', label: 'Recipes', icon: ChefHat },
-  { tab: 'cookbooks', label: 'Cookbooks', icon: BookOpen },
-  { tab: 'plan', label: 'Plan', icon: CalendarDays },
-  { tab: 'groceries', label: 'Groceries', icon: ShoppingCart },
-  { tab: 'settings', label: 'Settings', icon: Settings },
-];
 
 function SignIn() {
   const auth = useAuth();
@@ -57,45 +56,56 @@ function SignIn() {
   );
 }
 
-/** the tab bar and each tab's first page */
+/**
+ * Each tab keeps its own stack of pages (Ionic's tabs). The tab bar is drawn by each tab's first page (`TabBar` in
+ * ui.tsx), not over all of them, so a page pushed in a tab slides in over the tab's first page, its bar included, and
+ * covers it, as iOS does; back (the button, or a swipe) reveals the page as it was, scroll and all. Ionic's own bar is
+ * kept for its tab switching and stacks, out of sight; the pages' bars press its buttons.
+ */
 function Tabs() {
   return (
     <IonTabs>
       <IonRouterOutlet>
         <Route path="/recipes" element={<RecipesPage />} />
+        <Route path="/recipes/recipe/:id" element={<RecipePage />} />
+        <Route path="/recipes/recipe/:id/edit" element={<EditPage />} />
         <Route path="/cookbooks" element={<CookbooksPage />} />
+        <Route path="/cookbooks/:id" element={<CookbookPage />} />
+        <Route path="/cookbooks/recipe/:id" element={<RecipePage />} />
+        <Route path="/cookbooks/recipe/:id/edit" element={<EditPage />} />
         <Route path="/plan" element={<PlanPage />} />
+        <Route path="/plan/recipe/:id" element={<RecipePage />} />
+        <Route path="/plan/recipe/:id/edit" element={<EditPage />} />
         <Route path="/groceries" element={<GroceriesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/" element={<Navigate to="/recipes" replace />} />
+        <Route path="/settings/appearance" element={<AppearancePage />} />
+        <Route path="*" element={<Navigate to="/recipes" replace />} />
       </IonRouterOutlet>
-      <IonTabBar slot="bottom" className="ck-ion-tabbar">
-        {TABS.map(({ tab, label, icon: Icon }) => (
-          <IonTabButton key={tab} tab={tab} href={`/${tab}`} aria-label={label}>
-            <Icon size={26} strokeWidth={1.75} />
-          </IonTabButton>
+      <IonTabBar slot="bottom" className="ck-ion-tabbar-engine">
+        {TABS.map(({ tab, label }) => (
+          <IonTabButton key={tab} tab={tab} href={`/${tab}`} aria-label={label} />
         ))}
       </IonTabBar>
     </IonTabs>
   );
 }
 
-/**
- * Pages opened from a tab (a recipe, a cookbook, the editor, Settings' pages) are pushed over the whole tab view, so they
- * slide in over the tab bar and cover it, as iOS apps do; back slides them away to the tab as it was.
- */
+function Router({ children }: { children: ReactNode }) {
+  return standalone ? (
+    <IonReactMemoryRouter basename="/ionic" initialEntries={[/^\/ionic\/(recipes|cookbooks|plan|groceries|settings)/.test(location.pathname) ? location.pathname : '/ionic/recipes']}>
+      {children}
+    </IonReactMemoryRouter>
+  ) : (
+    <IonReactRouter basename="/ionic">{children}</IonReactRouter>
+  );
+}
+
 function Screens() {
   return (
-    <IonReactRouter basename="/ionic">
-      <IonRouterOutlet>
-        <Route path="/recipe/:id" element={<RecipePage />} />
-        <Route path="/recipe/:id/edit" element={<EditPage />} />
-        <Route path="/cookbook/:id" element={<CookbookPage />} />
-        <Route path="/settings/appearance" element={<AppearancePage />} />
-        <Route path="/*" element={<Tabs />} />
-      </IonRouterOutlet>
+    <Router>
+      <Tabs />
       <CookMode />
-    </IonReactRouter>
+    </Router>
   );
 }
 

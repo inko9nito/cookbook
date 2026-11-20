@@ -7,7 +7,7 @@ import { ArrowUpDown, Camera, Link2, PenLine, Plus } from 'lucide-react';
 import { useStore } from '../data/store';
 import { SORT_LABELS, sortRecipes, type SortKey } from '../lib/recipe';
 import { say } from '../components/ui/toast';
-import { BarButton, CookingPill, RecipeCard, openMenu } from './ui';
+import { BarButton, CookingPill, RecipeCard, openMenu, TabBar } from './ui';
 
 /** Recipes: the title, + and sort in the bar, the search field and the label chips under it, then the grid. */
 export default function RecipesPage() {
@@ -28,7 +28,7 @@ export default function RecipesPage() {
       [
         { label: 'From photos or screenshots', icon: Camera, onClick: () => say('Reading photos isn’t in the trial') },
         { label: 'From a link', icon: Link2, onClick: () => say('Reading links isn’t in the trial') },
-        { label: 'Type it in', icon: PenLine, onClick: () => router.push('/recipe/new/edit', 'forward') },
+        { label: 'Type it in', icon: PenLine, onClick: () => router.push('/recipes/recipe/new/edit', 'forward') },
       ],
     ]);
 
@@ -76,11 +76,12 @@ export default function RecipesPage() {
                   <IonSkeletonText animated style={{ width: '40%', height: 12 }} />
                 </div>
               ))
-            : shown.map((r) => <RecipeCard key={r.id} recipe={r} href={`/recipe/${r.id}`} />)}
+            : shown.map((r) => <RecipeCard key={r.id} recipe={r} href={`/recipes/recipe/${r.id}`} />)}
         </div>
         <div className="ck-ion-toast-anchor" />
         <CookingPill />
       </IonContent>
+      <TabBar current="recipes" />
     </IonPage>
   );
 }

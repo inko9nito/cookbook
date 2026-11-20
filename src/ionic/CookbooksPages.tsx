@@ -10,7 +10,7 @@ import { byName, colorOf, cookbookRecipeIds, emptyCookbook, existing, platePhoto
 import { CookbookSort, SORT_LABELS, newId, sortRecipes, type Recipe } from '../lib/recipe';
 import { photoStyle } from '../components/ui/photo';
 import { say } from '../components/ui/toast';
-import { BarButton, CookingPill, Plates, RecipeCard, openMenu, useConfirm, usePrompt } from './ui';
+import { BarButton, CookingPill, Plates, RecipeCard, openMenu, useConfirm, usePrompt, TabBar } from './ui';
 import { AddRecipesModal, OrganizeModal } from './modals';
 
 const countOf = (c: Cookbook, byId: Map<string, Recipe>) => {
@@ -34,7 +34,7 @@ export function CookbooksPage() {
     if (!name) return;
     const c = emptyCookbook(name, newId);
     saveCookbook(c);
-    router.push(`/cookbook/${c.id}`, 'forward');
+    router.push(`/cookbooks/${c.id}`, 'forward');
   };
   return (
     <IonPage className="ck-ion-anchor">
@@ -60,11 +60,11 @@ export function CookbooksPage() {
             {sorted.map((c) => (
               <a
                 key={c.id}
-                href={`/ionic/cookbook/${c.id}`}
+                href={`/ionic/cookbooks/${c.id}`}
                 className={`ck-card ck-book-tile ck-ion-book-tile ck-tint-${colorOf(c)}`}
                 onClick={(e) => {
                   e.preventDefault();
-                  router.push(`/cookbook/${c.id}`, 'forward');
+                  router.push(`/cookbooks/${c.id}`, 'forward');
                 }}
               >
                 <Plates photos={platePhotos(c, byId)} />
@@ -78,7 +78,7 @@ export function CookbooksPage() {
             {sorted.map((c) => {
               const photo = platePhotos(c, byId)[0];
               return (
-                <IonItem key={c.id} button detail routerLink={`/cookbook/${c.id}`}>
+                <IonItem key={c.id} button detail routerLink={`/cookbooks/${c.id}`}>
                   <span slot="start" className={`ck-ion-thumb ck-ion-thumb-round ck-tint-${colorOf(c)}${photo ? ' ck-photo' : ''}`} style={photoStyle(photo)}>
                     {!photo && <BookOpen size={16} strokeWidth={1.5} />}
                   </span>
@@ -93,6 +93,7 @@ export function CookbooksPage() {
         )}
         <CookingPill />
       </IonContent>
+      <TabBar current="cookbooks" />
     </IonPage>
   );
 }
@@ -232,7 +233,7 @@ export function CookbookPage() {
               {s.recipes.length ? (
                 <div className={s.name ? 'ck-ion-shelf-row' : 'ck-ion-grid'}>
                   {s.recipes.map((r) => (
-                    <RecipeCard key={r.id} recipe={r} href={`/recipe/${r.id}`} />
+                    <RecipeCard key={r.id} recipe={r} href={`/cookbooks/recipe/${r.id}`} />
                   ))}
                 </div>
               ) : (

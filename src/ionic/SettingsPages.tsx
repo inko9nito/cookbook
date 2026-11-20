@@ -8,6 +8,7 @@ import { useAuth } from '../data/auth';
 import { appVersion } from '../lib/appUpdate';
 import { FONTS, SIZE_MAX, SIZE_MIN, resetFontSizes, setFont, setFontSizes, sizesOf, useFontChoice, type FontId } from '../data/font';
 import { tell } from '../components/ui/toast';
+import { TabBar } from './ui';
 
 /** Settings on Ionic: inset grouped lists (iOS Settings' look), a pushed page, Sign Out confirmed in an action sheet. */
 export function SettingsPage() {
@@ -64,6 +65,7 @@ export function SettingsPage() {
           <a href="/">Open the current app</a>
         </p>
       </IonContent>
+      <TabBar current="settings" />
     </IonPage>
   );
 }

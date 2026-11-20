@@ -68,7 +68,7 @@ export default function RecipePage() {
         <IonHeader className="ck-ion-header">
           <IonToolbar>
             <IonButtons slot="start">
-              <IonBackButton defaultHref="/recipes" text="" />
+              <IonBackButton defaultHref={`/${tab}`} text="" />
             </IonButtons>
           </IonToolbar>
         </IonHeader>
@@ -142,7 +142,7 @@ export default function RecipePage() {
       <IonHeader collapse="fade" className="ck-ion-header ck-ion-photo-bar">
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/recipes" text="" className="ck-ion-round-back" />
+            <IonBackButton defaultHref={`/${tab}`} text="" className="ck-ion-round-back" />
           </IonButtons>
           <IonButtons slot="end">
             <BarButton label="More actions" icon={Ellipsis} onClick={(e) => ((moreButton.current = e.currentTarget), more(e.currentTarget))} />
@@ -283,7 +283,7 @@ export default function RecipePage() {
               </div>
               <div className="ck-ion-chips ck-ion-chips-wrap">
                 {places.map((p) => (
-                  <IonChip key={p.key} className={`ck-tint-${colorOf(p.cookbook)}`} onClick={() => router.push(`/cookbook/${p.cookbook.id}`, 'forward')}>
+                  <IonChip key={p.key} className={`ck-tint-${colorOf(p.cookbook)}`} onClick={() => router.push(`/cookbooks/${p.cookbook.id}`, 'forward')}>
                     <BookOpen size={16} strokeWidth={1.75} />
                     {p.label}
                   </IonChip>

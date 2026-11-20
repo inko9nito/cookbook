@@ -9,7 +9,7 @@ import { useGroceries, useNamed, useStore } from '../data/store';
 import { AISLE_NAMES, byAisle, byRecipe, instacartSearch, itemNames, linesOf, listText, nameKey, type GroceryItem, type Line } from '../lib/groceries';
 import { newId } from '../lib/recipe';
 import { say } from '../components/ui/toast';
-import { BarButton, CookingPill, openMenu, usePrompt } from './ui';
+import { BarButton, CookingPill, openMenu, usePrompt, TabBar } from './ui';
 import { AddFromRecipeModal } from './modals';
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
@@ -174,6 +174,7 @@ export default function GroceriesPage() {
         )}
         <CookingPill />
       </IonContent>
+      <TabBar current="groceries" />
       <AddFromRecipeModal open={adding} onClose={() => setAdding(false)} />
     </IonPage>
   );

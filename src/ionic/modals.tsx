@@ -24,7 +24,7 @@ import { say } from '../components/ui/toast';
  */
 
 /** the element a card shrinks back behind it: the whole app with its tab bar */
-export const appEl = () => document.querySelector<HTMLElement>('ion-app > ion-router-outlet') ?? undefined;
+export const appEl = () => document.querySelector<HTMLElement>('ion-tabs') ?? undefined;
 
 function CardHeader({ title, onCancel, onDone, done = 'Done' }: { title: string; onCancel?: () => void; onDone?: () => void; done?: string }) {
   return (

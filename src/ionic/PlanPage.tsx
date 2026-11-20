@@ -15,7 +15,7 @@ import { coverPhoto, newId } from '../lib/recipe';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { photoStyle } from '../components/ui/photo';
 import { say } from '../components/ui/toast';
-import { BarButton, CookingPill, openMenu } from './ui';
+import { BarButton, CookingPill, openMenu, TabBar } from './ui';
 import { DaySheet, NoteModal, RecipePickerModal } from './modals';
 
 const WEEKS = 26; // weeks either side of this one in the strip
@@ -127,7 +127,7 @@ export default function PlanPage() {
                           <IonItem
                             button
                             detail
-                            onClick={() => (r ? router.push(`/recipe/${r.id}`, 'forward') : setNoteFor({ day: p.day, meal: p.meal, item: p }))}
+                            onClick={() => (r ? router.push(`/plan/recipe/${r.id}`, 'forward') : setNoteFor({ day: p.day, meal: p.meal, item: p }))}
                           >
                             <span slot="start" className={`ck-ion-thumb${photo ? ' ck-photo' : ' ck-photo-empty'}`} style={photoStyle(photo)}>
                               {!photo && (r ? <ChefHat size={16} strokeWidth={1.5} /> : <NotebookPen size={16} strokeWidth={1.5} />)}
@@ -164,6 +164,7 @@ export default function PlanPage() {
         <IonNote className="ck-ion-footnote ck-ion-week-hint">Swipe the week strip for other weeks. Swipe a row left to move or delete it.</IonNote>
         <CookingPill />
       </IonContent>
+      <TabBar current="plan" />
 
       <RecipePickerModal
         open={!!adding}

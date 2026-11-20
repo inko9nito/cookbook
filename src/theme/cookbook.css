@@ -332,6 +332,23 @@ html.ios .toast {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+/* Nor on anything that opens over the page: dialogs, sheets, action sheets, menus, the calendar, panels (issue #141).
+   They're all solid (--f7-glass-bg-color is --ck-surface), so their blur never showed either, but it's the same blurred
+   layer: after Delete's dialog closed over a page going back, iPhone Safari stopped drawing the Cookbooks header that
+   came in under it (title and buttons gone, the page colour left). */
+html.ios .dialog,
+html.ios .sheet-modal,
+html.ios .calendar-modal,
+html.ios .actions-group,
+html.ios .actions-grid::before,
+html.ios .popover-inner,
+html.ios .panel-floating,
+html.ios .searchbar-input-wrap .autocomplete-dropdown,
+.notification,
+.card-backdrop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
 
 /* The header stays drawn (issue #123). Now and then iPhone Safari stopped drawing a header (only a fresh start brought it
    back): on Cookbooks and Settings the whole header went, on the Planner its background, the list showing through under

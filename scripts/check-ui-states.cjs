@@ -233,7 +233,15 @@ async function audit(page, name) {
     }
     return out;
   });
+  // #25, #141: no backdrop blur anywhere, an open dialog, sheet or menu included (iPhone Safari left blurred layers, or
+  // the header under them, undrawn)
+  const blurred = await page.evaluate(() => [...new Set([...document.querySelectorAll('*')].flatMap((el) => [null, '::before', '::after'].map((pseudo) => {
+    const cs = getComputedStyle(el, pseudo);
+    const bf = cs.backdropFilter || cs.webkitBackdropFilter;
+    return bf && bf !== 'none' ? `${el.className?.baseVal ?? el.className}${pseudo ?? ''}: ${bf}` : null;
+  })).filter(Boolean))]);
   const issues = [
+    ...blurred.map((b) => `backdrop blur: ${b}`),
     ...edges.map((e) => `edge inset: ${e}`),
     ...contrast.map((c) => `contrast: ${c}`),
     ...cramped.map((c) => `label doesn't fit its button: ${c}`),
@@ -304,6 +312,13 @@ async function swipeLeft(ctx, page, locator) {
     for (let i = 1; i <= 16; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + (dx * i) / 16, y }] }); await page.waitForTimeout(24); }
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await cdp.detach(); await page.waitForTimeout(600);
   };
+  // every element (and its ::before/::after) with a backdrop blur: iPhone Safari leaves blurred layers, or what's under
+  // them, undrawn (#25, #141)
+  const blurAnywhere = () => page.evaluate(() => [...new Set([...document.querySelectorAll('*')].flatMap((el) => [null, '::before', '::after'].map((pseudo) => {
+    const cs = getComputedStyle(el, pseudo);
+    const bf = cs.backdropFilter || cs.webkitBackdropFilter;
+    return bf && bf !== 'none' ? `${el.className?.baseVal ?? el.className}${pseudo ?? ''}: ${bf}` : null;
+  })).filter(Boolean))]);
   // a pull-down menu closes when the dimmed page around it is tapped (an action sheet has Cancel)
   const closeMenu = async () => {
     if (await page.locator('.actions-modal.modal-in').count()) await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap();
@@ -352,16 +367,11 @@ async function swipeLeft(ctx, page, locator) {
     if (c.plus?.join() !== 'rgb(228, 87, 46),rgb(255, 255, 255)') throw new Error(`the plus is ${JSON.stringify(c.plus)}, not filled Tomato with a white icon`);
     if (c.sort?.[0] === 'rgb(228, 87, 46)') throw new Error('Sort is filled Tomato too');
   });
+  // #141: nor on anything else, dialogs and sheets included (after Delete's dialog closed, Safari stopped drawing the
+  // header that came in under it). 26k checks with a dialog open.
   await step('01a-no-blur-on-bars', async () => {
-    const blurred = await page.evaluate(() => {
-      const els = [...document.querySelectorAll('.navbar, .navbar *, .toolbar, .toolbar *, .searchbar, .searchbar *')];
-      return els.flatMap((el) => [null, '::before', '::after'].map((pseudo) => {
-        const cs = getComputedStyle(el, pseudo);
-        const bf = cs.backdropFilter || cs.webkitBackdropFilter;
-        return bf && bf !== 'none' ? `${el.className}${pseudo ?? ''}: ${bf}` : null;
-      })).filter(Boolean);
-    });
-    if (blurred.length) throw new Error(`still blurred: ${[...new Set(blurred)].slice(0, 5).join(' | ')}`);
+    const blurred = await blurAnywhere();
+    if (blurred.length) throw new Error(`still blurred: ${blurred.slice(0, 5).join(' | ')}`);
   });
   // #123: iPhone Safari now and then stopped drawing a header (Cookbooks and Settings blank, the Planner's list showing
   // through under its title) until the app was restarted: Safari skips a still layer with Framework7's
@@ -2409,9 +2419,14 @@ async function swipeLeft(ctx, page, locator) {
   await step('26k-delete-cookbook', async () => {
     await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
     await page.locator(MENU_ROW, { hasText: /^Delete$/ }).tap(); await page.waitForTimeout(600);
+    // #141: no blurred layer over the page (iPhone Safari stopped drawing the Cookbooks header after this dialog closed)
+    const blurred = await blurAnywhere();
+    if (blurred.length) throw new Error(`blurred with the dialog open: ${blurred.slice(0, 5).join(' | ')}`);
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
     const tiles = await page.locator(`${CUR} .ck-book-tile .ck-book-name`).allTextContents();
     if (tiles.includes('Soups') || tiles.length !== 3) throw new Error(`after deleting, the cookbooks are ${JSON.stringify(tiles)}`);
+    const header = await page.locator(`${CUR} > .navbar .title`).evaluate((t) => [t.textContent, t.getBoundingClientRect().height]);
+    if (header[0] !== 'Cookbooks' || header[1] < 10) throw new Error(`after deleting, the header reads ${JSON.stringify(header)}`);
     const said = (await page.locator('.toast.modal-in .toast-text').allTextContents()).join('|');
     if (said !== 'Deleted “Soups”') throw new Error(`deleting a cookbook's toast says "${said}"`);
     await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});

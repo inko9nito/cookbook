@@ -201,7 +201,7 @@ export function CookbookPage() {
   const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
   const rename = async () => {
-    const name = await prompt('Rename Cookbook', '', book.name, 'Save');
+    const name = await prompt('Rename Cookbook', '', book.name);
     if (name) saveCookbook({ ...book, name });
   };
   const addSection = async () => {
@@ -209,7 +209,7 @@ export function CookbookPage() {
     if (name) saveCookbook({ ...book, sections: [...book.sections, { id: newId(), name, recipeIds: [] }] });
   };
   const remove = async () => {
-    if (!(await confirm(`Delete “${book.name}”?`, 'Its recipes stay in Recipes.', 'Delete', true))) return;
+    if (!(await confirm(`Delete “${book.name}”?`, 'Its recipes stay in Recipes.', 'OK'))) return;
     leaving.current = book;
     router.goBack();
     deleteCookbook(book.id);

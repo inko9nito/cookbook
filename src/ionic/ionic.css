@@ -554,3 +554,22 @@ ion-list.ck-ion-addto-list ion-item.ck-ion-addto-section ion-label { font-weight
 ion-list.ck-ion-addto-list .ck-ion-addto-parent { --padding-start: 54px; }
 ion-list.ck-ion-addto-list ion-item { --border-color: var(--ck-line); }
 ion-list.ck-ion-addto-list ion-item .ion-accordion-toggle-icon { color: var(--ck-strong); font-size: 18px; }
+
+/* dialogs as v1's: 270px, white, 32px corners, the words on the left 24px in, two pill buttons side by side (Cancel grey,
+   the other bright Tomato at 600), a field as an outlined pill */
+ion-alert.ck-ion-dialog { --width: 270px; --max-width: 270px; --background: var(--ck-surface); --backdrop-opacity: 0.4; }
+ion-alert.ck-ion-dialog .alert-wrapper.sc-ion-alert-ios { border-radius: 32px; }
+ion-alert.ck-ion-dialog .alert-head.sc-ion-alert-ios { padding: 24px 24px 0; text-align: start; }
+ion-alert.ck-ion-dialog .alert-title.sc-ion-alert-ios { margin: 0; font-size: 17px; font-weight: 500; line-height: 23.8px; color: var(--ck-title); }
+ion-alert.ck-ion-dialog .alert-message.sc-ion-alert-ios { padding: 11px 24px 0; text-align: start; font-size: 14px; font-weight: 500; line-height: 21px; color: var(--ck-title); max-height: none; }
+ion-alert.ck-ion-dialog .alert-message.sc-ion-alert-ios:empty { display: none; }
+ion-alert.ck-ion-dialog .alert-input-group.sc-ion-alert-ios { padding: 16px 24px 0; }
+ion-alert.ck-ion-dialog .alert-input.sc-ion-alert-ios { height: 40px; margin: 0; padding: 0 12px; border: 1px solid var(--ck-strong); border-radius: 9999px; background: var(--ck-surface); font-size: 14px; font-weight: 500; }
+ion-alert.ck-ion-dialog .alert-button-group.sc-ion-alert-ios { flex-wrap: nowrap; gap: 8px; padding: 24px 14px 14px; margin: 0; }
+ion-alert.ck-ion-dialog .alert-button.sc-ion-alert-ios {
+  flex: 1; min-width: 0; height: 46px; min-height: 46px; margin: 0; padding: 0 10px; border: 0; border-radius: 9999px;
+  background: var(--ck-soft); color: var(--ck-fg); font-size: 17px; font-weight: 500;
+}
+ion-alert.ck-ion-dialog .alert-button.sc-ion-alert-ios:last-child { background: var(--ck-accent); color: var(--ck-surface); font-weight: 600; }
+ion-alert.ck-ion-dialog .alert-button.sc-ion-alert-ios:only-child { background: var(--ck-accent); color: var(--ck-surface); }
+ion-alert.ck-ion-dialog .alert-button.alert-button-role-destructive.sc-ion-alert-ios { background: var(--ck-accent); color: var(--ck-surface); }

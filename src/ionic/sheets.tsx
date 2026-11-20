@@ -39,6 +39,7 @@ export function ScaleSheet({ open, recipe, factor, onFactor, onClose }: { open: 
     if (!base) return;
     const unit = unitFor(i.unit, '2');
     alert({
+      cssClass: 'ck-ion-dialog',
       header: titleCase(i.name),
       message: `The recipe uses ${amountText(i, 1)}. How much do you have${unit ? ` (in ${unit})` : ''}?`,
       inputs: [{ name: 'n', type: 'number', attributes: { inputmode: 'decimal', step: 'any' }, value: matched?.id === i.id ? scaleAmount(i.amount, factor).split('–')[0] : '' }],

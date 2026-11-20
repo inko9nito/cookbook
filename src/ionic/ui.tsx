@@ -223,7 +223,7 @@ export function Bridge() {
     };
     const onAlert = (e: Event) => {
       const a = (e as CustomEvent<{ title: string; text: string }>).detail;
-      alert({ header: a.title, message: a.text, buttons: ['OK'] });
+      alert({ cssClass: 'ck-ion-dialog', header: a.title, message: a.text, buttons: ['OK'] });
     };
     window.addEventListener('ck-toast', onToast);
     window.addEventListener('ck-alert', onAlert);
@@ -241,6 +241,7 @@ export function usePrompt() {
   return (header: string, message: string, value = '', ok = 'OK') =>
     new Promise<string | null>((done) => {
       alert({
+        cssClass: 'ck-ion-dialog',
         header,
         message: message || undefined,
         inputs: [{ name: 'v', value, attributes: { autocapitalize: 'sentences', enterkeyhint: 'done' } }],
@@ -259,6 +260,7 @@ export function useConfirm() {
   return (header: string, message: string, ok: string, danger = false) =>
     new Promise<boolean>((done) => {
       alert({
+        cssClass: 'ck-ion-dialog',
         header,
         message: message || undefined,
         buttons: [

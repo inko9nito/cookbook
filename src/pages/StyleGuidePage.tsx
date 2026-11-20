@@ -7,6 +7,7 @@ import RecipeCard from '../components/ui/RecipeCard';
 import EmptyState from '../components/ui/EmptyState';
 import { sampleRecipes } from '../demo/data';
 import { tell } from '../components/ui/toast';
+import { fontName, useFontChoice } from '../data/font';
 
 const SWATCHES: [string, string][] = [
   ['Background', '--ck-bg'], ['Surface', '--ck-surface'], ['Soft', '--ck-soft'], ['Text', '--ck-fg'],
@@ -15,14 +16,21 @@ const SWATCHES: [string, string][] = [
   ['Error', '--ck-error'],
 ];
 
-/** Every Cookbook component in one place, to check the design on the phone. Spec: DESIGN.md */
+/**
+ * Settings → Appearance: the app's font first (issue #135: Parkinsans unless another is picked, this phone only), then
+ * every Cookbook component in one place, to check the design on the phone. Spec: DESIGN.md
+ */
 export default function StyleGuidePage() {
+  const { font } = useFontChoice();
   const [chip, setChip] = useState('All');
   const [servings, setServings] = useState(8);
 
   return (
     <Page name="style-guide">
       <Navbar title="Appearance" backLink />
+      <List strongIos insetIos dividersIos className="ck-appearance-font">
+        <ListItem link="/settings/font/" title="Font" after={fontName(font)} />
+      </List>
 
       <BlockTitle medium>Colors</BlockTitle>
       <Block>

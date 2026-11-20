@@ -40,59 +40,59 @@ colors:
   card-shadow: "rgba(0, 0, 0, 0.08)"
 typography:
   screen-title:
-    fontFamily: "Fredoka, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "26px"
     fontWeight: 600
   nav-title:
-    fontFamily: "Fredoka, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "17px"
     fontWeight: 500
   section-title:
-    fontFamily: "Fredoka, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "20px"
     fontWeight: 600
   feature-title:
-    fontFamily: "Fredoka, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "22px"
     fontWeight: 600
   recipe-title:
-    fontFamily: "Fredoka, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "26px"
     fontWeight: 600
   step:
-    fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "15px"
     fontWeight: 500
   edit-text:
-    fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "14px"
     fontWeight: 500
   body:
-    fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "17px"
     fontWeight: 500
   meta:
-    fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "13px"
     fontWeight: 500
   chip:
-    fontFamily: "Fredoka, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "14px"
     fontWeight: 500
   button:
-    fontFamily: "Fredoka, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "16px"
     fontWeight: 500
   button-main:
-    fontFamily: "Fredoka, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "20px"
     fontWeight: 600
   tag:
-    fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "12px"
     fontWeight: 600
   badge:
-    fontFamily: "Nunito, -apple-system, system-ui, sans-serif"
+    fontFamily: "Parkinsans, -apple-system, system-ui, sans-serif"
     fontSize: "11px"
     fontWeight: 700
 rounded:
@@ -197,6 +197,8 @@ Implementation: `src/theme/cookbook.css` (tokens and Framework7 variable mapping
 
 ## Typography
 
+- **Font: Parkinsans at 90%** (issue #135), for titles and buttons (`--ck-font-display`) and reading (`--ck-font`) alike. Fredoka had started to look like Comic Sans to the user; after three rounds of comparisons and trying the finalists in the app, they picked Parkinsans (quirky, friendly, easy to read) at **90%** of its size for both, since it runs large (`size-adjust` on its `@font-face`, so layouts are unchanged). The roles below are the same; where they say Fredoka and Nunito, read the font for titles and buttons and the font for reading. The weights below stay as they were tuned for Fredoka and Nunito.
+- **Settings → Appearance → Font** (issue #135; the first row of the Appearance page, above the Style Guide) keeps the other finalists to switch to at any time, on this phone only: **Funnel** (Funnel Display for titles and buttons, Funnel Sans for reading), **Red Hat** (Red Hat Display, Red Hat Text) and **Fredoka** (with Nunito), each row drawn in its own font. Each font has its own two sizes, **Titles and buttons** and **Reading text** (Framework7 sliders, 80–125% of the font's own size; Parkinsans 90%, the others 100% until changed), because some run larger than others; Reset sizes puts back the font's usual ones.
 - **Fonts: Nunito for reading, Fredoka for titles and buttons** (issue #21). The user wanted something rounder and friendlier than the iPhone font, tried Nunito, M PLUS Rounded, Zen Maru Gothic, Quicksand and Baloo 2, and picked Fredoka as the most fun; Fredoka everywhere was hard to read in body text, so Nunito took that over. **Fredoka** (`--ck-font-display`): tab and top bar titles, the recipe name, section headings (Ingredients, Directions, Notes; the editor's and cook mode's too), sheet and dialog titles, every button and link-button (main and soft buttons, Save, Cancel, Done, the servings pill, dialog and action sheet buttons, swipe Delete) and chips. **Nunito** (`--ck-font`): everything else: ingredients (linked recipe names included), steps, notes, meta lines, stats, group labels, recipe card titles, fields, lists and Settings rows. Both are Google Fonts served from this site (`public/fonts/`, declared in `cookbook.css`, their Latin letters preloaded in `index.html`) so they work offline and the first paint is already in them (a late font set off iPhone Safari's smear of the Start cooking bar; the smear itself was Framework7's toolbar blur, now off, #31); they fall back to the iPhone font, which also covers fractions they lack (⅓, ⅔, ⅛).
 - **Weights:** Fredoka's bold is very heavy, so **Fredoka text** (titles, buttons, chips) uses each weight one step lighter than usual: bold 600, semibold 500, plain 400; nothing uses 700, page titles included. **Nunito text** read too light at those weights, so it is one notch heavier than that (issue #21, after the switch to Nunito): plain text 500, semibold 600 (recipe card titles, field labels, linked recipe names), bold 700 (ingredient amounts, group labels, step numbers, stats). In `cookbook.css` the page's base weight is 500 (`body`), Framework7's list text and typed text are set to match, and the few Fredoka links that took the base weight (Cancel in a top bar, Sign Out, swipe Delete) are pinned back to 400. Framework7's own bold (dialog titles, sheet titles, action sheet buttons) follows the Fredoka weights.
 - **Icons:** Lucide (`lucide-react`), 22px in navigation bars, 24px in the tab bar, 2px stroke. Framework7's built-in glyphs (back chevron, list chevrons, checkmarks, search magnifier) stay as they are.

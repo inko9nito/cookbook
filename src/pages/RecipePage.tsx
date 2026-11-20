@@ -26,6 +26,7 @@ import { formatMinutes } from '../components/ui/RecipeCard';
 import { navIcon, inlineIcon } from '../components/ui/icons';
 import { hideTabbar } from '../components/ui/tabbar';
 import { useCook } from '../data/cook';
+import { confirmDelete } from '../components/ui/confirmDelete';
 import { say, tell } from '../components/ui/toast';
 
 /** Splits the ingredient list at group rows: [{ label, items }]. Rows before the first group get no label. */
@@ -80,6 +81,7 @@ type Router = {
   navigate: (url: string) => void;
   history: string[];
   view: { el: HTMLElement };
+  once?: (event: 'routeChanged', handler: () => void) => void;
 };
 type Props = { f7route?: { params: Record<string, string>; query?: Record<string, string> }; f7router?: Router };
 
@@ -102,8 +104,8 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const { recipes, deleteRecipe, setFilter } = useStore();
   const { cookbooks } = useCookbooks();
   const { planned, savePlanned } = usePlanner();
-  // issue #141: Delete goes back at once, and the page keeps showing the recipe while it slides away rather than turning
-  // into "This recipe was deleted." mid-slide (that flip left iPhone Safari not drawing the header that slid in)
+  // issue #141: once Delete is confirmed, the page keeps showing the recipe until it has gone, never "This recipe was
+  // deleted." mid-slide
   const leaving = useRef<Recipe | null>(null);
   const recipe = leaving.current ?? recipes.find((r) => r.id === f7route?.params.id);
   const cook = useCook();
@@ -404,13 +406,18 @@ export default function RecipePage({ f7route, f7router }: Props) {
               label: 'Delete',
               icon: Trash2,
               danger: true,
+              // issue #141: the dialog closes, the page goes back, then it's deleted
               onClick: () =>
-                f7.dialog.confirm(deleteText(recipe.title, usedIn(recipe.id, recipes).map((r) => r.title)), 'Delete Recipe', () => {
-                  leaving.current = recipe;
-                  deleteRecipe(recipe.id);
-                  f7router?.back();
-                  say(`Deleted “${recipe.title}”`);
-                }),
+                confirmDelete(
+                  deleteText(recipe.title, usedIn(recipe.id, recipes).map((r) => r.title)),
+                  'Delete Recipe',
+                  f7router,
+                  () => {
+                    deleteRecipe(recipe.id);
+                    say(`Deleted “${recipe.title}”`);
+                  },
+                  () => (leaving.current = recipe),
+                ),
             },
           ],
         ]}

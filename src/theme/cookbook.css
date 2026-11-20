@@ -1325,6 +1325,15 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 .ck-empty-text { margin: 6px 0 0; font-size: 15px; line-height: 1.4; color: var(--ck-muted); }
 .button.ck-empty-button { width: auto; margin-top: 24px; padding: 0 26px; gap: 6px; }
 
+/* The crash screen (issue #140): the whole app went, so it stands alone on the page, an empty state in the middle of
+   it, with the error itself small under Reload (for a screenshot) */
+.ck-crash {
+  display: grid; align-content: center; min-height: 100dvh; background-color: var(--ck-bg);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.ck-crash .ck-empty { margin: 0 auto; }
+.ck-crash-error { margin: 24px 0 0; font-size: 13px; line-height: 1.4; color: var(--ck-muted); overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
+
 /* Unit conversions (issue #6): an amount that converts has a fitted grey underline; tapping it opens the unit sheet
    (radio rows, the recipe's own amount first, "Original"). A picked unit replaces the amount, and its underline turns
    Tomato to show it's converted */

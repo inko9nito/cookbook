@@ -105,16 +105,16 @@ export default function RecipePickerPopup(props: Props) {
         </div>
         {props.top && <Block className="ck-picker-top">{props.top}</Block>}
         {props.mode === 'several' && props.hint && (
-          <Block className="ck-note ck-picker-hint">
+          <Block key="hint" className="ck-note ck-picker-hint">
             <p>{props.hint}</p>
           </Block>
         )}
         {shown.length === 0 ? (
-          <List strongIos insetIos className="ck-picker-empty">
+          <List key="empty" strongIos insetIos className="ck-picker-empty">
             <ListItem title={recipes.length ? 'No recipes found' : 'No recipes yet'} />
           </List>
         ) : (
-          <List strongIos insetIos dividersIos className="ck-convert-list ck-picker-list">
+          <List key="list" strongIos insetIos dividersIos className="ck-convert-list ck-picker-list">
             {shown.map((r) => (
               <ListItem
                 key={r.id}

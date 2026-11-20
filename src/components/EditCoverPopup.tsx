@@ -145,11 +145,11 @@ export default function EditCoverPopup({ opened, cookbook, byId, onDone, onClose
         )}
 
         {shown.length === 0 ? (
-          <Block className="ck-cover-none">
+          <Block key="none" className="ck-cover-none">
             <p className="ck-note">{choices.length ? 'No recipes found' : 'No photos in this cookbook yet'}</p>
           </Block>
         ) : (
-          <Block className="ck-cover-grid">
+          <Block key="grid" className="ck-cover-grid">
             <div className="grid grid-cols-3 grid-gap">
               {shown.map((r) => {
                 const at = plates.findIndex((p) => p.id === r.id);

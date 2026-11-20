@@ -1084,6 +1084,20 @@ async function swipeLeft(ctx, page, locator) {
     });
     if (Math.abs(off) > 3) throw new Error(`title is ${off}px off center`);
   });
+  // #140: deleting the only ingredient from its sheet takes the ingredient list away while the sheet (which Framework7
+  // moved into the view) is still open; without keys React rebuilt the sheet and the whole app went blank
+  await step('12g1-only-ingredient-deleted', async () => {
+    const ed = '.view.tab-active .page-current';
+    const crashes = errors.length;
+    await page.locator(`${ed} textarea[placeholder^="Add one ingredient per line"]`).fill('2 eggs'); await page.waitForTimeout(300);
+    await page.locator(`${ed} .button`, { hasText: 'Add 1 line' }).tap(); await page.waitForTimeout(500);
+    await page.locator(`${ed} .ck-edit-list li.swipeout`).first().locator('.item-content').first().tap(); await page.waitForTimeout(800);
+    await page.locator('.sheet-modal.modal-in .button', { hasText: 'Delete Ingredient' }).tap(); await page.waitForTimeout(900);
+    if (errors.length > crashes) throw new Error(`deleting the only ingredient threw: ${errors.slice(crashes).join(' | ')}`);
+    if (await page.locator('.ck-crash').count()) throw new Error('deleting the only ingredient crashed the app');
+    if (await page.locator(`${ed} .ck-edit-list li.swipeout`).count()) throw new Error('the ingredient is still there');
+    if (await page.locator('.sheet-modal.modal-in').count()) throw new Error('the sheet stayed open');
+  });
 
   // issue #17: a recipe read from a photo. The editor opens at once with the photo at the top and grey rows where the
   // ingredients and steps will go; then it fills in (the demo backend's made-up recipe) with the dish photo cropped out
@@ -3561,6 +3575,23 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.locator(`${GRO} .ck-empty`).count()) throw new Error('the empty state stays with the week on the list');
     if (!(await groTitles()).some((t) => /fresh corn kernels/i.test(t))) throw new Error('the week’s ingredients aren’t on the list');
     await toastGone();
+  });
+  // #140: a crash shows what happened and Reload, never a blank white screen; Reload comes back to the tab it was on.
+  // window.ckCrash() (the demo only) makes the app crash where it is.
+  await step('40u4-crash-screen', async () => {
+    await page.evaluate(() => window.ckCrash()); await page.waitForTimeout(800);
+    const crash = page.locator('.ck-crash');
+    if (!(await crash.count())) throw new Error('a crash shows no crash screen');
+    if ((await crash.locator('.ck-empty-title').textContent()) !== 'Something went wrong') throw new Error('the crash screen has no title');
+    if (!/ckCrash/.test(await crash.locator('.ck-crash-error').textContent())) throw new Error('the crash screen doesn’t show the error');
+    const box = await crash.locator('.ck-empty-button').boundingBox();
+    if (!box || box.y + box.height > page.viewportSize().height) throw new Error('Reload isn’t in sight');
+  });
+  await step('40u5-crash-reloaded', async () => {
+    await page.locator('.ck-crash .ck-empty-button').tap();
+    await page.waitForSelector('#app .tabbar', { timeout: 10000 }); await page.waitForTimeout(1500);
+    if (await page.locator('.ck-crash').count()) throw new Error('the crash screen stayed after Reload');
+    if (!(await page.locator('#view-groceries.tab-active').count())) throw new Error('Reload didn’t come back to Groceries');
   });
 
   // Issue #118 on Recipes and Cookbooks: ?empty starts the demo with nothing. Each keeps its title and +, hides what

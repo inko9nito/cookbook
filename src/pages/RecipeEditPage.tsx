@@ -479,7 +479,7 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
       )}
 
       {/* Photos: the selected one large (crop, make cover, remove), then a strip of all of them with + to add more */}
-      <Block>
+      <Block key="photos">
         {shown ? (
           <div className="ck-edit-photo ck-photo" style={photoStyle(shown.src)} role="img" aria-label={photoIdx === 0 ? 'Cover photo' : `Photo ${photoIdx + 1}`}>
             <span className="ck-edit-photo-actions">
@@ -535,15 +535,15 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
         />
       </Block>
 
-      <List className="ck-fields">
+      <List key="title" className="ck-fields">
         <ListInput label="Recipe name" type="text" placeholder="Name of recipe" value={draft.title} onInput={(e) => set({ title: e.target.value })} clearButton />
       </List>
 
       {/* Ingredients */}
-      <BlockTitle medium data-at="ingredients">Ingredients</BlockTitle>
-      {reading && <EditRowsSkeleton rows={['2 cups flour', '1 tsp baking soda', '3 large eggs, beaten', '1 cup milk']} />}
+      <BlockTitle key="ingredients-title" medium data-at="ingredients">Ingredients</BlockTitle>
+      {reading && <EditRowsSkeleton key="ingredients-reading" rows={['2 cups flour', '1 tsp baking soda', '3 large eggs, beaten', '1 cup milk']} />}
       {draft.ingredients.length > 0 && (
-        <List
+        <List key="ingredients"
           className="ck-edit-list"
           strong
           inset
@@ -604,7 +604,7 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
           )}
         </List>
       )}
-      <List className="ck-fields">
+      <List key="ingredient-paste" className="ck-fields">
         <ListInput
           type="textarea"
           resizable
@@ -613,7 +613,7 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
           onInput={(e) => setIngredientPaste(e.target.value)}
         />
       </List>
-      <Block className="ck-stack">
+      <Block key="ingredient-buttons" className="ck-stack">
         {ingredientPaste.trim() && (
           <Button large className="ck-soft" onClick={addPastedIngredients}>
             Add {pastedLines(ingredientPaste).length} {pastedLines(ingredientPaste).length === 1 ? 'line' : 'lines'}
@@ -625,10 +625,10 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
       </Block>
 
       {/* Directions */}
-      <BlockTitle medium data-at="directions">Directions</BlockTitle>
-      {reading && <EditRowsSkeleton rows={['Heat the oven and grease the tin.', 'Mix everything together until smooth and pour it in.', 'Bake until golden.']} />}
+      <BlockTitle key="directions-title" medium data-at="directions">Directions</BlockTitle>
+      {reading && <EditRowsSkeleton key="directions-reading" rows={['Heat the oven and grease the tin.', 'Mix everything together until smooth and pour it in.', 'Bake until golden.']} />}
       {draft.steps.length > 0 && (
-        <List
+        <List key="directions"
           className="ck-edit-list"
           strong
           inset
@@ -679,10 +679,10 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
           })}
         </List>
       )}
-      <List className="ck-fields">
+      <List key="step-paste" className="ck-fields">
         <ListInput type="textarea" resizable placeholder="Add a step, or paste all the directions" value={stepPaste} onInput={(e) => setStepPaste(e.target.value)} />
       </List>
-      <Block className="ck-stack">
+      <Block key="step-buttons" className="ck-stack">
         {stepPaste.trim() && (
           <Button large className="ck-soft" onClick={addPastedSteps}>
             Add {pastedSteps.length} {pastedSteps.length === 1 ? 'step' : 'steps'}
@@ -694,14 +694,14 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
       </Block>
 
       {/* Notes */}
-      <BlockTitle medium>Notes</BlockTitle>
-      <List className="ck-fields">
+      <BlockTitle key="notes-title" medium>Notes</BlockTitle>
+      <List key="notes" className="ck-fields">
         <ListInput type="textarea" resizable placeholder="Cooking tips, swaps, or thoughts for next time" value={draft.notes} onInput={(e) => set({ notes: e.target.value })} />
       </List>
 
       {/* Recipe info */}
-      <BlockTitle medium>Recipe info</BlockTitle>
-      <Block className="ck-stack">
+      <BlockTitle key="info-title" medium>Recipe info</BlockTitle>
+      <Block key="tags" className="ck-stack">
         <span className="ck-label">Tags</span>
         <div className="ck-chips">
           {allTags.map((t) => (
@@ -732,16 +732,16 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
           </label>
         </div>
       </Block>
-      <Block>
+      <Block key="servings">
         <div className="ck-row" style={{ justifyContent: 'space-between' }}>
           <b>Servings</b>
           <Stepper round className="ck-stepper" value={draft.servings} min={1} max={99} onStepperChange={(v: number) => set({ servings: v })} />
         </div>
       </Block>
-      <List className="ck-fields">
+      <List key="serving-size" className="ck-fields">
         <ListInput label="Serving size" type="text" placeholder="1 slice" value={draft.servingSize} onInput={(e) => set({ servingSize: e.target.value })} />
       </List>
-      <div className="ck-grid2">
+      <div key="nutrition" className="ck-grid2">
         <List className="ck-fields">
           <ListInput
             label="Prep time (min)"
@@ -763,7 +763,7 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
           />
         </List>
       </div>
-      <List className="ck-fields">
+      <List key="source" className="ck-fields">
         <ListInput label="Source" type="text" placeholder="Website or person" value={draft.source} onInput={(e) => set({ source: e.target.value })} clearButton />
         {/* issue #15: the full address of the recipe's page (the recipe page shows only the site, linked to it), wrapped
             onto as many lines as it takes so all of it shows; a line break can't get into it */}

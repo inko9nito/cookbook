@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -7,12 +9,29 @@ const version = (process.env.COMMIT_REF ?? 'local').slice(0, 7);
 const built = new Date().toISOString();
 
 export default defineConfig({
+  // issue #141: a second page, /next/, the app without Framework7 (a trial on deploy previews)
+  build: {
+    rollupOptions: {
+      input: { main: 'index.html', next: 'next/index.html' },
+    },
+  },
   define: {
     __APP_VERSION__: JSON.stringify(version),
     __APP_BUILT__: JSON.stringify(built),
   },
   plugins: [
     react(),
+    // issue #141: /next/ (the app without Framework7) has its own manifest, so a home-screen icon made there opens it
+    // (the PWA plugin adds its own link as the page is written, so this edits the written page)
+    {
+      name: 'cookbook-next-manifest',
+      apply: 'build',
+      enforce: 'post',
+      closeBundle() {
+        const file = path.resolve(__dirname, 'dist/next/index.html');
+        if (fs.existsSync(file)) fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('href="/manifest.webmanifest"', 'href="/next/manifest.webmanifest"'));
+      },
+    },
     // /version.json: which build is live. Builds before issue #91 compare it with the build they run to see whether
     // they're behind (the refresh icon now always reloads, src/lib/appUpdate.ts), so it stays for phones still on one.
     // It's never kept offline (not in the service worker's list below), so it's always the deploy's own.
@@ -48,7 +67,8 @@ export default defineConfig({
         globIgnores: ['launch/**'],
         navigateFallback: '/index.html',
         // the API and Netlify's own endpoints (sign-in) always go to the network
-        navigateFallbackDenylist: [/^\/api\//, /^\/\.netlify\//],
+        // /next/ is the app without Framework7 (issue #141, a trial): its own page, never this one
+        navigateFallbackDenylist: [/^\/api\//, /^\/\.netlify\//, /^\/next(\/|$)/],
         runtimeCaching: [
           {
             // stored recipe photos never change (a new crop is a new photo), so keep them for the kitchen offline

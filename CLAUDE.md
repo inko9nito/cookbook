@@ -55,6 +55,9 @@ The user attaches screenshots and screen recordings to issues and expects them l
 - When you add a screen or an interactive state, add it to `scripts/check-ui-states.cjs`.
 - Impeccable guidance never overrides the Framework7 rules above: no hand-built animations, gestures or z-index.
 
+## The move off Framework7 (#141, in progress)
+After hours of fighting iPhone Safari not drawing headers (#123, #141) and a laggy Safari tab, the user asked for a change of approach (Nov 20, 2026). The plan: keep React, the data layer (`src/data`, `src/lib`), the server and the design tokens; replace Framework7 with an ordinary web page: **the document scrolls** (no nested scroll boxes under a header), a **sticky header**, a **fixed tab bar**, the browser's history (Safari's own swipe-back) and **View Transitions** for screen changes, `<dialog>` and `popover` (the browser's top layer) for dialogs and menus. The trial lives at **`/next/`** (`next/index.html`, `src/next/`: `router.ts`, `ui.tsx`, `screens.tsx`, `next.css`; its own manifest, `public/next/manifest.webmanifest`; the main app's service worker leaves `/next/` alone): Recipes, a recipe, Cookbooks, a cookbook (Rename, Delete); Plan, Groceries and Settings say they haven't moved. The Framework7 rules above apply to the current app until the move is done; the new code doesn't use Framework7 at all. Screens move over one by one once the user confirms the trial on the phone.
+
 ## Stack
 Vite + TypeScript, TanStack Query, Zod, vite-plugin-pwa, `parse-ingredient`, Vitest.
 Everything runs on **Netlify**: static hosting, Netlify Functions (API), Netlify Database (Postgres), Netlify Blobs (photos), Netlify Identity with Google sign-in (invite-only, the user's account only). Do NOT add Supabase or any second service; the user wants one.

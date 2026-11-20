@@ -1,0 +1,501 @@
+/*
+  Issue #141: the app without Framework7 (a trial at /next/). An ordinary web page: the document scrolls, the header is
+  sticky at its top, the tab bar is fixed at the bottom, dialogs and menus sit in the browser's top layer. The design's
+  tokens (colours, fonts, the card and plate styles) come from src/theme/cookbook.css. Screen changes slide with the
+  browser's own View Transitions.
+*/
+:root {
+  --nx-bar-h: 48px;
+  --nx-tab-h: 50px;
+  --nx-backdrop: rgba(0, 0, 0, 0.3); /* behind a dialog */
+}
+
+html {
+  background: var(--ck-bg);
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation; /* no double-tap zoom, so a tap is a tap */
+}
+body {
+  margin: 0;
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  font-family: var(--ck-font);
+  -webkit-font-smoothing: antialiased;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.nx-screen {
+  min-height: 100dvh;
+}
+
+/* ── The header: sticky at the top of the page ── */
+.nx-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: env(safe-area-inset-top) 16px 0;
+  background: var(--ck-bg);
+}
+.nx-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--nx-bar-h);
+}
+.nx-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--ck-font-display);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nx-title-small {
+  font-size: 17px;
+  font-weight: 500;
+}
+.nx-header-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.nx-bar-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--ck-soft);
+  color: var(--ck-fg);
+}
+.nx-bar-primary {
+  background: var(--ck-accent);
+  color: var(--ck-surface);
+}
+.nx-bar-button:active,
+.nx-chip:active,
+.nx-button:active {
+  opacity: 0.6;
+}
+.nx-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  margin-top: 4px;
+  padding: 0 14px;
+  border-radius: 22px;
+  background: var(--ck-soft);
+  color: var(--ck-muted);
+}
+.nx-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 17px; /* 16px or more, or iOS zooms in on the field */
+  color: var(--ck-fg);
+  outline: none;
+  -webkit-appearance: none;
+}
+.nx-chips {
+  display: flex;
+  gap: 8px;
+  margin: 12px -16px 0;
+  padding: 0 16px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nx-chips::-webkit-scrollbar {
+  display: none;
+}
+.nx-chip {
+  flex: none;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 17px;
+  background: var(--ck-soft);
+  font-size: 15px;
+}
+.nx-chip-on {
+  background: var(--ck-fg);
+  color: var(--ck-surface);
+}
+
+/* ── Content ── */
+.nx-content {
+  padding: 0 16px calc(var(--nx-tab-h) + env(safe-area-inset-bottom) + 32px);
+}
+.nx-count {
+  margin: 16px 0 12px;
+}
+.nx-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 12px;
+}
+.nx-empty {
+  padding: 32px 0;
+  text-align: center;
+}
+.nx-link {
+  color: var(--ck-accent-ink);
+  font-weight: 600;
+}
+
+/* ── The tab bar: fixed at the bottom; it stays put while screens slide ── */
+.nx-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  padding: 0 8px env(safe-area-inset-bottom);
+  background: var(--ck-surface);
+  border-top: 1px solid var(--ck-line);
+  view-transition-name: nx-tabbar;
+}
+.nx-tab {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  height: var(--nx-tab-h);
+  color: var(--ck-muted);
+}
+.nx-tab-on {
+  color: var(--ck-accent-ink);
+}
+
+/* ── A bar over a photo or a cookbook's colour: see-through, solid once the page has scrolled past it ── */
+.nx-float-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: calc(var(--nx-bar-h) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 16px 0;
+  background: transparent;
+  transition: background-color 0.2s;
+}
+.nx-float-bar.nx-solid {
+  background: var(--ck-bg);
+}
+.nx-float-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.nx-solid .nx-float-title {
+  opacity: 1;
+}
+.nx-float-bar:not(.nx-solid) .nx-bar-button:not(.nx-bar-primary) {
+  background: var(--ck-frosted-button);
+}
+.nx-float-bar.nx-over-photo:not(.nx-solid) .nx-bar-button:not(.nx-bar-primary) {
+  background: var(--ck-overlay-button);
+  color: var(--ck-surface);
+}
+
+/* a recipe */
+.nx-hero-photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+.nx-hero-spacer {
+  height: calc(var(--nx-bar-h) + env(safe-area-inset-top));
+}
+.nx-recipe-title {
+  margin: 16px 0 4px;
+  font-family: var(--ck-font-display);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.nx-section-title {
+  margin: 24px 0 8px;
+  font-family: var(--ck-font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+.nx-lines {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 16px;
+  line-height: 1.4;
+}
+ul.nx-lines {
+  padding-left: 0;
+  list-style: none;
+}
+.nx-line-header {
+  margin-top: 8px;
+  font-weight: 600;
+  list-style: none;
+}
+
+/* a cookbook: its colour, plates, name and counts at the top of the page */
+.nx-book-hero {
+  padding: calc(env(safe-area-inset-top) + var(--nx-bar-h) + 8px) 16px 20px;
+}
+.nx-book-hero .ck-plates {
+  height: 156px;
+  margin: 0 -16px;
+}
+.nx-book-hero .ck-plates .ck-plate {
+  border-width: 4px;
+}
+.nx-book-hero .ck-plates .ck-plate-middle {
+  width: 150px;
+  height: 150px;
+}
+.nx-book-hero .ck-plates .ck-plate-left,
+.nx-book-hero .ck-plates .ck-plate-right {
+  width: 108px;
+  height: 108px;
+}
+.nx-book-hero .ck-plates .ck-plate-left {
+  margin-right: -34px;
+}
+.nx-book-hero .ck-plates .ck-plate-right {
+  margin-left: -34px;
+}
+.nx-book-title {
+  margin: 12px 0 0;
+  font-family: var(--ck-font-display);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.nx-book-meta {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--ck-fg2);
+}
+.nx-book-content {
+  padding-top: 16px;
+}
+
+/* ── Dialog: an iOS-style alert in the browser's top layer ── */
+.nx-dialog {
+  width: min(300px, calc(100vw - 48px));
+  padding: 20px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--ck-surface);
+  color: var(--ck-fg);
+  box-shadow: var(--ck-menu-shadow);
+}
+.nx-dialog::backdrop {
+  background: var(--nx-backdrop);
+}
+.nx-dialog-title {
+  margin: 0;
+  font-family: var(--ck-font-display);
+  font-size: 17px;
+  font-weight: 600;
+}
+.nx-dialog-text {
+  margin: 6px 0 0;
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--ck-fg2);
+}
+.nx-dialog-field {
+  width: 100%;
+  height: 44px;
+  margin-top: 14px;
+  padding: 0 12px;
+  border: 1px solid var(--ck-line);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 17px;
+  color: var(--ck-fg);
+  background: var(--ck-surface);
+}
+.nx-dialog-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+.nx-button {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  font-family: var(--ck-font-display);
+  font-size: 17px;
+  font-weight: 600;
+}
+.nx-primary {
+  background: var(--ck-accent);
+  color: var(--ck-surface);
+}
+.nx-soft {
+  background: var(--ck-soft);
+  color: var(--ck-fg);
+}
+.nx-danger {
+  background: var(--ck-error);
+  color: var(--ck-surface);
+}
+
+/* ── Menu: an iOS pull-down under its button (popover, top layer; placed by MenuButton) ── */
+.nx-menu {
+  position: fixed;
+  inset: auto;
+  width: 250px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: var(--ck-surface);
+  color: var(--ck-fg);
+  box-shadow: 0 0 0 1px var(--ck-line), var(--ck-menu-shadow);
+  overflow: hidden;
+}
+.nx-menu-group + .nx-menu-group {
+  border-top: 8px solid var(--ck-soft);
+}
+.nx-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  font-size: 17px;
+  text-align: left;
+}
+.nx-menu-row + .nx-menu-row {
+  border-top: 1px solid var(--ck-line);
+}
+.nx-menu-row svg {
+  color: var(--ck-fg2);
+}
+.nx-danger-ink,
+.nx-danger-ink svg {
+  color: var(--ck-error);
+}
+
+/* ── Toast: the dark pill above the tab bar ── */
+.nx-toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--nx-tab-h) + env(safe-area-inset-bottom) + 12px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--ck-fg);
+  color: var(--ck-surface);
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: var(--ck-toast-shadow);
+  view-transition-name: nx-toast;
+}
+.nx-toast-undo {
+  margin-left: 8px;
+  color: var(--ck-accent-on-dark);
+  font-weight: 600;
+}
+
+/* ── Sign in ── */
+.nx-signin {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 16px;
+  min-height: 100dvh;
+  padding: 32px;
+  text-align: center;
+}
+.nx-signin .nx-title {
+  flex: none;
+}
+
+/* ── Screen changes: the new screen slides in from the right over the old, as in iOS; back slides it away ── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.35s;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+html[data-nav='forward']::view-transition-old(root) {
+  animation-name: nx-out-left;
+}
+html[data-nav='forward']::view-transition-new(root) {
+  animation-name: nx-in-right;
+}
+html[data-nav='back']::view-transition-old(root) {
+  z-index: 1;
+  animation-name: nx-out-right;
+}
+html[data-nav='back']::view-transition-new(root) {
+  animation-name: nx-in-left;
+}
+::view-transition-group(nx-tabbar),
+::view-transition-group(nx-toast) {
+  animation: none;
+}
+@keyframes nx-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes nx-out-left {
+  to {
+    transform: translateX(-25%);
+  }
+}
+@keyframes nx-in-left {
+  from {
+    transform: translateX(-25%);
+  }
+}
+@keyframes nx-out-right {
+  to {
+    transform: translateX(100%);
+  }
+}

@@ -25,7 +25,11 @@ export function tell(text: string, closeTimeout = 3000) {
 }
 
 function show(text: string, closeTimeout: number, undo?: () => void) {
-  if (!f7.toast) return;
+  // issue #141: the app without Framework7 (/next/) shows its own toast
+  if (!f7?.toast) {
+    window.dispatchEvent(new CustomEvent('ck-toast', { detail: { html: text, closeTimeout, undo } }));
+    return;
+  }
   f7.toast
     .create({
       text,

@@ -1,0 +1,152 @@
+import { useState } from 'react';
+import {
+  IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, IonButton, IonContent, IonList, IonItem, IonLabel,
+  IonRadioGroup, IonRadio, IonRange, IonNote, IonSegment, IonSegmentButton, useIonActionSheet,
+} from '@ionic/react';
+import { RefreshCw } from 'lucide-react';
+import { useAuth } from '../data/auth';
+import { appVersion, updateApp } from '../lib/appUpdate';
+import { reopenOnTab } from '../data/startTab';
+import { useAccount } from '../data/store';
+import { FONTS, SIZE_MAX, SIZE_MIN, resetFontSizes, setFont, setFontSizes, sizesOf, useFontChoice, type FontId } from '../data/font';
+import { tell } from './toast';
+import { TabPage, setScrollStyle, useScrollStyle, type ScrollStyle } from './scroll';
+
+/** Settings on Ionic: inset grouped lists (iOS Settings' look), a pushed page, Sign Out confirmed in an action sheet. */
+export function SettingsPage() {
+  const auth = useAuth();
+  const [sheet] = useIonActionSheet();
+  const [refreshing, setRefreshing] = useState(false);
+  const scroll = useScrollStyle();
+  const { admin } = useAccount();
+  const signOut = () =>
+    sheet({
+      header: 'Sign out of Cookbook on this phone?',
+      buttons: [
+        { text: 'Sign Out', role: 'destructive', handler: () => auth.signOut() },
+        { text: 'Cancel', role: 'cancel' },
+      ],
+    });
+  return (
+    <TabPage tab="settings" title="Settings"
+    >
+        <IonList inset lines="full" className="ck-ion-inset">
+          <IonItem>
+            <IonLabel>{auth.email}</IonLabel>
+            <IonButton slot="end" fill="clear" className="ck-ion-text-button" onClick={signOut}>
+              Sign Out
+            </IonButton>
+          </IonItem>
+        </IonList>
+        {/* two ways of scrolling, to compare until one is picked (scroll.tsx) */}
+        <div className="ck-group-label ck-ion-meal">Scrolling</div>
+        <IonSegment value={scroll} onIonChange={(e) => setScrollStyle(e.detail.value as ScrollStyle)} className="ck-ion-segment ck-ion-settings-segment">
+          <IonSegmentButton value="old">
+            <IonLabel>Like the old app</IonLabel>
+          </IonSegmentButton>
+          <IonSegmentButton value="ios">
+            <IonLabel>iOS large titles</IonLabel>
+          </IonSegmentButton>
+        </IonSegment>
+        <p className="ck-ion-footnote">
+          {scroll === 'old'
+            ? 'Title rows slide away as you scroll down and come back as you scroll up; search and chips stay at the top. A cookbook’s plates fade under a see-through bar.'
+            : 'Ionic’s own: the big title scrolls away with the page and a small one fades into the bar, which stays. Search and chips scroll away.'}
+        </p>
+        <IonList inset lines="full" className="ck-ion-inset">
+          {/* bringing recipes over from Prepear (#14), only into the admin's cookbook (#146) */}
+          {admin && (
+            <IonItem button detail onClick={() => tell('Import isn’t in v2 yet')}>
+              <IonLabel>Import</IonLabel>
+            </IonItem>
+          )}
+          <IonItem button detail routerLink="/settings/appearance">
+            <IonLabel>Appearance</IonLabel>
+          </IonItem>
+        </IonList>
+        <div className="ck-ion-version">
+          <span>{appVersion()}</span>
+          <IonButton
+            fill="clear"
+            className="ck-ion-icon-button"
+            aria-label="Refresh"
+            onClick={() => {
+              // looks for a new version and always reloads (#91), back on Settings (#48)
+              setRefreshing(true);
+              void updateApp({ beforeReload: () => reopenOnTab('settings') });
+            }}
+          >
+            <RefreshCw size={18} className={refreshing ? 'ck-spinning' : ''} />
+          </IonButton>
+        </div>
+      
+    
+    </TabPage>
+  );
+}
+
+/** Appearance → the font (radio rows) and its sizes (Ionic's range sliders), for this phone */
+export function AppearancePage() {
+  const choice = useFontChoice();
+  const sizes = sizesOf(choice);
+  return (
+    <IonPage>
+      <IonHeader className="ck-ion-header">
+        <IonToolbar>
+          <IonButtons slot="start">
+            <IonBackButton defaultHref="/settings" text="" className="ck-ion-round-back" />
+          </IonButtons>
+          <IonTitle className="ck-ion-title-small">Appearance</IonTitle>
+        </IonToolbar>
+      </IonHeader>
+      <IonContent>
+        <div className="ck-group-label ck-ion-meal">Font</div>
+        <IonRadioGroup value={choice.font} onIonChange={(e) => setFont(e.detail.value as FontId)}>
+          <IonList inset lines="full" className="ck-ion-inset">
+            {FONTS.map((f) => (
+              <IonItem key={f.id}>
+                <IonRadio value={f.id} justify="space-between">
+                  {f.name}
+                </IonRadio>
+              </IonItem>
+            ))}
+          </IonList>
+        </IonRadioGroup>
+        <div className="ck-group-label ck-ion-meal">Sizes</div>
+        <IonList inset lines="full" className="ck-ion-inset">
+          <IonItem>
+            <IonRange
+              label="Titles and buttons"
+              labelPlacement="stacked"
+              min={SIZE_MIN}
+              max={SIZE_MAX}
+              step={5}
+              snaps
+              value={sizes.display}
+              onIonChange={(e) => setFontSizes({ display: e.detail.value as number })}
+            >
+              <IonNote slot="end">{sizes.display}%</IonNote>
+            </IonRange>
+          </IonItem>
+          <IonItem>
+            <IonRange
+              label="Reading text"
+              labelPlacement="stacked"
+              min={SIZE_MIN}
+              max={SIZE_MAX}
+              step={5}
+              snaps
+              value={sizes.text}
+              onIonChange={(e) => setFontSizes({ text: e.detail.value as number })}
+            >
+              <IonNote slot="end">{sizes.text}%</IonNote>
+            </IonRange>
+          </IonItem>
+          <IonItem button detail={false} onClick={resetFontSizes}>
+            <IonLabel className="ck-ion-accent-text">Usual sizes</IonLabel>
+          </IonItem>
+        </IonList>
+      </IonContent>
+    </IonPage>
+  );
+}

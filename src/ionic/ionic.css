@@ -319,7 +319,8 @@ ion-item .ck-ion-accent-text, ion-label.ck-ion-accent-text { color: var(--ck-acc
 
 /* ── under the bar: the search field and what goes with it (chips, the view switch, the week strip), in the header
    but not in Ionic's toolbar, which sized itself short on the iPhone and cut the chips in half ── */
-.ck-ion-header-extra { display: block; background: var(--ck-bg); padding: 4px 0 10px; }
+.ck-ion-header-extra { display: block; background: var(--ck-bg); padding: 4px 0 12px; } /* v1's docked bar: 4px over the search, 12px under */
+.ck-ion-header-extra:has(.ck-ion-chips) { padding-bottom: 10px; }
 /* one search field everywhere: soft grey pill, the placeholder on the left (the app's look) */
 .ck-ion-header-extra ion-searchbar, ion-searchbar.ck-ion-card-search, ion-searchbar.ck-ion-hero-search {
   --background: var(--ck-soft); --border-radius: 20px; --placeholder-color: var(--ck-fg2); --placeholder-opacity: 1; --icon-color: var(--ck-fg2);
@@ -461,6 +462,42 @@ button.ck-month-arrow { display: grid; place-items: center; width: 48px; height:
 .ck-month-week { display: grid; grid-template-columns: repeat(7, 1fr); margin-top: 16px; padding: 0 18px; height: 18px; font-size: 11px; font-weight: 500; line-height: 18px; color: var(--ck-muted); text-align: center; }
 .ck-month { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 50px; padding: 0 18px; }
 .ck-month button.ck-week-day.ck-ion-plain-button { padding: 6px 0 0; align-content: start; }
+
+/* Groceries, with v1's classes (cookbook.css: .ck-grocery-*, .ck-instacart-*): the view switch and the store in the page */
+.ck-ion-grocery-head { margin: 16px 0 20px; padding: 0 16px; }
+ion-segment.ck-ion-strong-segment { margin: 0; padding: 2px; min-height: 38px; height: 38px; border-radius: 9999px; --background: var(--ck-soft); }
+ion-segment.ck-ion-strong-segment ion-segment-button {
+  min-height: 34px; height: 34px; margin: 0; --border-radius: 9999px; --indicator-color: var(--ck-fg); --color: var(--ck-fg2); --color-checked: var(--ck-surface);
+  --indicator-box-shadow: none; font-size: 15px; font-weight: 500; letter-spacing: normal; text-transform: none;
+}
+ion-segment.ck-ion-strong-segment ion-segment-button::part(indicator-background) { border-radius: 9999px; }
+button.ck-instacart-store.ck-ion-plain-button { display: inline-flex; align-items: center; gap: 4px; margin-top: 12px; font-size: 13px; font-weight: 500; line-height: 18px; color: var(--ck-muted); }
+button.ck-instacart-store b { font-weight: 600; color: var(--ck-fg); }
+button.ck-instacart-store .ck-icon { color: var(--ck-fg2); }
+ion-list.ck-ion-grocery-list ion-item { --min-height: 63px; --inner-padding-end: 16px; }
+ion-list.ck-ion-grocery-list ion-checkbox.ck-ion-tick { margin: 0 16px 0 0; }
+/* every checkbox as v1's: a 22px circle with a --ck-strong ring, bright Tomato when ticked */
+ion-checkbox { --size: 22px; --border-color: var(--ck-strong); --border-width: 1px; --checkbox-background-checked: var(--ck-accent); --border-color-checked: var(--ck-accent); }
+.ck-ion-grocery-text { flex: 1; min-width: 0; padding: 13px 0 12.45px; cursor: pointer; } /* + Ionic's 0.55px line = v1's 63px */
+.ck-ion-grocery-name { display: block; font-size: 17px; font-weight: 600; line-height: 21px; color: var(--ck-fg); }
+.ck-ion-grocery-sub { display: block; font-size: 13px; font-weight: 500; line-height: 16px; color: var(--ck-muted); }
+ion-list.ck-ion-grocery-list .ck-grocery-amount { margin: 0 12px 0 8px; font-weight: 500; }
+a.ck-ion-instacart-link { display: grid; place-items: center; flex: none; width: 36px; height: 36px; margin: 0; border-radius: 9999px; background-color: var(--ck-bg); color: var(--ck-accent-ink); }
+ion-item.ck-done .ck-ion-grocery-name, ion-item.ck-done .ck-ion-grocery-sub, ion-item.ck-done .ck-grocery-amount { text-decoration: line-through; color: var(--ck-done-ink); }
+ion-item.ck-done a.ck-ion-instacart-link { visibility: hidden; }
+.ck-grocery-got { display: flex; justify-content: space-between; align-items: baseline; }
+button.ck-ion-got-clear.ck-ion-plain-button { font-family: var(--ck-font-display); font-size: 15px; font-weight: 400; color: var(--ck-accent-ink); }
+
+/* inset lists as v1's: 16px corners, 52px rows, 17px words at 500, a block's gap (35px) apart */
+ion-list.list-inset.ck-ion-inset { border-radius: 16px; }
+ion-list.list-ios.list-inset.ck-ion-settings-list.ck-ion-settings-list { margin: 35px 16px 0; }
+ion-list.ck-ion-inset ion-item { --min-height: 52px; --padding-start: 16px; font-size: 17px; font-weight: 500; }
+button.ck-ion-sign-out.ck-ion-plain-button { height: 44px; padding: 0 4px; font-size: 17px; font-weight: 400; color: var(--ck-error); }
+.ck-version.ck-ion-version-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 35px 0; padding: 0 16px 0 32px; }
+.ck-ion-version-row .ck-version-text { font-weight: 500; line-height: 21px; }
+button.ck-ion-refresh.ck-ion-plain-button { display: grid; place-items: center end; width: 128px; height: 72px; margin: -14px -16px -14px 0; padding-right: 30px; color: var(--ck-accent-ink); }
+.ck-ion-settings-label { margin-top: 8px; }
+ion-segment.ck-ion-settings-segment { margin: 6px 16px 0; width: auto; }
 
 /* the crash screen (CrashScreen.tsx): its Reload button keeps a gap between the icon and the word */
 .ck-crash ion-button svg { margin-right: 6px; }

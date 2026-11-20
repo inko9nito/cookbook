@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import {
-  IonButton, IonList, IonItem, IonCheckbox, IonSearchbar, IonSegment, IonSegmentButton, IonLabel, IonItemSliding, IonItemOptions, IonItemOption, IonNote, useIonViewWillLeave,
+  IonList, IonItem, IonCheckbox, IonSearchbar, IonSegment, IonSegmentButton, IonLabel, IonItemSliding, IonItemOptions, IonItemOption, useIonViewWillLeave,
 } from '@ionic/react';
-import { ArrowUpRight, ChefHat, ChevronDown, Ellipsis, PenLine, Plus, Share, Trash2 } from 'lucide-react';
+import { ArrowUpRight, ChefHat, ChevronDown, Ellipsis, ListChecks, PenLine, Plus, Share, Store, Trash2 } from 'lucide-react';
 import { useGroceries, useNamed, useStore } from '../data/store';
 import { AISLE_NAMES, byAisle, byRecipe, instacartSearch, itemNames, linesOf, listText, nameKey, type GroceryItem, type Line } from '../lib/groceries';
-import { newId } from '../lib/recipe';
-import { say } from './toast';
+import { coverPhoto, newId, type Recipe } from '../lib/recipe';
+import { friendly } from '../lib/ingredients';
+import { photoStyle } from './photo';
+import { say, tell } from './toast';
 import { TabPage } from './scroll';
 import { BarButton, CookingPill, openMenu, usePrompt } from './ui';
 import { AddFromRecipeModal } from './modals';
@@ -69,42 +71,55 @@ export default function GroceriesPage() {
         },
       ],
     ]);
+  const ticked_ = items.filter((g) => g.checked);
+  const clearGot = () => takeOff(ticked_, 'Cleared the ticked items');
   const more = (el: Element) =>
     openMenu(el, [
-      [{ label: 'Share list', icon: Share, onClick: () => navigator.share?.({ text: listText(lines) }).catch(() => {}) }],
       [
-        {
-          label: 'Clear ticked',
-          icon: Trash2,
-          danger: true,
-          onClick: () => takeOff(items.filter((g) => g.checked), 'Cleared the ticked items'),
-        },
+        { label: 'Share', icon: Share, onClick: () => navigator.share?.({ text: listText(lines) }).catch(() => {}) },
+        { label: 'Edit stores', icon: Store, onClick: () => tell('Grocery Stores isn’t in v2 yet') },
+      ],
+      [
+        { label: `Clear completed${ticked_.length ? ` (${ticked_.length})` : ''}`, icon: ListChecks, onClick: clearGot },
+        { label: 'Clear all', icon: Trash2, danger: true, onClick: () => takeOff(items, 'Cleared the list') },
       ],
     ]);
   const storeMenu = (el: Element) =>
-    openMenu(el, [stores.map((s) => ({ label: s.name, checked: s.slug === store?.slug, onClick: () => changeSettings({ groceryStore: s.slug }) }))]);
+    openMenu(el, [
+      stores.map((s) => ({ label: s.name, checked: s.slug === store?.slug, onClick: () => changeSettings({ groceryStore: s.slug }) })),
+      [{ label: stores.length ? 'Edit stores…' : 'Add a store…', icon: Store, onClick: () => tell('Grocery Stores isn’t in v2 yet') }],
+    ]);
+  const recipeMeta = (r: Recipe) => (r.servings ? `${friendly(r.servings)} servings` : '');
 
+  // a row as v1's: the thing (and the recipes it's for, small, under it), its amount, Instacart's ↗ in a soft circle
   const row = (line: Line, sub?: string) => (
     <IonItemSliding key={line.key}>
-      <IonItem className={ticked(line) ? 'ck-done' : ''}>
-        <IonCheckbox justify="start" labelPlacement="end" className="ion-text-wrap ck-ion-grocery-check" checked={ticked(line)} onIonChange={(e) => tick(line, e.detail.checked)}>
-          <span className="ck-ion-line">
-            {cap(line.name)}
-            {sub && <IonNote className="ck-ion-line-note">{sub}</IonNote>}
-          </span>
-        </IonCheckbox>
+      <IonItem className={`ck-ion-grocery-row${ticked(line) ? ' ck-done' : ''}`}>
+        <IonCheckbox slot="start" className="ck-ion-tick" checked={ticked(line)} onIonChange={(e) => tick(line, e.detail.checked)} aria-label={cap(line.name)} />
+        <div className="ck-ion-grocery-text" onClick={() => tick(line, !ticked(line))}>
+          <span className="ck-ion-grocery-name">{cap(line.name)}</span>
+          {sub && <span className="ck-ion-grocery-sub">{sub}</span>}
+        </div>
         {line.amount && (
-          <IonNote slot="end" className="ck-ion-amount">
+          <span slot="end" className="ck-grocery-amount">
             {line.amount}
-          </IonNote>
+          </span>
         )}
-        <IonButton slot="end" fill="clear" className="ck-ion-icon-button ck-ion-instacart" href={instacartSearch(line.term, line.store ?? store?.slug)} target="_blank" aria-label={`Search Instacart for ${line.name}`}>
-          <ArrowUpRight size={18} />
-        </IonButton>
+        <a slot="end" className="ck-instacart-link ck-ion-instacart-link" href={instacartSearch(line.term, line.store ?? store?.slug)} target="_blank" rel="noreferrer" aria-label={`Find ${line.name} on Instacart`}>
+          <ArrowUpRight size={18} strokeWidth={2} />
+        </a>
       </IonItem>
-      <IonItemOptions side="end">
+      <IonItemOptions side="end" onIonSwipe={() => takeOff(saved(line), `Removed “${cap(line.name)}”`)}>
+        <IonItemOption className="ck-ion-option-meal" onClick={() => tell('Editing a grocery row isn’t in v2 yet')}>
+          Edit
+        </IonItemOption>
+        {stores.length > 1 && (
+          <IonItemOption className="ck-ion-option-move" onClick={() => tell('Another store for one item isn’t in v2 yet')}>
+            Store
+          </IonItemOption>
+        )}
         <IonItemOption color="danger" expandable onClick={() => takeOff(saved(line), `Removed “${cap(line.name)}”`)}>
-          Remove
+          Delete
         </IonItemOption>
       </IonItemOptions>
     </IonItemSliding>
@@ -118,16 +133,17 @@ export default function GroceriesPage() {
             <BarButton label="More actions" icon={Ellipsis} onClick={(e) => more(e.currentTarget)} />
         </>
       }
-      extra={
-        <>
-          <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search the list" />
+      extra={<IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search the list" />}
+    >
+        {/* as v1: the view switch and the store under the docked search, scrolling with the list */}
+        <div className="ck-grocery-head ck-ion-grocery-head">
           <IonSegment
             value={view}
             onIonChange={(e) => {
               setPlaced(new Map());
               changeSettings({ groceryView: e.detail.value as 'aisle' | 'recipe' });
             }}
-            className="ck-ion-segment"
+            className="ck-ion-segment ck-ion-strong-segment"
           >
             <IonSegmentButton value="aisle">
               <IonLabel>By aisle</IonLabel>
@@ -136,40 +152,69 @@ export default function GroceriesPage() {
               <IonLabel>By recipe</IonLabel>
             </IonSegmentButton>
           </IonSegment>
-        </>
-      }
-    >
-        {stores.length > 0 && (
-          <button type="button" className="ck-ion-store" onClick={(e) => storeMenu(e.currentTarget)}>
-            Shopping via Instacart at <b>{store?.name}</b> <ChevronDown size={14} />
+          <button type="button" className="ck-instacart-store ck-ion-plain-button" onClick={(e) => storeMenu(e.currentTarget)}>
+            <span>
+              {store ? (
+                <>
+                  Shopping via Instacart at <b>{store.name}</b>
+                </>
+              ) : (
+                <>
+                  Shopping via Instacart · <b>Pick a store</b>
+                </>
+              )}
+            </span>
+            <ChevronDown size={14} strokeWidth={2.25} className="ck-icon" aria-hidden="true" />
           </button>
-        )}
+        </div>
         {!loading && !lines.length && <p className="ck-note ion-padding">The list is empty. + adds a recipe’s ingredients or anything you type.</p>}
-        {view === 'aisle'
-          ? byAisle(toGet).map((g) => (
-              <div key={g.aisle}>
-                <div className="ck-group-label ck-ion-meal">{AISLE_NAMES[g.aisle]}</div>
-                <IonList inset lines="full" className="ck-ion-inset">
-                  {g.lines.map((l) => row(l, l.recipes.map((r) => r.title).join(' · ')))}
-                </IonList>
+        <div className="ck-grocery-groups">
+          {view === 'aisle'
+            ? byAisle(toGet).map((g) => (
+                <section key={g.aisle} className="ck-grocery-group">
+                  <div className="ck-plan-slot-label">{AISLE_NAMES[g.aisle]}</div>
+                  <IonList inset lines="full" className="ck-ion-plan-list ck-ion-grocery-list">
+                    {g.lines.map((l) => row(l, l.recipes.map((r) => r.title).join(' · ')))}
+                  </IonList>
+                </section>
+              ))
+            : byRecipe(toGet).map((g) => {
+                const photo = g.recipe && coverPhoto(g.recipe);
+                return (
+                  <section key={g.recipe?.id ?? 'typed'} className="ck-grocery-group">
+                    {g.recipe ? (
+                      <div className="ck-grocery-recipe-head">
+                        <span className={`ck-picker-thumb ck-photo${photo ? '' : ' ck-photo-empty'}`} style={photoStyle(photo)} aria-hidden="true">
+                          {!photo && <ChefHat size={16} strokeWidth={1.5} />}
+                        </span>
+                        <div>
+                          <h2>{g.recipe.title}</h2>
+                          <div className="ck-note">{recipeMeta(g.recipe)}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="ck-plan-slot-label">Added by you</div>
+                    )}
+                    <IonList inset lines="full" className="ck-ion-plan-list ck-ion-grocery-list">
+                      {[...new Map(g.parts.map((p) => [p.line.key, p.line])).values()].map((l) => row(l))}
+                    </IonList>
+                  </section>
+                );
+              })}
+          {got.length > 0 && (
+            <section className="ck-grocery-group">
+              <div className="ck-plan-slot-label ck-grocery-got">
+                <span>{`Got it · ${got.length}`}</span>
+                <button type="button" className="ck-ion-plain-button ck-ion-got-clear" onClick={clearGot}>
+                  Clear
+                </button>
               </div>
-            ))
-          : byRecipe(toGet).map((g) => (
-              <div key={g.recipe?.id ?? 'typed'}>
-                <div className="ck-group-label ck-ion-meal">{g.recipe?.title ?? 'Typed'}</div>
-                <IonList inset lines="full" className="ck-ion-inset">
-                  {[...new Map(g.parts.map((p) => [p.line.key, p.line])).values()].map((l) => row(l))}
-                </IonList>
-              </div>
-            ))}
-        {got.length > 0 && (
-          <>
-            <div className="ck-group-label ck-ion-meal">Got it</div>
-            <IonList inset lines="full" className="ck-ion-inset">
-              {got.map((l) => row(l))}
-            </IonList>
-          </>
-        )}
+              <IonList inset lines="full" className="ck-ion-plan-list ck-ion-grocery-list">
+                {got.map((l) => row(l, l.recipes.map((r) => r.title).join(' · ')))}
+              </IonList>
+            </section>
+          )}
+        </div>
         <CookingPill />
       
       <AddFromRecipeModal open={adding} onClose={() => setAdding(false)} />

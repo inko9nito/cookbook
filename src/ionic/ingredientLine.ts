@@ -1,7 +1,7 @@
 // How an ingredient row reads at today's scale, shared by the recipe page and cook mode.
-import type { Ingredient } from '../../lib/recipe';
-import { readAmount, scaleAmount, unitFor } from '../../lib/ingredients';
-import { conversions, convertTo, formatConverted } from '../../lib/units';
+import type { Ingredient } from '../lib/recipe';
+import { readAmount, scaleAmount, unitFor } from '../lib/ingredients';
+import { conversions, convertTo, formatConverted } from '../lib/units';
 
 /**
  * Units picked for some ingredients while the recipe is open (issue #6): ingredient id → unit id ("cup").

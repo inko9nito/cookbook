@@ -7,14 +7,16 @@ import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
 import '@ionic/react/css/structure.css';
 import '@ionic/react/css/typography.css';
-// the design tokens come in through ionic.css (@import), as in /next/: a module shared with the app's page went into a
-// stylesheet of its own, loaded before Framework7's
+// the design tokens (src/theme/cookbook.css) come in through ionic.css (@import)
 import './ionic.css';
 import { AuthProvider, useAuth } from '../data/auth';
 import { SessionGuard, StoreProvider } from '../data/store';
 import { CookProvider } from '../data/cook';
 import { installHistory } from './history';
 import { Bridge, MenuHost, TABS } from './ui';
+import { CrashBoundary, CrashForCheck } from './CrashScreen';
+import { LaunchLoaderDone } from '../data/launch';
+import { takeStartTab } from '../data/startTab';
 import RecipesPage from './RecipesPage';
 import RecipePage from './RecipePage';
 import EditPage from './EditPage';
@@ -25,8 +27,8 @@ import { AppearancePage, SettingsPage } from './SettingsPages';
 import CookMode from './CookMode';
 
 /**
- * Issue #141: the app on Ionic, a trial at /ionic/ on deploy previews. Same data, sign-in and cook-mode state as the app;
- * every screen, sheet, menu, swipe and transition is Ionic's (iOS mode), in the agreed design.
+ * The app (v2, issue #141: moved from Framework7 to Ionic React). Every screen, sheet, menu, swipe and transition is
+ * Ionic's (iOS mode), in the agreed design; the data, sign-in and cook-mode state are the app's own (src/data).
  */
 
 // Back swipe: one gesture only, never two at once (both together slid two copies of the pages, the user's recording).
@@ -40,6 +42,16 @@ const standalone =
   new URLSearchParams(location.search).has('standalone'); // ?standalone: the Home Screen app's way, in a browser (checks)
 setupIonicReact({ mode: 'ios', swipeBackEnabled: standalone });
 installHistory();
+
+// iOS's own back gesture from the first page can leave this page for an older copy of the app kept in memory, such as
+// the sign-in screen from before you signed in. Reload that copy, so it opens fresh with the sign-in saved on the phone.
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) location.reload();
+});
+
+// Recipes, unless the app reloaded itself from another tab (issue #48: Settings' refresh comes back to Settings).
+// Read once, as the app loads.
+const startTab = takeStartTab();
 
 
 function SignIn() {
@@ -90,13 +102,16 @@ function Tabs() {
   );
 }
 
+// The app opens on the first page of a tab: Recipes, or the tab a reload of the app's own came from (in a Safari tab the
+// address is set to it before the router reads it).
+const startPath = `/${startTab}`;
+if (!standalone && startTab !== 'recipes') history.replaceState(null, '', startPath + location.search);
+
 function Router({ children }: { children: ReactNode }) {
   return standalone ? (
-    <IonReactMemoryRouter basename="/ionic" initialEntries={[/^\/ionic\/(recipes|cookbooks|plan|groceries|settings)/.test(location.pathname) ? location.pathname : '/ionic/recipes']}>
-      {children}
-    </IonReactMemoryRouter>
+    <IonReactMemoryRouter initialEntries={[startPath]}>{children}</IonReactMemoryRouter>
   ) : (
-    <IonReactRouter basename="/ionic">{children}</IonReactRouter>
+    <IonReactRouter>{children}</IonReactRouter>
   );
 }
 
@@ -118,16 +133,21 @@ function App() {
       <MenuHost />
       <Bridge />
       <SessionGuard />
+      <LaunchLoaderDone />
+      <CrashForCheck />
     </IonApp>
   );
 }
 
-createRoot(document.getElementById('root')!).render(
-  <AuthProvider>
-    <StoreProvider>
-      <CookProvider>
-        <App />
-      </CookProvider>
-    </StoreProvider>
-  </AuthProvider>,
+createRoot(document.getElementById('app')!).render(
+  // issue #140: a crash shows what happened and a Reload button, not a blank white screen
+  <CrashBoundary>
+    <AuthProvider>
+      <StoreProvider>
+        <CookProvider>
+          <App />
+        </CookProvider>
+      </StoreProvider>
+    </AuthProvider>
+  </CrashBoundary>,
 );

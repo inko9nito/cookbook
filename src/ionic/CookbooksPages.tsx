@@ -8,8 +8,8 @@ import { ArrowUpDown, BookOpen, Ellipsis, FolderPlus, LayoutGrid, List as ListIc
 import { useCookbooks, useStore } from '../data/store';
 import { byName, colorOf, cookbookRecipeIds, emptyCookbook, existing, platePhotos, type Cookbook } from '../lib/cookbook';
 import { CookbookSort, SORT_LABELS, newId, sortRecipes, type Recipe } from '../lib/recipe';
-import { photoStyle } from '../components/ui/photo';
-import { say } from '../components/ui/toast';
+import { photoStyle } from './photo';
+import { say } from './toast';
 import { TabPage, barOnScroll, useScrollStyle } from './scroll';
 import { BarButton, CookingPill, Plates, RecipeCard, openMenu, useConfirm, usePrompt } from './ui';
 import { AddRecipesModal, OrganizeModal } from './modals';
@@ -58,7 +58,7 @@ export function CookbooksPage() {
             {sorted.map((c) => (
               <a
                 key={c.id}
-                href={`/ionic/cookbooks/${c.id}`}
+                href={`/cookbooks/${c.id}`}
                 className={`ck-card ck-book-tile ck-ion-book-tile ck-tint-${colorOf(c)}`}
                 onClick={(e) => {
                   e.preventDefault();

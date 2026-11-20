@@ -5,9 +5,11 @@ import {
 } from '@ionic/react';
 import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../data/auth';
-import { appVersion } from '../lib/appUpdate';
+import { appVersion, updateApp } from '../lib/appUpdate';
+import { reopenOnTab } from '../data/startTab';
+import { useAccount } from '../data/store';
 import { FONTS, SIZE_MAX, SIZE_MIN, resetFontSizes, setFont, setFontSizes, sizesOf, useFontChoice, type FontId } from '../data/font';
-import { tell } from '../components/ui/toast';
+import { tell } from './toast';
 import { TabPage, setScrollStyle, useScrollStyle, type ScrollStyle } from './scroll';
 
 /** Settings on Ionic: inset grouped lists (iOS Settings' look), a pushed page, Sign Out confirmed in an action sheet. */
@@ -16,9 +18,10 @@ export function SettingsPage() {
   const [sheet] = useIonActionSheet();
   const [refreshing, setRefreshing] = useState(false);
   const scroll = useScrollStyle();
+  const { admin } = useAccount();
   const signOut = () =>
     sheet({
-      header: 'Sign out of Cookbook on this phone? This trial shares its sign-in with the app on this preview.',
+      header: 'Sign out of Cookbook on this phone?',
       buttons: [
         { text: 'Sign Out', role: 'destructive', handler: () => auth.signOut() },
         { text: 'Cancel', role: 'cancel' },
@@ -35,7 +38,7 @@ export function SettingsPage() {
             </IonButton>
           </IonItem>
         </IonList>
-        {/* the trial's two ways of scrolling, to compare (scroll.tsx) */}
+        {/* two ways of scrolling, to compare until one is picked (scroll.tsx) */}
         <div className="ck-group-label ck-ion-meal">Scrolling</div>
         <IonSegment value={scroll} onIonChange={(e) => setScrollStyle(e.detail.value as ScrollStyle)} className="ck-ion-segment ck-ion-settings-segment">
           <IonSegmentButton value="old">
@@ -51,30 +54,31 @@ export function SettingsPage() {
             : 'Ionic’s own: the big title scrolls away with the page and a small one fades into the bar, which stays. Search and chips scroll away.'}
         </p>
         <IonList inset lines="full" className="ck-ion-inset">
-          <IonItem button detail onClick={() => tell('Import isn’t in the trial')}>
-            <IonLabel>Import</IonLabel>
-          </IonItem>
+          {/* bringing recipes over from Prepear (#14), only into the admin's cookbook (#146) */}
+          {admin && (
+            <IonItem button detail onClick={() => tell('Import isn’t in v2 yet')}>
+              <IonLabel>Import</IonLabel>
+            </IonItem>
+          )}
           <IonItem button detail routerLink="/settings/appearance">
             <IonLabel>Appearance</IonLabel>
           </IonItem>
         </IonList>
         <div className="ck-ion-version">
-          <span>Ionic trial · {appVersion()}</span>
+          <span>{appVersion()}</span>
           <IonButton
             fill="clear"
             className="ck-ion-icon-button"
             aria-label="Refresh"
             onClick={() => {
+              // looks for a new version and always reloads (#91), back on Settings (#48)
               setRefreshing(true);
-              setTimeout(() => window.location.reload(), 600);
+              void updateApp({ beforeReload: () => reopenOnTab('settings') });
             }}
           >
             <RefreshCw size={18} className={refreshing ? 'ck-spinning' : ''} />
           </IonButton>
         </div>
-        <p className="ck-ion-footnote">
-          <a href="/">Open the current app</a>
-        </p>
       
     
     </TabPage>

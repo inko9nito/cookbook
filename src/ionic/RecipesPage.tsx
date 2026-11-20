@@ -3,9 +3,9 @@ import {
   IonSearchbar, IonChip, IonSkeletonText, useIonRouter,
 } from '@ionic/react';
 import { ArrowUpDown, Camera, Link2, PenLine, Plus } from 'lucide-react';
-import { useStore } from '../data/store';
+import { useAccount, useStore } from '../data/store';
 import { SORT_LABELS, sortRecipes, type SortKey } from '../lib/recipe';
-import { say } from '../components/ui/toast';
+import { say } from './toast';
 import { TabPage } from './scroll';
 import { BarButton, CookingPill, RecipeCard, openMenu } from './ui';
 
@@ -22,15 +22,20 @@ export default function RecipesPage() {
   );
   const toggleTag = (t: string) => setFilter(filterTags.includes(t) ? filterTags.filter((x) => x !== t) : [...filterTags, t]);
 
-  // + : the app's pull-down menu (#39), the same three ways in
+  // + : the app's pull-down menu (#39), the same three ways in. Reading recipes uses Claude, which only the admin's
+  // cookbook has (#146): anyone else's + goes straight to typing one in
+  const { admin } = useAccount();
+  const typeItIn = () => router.push('/recipes/recipe/new/edit', 'forward');
   const add = (el: Element) =>
-    openMenu(el, [
-      [
-        { label: 'From photos or screenshots', icon: Camera, onClick: () => say('Reading photos isn’t in the trial') },
-        { label: 'From a link', icon: Link2, onClick: () => say('Reading links isn’t in the trial') },
-        { label: 'Type it in', icon: PenLine, onClick: () => router.push('/recipes/recipe/new/edit', 'forward') },
-      ],
-    ]);
+    admin
+      ? openMenu(el, [
+          [
+            { label: 'From photos or screenshots', icon: Camera, onClick: () => say('Reading photos isn’t in v2 yet') },
+            { label: 'From a link', icon: Link2, onClick: () => say('Reading links isn’t in v2 yet') },
+            { label: 'Type it in', icon: PenLine, onClick: typeItIn },
+          ],
+        ])
+      : typeItIn();
 
   return (
     <TabPage tab="recipes" title="Recipes"

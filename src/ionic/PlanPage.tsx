@@ -10,10 +10,9 @@ import {
   addDays, busyDays, dayName, MEALS, mealName, plan, planNote, shortDate, slotsOn, today, weekDays, weekName, weekRange, weekStart,
   weekdayLetter, type Day, type Meal, type Planned,
 } from '../lib/planner';
-import { coverPhoto, newId } from '../lib/recipe';
-import { formatMinutes } from '../components/ui/RecipeCard';
-import { photoStyle } from '../components/ui/photo';
-import { say } from '../components/ui/toast';
+import { coverPhoto, formatMinutes, newId } from '../lib/recipe';
+import { photoStyle } from './photo';
+import { say } from './toast';
 import { TabPage } from './scroll';
 import { BarButton, CookingPill, openMenu } from './ui';
 import { DaySheet, NoteModal, RecipePickerModal } from './modals';

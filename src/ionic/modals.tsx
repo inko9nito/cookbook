@@ -15,11 +15,11 @@ import { addToNote, byName, changeNote, colorOf, isIn, organizeRows, fromOrganiz
 import { coverPhoto, newId, type Photo, type Recipe } from '../lib/recipe';
 import { addRows, linesOf, newItems } from '../lib/groceries';
 import type { Day } from '../lib/planner';
-import { photoStyle } from '../components/ui/photo';
-import { say } from '../components/ui/toast';
+import { photoStyle } from './photo';
+import { say } from './toast';
 
 /**
- * Issue #141, the Ionic trial: the app's popups as Ionic modals. "Card" ones are iOS's card (the app shrinks back behind
+ * Issue #141, the move to Ionic: the app's popups as Ionic modals. "Card" ones are iOS's card (the app shrinks back behind
  * it, swipe it down to close); sheets snap to their heights; the day picker is Ionic's calendar.
  */
 

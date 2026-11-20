@@ -387,3 +387,6 @@ ion-header.ck-ion-large-title ion-title.title-large { font-family: var(--ck-font
 ion-header.ck-ion-fade-bar ion-toolbar { --background: var(--ck-bg); }
 ion-header.ck-ion-fade-bar ion-back-button, ion-header.ck-ion-fade-bar .ck-ion-bar-button:not(.ck-ion-bar-primary) { --background: var(--ck-frosted-button); }
 .ck-ion-settings-segment { margin: 8px 16px 0; width: auto; }
+
+/* the crash screen (CrashScreen.tsx): its Reload button keeps a gap between the icon and the word */
+.ck-crash ion-button svg { margin-right: 6px; }

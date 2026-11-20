@@ -8,7 +8,6 @@
     "build": "tsc --noEmit && tsc --noEmit -p tsconfig.netlify.json && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.netlify.json",
-    "check:ui": "node scripts/check-ui-states.cjs",
     "check:peek": "node scripts/check-prepear-peek.mjs",
     "check:export": "node scripts/check-prepear-export.mjs",
     "check:update": "node scripts/check-app-update.cjs",
@@ -24,9 +23,6 @@
     "@tanstack/query-async-storage-persister": "^5.107.1",
     "@tanstack/react-query": "^5.107.1",
     "@tanstack/react-query-persist-client": "^5.107.1",
-    "cropperjs": "^1.6.2",
-    "framework7": "^9.3.0",
-    "framework7-react": "^9.3.0",
     "gotrue-js": "^1.0.1",
     "idb-keyval": "^6.3.0",
     "lucide-react": "^1.65.0",
@@ -39,7 +35,6 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@babel/parser": "^7.29.14",
     "@netlify/database-dev": "^1.0.2",
     "@netlify/functions": "^6.1.1",
     "@types/pg": "^8.23.1",

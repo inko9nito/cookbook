@@ -15,7 +15,7 @@ import type { Planned } from '../lib/planner';
 import type { GroceryItem } from '../lib/groceries';
 import { isNamed, nameOf, namesMap, type GroceryName } from '../lib/grocery-names';
 import { pendingChanges, upsert } from './pending';
-import { tell } from '../components/ui/toast';
+import { tell } from '../ionic/toast';
 
 const RECIPES = ['recipes'] as const;
 const SETTINGS = ['settings'] as const;

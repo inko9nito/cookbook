@@ -1,5 +1,5 @@
 /**
- * Issue #141, the Ionic trial: the browser's back and Ionic's page transitions.
+ * Issue #141, the move to Ionic: the browser's back and Ionic's page transitions.
  *
  * - Ionic animates every back. Safari's own back swipe has already slid the page away under the finger, so a back that
  *   didn't come from the app's back button (Ionic's IonBackButton) is shown at once, without Ionic's slide after it.

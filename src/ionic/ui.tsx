@@ -2,14 +2,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { IonButton, IonFab, IonFooter, IonPopover, IonContent, IonList, IonItem, IonLabel, createAnimation, useIonAlert, useIonRouter, useIonToast, type Animation } from '@ionic/react';
 import { BookOpen, CalendarDays, Check, ChefHat, Settings, ShoppingCart, Star, type LucideIcon } from 'lucide-react';
-import { coverPhoto, type Recipe } from '../lib/recipe';
-import { photoStyle } from '../components/ui/photo';
-import { formatMinutes } from '../components/ui/RecipeCard';
+import { coverPhoto, formatMinutes, type Recipe } from '../lib/recipe';
+import { photoStyle } from './photo';
 import { useCook } from '../data/cook';
 import { useStore } from '../data/store';
 
 /**
- * Issue #141, the Ionic trial: the app's own pieces on Ionic's components. Motion, gestures and layering are Ionic's;
+ * Issue #141, the move to Ionic: the app's own pieces on Ionic's components. Motion, gestures and layering are Ionic's;
  * these only give its components the agreed design (round bar buttons, the menus, the toast, the plates).
  */
 
@@ -275,7 +274,7 @@ export function RecipeCard({ recipe, href }: { recipe: Recipe; href: string }) {
   const photo = coverPhoto(recipe);
   return (
     <a
-      href={`/ionic${href}`}
+      href={href}
       className="ck-card ck-ion-card"
       onClick={(e) => {
         e.preventDefault();

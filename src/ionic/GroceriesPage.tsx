@@ -6,7 +6,7 @@ import { ArrowUpRight, ChefHat, ChevronDown, Ellipsis, PenLine, Plus, Share, Tra
 import { useGroceries, useNamed, useStore } from '../data/store';
 import { AISLE_NAMES, byAisle, byRecipe, instacartSearch, itemNames, linesOf, listText, nameKey, type GroceryItem, type Line } from '../lib/groceries';
 import { newId } from '../lib/recipe';
-import { say } from '../components/ui/toast';
+import { say } from './toast';
 import { TabPage } from './scroll';
 import { BarButton, CookingPill, openMenu, usePrompt } from './ui';
 import { AddFromRecipeModal } from './modals';

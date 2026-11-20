@@ -43,12 +43,11 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
   const browser = await chromium.launch();
   try {
     const page = await (await browser.newContext()).newPage();
-    const running = () => page.evaluate(() => document.querySelector('#view-settings .page-current .ck-version-row .item-title')?.textContent ?? '');
+    const running = () => page.evaluate(() => [...document.querySelectorAll('.ck-ion-version span')].map((e) => e.textContent).join(''));
     // Settings is the last tab (issue #27)
     const openSettings = async () => {
-      await page.waitForSelector('.tabbar a[aria-label="Settings"]', { timeout: 15000 });
-      await page.locator('.tabbar a[aria-label="Settings"]').click();
-      await page.waitForSelector('#view-settings .page-current .ck-version-row', { timeout: 10000 });
+      await page.locator('ion-footer button[aria-label="Settings"]:visible').click({ timeout: 15000 });
+      await page.waitForSelector('.ck-ion-version', { timeout: 10000 });
     };
 
     await page.goto(base);
@@ -69,22 +68,22 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     if (!(await running()).startsWith('aaaaaaa')) problems.push('the page changed version by itself, so this check can’t tell anything');
 
     // the refresh icon (tapping the version itself copies it, issue #48)
-    await page.locator('#view-settings .page-current .ck-version-row .ck-refresh-link').click();
+    await page.locator('.ck-ion-version ion-button').click();
     await page.waitForTimeout(4000);
     // the app comes back on Settings, without tapping the tab again (issue #48)
-    const onTab = await page.evaluate(() => document.querySelector('.view.tab-active')?.id);
-    if (onTab !== 'view-settings') problems.push(`after the update the app opened on ${onTab}, not Settings`);
+    const onTab = await page.evaluate(() => location.pathname);
+    if (onTab !== '/settings') problems.push(`after the update the app opened on ${onTab}, not Settings`);
     const after = await running();
     if (!after.startsWith('bbbbbbb')) problems.push(`after tapping refresh it still runs "${after}", not the new version bbbbbbb`);
 
     // issue #91: with nothing newer, the icon still reloads the app (the home-screen app's only way to reload), and
     // comes back on Settings, still on the new version
     await page.evaluate(() => { window.__ckNotReloaded = true; });
-    await page.locator('#view-settings .page-current .ck-version-row .ck-refresh-link').click();
+    await page.locator('.ck-ion-version ion-button').click();
     await page.waitForTimeout(4000);
     if (await page.evaluate(() => window.__ckNotReloaded)) problems.push('with nothing newer, tapping refresh didn’t reload the app');
-    const again = await page.evaluate(() => document.querySelector('.view.tab-active')?.id);
-    if (again !== 'view-settings') problems.push(`after a refresh with nothing newer the app opened on ${again}, not Settings`);
+    const again = await page.evaluate(() => location.pathname);
+    if (again !== '/settings') problems.push(`after a refresh with nothing newer the app opened on ${again}, not Settings`);
     if (!(await running()).startsWith('bbbbbbb')) problems.push(`after a refresh with nothing newer it runs "${await running()}"`);
   } finally {
     await browser.close();

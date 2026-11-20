@@ -1,4 +1,5 @@
 import { Component, useEffect, useState, type ReactNode } from 'react';
+import { IonButton } from '@ionic/react';
 import { ChevronDown, ChevronUp, RotateCw, TriangleAlert } from 'lucide-react';
 import { hideLaunchLoader } from '../data/launch';
 import { reopenOnTab, type TabId } from '../data/startTab';
@@ -6,10 +7,11 @@ import { isDemo } from '../data/api';
 
 const TABS: TabId[] = ['recipes', 'cookbooks', 'plan', 'groceries', 'settings'];
 
-/** The tab on screen (each tab's view is #view-<tab>), to come back to after the reload. */
+/** The tab on screen (Ionic's hidden tab bar marks it, main.tsx), to come back to after the reload. */
 function shownTab(): TabId | null {
-  const id = document.querySelector('.views > .view.tab-active')?.id.replace(/^view-/, '') as TabId | undefined;
-  return id && TABS.includes(id) ? id : null;
+  const button = document.querySelector('ion-tab-bar.ck-ion-tabbar-engine .tab-selected');
+  const tab = TABS.find((t) => button?.classList.contains(`ck-ion-engine-${t}`));
+  return tab ?? null;
 }
 
 /**
@@ -17,8 +19,8 @@ function shownTab(): TabId | null {
  * React takes the whole app away after an error it can't recover from; this catches it and shows one button, Reload,
  * which opens the app again on the tab it was on. The error itself (the message and where in the code) is folded away
  * under Details, for a screenshot in an issue: it means nothing to the user, so it isn't shown unless asked for.
- * Framework7 went with the app, so this is plain markup in the shape of an empty state (DESIGN.md → Crash screen), with
- * Framework7's button styles and the browser's own <details> to fold the error away (no Framework7 to run an accordion).
+ * Ionic went with the app, so this is plain markup in the shape of an empty state (DESIGN.md → Crash screen), with the
+ * browser's own <details> to fold the error away.
  */
 export class CrashBoundary extends Component<{ children: ReactNode }, { error: Error | null; tab: TabId | null }> {
   state = { error: null as Error | null, tab: null as TabId | null };
@@ -54,10 +56,10 @@ function CrashScreen({ error, tab }: { error: Error; tab: TabId | null }) {
           <TriangleAlert size={40} strokeWidth={1.75} />
         </span>
         <h1 className="ck-empty-title">Something went wrong</h1>
-        <button type="button" className="button button-large button-fill button-round ck-main ck-empty-button" onClick={reload}>
+        <IonButton shape="round" className="ck-ion-cta ck-empty-button" onClick={reload}>
           <RotateCw size={20} strokeWidth={2.5} aria-hidden="true" />
           Reload
-        </button>
+        </IonButton>
         <details className="ck-crash-details">
           <summary>
             Details

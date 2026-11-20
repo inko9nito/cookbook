@@ -7,21 +7,21 @@ import {
 import { Check, ChefHat, ChevronDown, ChevronRight, GripHorizontal, Timer as TimerIcon, TimerOff, X } from 'lucide-react';
 import { coverPhoto, linkedRecipe, type Ingredient, type Recipe } from '../lib/recipe';
 import { friendly } from '../lib/ingredients';
-import { amountText, footerText, type UnitPicks } from '../components/ui/ingredientLine';
-import { ConvertibleAmount, toggleTarget, type ConvertTarget } from '../components/UnitChoices';
+import { amountText, footerText, type UnitPicks } from './ingredientLine';
+import { ConvertibleAmount, toggleTarget, type ConvertTarget } from './UnitChoices';
 import { clock, stepIngredients, stepTimers } from '../lib/cook';
 import { useStore } from '../data/store';
 import { useCook, useNow, type RunningTimer, type Ticks } from '../data/cook';
-import { photoStyle } from '../components/ui/photo';
-import { say } from '../components/ui/toast';
-import { reducedMotion } from '../components/CookTabs';
+import { photoStyle } from './photo';
+import { say } from './toast';
+import { reducedMotion } from './photo';
 import { ScaleSheet, UnitSheet } from './sheets';
 import { appEl } from './modals';
 import { openMenu } from './ui';
 import { onCookBack } from './history';
 
 /**
- * Cook mode on Ionic (issue #141 trial): everything the app's cook mode does, on Ionic's components.
+ * Cook mode on Ionic (issue #141): everything the app's cook mode does, on Ionic's components.
  * - An iOS card over the app (Ionic's card modal: the app shrinks back behind it). Swiping the top bar down tucks it away,
  *   and so does iOS's back gesture; the Cooking pill brings it back as it was.
  * - Ingredients over Directions, each half scrolling on its own, with the handle between them to drag (the app's approved

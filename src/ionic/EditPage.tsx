@@ -8,7 +8,7 @@ import {
 import { Plus } from 'lucide-react';
 import { useStore } from '../data/store';
 import { emptyRecipe, newId, withRaw, type Ingredient, type Recipe, type Step } from '../lib/recipe';
-import { say } from '../components/ui/toast';
+import { say } from './toast';
 import { recipePath, useTab } from './ui';
 
 const lineOf = (i: Ingredient) => (i.kind === 'header' ? 'Group' : [i.amount, i.unit, i.name].filter(Boolean).join(' ') || 'New ingredient');

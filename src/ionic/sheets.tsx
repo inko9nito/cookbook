@@ -8,9 +8,9 @@ import type { Ingredient, Recipe } from '../lib/recipe';
 import { titleCase } from '../lib/recipe';
 import { amountValue, friendly, scaleAmount, unitFor } from '../lib/ingredients';
 import { conversions, formatConverted, neaterAmount } from '../lib/units';
-import { originalAmount, type UnitPicks } from '../components/ui/ingredientLine';
-import type { ConvertTarget } from '../components/UnitChoices';
-import { say } from '../components/ui/toast';
+import { originalAmount, type UnitPicks } from './ingredientLine';
+import type { ConvertTarget } from './UnitChoices';
+import { say } from './toast';
 
 const amountText = (i: Ingredient, factor: number) => {
   const a = scaleAmount(i.amount, factor);

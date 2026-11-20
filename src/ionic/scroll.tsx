@@ -3,7 +3,7 @@ import { IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonContent } from
 import { TabBar, type TabName } from './ui';
 
 /**
- * Issue #141, the Ionic trial: two ways for the pages to scroll, for the user to compare (Settings → Scrolling).
+ * Issue #141, the move to Ionic: two ways for the pages to scroll, for the user to compare (Settings → Scrolling).
  * - 'old': as the Framework7 app does. A tab's title row slides away as you scroll down and back as you scroll up
  *   (Framework7's hideNavbarOnScroll), its search and chips staying at the top; a cookbook's plates and colour fade
  *   under a see-through bar; a recipe's bar fades in over the photo, then slides away the same way. Ionic has none of

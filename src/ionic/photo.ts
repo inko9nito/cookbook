@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { Photo } from '../../lib/recipe';
+import type { Photo } from '../lib/recipe';
 
 /**
  * Temporary, issue #141: on deploy previews (or locally), ?t141=nophotos leaves every photo out for the tab's session
@@ -142,3 +142,6 @@ export async function photoCroppedTo(file: File, id: string, crop: (width: numbe
   const box = crop(img.naturalWidth, img.naturalHeight);
   return box ? { ...photo, crop: box, src: cropImage(img, box) } : null;
 }
+
+/** Whether the phone asks for less motion (Settings → Accessibility → Motion): the hand-made animations stay still then. */
+export const reducedMotion = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;

@@ -3583,9 +3583,17 @@ async function swipeLeft(ctx, page, locator) {
     const crash = page.locator('.ck-crash');
     if (!(await crash.count())) throw new Error('a crash shows no crash screen');
     if ((await crash.locator('.ck-empty-title').textContent()) !== 'Something went wrong') throw new Error('the crash screen has no title');
-    if (!/ckCrash/.test(await crash.locator('.ck-crash-error').textContent())) throw new Error('the crash screen doesn’t show the error');
+    // the error means nothing to the user: folded away under Details, there for a screenshot
+    if (await crash.locator('.ck-crash-error').isVisible()) throw new Error('the error shows before Details is tapped');
     const box = await crash.locator('.ck-empty-button').boundingBox();
     if (!box || box.y + box.height > page.viewportSize().height) throw new Error('Reload isn’t in sight');
+  });
+  await step('40u4b-crash-details', async () => {
+    const crash = page.locator('.ck-crash');
+    await crash.locator('.ck-crash-details summary').tap(); await page.waitForTimeout(400);
+    const text = await crash.locator('.ck-crash-error').textContent();
+    if (!(await crash.locator('.ck-crash-error').isVisible()) || !/ckCrash/.test(text)) throw new Error(`Details doesn't show the error ("${text}")`);
+    if (!/\n\s*at |@/.test(text)) throw new Error('Details shows the message but not where in the code');
   });
   await step('40u5-crash-reloaded', async () => {
     await page.locator('.ck-crash .ck-empty-button').tap();

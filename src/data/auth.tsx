@@ -12,7 +12,7 @@ type Auth = {
   problem?: string;
   signIn: () => void;
   signOut: () => Promise<void>;
-  /** the API refused this account (no admin role), or the sign-in lapsed: sign out and say why */
+  /** the API refused this account (no role, #146), or the sign-in lapsed: sign out and say why */
   refuse: (message?: string) => Promise<void>;
 };
 

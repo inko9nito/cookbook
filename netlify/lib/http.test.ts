@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { refuseUnlessAdmin, UNAVAILABLE, userFromRequest } from './http';
+import { accountFrom, refuseUnlessAdmin, UNAVAILABLE, userFromRequest } from './http';
 
 // Netlify Identity's /user, answering for one good token
 const identity = (roles: string[] | undefined) =>
@@ -28,9 +28,27 @@ describe('who is calling the API', () => {
   });
 });
 
-describe('only an admin gets in', () => {
+describe('whose cookbook a sign-in opens (#146)', () => {
+  test('admin: the original cookbook', async () => {
+    expect(await accountFrom(req('Bearer good'), identity(['admin']))).toEqual({ owner: '', admin: true });
+    expect(await accountFrom(req('Bearer good'), identity(['user', 'admin']))).toEqual({ owner: '', admin: true });
+  });
+  test('user: a cookbook of its own, under its Identity id', async () => {
+    expect(await accountFrom(req('Bearer good'), identity(['user']))).toEqual({ owner: 'u1', admin: false });
+  });
+  test('no role: 403, and the reason', async () => {
+    const res = (await accountFrom(req('Bearer good'), identity(undefined))) as Response;
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toMatch(/doesn’t have a cookbook yet/);
+  });
+});
+
+describe('only an admin can do the admin’s things (Claude, Prepear)', () => {
   test('admin role: allowed', async () => {
     expect(await refuseUnlessAdmin(req('Bearer good'), identity(['admin']))).toBeNull();
+  });
+  test('user role: 403', async () => {
+    expect((await refuseUnlessAdmin(req('Bearer good'), identity(['user'])))?.status).toBe(403);
   });
   test('signed in without the role: 403', async () => {
     expect((await refuseUnlessAdmin(req('Bearer good'), identity(['editor'])))?.status).toBe(403);

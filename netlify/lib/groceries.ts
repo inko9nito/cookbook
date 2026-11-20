@@ -39,33 +39,37 @@ const toItem = (r: Row): GroceryItem => ({
   createdAt: iso(r.created_at),
 });
 
-/** Everything on the list, in the order added. */
-export async function listGroceries({ sql }: Pick<Db, 'sql'>): Promise<GroceryItem[]> {
+// Every function takes the owner whose list it is (issue #146): '' is the admin's.
+
+/** Everything on the owner's list, in the order added. */
+export async function listGroceries({ sql }: Pick<Db, 'sql'>, owner: string): Promise<GroceryItem[]> {
   const rows = await sql<Row>`
     SELECT id, recipe_id, ingredient_id, servings, planned_id, text, store, choice, checked, created_at
-    FROM grocery_items ORDER BY created_at, id`;
+    FROM grocery_items WHERE owner_id = ${owner} ORDER BY created_at, id`;
   return rows.map(toItem);
 }
 
 /** Save some items (new or changed: ticked, pinned to a store) and take some off, in one transaction. */
-export async function changeGroceries(db: Db, input: unknown): Promise<void> {
+export async function changeGroceries(db: Db, owner: string, input: unknown): Promise<void> {
   const { save, remove } = GroceryChange.parse(input);
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
-    if (remove.length) await client.query('DELETE FROM grocery_items WHERE id = ANY($1::text[])', [remove]);
+    if (remove.length) await client.query('DELETE FROM grocery_items WHERE id = ANY($1::text[]) AND owner_id = $2', [remove, owner]);
     if (save.length) {
       const col = <T>(f: (g: GroceryItem) => T) => save.map(f);
       await client.query(
-        `INSERT INTO grocery_items (id, recipe_id, ingredient_id, servings, planned_id, text, store, checked, created_at, choice)
-         SELECT t.id, t.recipe_id, t.ingredient_id, t.servings, t.planned_id, t.text, t.store, t.checked, t.created_at, t.choice
+        // only the owner's recipes; an id that's another owner's item is left alone
+        `INSERT INTO grocery_items (owner_id, id, recipe_id, ingredient_id, servings, planned_id, text, store, checked, created_at, choice)
+         SELECT $11, t.id, t.recipe_id, t.ingredient_id, t.servings, t.planned_id, t.text, t.store, t.checked, t.created_at, t.choice
          FROM unnest($1::text[], $2::text[], $3::text[], $4::numeric[], $5::text[], $6::text[], $7::text[], $8::boolean[], $9::timestamptz[], $10::text[])
            AS t(id, recipe_id, ingredient_id, servings, planned_id, text, store, checked, created_at, choice)
-         WHERE t.recipe_id IS NULL OR EXISTS (SELECT 1 FROM recipes r WHERE r.id = t.recipe_id)
+         WHERE t.recipe_id IS NULL OR EXISTS (SELECT 1 FROM recipes r WHERE r.id = t.recipe_id AND r.owner_id = $11)
          ON CONFLICT (id) DO UPDATE SET
            recipe_id = EXCLUDED.recipe_id, ingredient_id = EXCLUDED.ingredient_id, servings = EXCLUDED.servings,
            planned_id = EXCLUDED.planned_id, text = EXCLUDED.text, store = EXCLUDED.store, checked = EXCLUDED.checked,
-           choice = EXCLUDED.choice`,
+           choice = EXCLUDED.choice
+         WHERE grocery_items.owner_id = EXCLUDED.owner_id`,
         [
           col((g) => g.id),
           col((g) => g.recipeId ?? null),
@@ -77,6 +81,7 @@ export async function changeGroceries(db: Db, input: unknown): Promise<void> {
           col((g) => g.checked),
           col((g) => g.createdAt),
           col((g) => g.choice ?? null),
+          owner,
         ],
       );
     }

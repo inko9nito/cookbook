@@ -14,6 +14,8 @@ import {
 import { accessToken, currentUser, SignedOutError } from './identity';
 
 export type Backend = {
+  /** issue #146: whose cookbook this sign-in opens: the admin's (everything), or one of its own (no Claude, no Prepear) */
+  account: () => Promise<{ admin: boolean }>;
   listRecipes: () => Promise<Recipe[]>;
   saveRecipe: (r: Recipe) => Promise<Recipe>;
   deleteRecipe: (id: string) => Promise<void>;
@@ -55,7 +57,7 @@ export type Backend = {
 };
 
 /**
- * A refusal from the API, with its status (403 not an admin). `signedOut` is set only when Identity refused to renew
+ * A refusal from the API, with its status (403: no role, #146). `signedOut` is set only when Identity refused to renew
  * the sign-in: the one case that signs you out (#114). Anything else, a 401 included, is an error to try again.
  */
 export class ApiError extends Error {
@@ -134,6 +136,7 @@ async function readingOf(id: unknown, what: 'photo' | 'page'): Promise<Record<st
 }
 
 const http: Backend = {
+  account: () => call<{ admin: boolean }>('/api/account'),
   listRecipes: () => call<Recipe[]>('/api/recipes'),
   saveRecipe: (r) => call<Recipe>(`/api/recipes/${encodeURIComponent(r.id)}`, jsonInit('PUT', r)),
   deleteRecipe: (id) => call<void>(`/api/recipes/${encodeURIComponent(id)}`, { method: 'DELETE' }),
@@ -247,7 +250,12 @@ const demoName = (name: string): GroceryName => demoNames.get(nameOf(name)) ?? {
 let demoKeptExport: string | null = null;
 const demoKnown = (ids: string[]) => [...new Set(ids)].filter((i) => demoRecipes.some((r) => r.id === i));
 
+// `?user` (the demo only, for the UI check, issue #146): signed in as an account with a cookbook of its own, which has
+// no reading recipes from photos or links and no Prepear import
+const demoUser = typeof location !== 'undefined' && new URLSearchParams(location.search).has('user');
+
 const demo: Backend = {
+  account: async () => ({ admin: !demoUser }),
   listRecipes: async () => structuredClone(demoRecipes),
   saveRecipe: async (r) => {
     const saved = { ...r, updatedAt: new Date().toISOString() };

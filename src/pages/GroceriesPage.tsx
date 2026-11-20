@@ -14,7 +14,7 @@ import EmptyState from '../components/ui/EmptyState';
 import CookingFab from '../components/CookingFab';
 import RecipePickerPopup from '../components/RecipePickerPopup';
 import { AddRecipePopup, ShopWeekPopup } from '../components/AddGroceriesPopup';
-import { useGroceries, useGroceryNames, useNamed, useNameLibrary, usePlanner, useStore } from '../data/store';
+import { useAccount, useGroceries, useGroceryNames, useNamed, useNameLibrary, usePlanner, useStore } from '../data/store';
 import {
   AISLE_NAMES, AISLES, byAisle, byRecipe, instacartSearch, itemNames, linesOf, listText, nameKey, partAmount, partName, shopName, type Aisle,
   type GroceryItem, type Line,
@@ -68,7 +68,9 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
   // what each ingredient is: named on the server (Claude, once per name); the rules stand in meanwhile
   const { names } = useNamed(itemNames(items, recipes), !loading);
   const { correct } = useGroceryNames();
-  useNameLibrary(recipes, !loading);
+  // only the admin's cookbook has Claude name the whole library (#146): anyone else's uses the rules and their own fixes
+  const { admin } = useAccount();
+  useNameLibrary(recipes, !loading && admin);
 
   const real = new Map(items.map((g) => [g.id, g]));
   const lines = linesOf(

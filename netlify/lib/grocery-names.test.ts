@@ -5,6 +5,9 @@ import { getDatabase } from '@netlify/database';
 import { DEFAULT_MODEL, NamingError, askClaude, correctName, listNames, nameIngredients, namingParams, type Named } from './grocery-names';
 import type { GroceryName } from '../../src/lib/grocery-names';
 
+// the admin's cookbook, the original one (issue #146)
+const A = '';
+
 // Runs the real migrations on a local Postgres, with a stand-in for Claude.
 let local: NetlifyDB;
 let db: ReturnType<typeof getDatabase>;
@@ -75,19 +78,19 @@ describe('the names in the database', () => {
       asked.push([...names, `in use: ${inUse.join(',')}`]);
       return names.map((n) => ({ key: n.toLowerCase(), things: [thing(n.toLowerCase().replace(' paste', ''), 'dairy')], by: 'claude' as const }));
     };
-    const first = await nameIngredients(db.sql, ['White miso paste', 'white miso paste', '  '], ask);
+    const first = await nameIngredients(db.sql, A, ['White miso paste', 'white miso paste', '  '], ask);
     expect(first.map((n) => n.key)).toEqual(['white miso paste']);
-    const second = await nameIngredients(db.sql, ['white miso paste', 'white miso'], ask);
+    const second = await nameIngredients(db.sql, A, ['white miso paste', 'white miso'], ask);
     expect(second.map((n) => n.key).sort()).toEqual(['white miso', 'white miso paste']);
     expect(asked).toEqual([['White miso paste', 'in use: '], ['white miso', 'in use: white miso']]);
   });
 
   test('a correction replaces Claude’s answer and Claude never overwrites it', async () => {
-    await correctName(db.sql, { key: 'white miso', things: [thing('miso', 'dairy')] });
-    await nameIngredients(db.sql, ['white miso'], async () => {
+    await correctName(db.sql, A, { key: 'white miso', things: [thing('miso', 'dairy')] });
+    await nameIngredients(db.sql, A, ['white miso'], async () => {
       throw new Error('should not be asked');
     });
-    const all = await listNames(db.sql);
+    const all = await listNames(db.sql, A);
     expect(all.find((n) => n.key === 'white miso')).toEqual({ key: 'white miso', things: [thing('miso', 'dairy')], by: 'you' });
   });
 });

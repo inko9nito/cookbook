@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import {
-  IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonContent, IonList, IonItem, IonCheckbox, IonSearchbar,
-  IonSegment, IonSegmentButton, IonLabel, IonItemSliding, IonItemOptions, IonItemOption, IonNote,
-  useIonViewWillLeave,
+  IonButton, IonList, IonItem, IonCheckbox, IonSearchbar, IonSegment, IonSegmentButton, IonLabel, IonItemSliding, IonItemOptions, IonItemOption, IonNote, useIonViewWillLeave,
 } from '@ionic/react';
 import { ArrowUpRight, ChefHat, ChevronDown, Ellipsis, PenLine, Plus, Share, Trash2 } from 'lucide-react';
 import { useGroceries, useNamed, useStore } from '../data/store';
 import { AISLE_NAMES, byAisle, byRecipe, instacartSearch, itemNames, linesOf, listText, nameKey, type GroceryItem, type Line } from '../lib/groceries';
 import { newId } from '../lib/recipe';
 import { say } from '../components/ui/toast';
-import { BarButton, CookingPill, openMenu, usePrompt, TabBar } from './ui';
+import { TabPage } from './scroll';
+import { BarButton, CookingPill, openMenu, usePrompt } from './ui';
 import { AddFromRecipeModal } from './modals';
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
@@ -112,17 +111,16 @@ export default function GroceriesPage() {
   );
 
   return (
-    <IonPage className="ck-ion-anchor">
-      <IonHeader className="ck-ion-header">
-        <IonToolbar>
-          <IonTitle className="ck-ion-title">Groceries</IonTitle>
-          <IonButtons slot="end">
-            <BarButton label="Add to the list" icon={Plus} primary onClick={(e) => add(e.currentTarget)} />
+    <TabPage tab="groceries" title="Groceries"
+      buttons={
+        <>
+          <BarButton label="Add to the list" icon={Plus} primary onClick={(e) => add(e.currentTarget)} />
             <BarButton label="More actions" icon={Ellipsis} onClick={(e) => more(e.currentTarget)} />
-          </IonButtons>
-        </IonToolbar>
-        <div className="ck-ion-header-extra">
-            <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search the list" />
+        </>
+      }
+      extra={
+        <>
+          <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search the list" />
           <IonSegment
             value={view}
             onIonChange={(e) => {
@@ -138,9 +136,9 @@ export default function GroceriesPage() {
               <IonLabel>By recipe</IonLabel>
             </IonSegmentButton>
           </IonSegment>
-        </div>
-      </IonHeader>
-      <IonContent>
+        </>
+      }
+    >
         {stores.length > 0 && (
           <button type="button" className="ck-ion-store" onClick={(e) => storeMenu(e.currentTarget)}>
             Shopping via Instacart at <b>{store?.name}</b> <ChevronDown size={14} />
@@ -173,9 +171,9 @@ export default function GroceriesPage() {
           </>
         )}
         <CookingPill />
-      </IonContent>
-      <TabBar current="groceries" />
+      
       <AddFromRecipeModal open={adding} onClose={() => setAdding(false)} />
-    </IonPage>
+    
+    </TabPage>
   );
 }

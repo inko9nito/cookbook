@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonContent, IonList, IonItem, IonLabel, IonItemSliding,
-  IonItemOptions, IonItemOption, IonNote, useIonRouter,
+  IonButton, IonList, IonItem, IonLabel, IonItemSliding, IonItemOptions, IonItemOption, IonNote, useIonRouter,
 } from '@ionic/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperClass } from 'swiper/types';
@@ -15,7 +14,8 @@ import { coverPhoto, newId } from '../lib/recipe';
 import { formatMinutes } from '../components/ui/RecipeCard';
 import { photoStyle } from '../components/ui/photo';
 import { say } from '../components/ui/toast';
-import { BarButton, CookingPill, openMenu, TabBar } from './ui';
+import { TabPage } from './scroll';
+import { BarButton, CookingPill, openMenu } from './ui';
 import { DaySheet, NoteModal, RecipePickerModal } from './modals';
 
 const WEEKS = 26; // weeks either side of this one in the strip
@@ -64,15 +64,14 @@ export default function PlanPage() {
     setTimeout(() => openMenu(el, [[...MEALS, null].map((m) => ({ label: m ? mealName(m) : 'Any time', onClick: () => then(m ?? undefined) }))]), 250);
 
   return (
-    <IonPage className="ck-ion-anchor">
-      <IonHeader className="ck-ion-header">
-        <IonToolbar>
-          <IonTitle className="ck-ion-title">Planner</IonTitle>
-          <IonButtons slot="end">
-            <BarButton label="Go to a day" icon={CalendarSearch} onClick={() => setGoTo(true)} />
-          </IonButtons>
-        </IonToolbar>
-        <div className="ck-ion-header-extra ck-ion-week-bar">
+    <TabPage tab="plan" title="Planner"
+      buttons={
+        <>
+          <BarButton label="Go to a day" icon={CalendarSearch} onClick={() => setGoTo(true)} />
+        </>
+      }
+      extra={
+        <>
           <div className="ck-ion-week-name">
             {weekName(shownWeek, now) ?? 'Week of'} · {weekRange(shownWeek, now)}
           </div>
@@ -99,9 +98,10 @@ export default function PlanPage() {
               </SwiperSlide>
             ))}
           </Swiper>
-        </div>
-      </IonHeader>
-      <IonContent ref={content}>
+        </>
+      }
+      contentRef={content}
+    >
         {weekDays(shownWeek).map((d) => {
           const slots = slotsOn(planned, d);
           return (
@@ -163,9 +163,7 @@ export default function PlanPage() {
         })}
         <IonNote className="ck-ion-footnote ck-ion-week-hint">Swipe the week strip for other weeks. Swipe a row left to move or delete it.</IonNote>
         <CookingPill />
-      </IonContent>
-      <TabBar current="plan" />
-
+      
       <RecipePickerModal
         open={!!adding}
         single
@@ -215,6 +213,7 @@ export default function PlanPage() {
           pick(day);
         }}
       />
-    </IonPage>
+    
+    </TabPage>
   );
 }

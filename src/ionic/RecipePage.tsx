@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   IonPage, IonHeader, IonToolbar, IonButtons, IonBackButton, IonContent, IonFooter, IonButton, IonChip, IonList, IonItem,
@@ -23,6 +23,7 @@ import { photoStyle } from '../components/ui/photo';
 import { say } from '../components/ui/toast';
 import { BarButton, openMenu, recipePath, useConfirm, useTab } from './ui';
 import { ScaleSheet, UnitSheet } from './sheets';
+import { useHidingBar, useScrollStyle } from './scroll';
 import { AddToCookbookModal, AddToListModal, DaySheet, PhotoViewer } from './modals';
 
 function groupIngredients(list: Ingredient[]) {
@@ -61,6 +62,11 @@ export default function RecipePage() {
   const [toCookbook, setToCookbook] = useState(false);
   const [toList, setToList] = useState(false);
   const [dayOpen, setDayOpen] = useState(false);
+  // Settings → Scrolling: the old app's bar (fades in over the photo, slides away down, back up) or Ionic's fade
+  const old = useScrollStyle() === 'old';
+  // it slides away only once the photo has mostly gone (the photo is square, the screen's width)
+  const bar = useHidingBar(old, window.innerWidth - 100);
+  const [fill, setFill] = useState(0);
 
   if (!recipe) {
     return (
@@ -139,7 +145,11 @@ export default function RecipePage() {
   return (
     <IonPage className="ck-ion-anchor">
       {/* Ionic's fading header: see-through over the photo, solid once the page scrolls */}
-      <IonHeader collapse="fade" className="ck-ion-header ck-ion-photo-bar">
+      <IonHeader
+        collapse={old ? undefined : 'fade'}
+        className={`ck-ion-header ck-ion-photo-bar${old ? ' ck-ion-slide-header ck-ion-fill-bar' : ''}${bar.hidden ? ' ck-ion-bar-hidden' : ''}${old && fill >= 1 ? ' ck-ion-solid' : ''}`}
+        style={old ? ({ '--ck-fill': String(fill) } as CSSProperties) : undefined}
+      >
         <IonToolbar>
           <IonButtons slot="start">
             <IonBackButton defaultHref={`/${tab}`} text="" className="ck-ion-round-back" />
@@ -149,7 +159,17 @@ export default function RecipePage() {
           </IonButtons>
         </IonToolbar>
       </IonHeader>
-      <IonContent fullscreen className="ck-ion-recipe">
+      <IonContent
+        fullscreen
+        className="ck-ion-recipe"
+        scrollEvents={old}
+        onIonScroll={(e) => {
+          const y = e.detail.scrollTop;
+          bar.onScroll(y);
+          // the bar fills in over the last of the photo (square, the screen's width), as Framework7's see-through bar did
+          setFill(Math.min(1, Math.max(0, (y - (window.innerWidth - 150)) / 90)));
+        }}
+      >
         <div className="ck-hero-wrap">
         {recipe.photos.length ? (
           <Swiper modules={[Pagination]} pagination={recipe.photos.length > 1} className="ck-ion-hero">

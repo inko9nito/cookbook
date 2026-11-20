@@ -1,20 +1,21 @@
 import { useState } from 'react';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, IonButton, IonContent, IonList, IonItem, IonLabel,
-  IonRadioGroup, IonRadio, IonRange, IonNote, useIonActionSheet,
+  IonRadioGroup, IonRadio, IonRange, IonNote, IonSegment, IonSegmentButton, useIonActionSheet,
 } from '@ionic/react';
 import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../data/auth';
 import { appVersion } from '../lib/appUpdate';
 import { FONTS, SIZE_MAX, SIZE_MIN, resetFontSizes, setFont, setFontSizes, sizesOf, useFontChoice, type FontId } from '../data/font';
 import { tell } from '../components/ui/toast';
-import { TabBar } from './ui';
+import { TabPage, setScrollStyle, useScrollStyle, type ScrollStyle } from './scroll';
 
 /** Settings on Ionic: inset grouped lists (iOS Settings' look), a pushed page, Sign Out confirmed in an action sheet. */
 export function SettingsPage() {
   const auth = useAuth();
   const [sheet] = useIonActionSheet();
   const [refreshing, setRefreshing] = useState(false);
+  const scroll = useScrollStyle();
   const signOut = () =>
     sheet({
       header: 'Sign out of Cookbook on this phone? This trial shares its sign-in with the app on this preview.',
@@ -24,13 +25,8 @@ export function SettingsPage() {
       ],
     });
   return (
-    <IonPage>
-      <IonHeader className="ck-ion-header">
-        <IonToolbar>
-          <IonTitle className="ck-ion-title">Settings</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-      <IonContent>
+    <TabPage tab="settings" title="Settings"
+    >
         <IonList inset lines="full" className="ck-ion-inset">
           <IonItem>
             <IonLabel>{auth.email}</IonLabel>
@@ -39,6 +35,21 @@ export function SettingsPage() {
             </IonButton>
           </IonItem>
         </IonList>
+        {/* the trial's two ways of scrolling, to compare (scroll.tsx) */}
+        <div className="ck-group-label ck-ion-meal">Scrolling</div>
+        <IonSegment value={scroll} onIonChange={(e) => setScrollStyle(e.detail.value as ScrollStyle)} className="ck-ion-segment ck-ion-settings-segment">
+          <IonSegmentButton value="old">
+            <IonLabel>Like the old app</IonLabel>
+          </IonSegmentButton>
+          <IonSegmentButton value="ios">
+            <IonLabel>iOS large titles</IonLabel>
+          </IonSegmentButton>
+        </IonSegment>
+        <p className="ck-ion-footnote">
+          {scroll === 'old'
+            ? 'Title rows slide away as you scroll down and come back as you scroll up; search and chips stay at the top. A cookbook’s plates fade under a see-through bar.'
+            : 'Ionic’s own: the big title scrolls away with the page and a small one fades into the bar, which stays. Search and chips scroll away.'}
+        </p>
         <IonList inset lines="full" className="ck-ion-inset">
           <IonItem button detail onClick={() => tell('Import isn’t in the trial')}>
             <IonLabel>Import</IonLabel>
@@ -64,9 +75,9 @@ export function SettingsPage() {
         <p className="ck-ion-footnote">
           <a href="/">Open the current app</a>
         </p>
-      </IonContent>
-      <TabBar current="settings" />
-    </IonPage>
+      
+    
+    </TabPage>
   );
 }
 

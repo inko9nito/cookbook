@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, IonContent, IonList, IonItem, IonLabel,
@@ -10,7 +10,8 @@ import { byName, colorOf, cookbookRecipeIds, emptyCookbook, existing, platePhoto
 import { CookbookSort, SORT_LABELS, newId, sortRecipes, type Recipe } from '../lib/recipe';
 import { photoStyle } from '../components/ui/photo';
 import { say } from '../components/ui/toast';
-import { BarButton, CookingPill, Plates, RecipeCard, openMenu, useConfirm, usePrompt, TabBar } from './ui';
+import { TabPage, useHidingBar, useScrollStyle } from './scroll';
+import { BarButton, CookingPill, Plates, RecipeCard, openMenu, useConfirm, usePrompt } from './ui';
 import { AddRecipesModal, OrganizeModal } from './modals';
 
 const countOf = (c: Cookbook, byId: Map<string, Recipe>) => {
@@ -37,17 +38,14 @@ export function CookbooksPage() {
     router.push(`/cookbooks/${c.id}`, 'forward');
   };
   return (
-    <IonPage className="ck-ion-anchor">
-      <IonHeader className="ck-ion-header">
-        <IonToolbar>
-          <IonTitle className="ck-ion-title">Cookbooks</IonTitle>
-          <IonButtons slot="end">
-            <BarButton label="New cookbook" icon={Plus} primary onClick={add} />
+    <TabPage tab="cookbooks" title="Cookbooks"
+      buttons={
+        <>
+          <BarButton label="New cookbook" icon={Plus} primary onClick={add} />
             <BarButton label={grid ? 'Show as a list' : 'Show as tiles'} icon={grid ? ListIcon : LayoutGrid} onClick={() => setCookbookView(grid ? 'list' : 'grid')} />
-          </IonButtons>
-        </IonToolbar>
-      </IonHeader>
-      <IonContent>
+        </>
+      }
+    >
         <p className="ck-note ck-ion-count">{loading ? ' ' : `${sorted.length} ${sorted.length === 1 ? 'cookbook' : 'cookbooks'}`}</p>
         {loading ? (
           <div className="ck-ion-grid">
@@ -92,9 +90,9 @@ export function CookbooksPage() {
           </IonList>
         )}
         <CookingPill />
-      </IonContent>
-      <TabBar current="cookbooks" />
-    </IonPage>
+      
+    
+    </TabPage>
   );
 }
 
@@ -117,6 +115,11 @@ export function CookbookPage() {
   const [docked, setDocked] = useState(false);
   const bar = useRef<HTMLIonToolbarElement>(null);
   const heroSearch = useRef<HTMLDivElement>(null);
+  // Settings → Scrolling. Old app: the plates and colour fade under a see-through bar (#90), the search docks, and once
+  // docked the title row slides away scrolling down and back scrolling up. iOS: Ionic's fading bar, the search scrolls away.
+  const old = useScrollStyle() === 'old';
+  const [heroP, setHeroP] = useState(0);
+  const hiding = useHidingBar(old && docked, 0);
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(false);
   const [organizing, setOrganizing] = useState(false);
@@ -177,7 +180,10 @@ export function CookbookPage() {
 
   return (
     <IonPage className="ck-ion-anchor">
-      <IonHeader className={`ck-ion-header ck-ion-hero-bar${solid ? ' ck-ion-solid' : ''}`}>
+      <IonHeader
+        collapse={old ? undefined : 'fade'}
+        className={`ck-ion-header ${old ? 'ck-ion-hero-bar ck-ion-slide-header' : 'ck-ion-fade-bar'}${old && solid ? ' ck-ion-solid' : ''}${hiding.hidden ? ' ck-ion-bar-hidden' : ''}`}
+      >
         <IonToolbar ref={bar}>
           <IonButtons slot="start">
             <IonBackButton defaultHref="/cookbooks" text="" className="ck-ion-round-back" />
@@ -190,7 +196,7 @@ export function CookbookPage() {
             <BarButton label="More actions" icon={Ellipsis} onClick={(e) => more(e.currentTarget)} />
           </IonButtons>
         </IonToolbar>
-        {docked && (
+        {old && docked && (
           <div className="ck-ion-header-extra">
             <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search this cookbook" />
           </div>
@@ -202,19 +208,23 @@ export function CookbookPage() {
         scrollEvents
         onIonScroll={(e) => {
           const y = e.detail.scrollTop;
-          const barBottom = bar.current?.getBoundingClientRect().bottom ?? 56;
+          // the bar's own height (not where it is: it slides away once docked)
+          const barBottom = bar.current?.offsetHeight ?? 56;
           const search = heroSearch.current?.getBoundingClientRect().top ?? Infinity;
-          setSolid(y > 150);
+          const p = Math.min(1, Math.max(0, y / 150));
+          setHeroP(p);
+          setSolid(p >= 1);
           setTitled(y > 210);
           // the pill (16pt into its box) has reached the bar
           setDocked(search + 16 < barBottom + 4);
+          hiding.onScroll(y);
         }}
       >
-        <section className={`ck-ion-book-hero ck-tint-${colorOf(book)}`}>
+        <section className={`ck-ion-book-hero ck-tint-${colorOf(book)}`} style={old ? ({ '--ck-hero-p': String(heroP) } as CSSProperties) : undefined}>
           <Plates photos={platePhotos(book, byId)} />
           <h1 className="ck-ion-book-title">{book.name}</h1>
           <p className="ck-ion-book-meta">{countOf(book, byId)}</p>
-          <div ref={heroSearch} className={docked ? 'ck-ion-handed-over' : ''}>
+          <div ref={heroSearch} className={old && docked ? 'ck-ion-handed-over' : ''}>
             <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search this cookbook" className="ck-ion-hero-search" />
           </div>
         </section>

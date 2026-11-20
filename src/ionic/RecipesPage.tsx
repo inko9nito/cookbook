@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import {
-  IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonContent, IonSearchbar, IonChip, IonSkeletonText,
-  useIonRouter,
+  IonSearchbar, IonChip, IonSkeletonText, useIonRouter,
 } from '@ionic/react';
 import { ArrowUpDown, Camera, Link2, PenLine, Plus } from 'lucide-react';
 import { useStore } from '../data/store';
 import { SORT_LABELS, sortRecipes, type SortKey } from '../lib/recipe';
 import { say } from '../components/ui/toast';
-import { BarButton, CookingPill, RecipeCard, openMenu, TabBar } from './ui';
+import { TabPage } from './scroll';
+import { BarButton, CookingPill, RecipeCard, openMenu } from './ui';
 
 /** Recipes: the title, + and sort in the bar, the search field and the label chips under it, then the grid. */
 export default function RecipesPage() {
@@ -33,12 +33,10 @@ export default function RecipesPage() {
     ]);
 
   return (
-    <IonPage className="ck-ion-anchor">
-      <IonHeader className="ck-ion-header">
-        <IonToolbar>
-          <IonTitle className="ck-ion-title">Recipes</IonTitle>
-          <IonButtons slot="end">
-            <BarButton label="New recipe" icon={Plus} primary onClick={(e) => add(e.currentTarget)} />
+    <TabPage tab="recipes" title="Recipes"
+      buttons={
+        <>
+          <BarButton label="New recipe" icon={Plus} primary onClick={(e) => add(e.currentTarget)} />
             <BarButton
               label="Sort recipes"
               icon={ArrowUpDown}
@@ -49,10 +47,11 @@ export default function RecipesPage() {
                 )
               }
             />
-          </IonButtons>
-        </IonToolbar>
-        <div className="ck-ion-header-extra">
-            <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search recipes" />
+        </>
+      }
+      extra={
+        <>
+          <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search recipes" />
           <div className="ck-ion-chips">
             <IonChip className={filterTags.length ? '' : 'ck-ion-chip-on'} onClick={() => setFilter([])}>
               All
@@ -63,9 +62,9 @@ export default function RecipesPage() {
               </IonChip>
             ))}
           </div>
-        </div>
-      </IonHeader>
-      <IonContent>
+        </>
+      }
+    >
         <p className="ck-note ck-ion-count">{loading ? ' ' : `${shown.length} ${shown.length === 1 ? 'recipe' : 'recipes'} · ${SORT_LABELS[sort]}`}</p>
         <div className="ck-ion-grid">
           {loading
@@ -80,8 +79,8 @@ export default function RecipesPage() {
         </div>
         <div className="ck-ion-toast-anchor" />
         <CookingPill />
-      </IonContent>
-      <TabBar current="recipes" />
-    </IonPage>
+      
+    
+    </TabPage>
   );
 }

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import {
   Page, Navbar, BlockTitle, Block, BlockFooter, List, ListItem, ListInput, Chip, Button, Stepper, Segmented,
 } from 'framework7-react';
-import { Carrot } from 'lucide-react';
+import { Carrot, Pencil, BookPlus, CalendarPlus, ShoppingCart, Share, Copy, Trash2 } from 'lucide-react';
+import Menu from '../components/ui/Menu';
 import RecipeCard from '../components/ui/RecipeCard';
 import EmptyState from '../components/ui/EmptyState';
 import { sampleRecipes } from '../demo/data';
@@ -24,6 +25,7 @@ export default function StyleGuidePage() {
   const { font } = useFontChoice();
   const [chip, setChip] = useState('All');
   const [servings, setServings] = useState(8);
+  const [menu, setMenu] = useState(false);
 
   return (
     <Page name="style-guide">
@@ -31,6 +33,29 @@ export default function StyleGuidePage() {
       <List strongIos insetIos dividersIos className="ck-appearance-font">
         <ListItem link="/settings/font/" title="Font" after={fontName(font)} />
       </List>
+
+      <BlockTitle medium>Menus · iOS pull-down</BlockTitle>
+      <Block>
+        <Button className="ck-soft" onClick={() => setMenu(true)}>Show a menu</Button>
+      </Block>
+      <BlockFooter>Every ⋯ and + menu, and every choice (sort, aisle, store), opens from its button like this.</BlockFooter>
+      <Menu
+        opened={menu}
+        onClosed={() => setMenu(false)}
+        groups={[
+          [{ label: 'Edit', icon: Pencil }],
+          [
+            { label: 'Add to Cookbook', icon: BookPlus },
+            { label: 'Add to Planner', icon: CalendarPlus },
+            { label: 'Add to Grocery List', icon: ShoppingCart },
+          ],
+          [
+            { label: 'Duplicate', icon: Copy },
+            { label: 'Share', icon: Share },
+          ],
+          [{ label: 'Delete', icon: Trash2, danger: true }],
+        ]}
+      />
 
       <BlockTitle medium>Colors</BlockTitle>
       <Block>

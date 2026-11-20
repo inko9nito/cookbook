@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
-  Actions, ActionsGroup, ActionsButton, f7,
+  f7,
 } from 'framework7-react';
-import { BookOpen, CalendarDays, CookingPot, Ellipsis, Plus, Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import {
+  BookOpen, CalendarDays, CookingPot, Ellipsis, Plus, Star, ChevronDown, ChevronRight, ExternalLink,
+  Pencil, BookPlus, CalendarPlus, ShoppingCart, Share, Copy, Trash2,
+} from 'lucide-react';
+import Menu from '../components/ui/Menu';
 import ScaleSheet from '../components/ScaleSheet';
 import RecipePhotos from '../components/RecipePhotos';
 import AddToCookbookPopup from '../components/AddToCookbookPopup';
@@ -107,6 +111,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
   });
   const [scaleOpen, setScaleOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [mealFor, setMealFor] = useState<Day | null>(null);
   const [addingToCookbook, setAddingToCookbook] = useState(false);
   const [addingToList, setAddingToList] = useState(false);
   // issue #6: the tapped amount (its popover is open), and units picked for some ingredients until the recipe is
@@ -142,27 +147,15 @@ export default function RecipePage({ f7route, f7router }: Props) {
     pickDay({
       title: 'Plan for which day?',
       busy: busyDays(planned.filter((p) => p.recipeId === recipe.id)),
-      onPick: (day) => {
-        const servings = scaled ? Math.round(recipe.servings * factor * 100) / 100 : undefined;
-        const add = (meal?: Meal) => {
-          savePlanned(plan(recipe.id, day, newId, { meal, servings }));
-          const what = [mediumDate(day), meal && mealName(meal), servings && `${friendly(servings)} servings`].filter(Boolean).join(' · ');
-          say(`Added to ${what}`);
-        };
-        const sheet = f7.actions.create({
-          buttons: [
-            [
-              { text: `${mediumDate(day)}: which meal?`, label: true },
-              ...MEALS.map((m) => ({ text: mealName(m), onClick: () => add(m) })),
-              { text: 'Any time', onClick: () => add() },
-            ],
-            [{ text: 'Cancel', strong: true }],
-          ],
-          on: { closed: () => sheet.destroy() },
-        });
-        sheet.open();
-      },
+      // then which meal (a choice menu, opened in the middle of the screen: the calendar sheet it came from is gone)
+      onPick: (day) => setMealFor(day),
     });
+  const addPlanned = (day: Day, meal?: Meal) => {
+    const servings = scaled ? Math.round(recipe.servings * factor * 100) / 100 : undefined;
+    savePlanned(plan(recipe.id, day, newId, { meal, servings }));
+    const what = [mediumDate(day), meal && mealName(meal), servings && `${friendly(servings)} servings`].filter(Boolean).join(' · ');
+    say(`Added to ${what}`);
+  };
   // a Planned chip opens the Planner on that day: back to the Planner in the Plan tab, or over to it
   const showDay = (day: Day) => {
     showInPlanner(day);
@@ -382,33 +375,42 @@ export default function RecipePage({ f7route, f7router }: Props) {
       {/* issue #64: its ingredients onto the grocery list, at the servings shown */}
       <AddRecipePopup recipe={addingToList ? recipe : null} servings={Math.round(recipe.servings * factor * 100) / 100} onClosed={() => setAddingToList(false)} />
 
-      <Actions opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>
-        <ActionsGroup>
-          <ActionsButton onClick={() => f7router?.navigate(`/recipe/${recipe.id}/edit/`)}>Edit Recipe</ActionsButton>
-          <ActionsButton onClick={() => setAddingToCookbook(true)}>Add to Cookbook</ActionsButton>
-          <ActionsButton onClick={addToPlanner}>Add to Planner</ActionsButton>
-          <ActionsButton onClick={() => setAddingToList(true)}>Add to Grocery List</ActionsButton>
-          <ActionsButton onClick={() => soon('Sharing')}>Share</ActionsButton>
-          <ActionsButton onClick={() => soon('Duplicating')}>Duplicate</ActionsButton>
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton
-            color="red"
-            onClick={() =>
-              f7.dialog.confirm(deleteText(recipe.title, usedIn(recipe.id, recipes).map((r) => r.title)), 'Delete Recipe', () => {
-                deleteRecipe(recipe.id);
-                f7router?.back();
-                say(`Deleted “${recipe.title}”`);
-              })
-            }
-          >
-            Delete Recipe
-          </ActionsButton>
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={!!mealFor}
+        onClosed={() => setMealFor(null)}
+        centered
+        title={mealFor ? `${mediumDate(mealFor)}: which meal?` : ''}
+        groups={[[...MEALS, null].map((m) => ({ label: m ? mealName(m) : 'Any time', onClick: () => mealFor && addPlanned(mealFor, m ?? undefined) }))]}
+      />
+      <Menu
+        opened={moreOpen}
+        onClosed={() => setMoreOpen(false)}
+        groups={[
+          [{ label: 'Edit', icon: Pencil, onClick: () => f7router?.navigate(`/recipe/${recipe.id}/edit/`) }],
+          [
+            { label: 'Add to Cookbook', icon: BookPlus, onClick: () => setAddingToCookbook(true) },
+            { label: 'Add to Planner', icon: CalendarPlus, onClick: addToPlanner },
+            { label: 'Add to Grocery List', icon: ShoppingCart, onClick: () => setAddingToList(true) },
+          ],
+          [
+            { label: 'Duplicate', icon: Copy, onClick: () => soon('Duplicating') },
+            { label: 'Share', icon: Share, onClick: () => soon('Sharing') },
+          ],
+          [
+            {
+              label: 'Delete',
+              icon: Trash2,
+              danger: true,
+              onClick: () =>
+                f7.dialog.confirm(deleteText(recipe.title, usedIn(recipe.id, recipes).map((r) => r.title)), 'Delete Recipe', () => {
+                  deleteRecipe(recipe.id);
+                  f7router?.back();
+                  say(`Deleted “${recipe.title}”`);
+                }),
+            },
+          ],
+        ]}
+      />
     </Page>
   );
 }

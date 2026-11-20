@@ -78,20 +78,25 @@ export const Recipe = z.object({
 });
 export type Recipe = z.infer<typeof Recipe>;
 
-export const SortKey = z.enum(['newest', 'oldest', 'az']);
+/** `cooked`: most cooked first (#39), by timesMade; ties newest first */
+export const SortKey = z.enum(['newest', 'oldest', 'az', 'cooked']);
 export type SortKey = z.infer<typeof SortKey>;
 
 /** Issue #95: a cookbook's recipes can be sorted too; `manual` (the default) is the cookbook's own order, set in Organize. */
 export const CookbookSort = z.enum(['manual', ...SortKey.options]);
 export type CookbookSort = z.infer<typeof CookbookSort>;
 
-export const SORT_LABELS: Record<CookbookSort, string> = { manual: 'Manual', newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z' };
+export const SORT_LABELS: Record<CookbookSort, string> = { manual: 'Manual', newest: 'Newest first', oldest: 'Oldest first', az: 'A–Z', cooked: 'Most cooked' };
 
 /** The recipes in this order (a new array); `manual` keeps the order they came in. */
 export function sortRecipes(list: Recipe[], sort: CookbookSort): Recipe[] {
   if (sort === 'manual') return [...list];
+  const newest = (a: Recipe, b: Recipe) => b.createdAt.localeCompare(a.createdAt);
   return [...list].sort((a, b) =>
-    sort === 'az' ? a.title.localeCompare(b.title) : sort === 'newest' ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt),
+    sort === 'az' ? a.title.localeCompare(b.title)
+      : sort === 'newest' ? newest(a, b)
+      : sort === 'cooked' ? b.timesMade - a.timesMade || newest(a, b)
+      : a.createdAt.localeCompare(b.createdAt),
   );
 }
 

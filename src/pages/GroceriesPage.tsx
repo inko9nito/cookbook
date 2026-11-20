@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
   Page, Navbar, NavTitle, NavRight, Subnavbar, Searchbar, Link, Block, Button, Segmented, List, ListItem, SwipeoutActions,
-  SwipeoutButton, Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
+  SwipeoutButton, f7,
 } from 'framework7-react';
-import { ArrowUpRight, Carrot, ChefHat, ChevronDown, Ellipsis, Plus } from 'lucide-react';
+import { ArrowUpRight, Carrot, ChefHat, ChevronDown, Ellipsis, Plus, CalendarDays, PenLine, Share, ListChecks, Store, Trash2, ShoppingBasket, Undo2, ArrowRightLeft, Merge, Pencil } from 'lucide-react';
+import Menu from '../components/ui/Menu';
 import { showTabbar } from '../components/ui/tabbar';
 import { inlineIcon, navIcon } from '../components/ui/icons';
 import { useAtTop } from '../components/ui/atTop';
@@ -407,141 +408,117 @@ export default function GroceriesPage({ f7router }: { f7router?: { navigate: (ur
       )}
 
       {/* + : this week's planned recipes, a recipe, or something typed */}
-      <Actions opened={addMenu} onActionsClosed={() => setAddMenu(false)}>
-        <ActionsGroup>
-          <ActionsLabel>Add to the grocery list</ActionsLabel>
-          {/* where the things come from, worded like Recipes' + (From photos or screenshots, From a link, Type it in) */}
-          <ActionsButton onClick={() => setShopWeek(true)}>From this week’s plan</ActionsButton>
-          <ActionsButton onClick={() => setPicking(true)}>From a recipe</ActionsButton>
-          <ActionsButton onClick={addTyped}>Type it in</ActionsButton>
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={addMenu}
+        onClosed={() => setAddMenu(false)}
+        groups={[
+          [
+            // where the things come from, worded like Recipes' + (From a link, From photos or screenshots, Type it in)
+            { label: 'From this week’s plan', icon: CalendarDays, onClick: () => setShopWeek(true) },
+            { label: 'From a recipe', icon: ChefHat, onClick: () => setPicking(true) },
+            { label: 'Type it in', icon: PenLine, onClick: addTyped },
+          ],
+        ]}
+      />
 
-      <Actions opened={moreMenu} onActionsClosed={() => setMoreMenu(false)}>
-        <ActionsGroup>
-          <ActionsButton onClick={share} className={toGet.length ? '' : 'disabled'}>
-            Share the list
-          </ActionsButton>
-          <ActionsButton onClick={clearGot} className={got.length ? '' : 'disabled'}>
-            {`Clear what you got${got.length ? ` (${got.length})` : ''}`}
-          </ActionsButton>
-          <ActionsButton onClick={() => f7router?.navigate('/groceries/stores/')}>Your stores</ActionsButton>
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton color="red" onClick={clearAll} className={items.length ? '' : 'disabled'}>
-            Clear the list
-          </ActionsButton>
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={moreMenu}
+        onClosed={() => setMoreMenu(false)}
+        groups={[
+          [
+            { label: 'Share', icon: Share, disabled: !toGet.length, onClick: share },
+            { label: 'Edit stores', icon: Store, onClick: () => f7router?.navigate('/groceries/stores/') },
+          ],
+          [
+            { label: `Clear completed${got.length ? ` (${got.length})` : ''}`, icon: ListChecks, disabled: !got.length, onClick: clearGot },
+            { label: 'Clear all', icon: Trash2, danger: true, disabled: !items.length, onClick: clearAll },
+          ],
+        ]}
+      />
 
       {/* the store the list's links search */}
-      <Actions opened={storeMenu} onActionsClosed={() => setStoreMenu(false)}>
-        <ActionsGroup>
-          <ActionsLabel>{stores.length ? 'Shop at' : 'Add the stores you shop at on Instacart'}</ActionsLabel>
-          {stores.map((s) => (
-            <ActionsButton key={s.slug} strong={s.slug === store?.slug} onClick={() => changeSettings({ groceryStore: s.slug })}>
-              {s.name}
-            </ActionsButton>
-          ))}
-          <ActionsButton onClick={() => f7router?.navigate('/groceries/stores/')}>{stores.length ? 'Edit stores…' : 'Add a store…'}</ActionsButton>
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={storeMenu}
+        onClosed={() => setStoreMenu(false)}
+        title={stores.length ? undefined : 'Add the stores you shop at on Instacart'}
+        groups={[
+          stores.map((s) => ({ label: s.name, checked: s.slug === store?.slug, onClick: () => changeSettings({ groceryStore: s.slug }) })),
+          [{ label: stores.length ? 'Edit stores…' : 'Add a store…', icon: Store, onClick: () => f7router?.navigate('/groceries/stores/') }],
+        ]}
+      />
 
       {/* swipe → Store: this one thing at another store */}
-      <Actions opened={!!pinning} onActionsClosed={() => setPinning(null)}>
-        <ActionsGroup>
-          <ActionsLabel>{pinning ? `Which store for ${pinning.name}?` : ''}</ActionsLabel>
-          {stores.map((s) => (
-            <ActionsButton key={s.slug} strong={(pinning?.store ?? store?.slug) === s.slug} onClick={() => pinning && pin(pinning, s.slug)}>
-              {s.slug === store?.slug ? `${s.name} (with the rest)` : s.name}
-            </ActionsButton>
-          ))}
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={!!pinning}
+        onClosed={() => setPinning(null)}
+        title={pinning ? `Which store for ${pinning.name}?` : ''}
+        groups={[
+          stores.map((s) => ({
+            label: s.slug === store?.slug ? `${s.name} (with the rest)` : s.name,
+            checked: (pinning?.store ?? store?.slug) === s.slug,
+            onClick: () => pinning && pin(pinning, s.slug),
+          })),
+        ]}
+      />
 
       {/* swipe → Edit: pick a choice, another aisle, the same thing as another row, another name */}
-      <Actions opened={!!editing} onActionsClosed={() => setEditing(null)}>
-        <ActionsGroup>
-          <ActionsLabel>{editing ? cap(editing.name) : ''}</ActionsLabel>
-          {editing?.choices?.map((t) => (
-            <ActionsButton key={t.item} onClick={() => pickFor(editing, t.item)}>{`Get ${t.item}`}</ActionsButton>
-          ))}
-          {editing && !editing.choices && editing.parts.some((p) => p.item.choice) && (
-            <ActionsButton onClick={() => pickFor(editing, null)}>{`Back to “${shopName(editing.parts.find((p) => p.item.choice)!.name)}”`}</ActionsButton>
-          )}
-          <ActionsButton onClick={() => editing && after(() => setMoving(editing))}>Move to another aisle…</ActionsButton>
-          {editing?.thing && (
-            <>
-              <ActionsButton onClick={() => after(() => setSameAs(editing))}>Same thing as…</ActionsButton>
-              <ActionsButton onClick={() => rename(editing)}>Rename…</ActionsButton>
-            </>
-          )}
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={!!editing}
+        onClosed={() => setEditing(null)}
+        groups={[
+          (editing?.choices ?? []).map((t) => ({ label: `Get ${t.item}`, icon: ShoppingBasket, onClick: () => pickFor(editing!, t.item) })),
+          [
+            editing && !editing.choices && editing.parts.some((p) => p.item.choice) && {
+              label: `Back to “${shopName(editing.parts.find((p) => p.item.choice)!.name)}”`,
+              icon: Undo2,
+              onClick: () => pickFor(editing, null),
+            },
+            { label: 'Move to another aisle…', icon: ArrowRightLeft, onClick: () => editing && after(() => setMoving(editing)) },
+            editing?.thing && { label: 'Same thing as…', icon: Merge, onClick: () => after(() => setSameAs(editing)) },
+            editing?.thing && { label: 'Rename…', icon: Pencil, onClick: () => rename(editing) },
+          ],
+        ]}
+      />
 
       {/* Edit → Same thing as…: this row's words are that row's thing, for every recipe */}
-      <Actions opened={!!sameAs} onActionsClosed={() => setSameAs(null)}>
-        <ActionsGroup>
-          <ActionsLabel>{sameAs ? `${cap(sameAs.name)} is the same thing as…` : ''}</ActionsLabel>
-          {sameAs &&
-            toGet
-              .filter((l) => l.thing && l.key !== sameAs.key && nameKey(l.thing.item) !== nameKey(sameAs.thing!.item))
-              .sort((a, b) => Number(b.aisle === sameAs.aisle) - Number(a.aisle === sameAs.aisle) || a.name.localeCompare(b.name))
-              .map((l) => (
-                <ActionsButton key={l.key} onClick={() => { nameAs(sameAs, l.thing!); say(`“${cap(sameAs.name)}” is now “${cap(l.name)}”`); }}>
-                  {cap(l.name)}
-                </ActionsButton>
-              ))}
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={!!sameAs}
+        onClosed={() => setSameAs(null)}
+        title={sameAs ? `${cap(sameAs.name)} is the same thing as…` : ''}
+        groups={[
+          sameAs
+            ? toGet
+                .filter((l) => l.thing && l.key !== sameAs.key && nameKey(l.thing.item) !== nameKey(sameAs.thing!.item))
+                .sort((a, b) => Number(b.aisle === sameAs.aisle) - Number(a.aisle === sameAs.aisle) || a.name.localeCompare(b.name))
+                .map((l) => ({
+                  label: cap(l.name),
+                  onClick: () => { nameAs(sameAs, l.thing!); say(`“${cap(sameAs.name)}” is now “${cap(l.name)}”`); },
+                }))
+            : [],
+        ]}
+      />
 
       {/* ↗ on a choice: which to search on Instacart */}
-      <Actions opened={!!searching} onActionsClosed={() => setSearching(null)}>
-        <ActionsGroup>
-          <ActionsLabel>Search Instacart for</ActionsLabel>
-          {searching?.choices?.map((t) => (
-            <ActionsButton key={t.item} onClick={() => window.open(searchFor(searching, t.item), '_blank')}>
-              {cap(t.item)}
-            </ActionsButton>
-          ))}
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={!!searching}
+        onClosed={() => setSearching(null)}
+        title="Search Instacart for"
+        groups={[
+          (searching?.choices ?? []).map((t) => ({
+            label: cap(t.item),
+            icon: ArrowUpRight,
+            onClick: () => window.open(searchFor(searching!, t.item), '_blank'),
+          })),
+        ]}
+      />
 
       {/* Edit → Move to another aisle: the app guessed wrong; kept for that thing */}
-      <Actions opened={!!moving} onActionsClosed={() => setMoving(null)}>
-        <ActionsGroup>
-          <ActionsLabel>{moving ? `Which aisle for ${moving.name}?` : ''}</ActionsLabel>
-          {AISLES.map((a) => (
-            <ActionsButton key={a} strong={moving?.aisle === a} onClick={() => moving && moveTo(moving, a)}>
-              {AISLE_NAMES[a]}
-            </ActionsButton>
-          ))}
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={!!moving}
+        onClosed={() => setMoving(null)}
+        title={moving ? `Which aisle for ${moving.name}?` : ''}
+        groups={[AISLES.map((a) => ({ label: AISLE_NAMES[a], checked: moving?.aisle === a, onClick: () => moving && moveTo(moving, a) }))]}
+      />
 
       <RecipePickerPopup
         mode="one"

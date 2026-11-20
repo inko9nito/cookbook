@@ -2,9 +2,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, KeyboardEvent, PointerEvent, SetStateAction } from 'react';
 import {
   Popup, Page, Navbar, NavTitle, NavRight, Link, Button, List, ListItem, Tabs, Tab,
-  Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
+  f7,
 } from 'framework7-react';
-import { Check, ChevronDown, X, GripHorizontal, ChevronRight, Timer as TimerIcon } from 'lucide-react';
+import { Check, ChevronDown, X, GripHorizontal, ChevronRight, Timer as TimerIcon, TimerOff } from 'lucide-react';
+import Menu from './ui/Menu';
 import { linkedRecipe, type Ingredient, type Recipe } from '../lib/recipe';
 import CookTabs, { reducedMotion } from './CookTabs';
 import { friendly } from '../lib/ingredients';
@@ -278,26 +279,14 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
         <div className="sheet-backdrop ck-cook-backdrop" />
       </Popup>
 
-      <Actions opened={timersOpen} onActionsClosed={() => setTimersOpen(false)}>
-        <ActionsGroup>
-          <ActionsLabel>Timers</ActionsLabel>
-          {s.timers.map((t) => (
-            <ActionsButton key={t.id}>
-              {cook.timerName(t).replace(': ', ' · ')} · {clock((t.endsAt - now) / 1000)} left
-            </ActionsButton>
-          ))}
-        </ActionsGroup>
-        {s.timers.length > 0 && (
-          <ActionsGroup>
-            <ActionsButton color="red" onClick={cook.stopAllTimers}>
-              Stop all timers
-            </ActionsButton>
-          </ActionsGroup>
-        )}
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={timersOpen}
+        onClosed={() => setTimersOpen(false)}
+        groups={[
+          s.timers.map((t) => ({ label: `${cook.timerName(t).replace(': ', ' · ')} · ${clock((t.endsAt - now) / 1000)} left`, icon: TimerIcon })),
+          s.timers.length ? [{ label: 'Stop all timers', icon: TimerOff, danger: true, onClick: cook.stopAllTimers }] : [],
+        ]}
+      />
     </>
   );
 }

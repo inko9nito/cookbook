@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Page, Navbar, NavTitle, NavRight, Subnavbar, Link, Block, Button, List, ListItem, SwipeoutActions, SwipeoutButton, Segmented,
-  Actions, ActionsGroup, ActionsLabel, ActionsButton,
 } from 'framework7-react';
 import { CalendarSearch, ChefHat, NotebookPen, Plus, ShoppingCart } from 'lucide-react';
+import Menu from '../components/ui/Menu';
 import WeekStrip from '../components/WeekStrip';
 import RecipePickerPopup from '../components/RecipePickerPopup';
 import { ShopWeekPopup } from '../components/AddGroceriesPopup';
@@ -247,9 +247,6 @@ export default function PlanPage() {
           <Link iconOnly onClick={jump} aria-label="Go to a day">
             <CalendarSearch {...navIcon} />
           </Link>
-          <Link iconOnly onClick={() => addTo(selected)} aria-label={`Add to ${mediumDate(selected)}`} className="ck-nav-primary">
-            <Plus {...navIcon} />
-          </Link>
         </NavRight>
         <Subnavbar className="ck-docked-bar ck-week-bar">
           <div className="ck-week-label">{label}</div>
@@ -300,31 +297,31 @@ export default function PlanPage() {
         </div>
       )}
 
-      <Actions opened={addMenu} onActionsClosed={() => setAddMenu(false)}>
-        <ActionsGroup>
-          <ActionsLabel>{`Add to ${mediumDate(addingTo)}`}</ActionsLabel>
-          <ActionsButton onClick={addRecipes}>Recipes</ActionsButton>
-          <ActionsButton onClick={addNote}>A note</ActionsButton>
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={addMenu}
+        onClosed={() => setAddMenu(false)}
+        groups={[
+          [
+            // no header: it opens from the day's own + (#39; the bar's + went, a day has to be picked first)
+            { label: 'Add recipe', icon: ChefHat, onClick: addRecipes },
+            { label: 'Add note', icon: NotebookPen, onClick: addNote },
+          ],
+        ]}
+      />
 
       {/* issue #67: which meal a row is for */}
-      <Actions opened={!!slotFor} onActionsClosed={() => setSlotFor(null)}>
-        <ActionsGroup>
-          <ActionsLabel>Which meal?</ActionsLabel>
-          {[...MEALS, null].map((m) => (
-            <ActionsButton key={m ?? 'day'} strong={(slotFor?.meal ?? null) === m} onClick={() => slotFor && toMeal(slotFor, m)}>
-              {m ? mealName(m) : 'Any time'}
-            </ActionsButton>
-          ))}
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={!!slotFor}
+        onClosed={() => setSlotFor(null)}
+        title="Which meal?"
+        groups={[
+          [...MEALS, null].map((m) => ({
+            label: m ? mealName(m) : 'Any time',
+            checked: (slotFor?.meal ?? null) === m,
+            onClick: () => slotFor && toMeal(slotFor, m),
+          })),
+        ]}
+      />
 
       <ShopWeekPopup opened={shopping} day={selected} onClosed={() => setShopping(false)} />
       <NotePopup

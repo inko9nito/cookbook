@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   Page, Navbar, NavRight, Subnavbar, Link, Searchbar, Block, BlockFooter, Button,
-  Actions, ActionsGroup, ActionsLabel, ActionsButton, f7,
+  f7,
 } from 'framework7-react';
-import { ArrowUpDown, Ellipsis, Plus } from 'lucide-react';
+import { ArrowUpDown, Ellipsis, Plus, ListOrdered, FolderPlus, Pencil, ImageIcon, Trash2 } from 'lucide-react';
+import Menu from '../components/ui/Menu';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAtTop } from '../components/ui/atTop';
@@ -143,6 +144,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
       </Page>
     );
   }
+  // something for Organize to order: recipes, or sections to move
+  const canOrganize = cookbookRecipeIds(book).some((id) => byId.has(id)) || book.sections.length > 1;
 
   const save = (c: Cookbook) => saveCookbook(c);
   // issue #95: the cookbook's sort, for every shelf, section and search in it (Manual: the order Organize sets)
@@ -259,9 +262,12 @@ export default function CookbookPage({ f7route, f7router }: Props) {
           <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
             <ArrowUpDown {...navIcon} />
           </Link>
-          <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
-            <Ellipsis {...navIcon} />
-          </Link>
+          {/* Uncategorized's ⋯ only organizes: no ⋯ while there's nothing to organize */}
+          {(!uncategorized || canOrganize) && (
+            <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
+              <Ellipsis {...navIcon} />
+            </Link>
+          )}
         </NavRight>
         {/* issue #63: the search bar stays under the title while the shelves scroll (Framework7's subnavbar, as on
             Recipes). It's always there, even with nothing to search yet, so the page keeps its shape. */}
@@ -357,38 +363,34 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         </Block>
       )}
 
-      <Actions key="more" opened={moreOpen} onActionsClosed={() => setMoreOpen(false)}>
-        <ActionsGroup>
-          <ActionsLabel>{name}</ActionsLabel>
-          <ActionsButton onClick={() => setAdding(true)}>Add Recipes</ActionsButton>
-          {(cookbookRecipeIds(book).some((id) => byId.has(id)) || book.sections.length > 1) && <ActionsButton onClick={() => setOrganizing(true)}>Organize</ActionsButton>}
-          {!section && <ActionsButton onClick={newSection}>New Section</ActionsButton>}
-          {!uncategorized && <ActionsButton onClick={rename}>{section ? 'Rename Section' : 'Rename Cookbook'}</ActionsButton>}
-          {!section && <ActionsButton onClick={() => setChoosingCover(true)}>Edit Cover</ActionsButton>}
-          {!uncategorized && (
-            <ActionsButton color="red" onClick={remove}>
-              {section ? 'Delete Section' : 'Delete Cookbook'}
-            </ActionsButton>
-          )}
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={moreOpen}
+        onClosed={() => setMoreOpen(false)}
+        groups={[
+          // the user's order and words (#39); Add Recipes is the bar's +
+          [
+            !uncategorized && { label: 'Rename', icon: Pencil, onClick: rename },
+            !section && { label: 'Edit Cover', icon: ImageIcon, onClick: () => setChoosingCover(true) },
+          ],
+          [
+            canOrganize && { label: 'Organize', icon: ListOrdered, onClick: () => setOrganizing(true) },
+            !section && { label: 'Add Section', icon: FolderPlus, onClick: newSection },
+          ],
+          [!uncategorized && { label: 'Delete', icon: Trash2, danger: true, onClick: remove }],
+        ]}
+      />
 
-      <Actions key="sort" opened={sortOpen} onActionsClosed={() => setSortOpen(false)}>
-        <ActionsGroup>
-          <ActionsLabel>{book.sections.length ? `Sort recipes in ${book.name} and its sections` : `Sort recipes in ${book.name}`}</ActionsLabel>
-          {CookbookSort.options.map((k) => (
-            <ActionsButton key={k} strong={k === sort} onClick={() => setCookbookSort(book.id, k)}>
-              {k === 'manual' ? 'Manual (as organized)' : SORT_LABELS[k]}
-            </ActionsButton>
-          ))}
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={sortOpen}
+        onClosed={() => setSortOpen(false)}
+        groups={[
+          CookbookSort.options.map((k) => ({
+            label: k === 'manual' ? 'Manual (as organized)' : SORT_LABELS[k],
+            checked: k === sort,
+            onClick: () => setCookbookSort(book.id, k),
+          })),
+        ]}
+      />
 
       <RecipePickerPopup
         key="add"

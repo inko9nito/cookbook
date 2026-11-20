@@ -6,6 +6,7 @@
 
 import type { getDatabase } from '@netlify/database';
 import { Cookbook } from '../../src/lib/cookbook';
+import { NotYours } from './recipes';
 
 // the pool is used for one transaction; only the part of it used here (the server and serverless pools differ in type)
 type Client = { query: (text: string, values?: unknown[]) => Promise<unknown>; release: () => void };
@@ -42,16 +43,23 @@ function assemble(books: BookRow[], sections: SectionRow[], entries: EntryRow[])
   }));
 }
 
-/** Every cookbook, A–Z. */
-export async function listCookbooks({ sql }: Db): Promise<Cookbook[]> {
-  const books = await sql<BookRow>`SELECT * FROM cookbooks ORDER BY lower(name), created_at`;
-  const sections = await sql<SectionRow>`SELECT id, cookbook_id, name, cover_recipe_id FROM cookbook_sections ORDER BY cookbook_id, position`;
-  const entries = await sql<EntryRow>`SELECT cookbook_id, section_id, recipe_id FROM cookbook_recipes ORDER BY cookbook_id, section_id NULLS FIRST, position`;
+// Every function takes the owner whose cookbooks it works on (issue #146): '' is the admin's. A cookbook's sections and
+// recipes are its own, and only the owner's recipes can go in.
+
+/** An owner's cookbooks, A–Z. */
+export async function listCookbooks({ sql }: Db, owner: string): Promise<Cookbook[]> {
+  const books = await sql<BookRow>`SELECT * FROM cookbooks WHERE owner_id = ${owner} ORDER BY lower(name), created_at`;
+  const sections = await sql<SectionRow>`
+    SELECT s.id, s.cookbook_id, s.name, s.cover_recipe_id FROM cookbook_sections s JOIN cookbooks c ON c.id = s.cookbook_id
+    WHERE c.owner_id = ${owner} ORDER BY s.cookbook_id, s.position`;
+  const entries = await sql<EntryRow>`
+    SELECT e.cookbook_id, e.section_id, e.recipe_id FROM cookbook_recipes e JOIN cookbooks c ON c.id = e.cookbook_id
+    WHERE c.owner_id = ${owner} ORDER BY e.cookbook_id, e.section_id NULLS FIRST, e.position`;
   return assemble(books, sections, entries);
 }
 
-export async function getCookbook({ sql }: Db, id: string): Promise<Cookbook | null> {
-  const books = await sql<BookRow>`SELECT * FROM cookbooks WHERE id = ${id}`;
+export async function getCookbook({ sql }: Db, owner: string, id: string): Promise<Cookbook | null> {
+  const books = await sql<BookRow>`SELECT * FROM cookbooks WHERE id = ${id} AND owner_id = ${owner}`;
   if (!books.length) return null;
   const sections = await sql<SectionRow>`SELECT id, cookbook_id, name, cover_recipe_id FROM cookbook_sections WHERE cookbook_id = ${id} ORDER BY position`;
   const entries = await sql<EntryRow>`SELECT cookbook_id, section_id, recipe_id FROM cookbook_recipes WHERE cookbook_id = ${id} ORDER BY section_id NULLS FIRST, position`;
@@ -62,7 +70,7 @@ export async function getCookbook({ sql }: Db, id: string): Promise<Cookbook | n
 export class DuplicatePrepearCookbook extends Error {}
 
 /** Insert or replace a cookbook with its sections and recipes. */
-export async function saveCookbook(db: Db, input: Cookbook): Promise<Cookbook> {
+export async function saveCookbook(db: Db, owner: string, input: Cookbook): Promise<Cookbook> {
   const c = Cookbook.parse(input);
   const client = await db.pool.connect();
   try {
@@ -72,39 +80,45 @@ export async function saveCookbook(db: Db, input: Cookbook): Promise<Cookbook> {
     // plate's recipe is also the single cover, for older copies of the app.
     const wanted = (c.coverRecipeIds?.length ? c.coverRecipeIds : c.coverRecipeId ? [c.coverRecipeId] : []).slice(0, 3);
     const found = new Set(
-      ((await client.query('SELECT id FROM recipes WHERE id = ANY($1::text[])', [wanted.filter(Boolean)])) as { rows: { id: string }[] }).rows.map((r) => r.id),
+      ((await client.query('SELECT id FROM recipes WHERE id = ANY($1::text[]) AND owner_id = $2', [wanted.filter(Boolean), owner])) as { rows: { id: string }[] }).rows.map(
+        (r) => r.id,
+      ),
     );
     const covers = wanted.map((id, i) => (found.has(id) && wanted.indexOf(id) === i ? id : ''));
     while (covers.length && !covers[covers.length - 1]) covers.pop();
-    await client.query(
-      `INSERT INTO cookbooks (id, name, cover_recipe_id, cover_recipe_ids, color, prepear_id, created_at, updated_at)
-       VALUES ($1, $2, $7, $3::text[], $6, $4, $5, now())
+    // another owner's cookbook with this id is left alone (and nothing below runs)
+    const kept = (await client.query(
+      `INSERT INTO cookbooks (id, name, cover_recipe_id, cover_recipe_ids, color, prepear_id, created_at, updated_at, owner_id)
+       VALUES ($1, $2, $7, $3::text[], $6, $4, $5, now(), $8)
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name, cover_recipe_id = EXCLUDED.cover_recipe_id, cover_recipe_ids = EXCLUDED.cover_recipe_ids,
          color = EXCLUDED.color,
-         prepear_id = COALESCE(EXCLUDED.prepear_id, cookbooks.prepear_id), updated_at = now()`,
-      [c.id, c.name, covers, c.prepearId ?? null, c.createdAt, c.color ?? null, covers[0] || null],
-    );
+         prepear_id = COALESCE(EXCLUDED.prepear_id, cookbooks.prepear_id), updated_at = now()
+       WHERE cookbooks.owner_id = EXCLUDED.owner_id
+       RETURNING id`,
+      [c.id, c.name, covers, c.prepearId ?? null, c.createdAt, c.color ?? null, covers[0] || null, owner],
+    )) as { rows: unknown[] };
+    if (!kept.rows.length) throw new NotYours('That cookbook isn’t yours.');
     await client.query('DELETE FROM cookbook_recipes WHERE cookbook_id = $1', [c.id]);
     await client.query('DELETE FROM cookbook_sections WHERE cookbook_id = $1', [c.id]);
     if (c.sections.length) {
       await client.query(
         `INSERT INTO cookbook_sections (id, cookbook_id, name, cover_recipe_id, position)
-         SELECT t.id, $1, t.name, (SELECT r.id FROM recipes r WHERE r.id = t.cover), t.position
+         SELECT t.id, $1, t.name, (SELECT r.id FROM recipes r WHERE r.id = t.cover AND r.owner_id = $6), t.position
          FROM unnest($2::text[], $3::text[], $4::text[], $5::int[]) AS t(id, name, cover, position)`,
-        [c.id, c.sections.map((s) => s.id), c.sections.map((s) => s.name), c.sections.map((s) => s.coverRecipeId ?? null), c.sections.map((_, i) => i)],
+        [c.id, c.sections.map((s) => s.id), c.sections.map((s) => s.name), c.sections.map((s) => s.coverRecipeId ?? null), c.sections.map((_, i) => i), owner],
       );
     }
     const places: [string | null, string[]][] = [[null, c.recipeIds], ...c.sections.map((s) => [s.id, s.recipeIds] as [string, string[]])];
     const rows = places.flatMap(([sectionId, ids]) => [...new Set(ids)].map((recipeId, position) => ({ sectionId, recipeId, position })));
     if (rows.length) {
-      // only recipes that exist (one deleted meanwhile is left out)
+      // only the owner's recipes that exist (one deleted meanwhile is left out)
       await client.query(
         `INSERT INTO cookbook_recipes (cookbook_id, section_id, recipe_id, position)
          SELECT $1, t.section_id, t.recipe_id, t.position
          FROM unnest($2::text[], $3::text[], $4::int[]) AS t(section_id, recipe_id, position)
-         JOIN recipes r ON r.id = t.recipe_id`,
-        [c.id, rows.map((r) => r.sectionId), rows.map((r) => r.recipeId), rows.map((r) => r.position)],
+         JOIN recipes r ON r.id = t.recipe_id AND r.owner_id = $5`,
+        [c.id, rows.map((r) => r.sectionId), rows.map((r) => r.recipeId), rows.map((r) => r.position), owner],
       );
     }
     await client.query('COMMIT');
@@ -117,10 +131,10 @@ export async function saveCookbook(db: Db, input: Cookbook): Promise<Cookbook> {
   } finally {
     client.release();
   }
-  return (await getCookbook(db, c.id))!;
+  return (await getCookbook(db, owner, c.id))!;
 }
 
-export async function deleteCookbook({ sql }: Db, id: string): Promise<boolean> {
-  const rows = await sql<{ id: string }>`DELETE FROM cookbooks WHERE id = ${id} RETURNING id`;
+export async function deleteCookbook({ sql }: Db, owner: string, id: string): Promise<boolean> {
+  const rows = await sql<{ id: string }>`DELETE FROM cookbooks WHERE id = ${id} AND owner_id = ${owner} RETURNING id`;
   return rows.length > 0;
 }

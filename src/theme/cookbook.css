@@ -1360,6 +1360,28 @@ html.ios .navbar .right .link.ck-nav-primary { background-color: var(--ck-accent
 .ck-empty-text { margin: 6px 0 0; font-size: 15px; line-height: 1.4; color: var(--ck-muted); }
 .button.ck-empty-button { width: auto; margin-top: 24px; padding: 0 26px; gap: 6px; }
 
+/* The crash screen (issue #140): the whole app went, so it stands alone on the page, an empty state in the middle of
+   it, with the error itself folded away under Details below Reload (for a screenshot) */
+.ck-crash {
+  /* it scrolls by itself once Details is open (the app's frame around it doesn't), centred only while it fits */
+  display: grid; align-content: safe center; height: 100dvh; overflow-y: auto; background-color: var(--ck-bg);
+  padding: calc(env(safe-area-inset-top) + 24px) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 24px) env(safe-area-inset-left);
+}
+.ck-crash .ck-empty { margin: 0 auto; }
+/* the error, folded under Details (the browser's own <details>): the chevron points down while closed, up while open */
+.ck-crash-details { width: 100%; margin-top: 16px; }
+.ck-crash-details summary {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 12px;
+  font-size: 15px; color: var(--ck-muted); list-style: none; cursor: pointer;
+}
+.ck-crash-details summary::-webkit-details-marker { display: none; }
+.ck-crash-details[open] .ck-crash-more, .ck-crash-details:not([open]) .ck-crash-less { display: none; }
+.ck-crash-error {
+  margin: 4px 0 0; padding: 12px 14px; border-radius: 12px; background-color: var(--ck-surface); text-align: left;
+  font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.45; color: var(--ck-muted);
+  white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text;
+}
+
 /* Unit conversions (issue #6): an amount that converts has a fitted grey underline; tapping it opens the unit sheet
    (radio rows, the recipe's own amount first, "Original"). A picked unit replaces the amount, and its underline turns
    Tomato to show it's converted */
@@ -1498,11 +1520,16 @@ html.ios .toolbar.ck-cook-recipes .toolbar-inner::-webkit-scrollbar { display: n
 /* Settings → Version (issue #128): on the page itself, not in a card: the build on the left, then the Tomato-ink refresh
    icon on its own (no button shape: the user wants just the icon). Tapping the build copies it; tapping the icon checks for
    a new version, and it spins while it checks (approved exception: the user asked for a spinning refresh icon instead of
-   a dialog). The icon's tap target is 44px, reaching into the block's padding so the icon lines up with the cards' chevrons. */
+   a dialog). Issue #138: the icon's tap target is big (128 × 72px), most of the empty space around it: it reaches left
+   towards the build, into the space above and below, and right to the screen's edge, with the icon kept in place at its
+   right end, lined up with the cards' chevrons (negative margins, so the row's height and the icon don't move). */
 /* the build lines up with the cards' row text (their 16px inset plus the row's 16px) */
 .block.ck-version { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-left: calc(var(--f7-block-padding-horizontal) + 16px); }
 .ck-version-text { cursor: pointer; font-size: 15px; color: var(--ck-fg); font-variant-numeric: tabular-nums; }
-.ck-version .link.ck-refresh-button { flex: none; width: 44px; height: 44px; margin-right: 1px; color: var(--ck-accent-ink); }
+.ck-version .link.ck-refresh-button {
+  flex: none; width: 128px; height: 72px; margin: -14px calc(-1 * var(--f7-block-padding-horizontal)) -14px 0;
+  justify-content: flex-end; padding-right: calc(var(--f7-block-padding-horizontal) + 14px); color: var(--ck-accent-ink);
+}
 .ck-refresh-button .ck-refresh { color: var(--ck-accent-ink); }
 .ck-refresh.ck-spinning { animation: ck-spin 0.9s linear infinite; }
 @keyframes ck-spin { to { transform: rotate(360deg); } }

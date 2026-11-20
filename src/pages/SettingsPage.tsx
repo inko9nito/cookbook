@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react';
 import { Page, Navbar, NavTitle, List, ListItem, Link, Block, f7 } from 'framework7-react';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAuth } from '../data/auth';
-import { clearCache } from '../data/store';
+import { clearCache, useAccount } from '../data/store';
 import { inlineIcon } from '../components/ui/icons';
 import { appVersion, updateApp } from '../lib/appUpdate';
 import { reopenOnTab } from '../data/startTab';
@@ -11,6 +11,7 @@ import { say, tell } from '../components/ui/toast';
 
 export default function SettingsPage() {
   const { email, signOut } = useAuth();
+  const { admin } = useAccount();
   const confirmSignOut = () =>
     f7.dialog
       .create({
@@ -74,10 +75,10 @@ export default function SettingsPage() {
           </Link>
         </ListItem>
       </List>
-      {/* bringing recipes over from Prepear (issue #14), and the design system (the Style Guide). The grocery stores
-          live on the Groceries tab now (issue #129) */}
+      {/* bringing recipes over from Prepear (issue #14; only into the admin's cookbook, #146), and the design system
+          (the Style Guide). The grocery stores live on the Groceries tab now (issue #129) */}
       <List strongIos insetIos dividersIos className="ck-settings-places">
-        <ListItem link="/settings/prepear/" title="Import" />
+        {admin && <ListItem link="/settings/prepear/" title="Import" />}
         <ListItem link="/settings/style-guide/" title="Appearance" />
       </List>
       {/* the build running, on the page rather than in a card: tapping it copies it; the refresh icon beside it

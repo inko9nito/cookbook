@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { BookOpen, Copy, FileUp } from 'lucide-react';
 import { Page, Navbar, List, ListItem, Block, BlockTitle, Button, Progressbar, Preloader, f7 } from 'framework7-react';
 import { inlineIcon } from '../components/ui/icons';
@@ -195,7 +195,7 @@ export default function PrepearImportPage() {
       )}
 
       {ready && (
-        <>
+        <Fragment key="ready">
           <List strongIos insetIos dividersIos className="ck-import-summary">
             <ListItem title="Recipes to import" after={String(ready.plan.items.length)} />
             <ListItem title="With a photo" after={String(ready.plan.items.filter((i) => i.photo).length)} />
@@ -208,11 +208,11 @@ export default function PrepearImportPage() {
             </Button>
             <p className="ck-note">Keep the app open while it imports. Your cookbooks come in next, in step 3; your meal plan is kept for when the app has it.</p>
           </Block>
-        </>
+        </Fragment>
       )}
 
       {phase.kind === 'importing' && (
-        <Block strong inset className="ck-import-progress">
+        <Block key="importing" strong inset className="ck-import-progress">
           <Progressbar progress={Math.round((phase.done / Math.max(1, phase.total)) * 100)} />
           <p>
             Importing {phase.done} of {phase.total}… Keep the app open.
@@ -221,7 +221,7 @@ export default function PrepearImportPage() {
       )}
 
       {phase.kind === 'done' && (
-        <Block strong inset className="ck-import-progress ck-import-done">
+        <Block key="done" strong inset className="ck-import-progress ck-import-done">
           <p>
             <strong>Imported {plural(phase.imported, 'recipe')}.</strong>
             {phase.noPhoto > 0 && ` ${plural(phase.noPhoto, 'photo')} couldn’t be copied; those recipes came in without one.`}
@@ -236,21 +236,21 @@ export default function PrepearImportPage() {
       )}
 
       {phase.kind === 'error' && (
-        <Block strong inset>
+        <Block key="error" strong inset>
           <p className="ck-import-error">{phase.message}</p>
         </Block>
       )}
 
-      <CookbooksStep chosenFile={keptFile.current ?? (ready ? ready.text : null)} />
+      <CookbooksStep key="cookbooks" chosenFile={keptFile.current ?? (ready ? ready.text : null)} />
 
       {/* the first step of #14: it showed Claude how Prepear's site works. Kept in case Prepear changes. */}
-      <BlockTitle>For Claude</BlockTitle>
-      <List strongIos insetIos dividersIos>
+      <BlockTitle key="for-claude-title">For Claude</BlockTitle>
+      <List key="for-claude" strongIos insetIos dividersIos>
         <ListItem link="#" noChevron title="Copy the peek bookmarklet" onClick={() => copy(peekBookmarklet)} className="ck-copy-row ck-copy-peek">
           <Copy slot="after" {...inlineIcon} className="ck-icon ck-copy" aria-hidden="true" />
         </ListItem>
       </List>
-      <Block className="ck-note">
+      <Block key="for-claude-note" className="ck-note">
         <p>Only if the export stops working: the peek records how Prepear’s site loads recipes, leaving out your password, sign-in and email address, so Claude can fix the export.</p>
       </Block>
     </Page>

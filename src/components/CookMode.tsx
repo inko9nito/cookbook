@@ -239,10 +239,11 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
           </Navbar>
 
           {/* issue #65: with more than one recipe, a tab for each along the bottom (photo and name); #116: hold one to drag it */}
-          {tabbed && <CookTabs tabs={tabs} shownId={shownRecipe.id} doneId={doneId} onShow={cook.show} onMove={cook.moveRecipe} />}
+          {tabbed && <CookTabs key="tab-bar" tabs={tabs} shownId={shownRecipe.id} doneId={doneId} onShow={cook.show} onMove={cook.moveRecipe} />}
 
-          {/* one tab per recipe, all kept (ticks, scroll); only the shown one is displayed */}
-          <Tabs className={`ck-cook-tabs${tabbed ? ' ck-cook-tabs-with-bar' : ''}`}>
+          {/* one tab per recipe, all kept (ticks, scroll); only the shown one is displayed. Keyed: Page leaves out the
+              tab bar while there's one recipe and lists the rest by position, so a second recipe rebuilt every tab (#140) */}
+          <Tabs key="tabs" className={`ck-cook-tabs${tabbed ? ' ck-cook-tabs-with-bar' : ''}`}>
             {tabs.map((r) => {
               const own = s.amounts[r.id] ?? { factor: 1, picks: {} };
               const t = s.ticks[r.id] ?? NO_TICKS;

@@ -23,6 +23,7 @@ const COOKBOOKS = ['cookbooks'] as const;
 const PLANNER = ['planner'] as const;
 const GROCERIES = ['groceries'] as const;
 const GROCERY_NAMES = ['grocery-names'] as const;
+const ACCOUNT = ['account'] as const;
 const DAY = 24 * 60 * 60 * 1000;
 
 const queryClient = new QueryClient({
@@ -80,7 +81,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Rendered once, in the app: when the API turns this account away (no admin role), or Identity refused to renew the
+ * Rendered once, in the app: when the API turns this account away (no role, #146), or Identity refused to renew the
  * sign-in, go back to the sign-in screen and forget the cached recipes. Nothing else signs out (#114): a 401 or 404
  * from the server, a failing Identity or a bad connection is an error to try again, with the cached recipes on screen.
  */
@@ -97,6 +98,17 @@ export function SessionGuard() {
     else if (expired) clearCache().then(() => auth.refuse('Your sign-in ran out. Sign in again.'));
   }, [refusal, expired]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
+}
+
+/**
+ * Issue #146: whether this sign-in opens the admin's cookbook (with reading recipes from photos or links, importing
+ * from Prepear, and Claude naming groceries) or one of its own (without them). Until the server has said, it's not the
+ * admin's: those things stay hidden rather than show and be refused. Kept offline like the recipes.
+ */
+export function useAccount() {
+  const enabled = useAuth().status === 'signedIn';
+  const query = useQuery({ queryKey: ACCOUNT, queryFn: backend.account, enabled, staleTime: 5 * 60 * 1000 });
+  return { admin: query.data?.admin === true };
 }
 
 export function useStore() {

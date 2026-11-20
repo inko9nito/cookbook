@@ -112,23 +112,26 @@ const toName = (r: Row): GroceryName | null => {
   return read.success ? read.data : null;
 };
 
-/** Every name known so far. */
-export async function listNames(sql: Sql): Promise<GroceryName[]> {
-  const rows = await sql<Row>`SELECT key, things, named_by FROM grocery_names ORDER BY key`;
+// Each owner has names of their own (issue #146): '' is the admin's. Only the admin's are named by Claude; another
+// owner's are only their corrections, and the app's rules stand in for the rest.
+
+/** Every name the owner has so far. */
+export async function listNames(sql: Sql, owner: string): Promise<GroceryName[]> {
+  const rows = await sql<Row>`SELECT key, things, named_by FROM grocery_names WHERE owner_id = ${owner} ORDER BY key`;
   return rows.map(toName).filter((n): n is GroceryName => !!n);
 }
 
 /** The items already in use (to name the same product alike), at most this many. */
-async function itemsInUse(sql: Sql, limit = 600): Promise<string[]> {
+async function itemsInUse(sql: Sql, owner: string, limit = 600): Promise<string[]> {
   const rows = await sql<{ item: string }>`
-    SELECT DISTINCT t->>'item' AS item FROM grocery_names, jsonb_array_elements(things) AS t ORDER BY 1 LIMIT ${limit}`;
+    SELECT DISTINCT t->>'item' AS item FROM grocery_names, jsonb_array_elements(things) AS t WHERE owner_id = ${owner} ORDER BY 1 LIMIT ${limit}`;
   return rows.map((r) => r.item);
 }
 
 /** Keep Claude's answers, never over a name already there (Claude's earlier answer, or a correction). */
-async function keep(sql: Sql, rows: GroceryName[]) {
+async function keep(sql: Sql, owner: string, rows: GroceryName[]) {
   for (const r of rows) {
-    await sql`INSERT INTO grocery_names (key, things, named_by) VALUES (${r.key}, ${JSON.stringify(r.things)}::jsonb, 'claude') ON CONFLICT (key) DO NOTHING`;
+    await sql`INSERT INTO grocery_names (owner_id, key, things, named_by) VALUES (${owner}, ${r.key}, ${JSON.stringify(r.things)}::jsonb, 'claude') ON CONFLICT (owner_id, key) DO NOTHING`;
   }
 }
 
@@ -138,6 +141,7 @@ async function keep(sql: Sql, rows: GroceryName[]) {
  */
 export async function nameIngredients(
   sql: Sql,
+  owner: string,
   names: string[],
   ask: (names: string[], inUse: string[]) => Promise<GroceryName[]> = askClaude,
 ): Promise<GroceryName[]> {
@@ -145,22 +149,24 @@ export async function nameIngredients(
   for (const n of names) if (nameOf(n) && !byKey.has(nameOf(n))) byKey.set(nameOf(n), n.trim());
   const keys = [...byKey.keys()];
   if (!keys.length) return [];
-  const known = (await sql<Row>`SELECT key, things, named_by FROM grocery_names WHERE key = ANY(${keys}::text[])`).map(toName).filter((n): n is GroceryName => !!n);
+  const known = (await sql<Row>`SELECT key, things, named_by FROM grocery_names WHERE owner_id = ${owner} AND key = ANY(${keys}::text[])`)
+    .map(toName)
+    .filter((n): n is GroceryName => !!n);
   const missing = keys.filter((k) => !known.some((n) => n.key === k)).map((k) => byKey.get(k)!);
   const named: GroceryName[] = [];
   for (let i = 0; i < missing.length; i += BATCH) {
-    const rows = await ask(missing.slice(i, i + BATCH), await itemsInUse(sql));
-    await keep(sql, rows);
+    const rows = await ask(missing.slice(i, i + BATCH), await itemsInUse(sql, owner));
+    await keep(sql, owner, rows);
     named.push(...rows);
   }
   return [...known, ...named];
 }
 
 /** A correction from the phone (Same as…, Rename…): it replaces whatever was there, and Claude never overwrites it. */
-export async function correctName(sql: Sql, input: unknown): Promise<GroceryName> {
+export async function correctName(sql: Sql, owner: string, input: unknown): Promise<GroceryName> {
   const name = GroceryName.parse({ ...(input as object), by: 'you' });
   await sql`
-    INSERT INTO grocery_names (key, things, named_by, updated_at) VALUES (${name.key}, ${JSON.stringify(name.things)}::jsonb, 'you', now())
-    ON CONFLICT (key) DO UPDATE SET things = EXCLUDED.things, named_by = 'you', updated_at = now()`;
+    INSERT INTO grocery_names (owner_id, key, things, named_by, updated_at) VALUES (${owner}, ${name.key}, ${JSON.stringify(name.things)}::jsonb, 'you', now())
+    ON CONFLICT (owner_id, key) DO UPDATE SET things = EXCLUDED.things, named_by = 'you', updated_at = now()`;
   return name;
 }

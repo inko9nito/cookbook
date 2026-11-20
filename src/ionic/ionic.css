@@ -188,8 +188,6 @@ ion-button.ck-ion-viewer-close {
 }
 
 /* ── a cookbook: its colour and plates under a see-through bar, frosted buttons, solid once they've scrolled away ── */
-.ck-ion-hero-bar ion-toolbar { --background: transparent; }
-.ck-ion-hero-bar.ck-ion-solid ion-toolbar { --background: var(--ck-bg); }
 .ck-ion-hero-bar:not(.ck-ion-solid) ion-back-button, .ck-ion-hero-bar:not(.ck-ion-solid) .ck-ion-bar-button:not(.ck-ion-bar-primary) { --background: var(--ck-frosted-button); }
 ion-title.ck-ion-hero-title { position: static; text-align: start; padding-inline: 8px; }
 .ck-ion-book-hero {
@@ -338,30 +336,47 @@ button.ck-ion-tab.ck-ion-tab-on { color: var(--ck-accent); }
 ion-alert .alert-wrapper:focus, ion-alert .alert-wrapper:focus-visible,
 ion-action-sheet .action-sheet-wrapper:focus, ion-action-sheet .action-sheet-wrapper:focus-visible { outline: none; }
 
-/* ══ scrolling, the old app's way (Settings → Scrolling; scroll.tsx). The title row slides up and away as the page
-   scrolls down and back as it scrolls up (Framework7's hideNavbarOnScroll); what's under it (search, chips, the docked
-   search) stays at the top, and the strip under the clock stays solid (the header's own background). Built here because
-   Ionic has no such bar. ══ */
-ion-header.ck-ion-slide-header { background: var(--ck-bg); transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1); }
-ion-header.ck-ion-slide-header > ion-toolbar:first-of-type { transition: opacity 200ms ease; }
+/* ══ scrolling, the old app's way (Settings → Scrolling; scroll.tsx), with Framework7's own values: the bar slides up by
+   its height over 400ms (Framework7's --f7-navbar-hide-show-transition-duration, its default ease) while its title and
+   buttons fade over the same 400ms; what's under it (search, chips, the docked search) stays at the top, and the strip
+   under the clock stays solid (the header's own background). Ionic has no such bar, so this is ours. ══ */
+ion-header.ck-ion-slide-header { background: var(--ck-bg); transition: transform 400ms ease; }
+ion-header.ck-ion-slide-header > ion-toolbar:first-of-type { transition: opacity 400ms ease; }
 ion-header.ck-ion-slide-header.ck-ion-bar-hidden { transform: translateY(-56px); }
 ion-header.ck-ion-slide-header.ck-ion-bar-hidden > ion-toolbar:first-of-type { opacity: 0; pointer-events: none; }
 /* #99: the docked bar's line and shadow only once the page has scrolled */
-ion-header.ck-ion-slide-header.ck-ion-scrolled { box-shadow: var(--ck-bar-shadow); }
+ion-header.ck-ion-slide-header.ck-ion-scrolled:not(.ck-ion-photo-bar):not(.ck-ion-hero-bar) { box-shadow: var(--ck-bar-shadow); }
 @media (prefers-reduced-motion: reduce) {
   ion-header.ck-ion-slide-header, ion-header.ck-ion-slide-header > ion-toolbar:first-of-type { transition: none; }
 }
-/* a recipe: see-through over the photo, filling in over the last of it, the buttons dark circles until it's solid */
-ion-header.ck-ion-photo-bar.ck-ion-slide-header { background: transparent; }
-ion-header.ck-ion-photo-bar.ck-ion-slide-header.ck-ion-bar-hidden { background: var(--ck-bg); }
-ion-header.ck-ion-fill-bar ion-toolbar { --opacity-scale: var(--ck-fill, 0); }
+/* A see-through bar (a recipe over its photo, a cookbook over its colour): the bar's background is drawn by the toolbar,
+   at --ck-fill. !important so Ionic's page slide can't animate it: it drew the bar solid while a recipe slid in, then
+   dropped it (the user's recording). The header itself is clear, except while hidden, when it keeps the strip under the
+   clock solid. */
+ion-header.ck-ion-photo-bar.ck-ion-slide-header, ion-header.ck-ion-hero-bar.ck-ion-slide-header { background: transparent; }
+ion-header.ck-ion-photo-bar.ck-ion-slide-header.ck-ion-bar-hidden,
+ion-header.ck-ion-hero-bar.ck-ion-slide-header.ck-ion-bar-hidden { background: var(--ck-bg); }
+ion-header.ck-ion-fill-bar ion-toolbar, ion-header.ck-ion-hero-bar ion-toolbar { --background: var(--ck-bg); }
+ion-header.ck-ion-fill-bar ion-toolbar::part(background) { opacity: var(--ck-fill, 0) !important; }
+ion-header.ck-ion-hero-bar ion-toolbar::part(background) { opacity: 0 !important; }
+ion-header.ck-ion-hero-bar.ck-ion-solid ion-toolbar::part(background) { opacity: 1 !important; }
 ion-header.ck-ion-photo-bar.ck-ion-solid ion-back-button, ion-header.ck-ion-photo-bar.ck-ion-solid .ck-ion-bar-button { --background: var(--ck-soft); --color: var(--ck-fg); }
-/* a cookbook: the bar see-through until the colour has faded; the plates and colour fade as they go under it (#90) */
-ion-header.ck-ion-hero-bar.ck-ion-slide-header:not(.ck-ion-solid):not(.ck-ion-bar-hidden) { background: transparent; }
+/* a cookbook's name in the bar only once it has gone all the way under it (never in both places); !important keeps
+   Ionic's page slide from showing it */
+ion-header ion-title.ck-ion-hero-title { opacity: 0 !important; transition: opacity 200ms ease; }
+ion-header.ck-ion-titled ion-title.ck-ion-hero-title { opacity: 1 !important; }
+/* a cookbook's plates and colour fade as they go under the bar (#90) */
 .ck-ion-book-hero { position: relative; }
 .ck-ion-book-hero > * { position: relative; }
 .ck-ion-book-hero::before { content: ''; position: absolute; inset: 0; background: var(--ck-bg); opacity: var(--ck-hero-p, 0); pointer-events: none; }
 .ck-ion-book-hero .ck-plates { opacity: calc(1 - var(--ck-hero-p, 0)); }
+/* its search hands over to the one docked under the bar the moment it reaches it: both are always there, only one shows */
+ion-header .ck-ion-header-extra.ck-ion-docked-search { visibility: hidden; background: transparent; }
+ion-header.ck-ion-docked .ck-ion-header-extra.ck-ion-docked-search { visibility: visible; background: var(--ck-bg); }
+.ck-ion-book-hero.ck-ion-docked .ck-ion-hero-search-wrap { visibility: hidden; }
+.ck-ion-book-skeleton { height: 300px; margin: 0; border-radius: 0; }
+.ck-ion-hero-skeleton { height: auto; margin: 0; border-radius: 0; }
+.ck-ion-grid-top { padding-top: 16px; }
 
 /* ══ scrolling, Ionic's iOS large titles: the big title in the page, the small one in the bar once it has gone ══ */
 ion-header.ck-ion-large-header ion-title { font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; }

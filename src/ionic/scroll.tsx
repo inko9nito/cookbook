@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react';
+import { useMemo, useRef, useSyncExternalStore, type ReactNode, type RefObject } from 'react';
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonContent } from '@ionic/react';
 import { TabBar, type TabName } from './ui';
 
@@ -40,22 +40,37 @@ export function setScrollStyle(s: ScrollStyle) {
 }
 
 /**
- * The old app's bar on scroll: `hidden` once scrolled past `from` and moving down, shown again as soon as the page moves
- * up (or is back near the top); `scrolled` once off the very top (#99: the docked bar's line and shadow).
+ * The old app's bar on scroll, as Framework7's hideNavbarOnScroll decides it (framework7/components/navbar/navbar.js):
+ * hidden once past the bar's own height and moving down; shown as soon as the page moves up, near the top, or at the
+ * very end. Classes are set on the header straight away (no React render per scroll frame, which made the cookbook
+ * jitter); the slide and the fade are CSS, 400ms with Framework7's ease.
+ * Also `ck-ion-scrolled` once off the very top (#99), and, for a see-through bar, `--ck-fill` (0 → 1 over the bar's
+ * height, as Framework7's transparent navbar, held while the bar is hidden) and `ck-ion-solid` at 1.
  */
-export function useHidingBar(enabled: boolean, from = 56) {
-  const [hidden, setHidden] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const last = useRef(0);
-  const onScroll = (y: number) => {
-    const d = y - last.current;
-    last.current = y;
-    setScrolled(y > 2);
-    if (!enabled || y <= from) return setHidden(false);
-    if (d > 4) setHidden(true);
-    else if (d < -4) setHidden(false);
+export function barOnScroll(
+  header: RefObject<HTMLIonHeaderElement | null>,
+  opts: { hide?: () => boolean; fill?: boolean } = {},
+) {
+  let last = 0;
+  return (e: CustomEvent<{ scrollTop: number }>) => {
+    const el = header.current;
+    if (!el) return;
+    const y = e.detail.scrollTop;
+    const bar = el.querySelector('ion-toolbar')?.offsetHeight ?? 56;
+    const content = e.target as HTMLElement;
+    const scroller = content.shadowRoot?.querySelector<HTMLElement>('.inner-scroll');
+    const atEnd = !!scroller && y + scroller.clientHeight >= scroller.scrollHeight - 1;
+    // Framework7's order: at the end or moving up shows it, past the bar's height moving down hides it, else shown
+    const hide = (opts.hide?.() ?? true) && !atEnd && y >= last && y > bar;
+    last = y;
+    el.classList.toggle('ck-ion-bar-hidden', hide);
+    el.classList.toggle('ck-ion-scrolled', y > 2);
+    if (opts.fill && !hide) {
+      const f = Math.min(1, Math.max(0, y / bar));
+      el.style.setProperty('--ck-fill', String(f));
+      el.classList.toggle('ck-ion-solid', f >= 1);
+    }
   };
-  return { hidden: enabled && hidden, scrolled, onScroll };
 }
 
 /** A tab's first page, in the style picked: the title, its buttons, what sits under the title (search, chips…), the tab bar. */
@@ -70,11 +85,13 @@ export function TabPage({
   contentRef?: RefObject<HTMLIonContentElement | null>;
 }) {
   const style = useScrollStyle();
-  const bar = useHidingBar(style === 'old');
+  const header = useRef<HTMLIonHeaderElement>(null);
+  const onBar = useMemo(() => barOnScroll(header), []);
+  const onScroll = style === 'old' ? onBar : undefined;
   return (
     <IonPage className={`ck-ion-anchor ck-ion-scroll-${style}`}>
       {style === 'old' ? (
-        <IonHeader className={`ck-ion-header ck-ion-slide-header${bar.hidden ? ' ck-ion-bar-hidden' : ''}${bar.scrolled ? ' ck-ion-scrolled' : ''}`}>
+        <IonHeader ref={header} className="ck-ion-header ck-ion-slide-header">
           <IonToolbar>
             <IonTitle className="ck-ion-title">{title}</IonTitle>
             {buttons && <IonButtons slot="end">{buttons}</IonButtons>}
@@ -89,7 +106,7 @@ export function TabPage({
           </IonToolbar>
         </IonHeader>
       )}
-      <IonContent ref={contentRef} fullscreen scrollEvents onIonScroll={(e) => bar.onScroll(e.detail.scrollTop)}>
+      <IonContent ref={contentRef} fullscreen scrollEvents={!!onScroll} onIonScroll={onScroll}>
         {style === 'ios' && (
           <>
             <IonHeader collapse="condense" className="ck-ion-large-title">

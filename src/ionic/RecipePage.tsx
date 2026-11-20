@@ -1,8 +1,8 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   IonPage, IonHeader, IonToolbar, IonButtons, IonBackButton, IonContent, IonFooter, IonButton, IonChip, IonList, IonItem,
-  IonLabel, useIonRouter,
+  IonLabel, IonSkeletonText, useIonRouter,
 } from '@ionic/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination } from 'swiper/modules';
@@ -23,7 +23,7 @@ import { photoStyle } from '../components/ui/photo';
 import { say } from '../components/ui/toast';
 import { BarButton, openMenu, recipePath, useConfirm, useTab } from './ui';
 import { ScaleSheet, UnitSheet } from './sheets';
-import { useHidingBar, useScrollStyle } from './scroll';
+import { barOnScroll, useScrollStyle } from './scroll';
 import { AddToCookbookModal, AddToListModal, DaySheet, PhotoViewer } from './modals';
 
 function groupIngredients(list: Ingredient[]) {
@@ -46,7 +46,7 @@ export default function RecipePage() {
   const { id = '' } = useParams();
   const tab = useTab();
   const router = useIonRouter();
-  const { recipes, deleteRecipe, setFilter, saveRecipe } = useStore();
+  const { recipes, loading, deleteRecipe, setFilter, saveRecipe } = useStore();
   const { cookbooks } = useCookbooks();
   const { planned, savePlanned } = usePlanner();
   const cook = useCook();
@@ -64,10 +64,26 @@ export default function RecipePage() {
   const [dayOpen, setDayOpen] = useState(false);
   // Settings → Scrolling: the old app's bar (fades in over the photo, slides away down, back up) or Ionic's fade
   const old = useScrollStyle() === 'old';
-  // it slides away only once the photo has mostly gone (the photo is square, the screen's width)
-  const bar = useHidingBar(old, window.innerWidth - 100);
-  const [fill, setFill] = useState(0);
+  const header = useRef<HTMLIonHeaderElement>(null);
+  const onBarScroll = useMemo(() => barOnScroll(header, { fill: true }), []);
 
+  // the recipes still on their way (a reload): the page's shape, never "isn't here"
+  if (!recipe && loading) {
+    return (
+      <IonPage>
+        <IonHeader className="ck-ion-header ck-ion-photo-bar">
+          <IonToolbar style={{ '--background': 'transparent' } as CSSProperties}>
+            <IonButtons slot="start">
+              <IonBackButton defaultHref={`/${tab}`} text="" className="ck-ion-round-back" />
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent fullscreen className="ck-ion-recipe">
+          <IonSkeletonText animated className="ck-hero ck-ion-hero-skeleton" />
+        </IonContent>
+      </IonPage>
+    );
+  }
   if (!recipe) {
     return (
       <IonPage>
@@ -147,8 +163,8 @@ export default function RecipePage() {
       {/* Ionic's fading header: see-through over the photo, solid once the page scrolls */}
       <IonHeader
         collapse={old ? undefined : 'fade'}
-        className={`ck-ion-header ck-ion-photo-bar${old ? ' ck-ion-slide-header ck-ion-fill-bar' : ''}${bar.hidden ? ' ck-ion-bar-hidden' : ''}${old && fill >= 1 ? ' ck-ion-solid' : ''}`}
-        style={old ? ({ '--ck-fill': String(fill) } as CSSProperties) : undefined}
+        ref={header}
+        className={`ck-ion-header ck-ion-photo-bar${old ? ' ck-ion-slide-header ck-ion-fill-bar' : ''}`}
       >
         <IonToolbar>
           <IonButtons slot="start">
@@ -163,12 +179,9 @@ export default function RecipePage() {
         fullscreen
         className="ck-ion-recipe"
         scrollEvents={old}
-        onIonScroll={(e) => {
-          const y = e.detail.scrollTop;
-          bar.onScroll(y);
-          // the bar fills in over the last of the photo (square, the screen's width), as Framework7's see-through bar did
-          setFill(Math.min(1, Math.max(0, (y - (window.innerWidth - 150)) / 90)));
-        }}
+        // as Framework7's see-through bar with hideNavbarOnScroll: it fills in over its own height, then slides away
+        // scrolling down and comes back scrolling up (filled, once the page is past it)
+        onIonScroll={old ? onBarScroll : undefined}
       >
         <div className="ck-hero-wrap">
         {recipe.photos.length ? (

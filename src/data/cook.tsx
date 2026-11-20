@@ -4,12 +4,11 @@
 // closing its last recipe) ends it. It's also kept on the phone as it changes (cookSession.ts), so it comes back after
 // iOS reloads the app.
 import { createContext, useContext, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
-import { f7 } from 'framework7-react';
 import { useAuth } from './auth';
 import { useStore } from './store';
 import { forgetCook, loadCook, saveCook, type PaneScroll, type SavedCook } from './cookSession';
-import { withPick } from '../components/UnitChoices';
-import type { UnitPicks } from '../components/ui/ingredientLine';
+import { withPick } from '../ionic/UnitChoices';
+import type { UnitPicks } from '../ionic/ingredientLine';
 import type { Recipe } from '../lib/recipe';
 
 /** what's ticked in one recipe */
@@ -210,7 +209,9 @@ export function CookProvider({ children }: { children: ReactNode }) {
       if (!finished.length) return;
       update((s) => ({ ...s, timers: s.timers.filter((x) => x.endsAt > n) }));
       ring();
-      f7.dialog.alert(finished.map((x) => `${timerName(x)} is up.`).join('\n'), 'Timer done');
+      const text = finished.map((x) => `${timerName(x)} is up.`).join('\n');
+      // shown with Ionic's alert by Bridge (src/ionic/ui.tsx)
+      window.dispatchEvent(new CustomEvent('ck-alert', { detail: { title: 'Timer done', text } }));
     }, 1000);
     return () => clearInterval(t);
   }, [timers]); // eslint-disable-line react-hooks/exhaustive-deps

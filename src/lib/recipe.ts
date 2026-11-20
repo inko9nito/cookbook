@@ -165,3 +165,7 @@ export const recipeNamed = (name: string, recipes: Recipe[]) => (plain(name) ? r
 
 /** Recipes that use this one as an ingredient. */
 export const usedIn = (id: string, recipes: Recipe[]) => recipes.filter((r) => r.id !== id && r.ingredients.some((i) => i.recipeId === id));
+
+/** A recipe's time as it shows on cards and pages: "45 min", "1 hr 15 min". */
+export const formatMinutes = (m: number) =>
+  m >= 60 ? `${Math.floor(m / 60)} hr${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`;

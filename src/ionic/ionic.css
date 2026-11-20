@@ -1,0 +1,569 @@
+/*
+  Issue #141, the Ionic trial (/ionic/): the agreed design on Ionic's components. The app's tokens and its own component
+  classes (cards, plates, the recipe page, cook mode's halves) come from cookbook.css; this maps them onto Ionic's CSS
+  variables and gives Ionic's pieces the app's look. Colours, spacing, corners and type only: motion is Ionic's.
+*/
+@import '../theme/cookbook.css';
+
+:root {
+  /* v1's styles (cookbook.css) are written with Framework7's sizes; v2 uses some of them as they are */
+  --f7-navbar-height: 48px;
+  --f7-subnavbar-height: 60px;
+  --f7-safe-area-top: var(--ion-safe-area-top, 0px);
+  --f7-safe-area-bottom: var(--ion-safe-area-bottom, 0px);
+  --f7-tabbar-icons-height: 60px;
+  --ion-font-family: var(--ck-font);
+  --ion-background-color: var(--ck-bg);
+  --ion-background-color-rgb: 245, 245, 245;
+  --ion-text-color: var(--ck-fg);
+  --ion-text-color-rgb: 38, 38, 40;
+  --ion-color-primary: #e4572e;
+  --ion-color-primary-rgb: 228, 87, 46;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #c9461f;
+  --ion-color-primary-tint: #e7683f;
+  --ion-color-danger: #d1291f;
+  --ion-color-danger-rgb: 209, 41, 31;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-shade: #b8241b;
+  --ion-color-danger-tint: #d63e35;
+  --ion-toolbar-background: var(--ck-bg);
+  --ion-toolbar-border-color: transparent;
+  --ion-tab-bar-background: var(--ck-surface);
+  --ion-tab-bar-border-color: var(--ck-line);
+  --ion-tab-bar-color: var(--ck-fg2);
+  --ion-tab-bar-color-selected: var(--ck-accent);
+  --ion-item-background: var(--ck-surface);
+  --ion-border-color: var(--ck-line);
+  --ion-placeholder-color: var(--ck-fg2);
+  --ion-backdrop-opacity: 0.32;
+}
+body { background-color: var(--ck-bg); line-height: 1.4; } /* v1's (Framework7's) line height for everything */
+
+/* ── bars: the title on the left, separate round buttons (not iOS 26's capsules), no glass ── */
+.ck-ion-header ion-toolbar {
+  /* v1's bar: 48px, the title 16px in, the buttons 16px from the right edge, 8px apart */
+  --padding-start: 16px; --padding-end: 16px; --padding-top: 0; --padding-bottom: 0; --min-height: 48px;
+}
+.ck-ion-header ion-toolbar ion-buttons { gap: 8px; margin: 0; }
+.ck-ion-header ion-toolbar ion-buttons[slot='start'] { margin-inline-start: 2px; } /* v1's back button sits 18px in */
+.ck-ion-header ion-toolbar ion-buttons .ck-ion-bar-button { margin: 0; }
+ion-title.ck-ion-title {
+  position: static; padding-inline: 0; text-align: start; color: var(--ck-title);
+  font-family: var(--ck-font-display); font-size: 26px; font-weight: 600; line-height: 1.2;
+}
+ion-title.ck-ion-title-small { font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; }
+.ck-ion-bar-button {
+  --padding-start: 0; --padding-end: 0; --border-radius: 9999px; --background: var(--ck-soft); --background-activated: var(--ck-strong);
+  --color: var(--ck-fg); width: 40px; height: 40px; margin-inline-start: 8px;
+}
+.ck-ion-bar-button.ck-ion-bar-primary { --background: var(--ck-accent); --background-activated: var(--ck-accent-press); --color: var(--ck-surface); }
+ion-back-button.ck-ion-round-back, .ck-ion-header ion-back-button {
+  --color: var(--ck-fg); --background: var(--ck-soft); --border-radius: 9999px; --padding-start: 0; --padding-end: 0; --icon-margin-end: 0;
+  --icon-font-size: 26px; width: 40px; height: 40px;
+}
+.ck-ion-text-button { --color: var(--ck-accent-ink); font-weight: 500; text-transform: none; }
+.ck-ion-strong { font-weight: 700; }
+.ck-ion-accent-text { color: var(--ck-accent-ink); }
+
+/* under the title: the search field and the label chips (Recipes, Groceries) */
+ ion-searchbar.ck-ion-card-search {
+  --background: var(--ck-soft); --border-radius: 20px; --placeholder-color: var(--ck-fg2); --placeholder-opacity: 1; --icon-color: var(--ck-fg2);
+  padding: 0 16px; min-height: 0;
+}
+.ck-ion-chips { display: flex; gap: 8px; overflow-x: auto; padding: 8px 16px 0; scrollbar-width: none; }
+.ck-ion-chips::-webkit-scrollbar { display: none; }
+.ck-ion-chips-wrap { flex-wrap: wrap; overflow: visible; padding: 0; }
+.ck-ion-chips ion-chip, .ck-ion-chips-wrap ion-chip {
+  --background: var(--ck-soft); --color: var(--ck-fg); margin: 0; flex: none; height: 34px; padding-inline: 15px;
+  font-weight: 500; font-size: 14px; line-height: 34px; gap: 6px; border-radius: 9999px; padding-block: 0;
+}
+.ck-ion-chips ion-chip.ck-ion-chip-on { --background: var(--ck-fg); --color: var(--ck-surface); }
+.ck-ion-segment { margin: 12px 16px 0; width: auto; --background: var(--ck-soft); }
+
+/* ── the tab bar: flat and docked (not floating), Tomato for the tab you're on ── */
+ion-tab-bar.ck-ion-tabbar { --border: 1px solid var(--ck-line); height: 56px; }
+ion-tab-bar.ck-ion-tabbar ion-tab-button { --color-selected: var(--ck-accent); }
+
+/* ── lists ── */
+.ck-ion-count { margin: 16px 16px 0; line-height: 20px; }
+/* v1 kept Framework7's block gap (35px) between the count and the cards */
+.ck-ion-count + .ck-ion-grid { margin-top: 35px; }
+.ck-ion-grid { font-size: 14px; }
+.ck-ion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 12px; padding: 0 16px 120px; }
+a.ck-ion-card { -webkit-tap-highlight-color: transparent; }
+a.ck-ion-card:active { opacity: 0.7; }
+ion-list.ck-ion-inset { --ion-item-background: var(--ck-surface); border-radius: 16px; margin: 8px 16px 16px; }
+ion-list.ck-ion-inset ion-item { --min-height: 48px; font-size: 16px; }
+.ck-ion-thumb { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; flex: none; margin-inline-end: 12px; }
+.ck-ion-thumb-round { border-radius: 50%; }
+ion-item.ck-ion-organize-heading { font-family: var(--ck-font-display); font-weight: 600; font-size: 17px; --background: var(--ck-bg); }
+.ck-ion-footnote { display: block; margin: 16px 20px 0; font-size: 13px; line-height: 1.4; color: var(--ck-muted); }
+.ck-ion-footnote a { color: var(--ck-accent-ink); }
+.ck-ion-sec { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0 16px; }
+.ck-ion-sec h2 { margin: 24px 0 8px; font-family: var(--ck-font-display); font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.ck-ion-sec h2 .ck-note { font-family: var(--ck-font); font-weight: 400; font-size: 14px; margin-left: 4px; }
+.ck-ion-meal { padding: 16px 20px 0; font-size: 15px; color: var(--ck-fg2); }
+.ck-ion-line { display: block; white-space: normal; line-height: 1.35; }
+ion-note.ck-ion-line-note { display: block; margin-top: 2px; font-size: 13px; color: var(--ck-muted); }
+.ck-ion-row-note { display: block; margin: 2px 0 0; font-size: 13px; color: var(--ck-muted); }
+ion-item.ck-done .ck-ion-line, ion-item.ck-done .ck-ion-cook-line, ion-item.ck-done .ck-cook-text { text-decoration: line-through; color: var(--ck-done-ink); }
+.ck-ion-radio-label { display: flex; align-items: baseline; gap: 10px; font-weight: 600; }
+.ck-ion-radio-label ion-note { font-weight: 400; font-size: 13px; }
+
+/* ── the Cooking pill: flat dark, centred above the tab bar ── */
+ion-fab.ck-ion-pill-fab { bottom: 10px; }
+ion-button.ck-ion-pill {
+  --background: var(--ck-fg); --background-activated: var(--ck-fg2); --color: var(--ck-surface); --box-shadow: none;
+  --padding-start: 18px; --padding-end: 22px; height: 48px; margin: 0; text-transform: none;
+}
+
+/* ── the toast, as the app has it: a small dark pill as wide as its words, centred just above the bottom bar, 15px
+   semibold, the Tomato check for something done, Undo in Tomato words ── */
+ion-toast.ck-ion-toast {
+  --background: var(--ck-fg); --color: var(--ck-surface); --border-radius: 16px; --box-shadow: var(--ck-toast-shadow);
+  --button-color: var(--ck-accent-on-dark); --width: fit-content; --max-width: min(420px, calc(100% - 32px)); --start: 16px; --end: 16px;
+  font-family: var(--ck-font); font-size: 15px; font-weight: 600;
+}
+ion-toast.ck-ion-toast::part(container) { padding: 0; min-height: 0; }
+/* Ionic pads the words 15px all round (not reachable from outside), so they get no more of their own */
+ion-toast.ck-ion-toast::part(message) { padding: 0; line-height: 1.3; }
+ion-toast.ck-ion-toast::part(icon) { color: var(--ck-accent); font-size: 18px; margin-inline-start: 16px; margin-inline-end: -7px; }
+ion-toast.ck-ion-toast::part(button) { font-weight: 700; text-transform: none; }
+
+/* ── menus (#39): no arrow, white rows, thin lines between rows, a thick band between groups, icons right ── */
+ion-popover.ck-ion-menu { --width: 250px; --border-radius: 14px; --box-shadow: 0 0 0 1px var(--ck-line), var(--ck-menu-shadow); --backdrop-opacity: 0; } /* v1's */
+ion-popover.ck-ion-menu ion-content { --background: var(--ck-soft); }
+ion-popover.ck-ion-menu ion-list.ck-ion-menu-group { padding: 0; margin: 0; }
+ion-popover.ck-ion-menu ion-list.ck-ion-menu-group + ion-list.ck-ion-menu-group { margin-top: 8px; }
+ion-popover.ck-ion-menu ion-item { --min-height: 48px; --padding-start: 16px; --inner-padding-end: 16px; --background: var(--ck-surface); font-size: 17px; font-weight: 400; }
+ion-popover.ck-ion-menu ion-item svg { color: var(--ck-fg2); }
+ion-popover.ck-ion-menu ion-item.ck-ion-danger, ion-popover.ck-ion-menu ion-item.ck-ion-danger svg { --color: var(--ck-error); color: var(--ck-error); }
+.ck-ion-menu-check { width: 20px; display: grid; place-items: center; margin-inline-end: 4px; color: var(--ck-fg); }
+
+/* ── sheets and cards ── */
+ion-modal.ck-ion-sheet { --border-radius: 24px; --background: var(--ck-bg); }
+ion-modal.ck-ion-sheet ion-toolbar, ion-modal.ck-ion-card-modal ion-toolbar { --background: transparent; }
+ion-modal.ck-ion-sheet ion-content { --background: var(--ck-bg); }
+.ck-ion-sheet-header ion-toolbar { --padding-start: 12px; --padding-end: 12px; padding-top: 8px; }
+.ck-ion-sheet-header ion-title, ion-modal.ck-ion-sheet ion-title { position: static; text-align: start; padding-inline: 12px; }
+ion-content.ck-ion-sheet-content ion-segment { margin: 4px 24px 0; width: auto; }
+.ck-ion-scale-result { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; margin: 8px 24px; }
+.ck-ion-stepper-row { display: flex; align-items: center; justify-content: space-between; margin: 8px 24px; }
+.ck-ion-stepper { display: flex; align-items: center; gap: 14px; }
+.ck-ion-step { --background: var(--ck-surface); --color: var(--ck-fg); --background-activated: var(--ck-soft); --padding-start: 0; --padding-end: 0; width: 40px; height: 40px; --box-shadow: inset 0 0 0 1px var(--ck-strong); }
+.ck-ion-step-value { min-width: 28px; text-align: center; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+ion-content.ck-ion-sheet-content .ck-ion-chips-wrap { margin: 8px 24px; }
+/* a sheet as tall as what's in it */
+ion-modal.ck-ion-auto-sheet { --height: auto; }
+ion-modal.ck-ion-auto-sheet .ck-ion-auto-inner { padding: 8px 0 calc(16px + var(--ion-safe-area-bottom, 0px)); max-height: 85vh; overflow: auto; }
+.ck-ion-sheet-title { padding: 18px 24px 6px; font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; }
+ion-modal.ck-ion-auto-sheet ion-datetime { --background: var(--ck-bg); margin: 0 auto; }
+ion-modal.ck-ion-card-modal { --background: var(--ck-bg); }
+.ck-ion-card-header ion-toolbar { --min-height: 72px; --padding-top: 0; --padding-bottom: 0; --padding-start: 16px; --padding-end: 16px; }
+ion-searchbar.ck-ion-card-search { padding: 12px 16px 0; }
+ion-textarea.ck-ion-note-field { font-size: 18px; line-height: 1.45; --padding-top: 0; min-height: 60vh; }
+/* v1's bottom bar: white, a line on top, 64px with the 48px button in it */
+ion-footer.ck-ion-cta-footer { background: var(--ck-surface); border-top: 1px solid var(--ck-line); }
+ion-footer.ck-ion-cta-footer ion-toolbar { --background: var(--ck-surface); --min-height: 63px; --padding-start: 16px; --padding-end: 16px; --padding-top: 0; --padding-bottom: 0; --border-width: 0; }
+.ck-ion-cta-row { display: flex; gap: 10px; align-items: center; }
+ion-button.ck-ion-cta {
+  --background: var(--ck-accent); --background-activated: var(--ck-accent-press); --color: var(--ck-surface); --box-shadow: none;
+  flex: 1; height: 48px; min-height: 48px; margin: 0; --padding-top: 0; --padding-bottom: 0; --padding-start: 22px; --padding-end: 22px;
+  font-family: var(--ck-font-display); font-size: 20px; font-weight: 600; letter-spacing: normal; text-transform: none; gap: 6px;
+}
+ion-button.ck-ion-cta-back {
+  --background: var(--ck-fg); --color: var(--ck-surface); --padding-start: 16px; --padding-end: 18px; height: 48px; margin: 0;
+  font-family: var(--ck-font-display); font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; gap: 6px;
+}
+
+/* ── a recipe: the photo under a see-through bar (Ionic's fade), buttons dark over it ── */
+.ck-ion-photo-bar ion-toolbar { --background: var(--ck-bg); }
+.ck-ion-photo-bar ion-back-button, .ck-ion-photo-bar .ck-ion-bar-button { --background: var(--ck-overlay-button); --color: var(--ck-surface); }
+.ck-ion-hero { --swiper-pagination-color: var(--ck-surface); --swiper-pagination-bullet-inactive-color: var(--ck-surface); --swiper-pagination-bottom: 38px; isolation: isolate; }
+button.ck-scale-button.ck-ion-pill-button {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 0; border-radius: 9999px;
+  background-color: var(--ck-soft); color: var(--ck-fg); font: inherit; font-size: 14px; font-weight: 500;
+}
+ion-list.ck-ion-plain-list { background: transparent; margin: 0; padding: 0; }
+ion-list.ck-ion-plain-list ion-item { --background: transparent; --min-height: 36px; --padding-top: 2px; --padding-bottom: 2px; font-size: 15px; }
+ion-list.ck-ion-plain-list .ck-bullet { margin-inline-end: 12px; align-self: flex-start; margin-top: 16px; }
+ion-item.ck-ing-on { --background: var(--ck-accent-tint); }
+.ck-ing-linked { display: inline-flex; align-items: center; gap: 2px; padding: 0; border: 0; background: none; font: inherit; color: var(--ck-accent-ink); }
+ion-modal.ck-ion-photo-viewer { --background: var(--ck-photo-dark); }
+ion-modal.ck-ion-photo-viewer ion-content { --background: var(--ck-photo-dark); }
+.ck-ion-viewer-swiper { height: 100%; --swiper-pagination-color: var(--ck-surface); }
+.ck-ion-viewer-swiper img { max-width: 100%; max-height: 100%; object-fit: contain; }
+ion-button.ck-ion-viewer-close {
+  position: absolute; top: calc(12px + var(--ion-safe-area-top, 0px)); right: 16px; z-index: 2;
+  --background: var(--ck-on-dark-button); --color: var(--ck-surface); --padding-start: 0; --padding-end: 0; width: 40px; height: 40px;
+}
+
+/* ── a cookbook: its colour and plates under a see-through bar, frosted buttons, solid once they've scrolled away ── */
+.ck-ion-hero-bar:not(.ck-ion-solid) ion-back-button, .ck-ion-hero-bar:not(.ck-ion-solid) .ck-ion-bar-button:not(.ck-ion-bar-primary) { --background: var(--ck-frosted-button); }
+ion-title.ck-ion-hero-title { position: static; text-align: start; padding-inline: 8px; }
+a.ck-ion-book-tile { border-radius: 20px; padding: 14px 12px 14px; overflow: hidden; }
+/* Cookbooks (v1): the count a block's gap (35px) below the bar, the cards 14px apart in rows */
+.ck-ion-count.ck-ion-count-loose { margin-top: 35px; }
+.ck-ion-grid.ck-ion-book-grid { row-gap: 14px; }
+
+/* ── the Planner ── */
+.ck-ion-week { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 8px; }
+.ck-ion-day { display: grid; justify-items: center; gap: var(--ck-day-dot-gap); padding: 0; border: 0; background: none; font: inherit; color: var(--ck-fg); }
+ion-item-option.ck-ion-option-move { --background: var(--ck-fg2); }
+
+/* ── Groceries ── */
+ion-button.ck-ion-instacart { --color: var(--ck-accent-ink); }
+
+/* ── Settings ── */
+.ck-ion-version { display: flex; align-items: center; gap: 4px; margin: 8px 20px; font-size: 13px; color: var(--ck-muted); }
+.ck-ion-step-no { margin-inline-end: 10px; align-self: flex-start; margin-top: 14px; }
+ion-title.ck-ion-center { text-align: center; }
+
+/* ── sign in ── */
+.ck-ion-signin { display: grid; justify-items: center; align-content: center; gap: 16px; min-height: 100vh; padding: 24px; text-align: center; }
+.ck-ion-signin img { border-radius: 20px; }
+.ck-ion-signin h1 { margin: 0; font-family: var(--ck-font-display); font-size: 32px; font-weight: 600; }
+.ck-ion-signin ion-button { width: 100%; max-width: 320px; flex: none; }
+
+/* ══ cook mode: Ionic's card over the app ══ */
+ion-modal.ck-ion-cook { --background: var(--ck-bg); --ck-cook-bar: 56px; }
+.ck-ion-cook-header ion-toolbar { --background: var(--ck-bg); --min-height: 60px; --padding-start: 16px; --padding-end: 16px; padding-top: 0; }
+.ck-ion-cook-header ion-title { position: static; text-align: start; padding: 0; margin: 0; font-size: 21px; color: var(--ck-title); }
+.ck-ion-grabber {
+  position: absolute; top: 8px; left: 0; right: 0; margin: 0 auto; width: 36px; height: 5px; border-radius: 9999px;
+  background-color: var(--ck-strong); pointer-events: none;
+}
+ion-button.ck-ion-timer-pill {
+  --background: var(--ck-soft); --color: var(--ck-accent-ink); --border-radius: 9999px; --padding-start: 12px; --padding-end: 12px;
+  height: 36px; font-weight: 600; font-variant-numeric: tabular-nums; gap: 6px;
+}
+ion-content.ck-ion-cook-content { --background: var(--ck-bg); }
+ion-content.ck-ion-cook-content::part(scroll) { display: flex; flex-direction: column; }
+.ck-ion-split { display: none; flex: 1 1 0; min-height: 0; flex-direction: column; height: 100%; }
+.ck-ion-split.ck-split-active { display: flex; }
+ion-list.ck-ion-cook-list { background: transparent; margin: 0; padding: 0; }
+ion-list.ck-ion-cook-list ion-item { --background: transparent; --padding-start: 16px; --inner-padding-end: 16px; --min-height: 44px; font-size: 17px; }
+ion-list.ck-ion-cook-list ion-checkbox.ck-ion-tick {
+  --size: 22px; --checkbox-background-checked: var(--ck-accent); --border-color-checked: var(--ck-accent);
+  align-self: flex-start; margin: 12px 14px 0 0;
+}
+.ck-ion-cook-line, ion-list.ck-ion-cook-list .ck-cook-step { flex: 1; min-width: 0; padding: 10px 0; white-space: normal; line-height: 1.4; cursor: pointer; }
+.ck-ion-cook-line { display: block; }
+.ck-ion-cook-line .ck-ion-row-note { font-size: 14px; }
+ion-list.ck-ion-cook-steps ion-item { --padding-top: 4px; --padding-bottom: 4px; }
+ion-accordion.ck-ion-step-extra { background: transparent; }
+ion-accordion.ck-ion-step-extra::part(header) { display: none; }
+ion-accordion.ck-ion-step-extra::part(content) { background: transparent; }
+.ck-ion-fold-header { display: block; height: 0; }
+.ck-ion-step-folds { background: transparent; }
+button.ck-ion-timer-button {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 9999px;
+  background-color: var(--ck-soft); color: var(--ck-fg); font: inherit; font-size: 15px; font-weight: 500;
+}
+button.ck-ion-timer-button.ck-timer-running { color: var(--ck-accent-ink); font-variant-numeric: tabular-nums; }
+ion-footer.ck-ion-cook-footer { background-color: var(--ck-soft); }
+.ck-ion-cook-tabs {
+  display: flex; justify-content: flex-start; align-items: flex-start; gap: 2px; height: calc(var(--ck-cook-bar) + var(--ion-safe-area-bottom, 0px));
+  padding: 0 14px var(--ion-safe-area-bottom, 0px); background-color: var(--ck-soft); box-shadow: inset 0 1px 0 var(--ck-strong);
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none;
+}
+.ck-ion-cook-tabs::-webkit-scrollbar { display: none; }
+
+/* Ionic draws a toolbar button's corners on its inner part: round them there */
+.ck-ion-bar-button::part(native), ion-button.ck-ion-timer-pill::part(native), ion-button.ck-ion-step::part(native),
+ion-button.ck-ion-cta::part(native), ion-button.ck-ion-cta-back::part(native), ion-button.ck-ion-pill::part(native),
+ion-button.ck-ion-viewer-close::part(native) { border-radius: 9999px; }
+/* the photo and the cookbook's colour start at the very top, under the see-through bar (Ionic's fullscreen content
+   runs under the header but pads its start below it) */
+ion-content.ck-ion-recipe::part(scroll), ion-content.ck-ion-book::part(scroll) { padding-top: 0; }
+
+/* the search field with what's under it (chips, the view switch), stacked */
+ion-item .ck-ion-accent-text, ion-label.ck-ion-accent-text { color: var(--ck-accent-ink); }
+
+/* ── under the bar: the search field and what goes with it (chips, the view switch, the week strip), in the header
+   but not in Ionic's toolbar, which sized itself short on the iPhone and cut the chips in half ── */
+.ck-ion-header-extra { display: block; background: var(--ck-bg); padding: 4px 0 12px; } /* v1's docked bar: 4px over the search, 12px under */
+.ck-ion-header-extra:has(.ck-ion-chips) { padding-bottom: 10px; }
+/* one search field everywhere: soft grey pill, the placeholder on the left (the app's look) */
+.ck-ion-header-extra ion-searchbar, ion-searchbar.ck-ion-card-search {
+  --background: var(--ck-soft); --border-radius: 20px; --placeholder-color: var(--ck-fg2); --placeholder-opacity: 1; --icon-color: var(--ck-fg2);
+  --box-shadow: none; padding: 0 16px; min-height: 0; height: 44px; text-align: start;
+}
+/* every search field is v1's: a soft grey pill, 44px tall, no padding of Ionic's round it */
+ion-searchbar.sc-ion-searchbar-ios-h {
+  --background: var(--ck-soft); --border-radius: 22px; --placeholder-color: var(--ck-muted); --placeholder-opacity: 1; --icon-color: var(--ck-muted);
+  --box-shadow: none; padding: 0 16px; min-height: 0; height: 44px;
+}
+/* v1's search field: 44px, the magnifier 16px in, the words 44px in, 500 like all text, the placeholder muted */
+ion-searchbar .searchbar-input-container { height: 44px; }
+ion-searchbar.searchbar-left-aligned.sc-ion-searchbar-ios-h .searchbar-input.sc-ion-searchbar-ios { padding-inline-start: 44px; padding-top: 0; padding-bottom: 0; font-weight: 500; font-size: 17px; line-height: normal; }
+ion-searchbar.sc-ion-searchbar-ios-h .searchbar-search-icon.sc-ion-searchbar-ios { width: 15px; inset-inline-start: 16px; opacity: 0.9; }
+.ck-ion-header-extra ion-searchbar, ion-searchbar.ck-ion-card-search { --placeholder-color: var(--ck-muted); --icon-color: var(--ck-muted); }
+.ck-ion-header-extra .ck-ion-chips { padding-top: 0; margin-top: 14px; }
+.ck-ion-header-extra .ck-ion-segment { margin-top: 12px; }
+/* the view switch as the app has it: the picked side dark with white text */
+ion-segment.ck-ion-segment, ion-content.ck-ion-sheet-content ion-segment { --background: var(--ck-soft); }
+ion-segment.ck-ion-segment ion-segment-button, ion-content.ck-ion-sheet-content ion-segment ion-segment-button {
+  --indicator-color: var(--ck-fg); --color: var(--ck-fg2); --color-checked: var(--ck-surface); --indicator-box-shadow: none;
+  font-weight: 600; min-height: 36px;
+}
+
+/* ── the tab bar, drawn by each tab's first page (a pushed page slides over it); Ionic's own bar stays out of sight
+   and only switches tabs. Flat and docked (not floating), Tomato for the tab you're on ── */
+ion-tab-bar.ck-ion-tabbar-engine { display: none; }
+ion-footer.ck-ion-tabbar { background: var(--ck-surface); border-top: 1px solid var(--ck-line); }
+.ck-ion-tabbar-row { display: flex; height: 59px; padding-bottom: 0; } /* v1's 60px with its line, as the user's other app */
+ion-footer.ck-ion-tabbar { padding-bottom: var(--ion-safe-area-bottom, 0px); }
+button.ck-ion-tab {
+  flex: 1; display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--ck-muted);
+  -webkit-tap-highlight-color: transparent;
+}
+button.ck-ion-tab.ck-ion-tab-on { color: var(--ck-accent-ink); }
+
+/* an alert or action sheet takes the focus as it opens (for VoiceOver); no focus ring drawn round it (the user saw a
+   blue outline round Rename Cookbook) */
+ion-alert .alert-wrapper:focus, ion-alert .alert-wrapper:focus-visible,
+ion-action-sheet .action-sheet-wrapper:focus, ion-action-sheet .action-sheet-wrapper:focus-visible { outline: none; }
+
+/* ══ scrolling, the old app's way (Settings → Scrolling; scroll.tsx), with Framework7's own values: the bar slides up by
+   its height over 400ms (Framework7's --f7-navbar-hide-show-transition-duration, its default ease) while its title and
+   buttons fade over the same 400ms; what's under it (search, chips, the docked search) stays at the top, and the strip
+   under the clock stays solid (the header's own background). Ionic has no such bar, so this is ours. ══ */
+ion-header.ck-ion-slide-header { background: var(--ck-bg); transition: transform 400ms ease; }
+ion-header.ck-ion-slide-header > ion-toolbar:first-of-type { transition: opacity 400ms ease; }
+ion-header.ck-ion-slide-header.ck-ion-bar-hidden { transform: translateY(-48px); }
+ion-header.ck-ion-slide-header.ck-ion-bar-hidden > ion-toolbar:first-of-type { opacity: 0; pointer-events: none; }
+/* #99: the docked bar's line and shadow only once the page has scrolled */
+ion-header.ck-ion-slide-header.ck-ion-scrolled:not(.ck-ion-photo-bar):not(.ck-ion-hero-bar) { box-shadow: var(--ck-bar-shadow); }
+/* a docked bar (search, chips, the view switch) also has v1's hairline under it once scrolled, as does a cookbook's
+   once its search has docked */
+ion-header.ck-ion-slide-header.ck-ion-scrolled:not(.ck-ion-photo-bar):not(.ck-ion-hero-bar):has(.ck-ion-header-extra),
+ion-header.ck-ion-hero-bar.ck-ion-docked { box-shadow: 0 0.5px 0 var(--ck-strong), var(--ck-bar-shadow); }
+@media (prefers-reduced-motion: reduce) {
+  ion-header.ck-ion-slide-header, ion-header.ck-ion-slide-header > ion-toolbar:first-of-type { transition: none; }
+}
+/* A see-through bar (a recipe over its photo, a cookbook over its colour): the bar's background is drawn by the toolbar,
+   at --ck-fill. !important so Ionic's page slide can't animate it: it drew the bar solid while a recipe slid in, then
+   dropped it (the user's recording). The header itself is clear, except while hidden, when it keeps the strip under the
+   clock solid. */
+ion-header.ck-ion-photo-bar.ck-ion-slide-header, ion-header.ck-ion-hero-bar.ck-ion-slide-header { background: transparent; }
+ion-header.ck-ion-photo-bar.ck-ion-slide-header.ck-ion-bar-hidden,
+ion-header.ck-ion-hero-bar.ck-ion-slide-header.ck-ion-bar-hidden { background: var(--ck-bg); }
+ion-header.ck-ion-fill-bar ion-toolbar, ion-header.ck-ion-hero-bar ion-toolbar { --background: var(--ck-bg); }
+ion-header.ck-ion-fill-bar ion-toolbar::part(background) { opacity: var(--ck-fill, 0) !important; }
+ion-header.ck-ion-hero-bar ion-toolbar::part(background) { opacity: 0 !important; }
+ion-header.ck-ion-hero-bar.ck-ion-solid ion-toolbar::part(background) { opacity: 1 !important; }
+ion-header.ck-ion-photo-bar.ck-ion-solid ion-back-button, ion-header.ck-ion-photo-bar.ck-ion-solid .ck-ion-bar-button { --background: var(--ck-soft); --color: var(--ck-fg); }
+/* a cookbook's name in the bar only once it has gone all the way under it (never in both places); !important keeps
+   Ionic's page slide from showing it */
+ion-header ion-title.ck-ion-hero-title { opacity: 0 !important; transition: opacity 200ms ease; }
+ion-header.ck-ion-titled ion-title.ck-ion-hero-title { opacity: 1 !important; }
+/* a cookbook's plates and colour fade as they go under the bar (#90) */
+/* its search hands over to the one docked under the bar the moment it reaches it: both are always there, only one shows */
+ion-header .ck-ion-header-extra.ck-ion-docked-search { visibility: hidden; background: transparent; }
+ion-header.ck-ion-docked .ck-ion-header-extra.ck-ion-docked-search { visibility: visible; background: var(--ck-bg); }
+.ck-ion-book-skeleton { height: 300px; margin: 0; border-radius: 0; }
+.ck-ion-hero-skeleton { height: auto; margin: 0; border-radius: 0; }
+.ck-ion-grid-top { padding-top: 16px; }
+
+/* ══ scrolling, Ionic's iOS large titles: the big title in the page, the small one in the bar once it has gone ══ */
+ion-header.ck-ion-large-header ion-title { font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; }
+ion-header.ck-ion-large-title ion-toolbar { --background: var(--ck-bg); }
+ion-header.ck-ion-large-title ion-title.title-large { font-family: var(--ck-font-display); font-size: 32px; font-weight: 600; letter-spacing: -0.02em; }
+.ck-ion-scroll-ios .ck-ion-header-extra { padding-bottom: 4px; }
+/* a cookbook with Ionic's fading bar: frosted buttons over the colour, as the app's */
+ion-header.ck-ion-fade-bar ion-toolbar { --background: var(--ck-bg); }
+ion-header.ck-ion-fade-bar ion-back-button, ion-header.ck-ion-fade-bar .ck-ion-bar-button:not(.ck-ion-bar-primary) { --background: var(--ck-frosted-button); }
+.ck-ion-settings-segment { margin: 8px 16px 0; width: auto; }
+
+/* a cookbook's page with v1's header (cookbook.css: .ck-book-hero, .ck-hero-search, .ck-shelf…) */
+.ck-ion-book-top { --ck-hero-p: 0; position: relative; }
+button.ck-shelf-title { line-height: 1.4; }
+button.ck-shelf-all.ck-ion-plain-button { line-height: 1.4; font-family: var(--ck-font-display); font-size: 15px; font-weight: 500; color: var(--ck-accent-ink); flex: none; padding: 10px 0; margin: -10px 0; }
+.ck-ion-book-top.ck-ion-docked .ck-hero-search { visibility: hidden; }
+.ck-ion-book-top.ck-ion-titled .ck-book-hero-meta { visibility: hidden; }
+button.ck-ion-plain-button { padding: 0; border: 0; background: none; text-align: start; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ck-ion-not-found { margin: 24px 16px; text-align: center; }
+
+/* the Planner, with v1's classes (cookbook.css: .ck-week-*, .ck-agenda, .ck-plan-*): the strip under the bar keeps its
+   line and shadow always, as v1's */
+.ck-ion-header-extra:has(> .ck-week-label) { padding: 10px 0 2px; }
+.ck-ion-header-extra > .ck-week-label { margin-bottom: 12px; }
+.ck-plan-day-head h2 { line-height: 1.4; }
+.ck-agenda { --f7-subnavbar-height: 122px; } /* the week strip's height, for the room after the last day */
+ion-header:has(.ck-week-label) { box-shadow: 0 0.5px 0 var(--ck-strong), var(--ck-bar-shadow); }
+button.ck-week-day.ck-ion-plain-button { width: 100%; padding: 0 0 14px; text-align: center; }
+button.ck-plan-add.ck-ion-plain-button { display: grid; place-items: center; width: 40px; height: 40px; flex: none; color: var(--ck-accent-ink); }
+ion-button.ck-ion-plan-today { font-family: var(--ck-font); font-size: 17px; font-weight: 500; margin: 0 4px 0 0; }
+ion-list.list-inset.ck-ion-plan-list { margin: 0 16px; padding: 0; border-radius: 16px; --ion-item-background: var(--ck-surface); }
+ion-list.ck-ion-plan-list ion-item { --min-height: 68px; --padding-start: 12px; --inner-padding-end: 12px; --border-color: var(--ck-line); }
+ion-list.ck-ion-plan-list ion-item-sliding:last-child ion-item { --border-width: 0; --inner-border-width: 0; }
+ion-list.ck-ion-plan-list .ck-picker-thumb { margin: 12px 16px 12px 0; }
+ion-list.ck-ion-plan-list ion-label { margin: 0; }
+ion-list.ck-ion-plan-list ion-label h3 { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.4; color: var(--ck-fg); }
+ion-list.ck-ion-plan-list .ck-ion-plan-note ion-label h3 { font-weight: 500; white-space: pre-line; overflow-wrap: anywhere; }
+ion-list.ck-ion-plan-list ion-label p { margin: 0; font-size: 13px; font-weight: 500; line-height: 1.25; color: var(--ck-muted); }
+ion-item-option.ck-ion-option-meal { --background: var(--ck-muted); }
+
+/* Pick a day (DaySheet): v1's calendar sheet, white with 32px corners, the question 24px in; the month's days are the
+   week strip's (.ck-week-day), 50px rows over 18px side insets, so the first and last circles meet the 24px edge */
+ion-modal.ck-ion-day-sheet { --background: var(--ck-surface); --border-radius: 32px; }
+ion-modal.ck-ion-day-sheet .ck-ion-auto-inner { padding: 0 0 calc(32px + var(--ion-safe-area-bottom, 0px)); }
+.ck-ion-sheet-title.ck-ion-day-sheet-title { display: flex; align-items: center; height: 72px; padding: 0 24px; box-sizing: border-box; color: var(--ck-fg); }
+.ck-month-bar { display: flex; justify-content: space-between; align-items: center; height: 56px; padding: 0 12px 0 24px; box-sizing: border-box; }
+.ck-month-arrows { display: flex; }
+.ck-month-name { font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; color: var(--ck-fg); }
+button.ck-month-arrow { display: grid; place-items: center; width: 44px; height: 44px; color: var(--ck-accent-ink); }
+.ck-month-week { display: grid; grid-template-columns: repeat(7, 1fr); margin-top: 16px; padding: 0 18px; height: 18px; font-size: 11px; font-weight: 500; line-height: 18px; color: var(--ck-muted); text-align: center; }
+.ck-month { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 50px; padding: 0 18px; }
+.ck-month button.ck-week-day.ck-ion-plain-button { padding: 6px 0 0; align-content: start; }
+
+/* Groceries, with v1's classes (cookbook.css: .ck-grocery-*, .ck-instacart-*): the view switch and the store in the page */
+.ck-ion-grocery-head { margin: 16px 0 20px; padding: 0 16px; }
+ion-segment.ck-ion-strong-segment { margin: 0; padding: 2px; min-height: 38px; height: 38px; border-radius: 9999px; --background: var(--ck-soft); }
+ion-segment.ck-ion-strong-segment ion-segment-button {
+  min-height: 34px; height: 34px; margin: 0; --border-radius: 9999px; --indicator-color: var(--ck-fg); --color: var(--ck-fg2); --color-checked: var(--ck-surface);
+  --indicator-box-shadow: none; font-size: 15px; font-weight: 500; letter-spacing: normal; text-transform: none;
+}
+ion-segment.ck-ion-strong-segment ion-segment-button::part(indicator-background) { border-radius: 9999px; }
+button.ck-instacart-store.ck-ion-plain-button { display: inline-flex; align-items: center; gap: 4px; margin-top: 12px; font-size: 13px; font-weight: 500; line-height: 18px; color: var(--ck-muted); }
+button.ck-instacart-store b { font-weight: 600; color: var(--ck-fg); }
+button.ck-instacart-store .ck-icon { color: var(--ck-fg2); }
+ion-list.ck-ion-grocery-list ion-item { --min-height: 63px; --inner-padding-end: 16px; }
+ion-list.ck-ion-grocery-list ion-checkbox.ck-ion-tick { margin: 0 16px 0 0; }
+/* every checkbox as v1's: a 22px circle with a --ck-strong ring, bright Tomato when ticked */
+ion-checkbox { --size: 22px; --border-color: var(--ck-strong); --border-width: 1px; --checkbox-background-checked: var(--ck-accent); --border-color-checked: var(--ck-accent); }
+.ck-ion-grocery-text { flex: 1; min-width: 0; padding: 13px 0 12.45px; cursor: pointer; } /* + Ionic's 0.55px line = v1's 63px */
+.ck-ion-grocery-name { display: block; font-size: 17px; font-weight: 600; line-height: 21px; color: var(--ck-fg); }
+.ck-ion-grocery-sub { display: block; font-size: 13px; font-weight: 500; line-height: 16px; color: var(--ck-muted); }
+ion-list.ck-ion-grocery-list .ck-grocery-amount { margin: 0 12px 0 8px; font-weight: 500; }
+a.ck-ion-instacart-link { display: grid; place-items: center; flex: none; width: 36px; height: 36px; margin: 0; border-radius: 9999px; background-color: var(--ck-bg); color: var(--ck-accent-ink); }
+ion-item.ck-done .ck-ion-grocery-name, ion-item.ck-done .ck-ion-grocery-sub, ion-item.ck-done .ck-grocery-amount { text-decoration: line-through; color: var(--ck-done-ink); }
+ion-item.ck-done a.ck-ion-instacart-link { visibility: hidden; }
+.ck-grocery-got { display: flex; justify-content: space-between; align-items: baseline; }
+button.ck-ion-got-clear.ck-ion-plain-button { font-family: var(--ck-font-display); font-size: 15px; font-weight: 400; color: var(--ck-accent-ink); }
+
+/* inset lists as v1's: 16px corners, 52px rows, 17px words at 500, a block's gap (35px) apart */
+ion-list.list-inset.ck-ion-inset { border-radius: 16px; }
+ion-list.list-ios.list-inset.ck-ion-settings-list.ck-ion-settings-list { margin: 35px 16px 0; }
+ion-list.ck-ion-inset ion-item { --min-height: 52px; --padding-start: 16px; font-size: 17px; font-weight: 500; }
+button.ck-ion-sign-out.ck-ion-plain-button { height: 44px; padding: 0 4px; font-size: 17px; font-weight: 400; color: var(--ck-error); }
+.ck-version.ck-ion-version-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 35px 0; padding: 0 16px 0 32px; }
+.ck-ion-version-row .ck-version-text { font-weight: 500; line-height: 21px; }
+button.ck-ion-refresh.ck-ion-plain-button { display: grid; place-items: center end; width: 128px; height: 72px; margin: -14px -16px -14px 0; padding-right: 30px; color: var(--ck-accent-ink); }
+.ck-ion-settings-label { margin-top: 8px; }
+ion-segment.ck-ion-settings-segment { margin: 6px 16px 0; width: auto; }
+
+/* a recipe's ingredients as v1's: 15px rows, 36px for one line, the note 13px muted right under it, the line between
+   rows starting at the words, none after the last */
+ion-list.ck-ion-ing-list ion-item { --min-height: 36px; --padding-top: 0; --padding-bottom: 0; --padding-start: 16px; --inner-padding-end: 0; --border-color: var(--ck-line); font-size: 15px; }
+ion-list.ck-ion-ing-list ion-item:last-of-type { --inner-border-width: 0; }
+ion-list.ck-ion-ing-list ion-label.sc-ion-label-ios-h { margin: 7px 0 6px; line-height: 21px; font-size: 15px; } /* + the 0.55px line = v1 */
+ion-list.ck-ion-ing-list.list-ios { padding: 0; }
+ion-list.ck-ion-ing-list .ck-ion-row-note { margin: 0; font-size: 13px; line-height: 16px; color: var(--ck-muted); }
+ion-list.ck-ion-ing-list .ck-bullet { margin: 15px 12px 0 6px; }
+
+/* the crash screen (CrashScreen.tsx): its Reload button keeps a gap between the icon and the word */
+.ck-crash ion-button svg { margin-right: 6px; }
+
+/* a recipe's Source link, as v1's (cookbook.css .ck-source) */
+a.ck-source-link { display: inline-flex; align-items: center; gap: 6px; color: var(--ck-accent-ink); text-decoration: none; }
+/* the chip rows under Labels, Cookbooks and Planned sit where v1's did (its chips came 5px lower, the next heading 4px after) */
+.ck-panel-rest .ck-ion-chips-wrap { margin-top: 5px; margin-bottom: 4px; }
+
+/* sheets as v1's: white, 32px corners, no handle; the title 24px in on a 72px header with Done in Tomato ink; their
+   content 24px in from the sides */
+ion-modal.ck-ion-sheet { --background: var(--ck-surface); --border-radius: 32px; }
+ion-modal.ck-ion-sheet ion-content, ion-modal.ck-ion-sheet ion-content.ck-ion-sheet-content { --background: var(--ck-surface); }
+ion-modal.ck-ion-sheet .ck-ion-sheet-header ion-toolbar { --background: var(--ck-surface); --min-height: 72px; --padding-top: 0; --padding-bottom: 0; --padding-start: 24px; --padding-end: 14px; padding-top: 0; }
+ion-modal.ck-ion-sheet .ck-ion-sheet-header ion-title { padding-inline: 0; color: var(--ck-fg); }
+ion-modal.ck-ion-sheet .ck-ion-sheet-header ion-button { --color: var(--ck-accent-ink); font-size: 17px; font-weight: 500; text-transform: none; }
+ion-content.ck-ion-sheet-content ion-segment.ck-ion-strong-segment { margin: 18px 24px 0; width: auto; }
+ion-button.ck-ion-step { --background: var(--ck-soft); --box-shadow: none; width: 34px; height: 34px; min-height: 34px; margin: 0; }
+ion-modal.ck-ion-sheet.ck-ion-sheet ion-header ion-toolbar:first-of-type { padding-top: 0 !important; padding-bottom: 0 !important; } /* Ionic leaves room for its handle, which v1's sheets don't have */
+
+/* cards as v1's popups: 32px corners, a 72px header with a grey Cancel pill, the title in the middle and a Tomato Done
+   pill (#55: 16px from the top and sides) */
+ion-modal.ck-ion-card-modal { --border-radius: 32px; }
+ion-modal.ck-ion-card-modal ion-header ion-toolbar:first-of-type { padding-top: 0 !important; }
+.ck-ion-card-header ion-title { font-size: 17px; font-weight: 500; color: var(--ck-title); }
+button.ck-ion-pill-cancel.ck-ion-plain-button, button.ck-ion-pill-done.ck-ion-plain-button {
+  height: 40px; padding: 0 12px; border-radius: 9999px; font-family: var(--ck-font); font-size: 17px; line-height: 40px; text-align: center;
+}
+button.ck-ion-pill-cancel.ck-ion-plain-button { background: var(--ck-soft); color: var(--ck-fg); font-weight: 400; }
+button.ck-ion-pill-done.ck-ion-plain-button { background: var(--ck-accent); color: var(--ck-surface); font-weight: 600; }
+button.ck-ion-pill-done.ck-ion-plain-button:disabled { opacity: 0.4; }
+ion-list.list-ios.list-inset.ck-ion-card-list { margin: 16px 16px 0; }
+ion-list.list-ios.list-inset.ck-ion-card-list + ion-list.ck-ion-card-list { margin-top: 16px; }
+.ck-ion-new-icon { color: var(--ck-accent-ink); margin-inline-end: 16px; }
+ion-list.ck-ion-addto-list ion-item { --min-height: 68px; }
+ion-list.ck-ion-addto-list ion-checkbox.ck-ion-tick { margin: 0 16px 0 0; }
+ion-list.ck-ion-addto-list .ck-picker-thumb { margin: 12px 16px 12px 0; }
+ion-list.ck-ion-addto-list ion-label { font-weight: 600; }
+ion-list.ck-ion-addto-list ion-label p { margin: 0; font-size: 12px; font-weight: 500; color: var(--ck-muted); }
+ion-list.ck-ion-addto-list ion-item.ck-ion-addto-section { --min-height: 48px; --padding-start: 54px; }
+ion-list.ck-ion-addto-list ion-item.ck-ion-addto-section ion-label { font-weight: 500; }
+ion-list.ck-ion-addto-list .ck-ion-addto-parent { --padding-start: 54px; }
+ion-list.ck-ion-addto-list ion-item { --border-color: var(--ck-line); }
+ion-list.ck-ion-addto-list ion-item .ion-accordion-toggle-icon { color: var(--ck-strong); font-size: 18px; }
+
+/* dialogs as v1's: 270px, white, 32px corners, the words on the left 24px in, two pill buttons side by side (Cancel grey,
+   the other bright Tomato at 600), a field as an outlined pill */
+ion-alert.ck-ion-dialog { --width: 270px; --max-width: 270px; --background: var(--ck-surface); --backdrop-opacity: 0.4; }
+ion-alert.ck-ion-dialog .alert-wrapper.sc-ion-alert-ios { border-radius: 32px; }
+ion-alert.ck-ion-dialog .alert-head.sc-ion-alert-ios { padding: 24px 24px 0; text-align: start; }
+ion-alert.ck-ion-dialog .alert-title.sc-ion-alert-ios { margin: 0; font-size: 17px; font-weight: 500; line-height: 23.8px; color: var(--ck-title); }
+ion-alert.ck-ion-dialog .alert-message.sc-ion-alert-ios { padding: 11px 24px 0; text-align: start; font-size: 14px; font-weight: 500; line-height: 21px; color: var(--ck-title); max-height: none; }
+ion-alert.ck-ion-dialog .alert-message.sc-ion-alert-ios:empty { display: none; }
+ion-alert.ck-ion-dialog .alert-input-group.sc-ion-alert-ios { padding: 16px 24px 0; }
+ion-alert.ck-ion-dialog .alert-input.sc-ion-alert-ios { height: 40px; margin: 0; padding: 0 12px; border: 1px solid var(--ck-strong); border-radius: 9999px; background: var(--ck-surface); font-size: 14px; font-weight: 500; }
+ion-alert.ck-ion-dialog .alert-button-group.sc-ion-alert-ios { flex-wrap: nowrap; gap: 8px; padding: 24px 14px 14px; margin: 0; }
+ion-alert.ck-ion-dialog .alert-button.sc-ion-alert-ios {
+  flex: 1; min-width: 0; height: 46px; min-height: 46px; margin: 0; padding: 0 10px; border: 0; border-radius: 9999px;
+  background: var(--ck-soft); color: var(--ck-fg); font-size: 17px; font-weight: 500;
+}
+ion-alert.ck-ion-dialog .alert-button.sc-ion-alert-ios:last-child { background: var(--ck-accent); color: var(--ck-surface); font-weight: 600; }
+ion-alert.ck-ion-dialog .alert-button.sc-ion-alert-ios:only-child { background: var(--ck-accent); color: var(--ck-surface); }
+ion-alert.ck-ion-dialog .alert-button.alert-button-role-destructive.sc-ion-alert-ios { background: var(--ck-accent); color: var(--ck-surface); }
+
+/* cook mode as v1's: the card 20px from the top, the name 16px in on a 72px header with ✓ and ✕ 16px from the top;
+   ingredient rows 38px for one line, the box centred, the words 16px after it, the note 14px under, lines starting at
+   the words; no lines between steps */
+ion-modal.ck-ion-cook { --height: calc(100% - var(--ion-safe-area-top, 0px) - 20px); --border-radius: 32px; }
+ion-modal.ck-ion-cook ion-header ion-toolbar:first-of-type { padding-top: 0 !important; }
+.ck-ion-cook-header ion-toolbar { --min-height: 72px; --padding-top: 0; --padding-bottom: 0; }
+ion-list.ck-ion-cook-ings ion-item { --min-height: 38px; --border-color: var(--ck-line); }
+ion-list.ck-ion-cook-ings ion-checkbox.ck-ion-tick { align-self: center; margin: 0 16px 0 0; }
+ion-list.ck-ion-cook-ings .ck-ion-cook-line { padding: 7px 0; line-height: 24px; }
+ion-list.ck-ion-cook-ings .ck-ion-cook-line .ck-ion-row-note { display: block; margin: 0; font-size: 14px; line-height: 16.8px; color: var(--ck-muted); }
+ion-modal.ck-ion-cook .ck-ion-cook-header ion-toolbar { padding: 0 !important; }
+/* with recipe tabs along the bottom, Directions fades into the page colour over its last 16px where it meets them, as
+   the halves do at the divider (v1), with room at the end so the last step scrolls clear; a half shown alone fades at
+   both ends */
+ion-content.ck-ion-cook-tabbed .ck-pane-steps { -webkit-mask-image: linear-gradient(#000 calc(100% - 16px), transparent); mask-image: linear-gradient(#000 calc(100% - 16px), transparent); }
+ion-content.ck-ion-cook-tabbed .ck-pane-steps::after { content: ''; display: block; height: 16px; }
+ion-content.ck-ion-cook-tabbed .ck-pane.ck-pane-alone { -webkit-mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); }
+
+/* loading placeholders as v1's (Skeletons.tsx): --ck-skeleton with Ionic's shimmer; words as rounded bars about a
+   capital's height; white cookbook tiles with grey plates */
+ion-skeleton-text { --background: var(--ck-skeleton); --background-rgb: 226, 226, 230; --border-radius: 3px; margin: 0; }
+.ck-skel-text { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 0.12em; max-width: 100%; overflow: hidden; vertical-align: middle; }
+.ck-skel-text ion-skeleton-text { flex: none; height: 1em; line-height: inherit; --border-radius: 2px; }
+.ck-skeleton-card .ck-card-body { display: grid; justify-items: start; gap: 4px; }
+ion-skeleton-text.ck-skel-photo { height: auto; aspect-ratio: 1; border-radius: var(--ck-card-radius, 16px); --border-radius: 16px; }
+ion-skeleton-text.ck-skel-chip { flex: none; display: inline-block; height: 34px; --border-radius: 999px; }
+.ck-skeleton-tile.ck-book-tile { background: var(--ck-surface); }
+.ck-skeleton-tile ion-skeleton-text.ck-plate { --border-radius: 50%; border-color: var(--ck-surface); box-shadow: none; }
+ion-skeleton-text.ck-skel-thumb { width: 44px; height: 44px; --border-radius: 10px; margin: 12px 16px 12px 0; }
+.ck-skel-row { display: grid; gap: 6px; padding: 12px 0; }
+.ck-skel-row-title { font-size: 17px; }
+.ck-skel-row-footer { font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { ion-skeleton-text { --background-rgb: 226, 226, 230; } }
+/* Ionic draws its shimmer in faint black over the page; v1's were solid --ck-skeleton with a lighter band passing.
+   Ionic's own shimmer animation, v1's colours */
+ion-skeleton-text.skeleton-text-animated {
+  background: linear-gradient(to right, var(--ck-skeleton) 8%, var(--ck-soft) 18%, var(--ck-skeleton) 33%) !important;
+  background-size: 800px 104px !important;
+}

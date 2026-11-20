@@ -8,6 +8,7 @@
   --ck-surface: #ffffff;
   --ck-soft: #ececee;
   --ck-fg: #262628;
+  --ck-title: #000000; /* the big page titles in the bar (Recipes, Cookbooks…): black, as Framework7 drew them in v1 */
   --ck-fg2: #55555a;
   --ck-muted: #6e6e73;
   --ck-photo-dark: #000000; /* behind a photo being cropped */
@@ -332,6 +333,22 @@ html.ios .toast {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+/* Nor on anything that opens over the page: dialogs, sheets, action sheets, menus, the calendar, panels. They're all
+   solid (--f7-glass-bg-color is --ck-surface), so their blur never showed either; off as a precaution, since Safari has
+   left blurred layers blank before (tried first for issue #141, whose cause turned out to be elsewhere). */
+html.ios .dialog,
+html.ios .sheet-modal,
+html.ios .calendar-modal,
+html.ios .actions-group,
+html.ios .actions-grid::before,
+html.ios .popover-inner,
+html.ios .panel-floating,
+html.ios .searchbar-input-wrap .autocomplete-dropdown,
+.notification,
+.card-backdrop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
 
 /* The header stays drawn (issue #123). Now and then iPhone Safari stopped drawing a header (only a fresh start brought it
    back): on Cookbooks and Settings the whole header went, on the Planner its background, the list showing through under
@@ -348,6 +365,23 @@ html.ios .subnavbar::before,
 html.ios .subnavbar::after { backface-visibility: visible; }
 html.ios .navbar { will-change: transform; }
 html.ios .navbar-bg::before { display: none; }
+
+/* The header doesn't lie over the scrolling content where it doesn't have to (issue #141). Framework7 runs a page's content
+   under its header, padded down by the header's height, so on a page that scrolls, iPhone Safari keeps the header as a
+   layer of its own over the scrolling layer; and when that content changed while on screen (a cookbook deleted, the
+   plates' photos arriving after the app's refresh), Safari stopped painting the header: still laid out and on top, but
+   not drawn, until another page slid in. On tab pages whose header stays put (no docked bar under it, not see-through,
+   not hiding on scroll: Cookbooks, Settings and its pages, Grocery Stores, the editor) the content starts below the
+   header instead, which looks the same (the bar is solid), and that header doesn't get the #123 layer either. The user
+   tried it on the phone (test b); the header no longer only showing its layer (test a) didn't help. Pages whose header
+   slides away, is see-through or has a docked bar (Recipes, a recipe, a cookbook, Plan, Groceries) keep the content under
+   it. check:ui 01a3. */
+html.ios .views > .view > .page:not(.page-with-subnavbar) > .navbar:not(.navbar-transparent):not(.ck-hero-bar) ~ .page-content:not(.hide-navbar-on-scroll) {
+  --f7-page-navbar-offset: 0px;
+  margin-top: calc(var(--f7-navbar-height) + var(--f7-safe-area-top));
+  height: calc(100% - var(--f7-navbar-height) - var(--f7-safe-area-top));
+}
+html.ios .views > .view > .page:not(.page-with-subnavbar) > .navbar:not(.navbar-transparent):not(.ck-hero-bar):has(~ .page-content:not(.hide-navbar-on-scroll)) { will-change: auto; }
 
 /* Toast (from another of the user's apps): a small dark pill, as wide as its words, centred and floating just above the tab
    bar, with a Tomato check for something done (say() in src/components/ui/toast.ts). Framework7's toast is otherwise a
@@ -697,6 +731,8 @@ html.ios .segmented-strong .button.button-active.active-state {
 /* ── Ingredients (Instacart) ── */
 .ck-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
 .ck-note { color: var(--ck-muted); font-size: 13px; }
+/* temporary, issue #141: the Copy report link beside the cookbook count (deploy previews only) */
+.ck-count .ck-report-link { margin-left: 12px; font-size: 13px; color: var(--ck-accent-ink); }
 
 /* ── Style guide swatches ── */
 .ck-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }

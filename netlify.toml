@@ -5,6 +5,18 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# Issue #141: the trials' addresses (/next/, /ionic/) open the app, which is now on Ionic, so a Home Screen icon made
+# for the trial still works
+[[redirects]]
+  from = "/ionic/*"
+  to = "/:splat"
+  status = 301
+
+[[redirects]]
+  from = "/next/*"
+  to = "/:splat"
+  status = 301
+
 # Single-page app: every path serves index.html
 [[redirects]]
   from = "/*"

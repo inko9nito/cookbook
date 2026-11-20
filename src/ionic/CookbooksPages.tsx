@@ -1,0 +1,318 @@
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useParams } from 'react-router-dom';
+import {
+  IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, IonContent, IonList, IonItem, IonLabel,
+  IonSearchbar, IonSkeletonText, useIonRouter,
+} from '@ionic/react';
+import { ArrowUpDown, BookOpen, Ellipsis, FolderPlus, LayoutGrid, List as ListIcon, ListOrdered, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useCookbooks, useStore } from '../data/store';
+import { byName, colorOf, cookbookRecipeIds, emptyCookbook, existing, platePhotos, type Cookbook } from '../lib/cookbook';
+import { CookbookSort, SORT_LABELS, newId, sortRecipes, type Recipe } from '../lib/recipe';
+import { photoStyle } from './photo';
+import { say, tell } from './toast';
+
+// how many recipes a section's shelf shows (v1); See all opens the rest
+const SHELF = 12;
+import { TabPage, barOnScroll, useScrollStyle } from './scroll';
+import { CookbookGridSkeleton, CountSkeleton, RecipeGridSkeleton } from './Skeletons';
+import { BarButton, CookingPill, Plates, RecipeCard, openMenu, useConfirm, usePrompt } from './ui';
+import { AddRecipesModal, OrganizeModal } from './modals';
+
+const countOf = (c: Cookbook, byId: Map<string, Recipe>) => {
+  const n = existing(cookbookRecipeIds(c), byId).length;
+  return [`${n} ${n === 1 ? 'recipe' : 'recipes'}`, c.sections.length ? `${c.sections.length} ${c.sections.length === 1 ? 'section' : 'sections'}` : '']
+    .filter(Boolean)
+    .join(' · ');
+};
+
+/** Cookbooks: tiles or a list (remembered), + names a new one (Ionic's alert with a field) and opens it. */
+export function CookbooksPage() {
+  const { recipes, settings, setCookbookView } = useStore();
+  const { cookbooks, loading, saveCookbook } = useCookbooks();
+  const router = useIonRouter();
+  const prompt = usePrompt();
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  const sorted = [...cookbooks].sort(byName);
+  const grid = settings.cookbookView === 'grid';
+  const add = async () => {
+    const name = await prompt('New Cookbook', 'Name it after what’s in it, like “Soups” or “Holidays”.', '', 'Create');
+    if (!name) return;
+    const c = emptyCookbook(name, newId);
+    saveCookbook(c);
+    router.push(`/cookbooks/${c.id}`, 'forward');
+  };
+  return (
+    <TabPage tab="cookbooks" title="Cookbooks"
+      buttons={
+        <>
+          <BarButton label="New cookbook" icon={Plus} primary onClick={add} />
+            <BarButton label={grid ? 'Show as a list' : 'Show as tiles'} icon={grid ? ListIcon : LayoutGrid} onClick={() => setCookbookView(grid ? 'list' : 'grid')} />
+        </>
+      }
+    >
+        <p className="ck-note ck-ion-count ck-ion-count-loose">{loading ? <CountSkeleton text="12 cookbooks" /> : `${sorted.length} ${sorted.length === 1 ? 'cookbook' : 'cookbooks'}`}</p>
+        {loading ? (
+          <CookbookGridSkeleton />
+        ) : grid ? (
+          <div className="ck-ion-grid ck-ion-book-grid">
+            {sorted.map((c) => (
+              <a
+                key={c.id}
+                href={`/cookbooks/${c.id}`}
+                className={`ck-card ck-book-tile ck-ion-book-tile ck-tint-${colorOf(c)}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  router.push(`/cookbooks/${c.id}`, 'forward');
+                }}
+              >
+                <Plates photos={platePhotos(c, byId)} />
+                <span className="ck-book-name">{c.name}</span>
+                <span className="ck-book-meta">{countOf(c, byId)}</span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <IonList inset lines="full" className="ck-ion-inset">
+            {sorted.map((c) => {
+              const photo = platePhotos(c, byId)[0];
+              return (
+                <IonItem key={c.id} button detail routerLink={`/cookbooks/${c.id}`}>
+                  <span slot="start" className={`ck-ion-thumb ck-ion-thumb-round ck-tint-${colorOf(c)}${photo ? ' ck-photo' : ''}`} style={photoStyle(photo)}>
+                    {!photo && <BookOpen size={16} strokeWidth={1.5} />}
+                  </span>
+                  <IonLabel>
+                    <h3>{c.name}</h3>
+                    <p>{countOf(c, byId)}</p>
+                  </IonLabel>
+                </IonItem>
+              );
+            })}
+          </IonList>
+        )}
+        <CookingPill />
+      
+    
+    </TabPage>
+  );
+}
+
+/**
+ * A cookbook: its colour, plates, name and counts are page content under a bar that stays see-through until they've
+ * scrolled away (the app's approved #90 behaviour: Ionic's scroll events set the bar solid), then its search and shelves.
+ */
+export function CookbookPage() {
+  const { id = '' } = useParams();
+  const router = useIonRouter();
+  const { recipes, loading: recipesLoading, cookbookSort, setCookbookSort } = useStore();
+  const { cookbooks, loading: booksLoading, saveCookbook, deleteCookbook } = useCookbooks();
+  const prompt = usePrompt();
+  const confirm = useConfirm();
+  const leaving = useRef<Cookbook | null>(null);
+  const book = leaving.current ?? cookbooks.find((c) => c.id === id);
+  // Settings → Scrolling. Old app (#90): the plates and colour fade as they go under a see-through bar, the bar fills in
+  // once they've gone, the name moves into the bar once it's all the way under it, the search docks into the bar when it
+  // reaches it, and once docked the title row slides away scrolling down and back scrolling up. iOS: Ionic's fading bar,
+  // the name in the bar the same way, the search scrolls away. All set straight on the elements as the page scrolls (no
+  // React render per frame: that made the bar jitter).
+  const old = useScrollStyle() === 'old';
+  const oldRef = useRef(old);
+  oldRef.current = old;
+  const header = useRef<HTMLIonHeaderElement>(null);
+  const hero = useRef<HTMLElement>(null);
+  const onScroll = useMemo(() => {
+    const slide = barOnScroll(header, { hide: () => !!header.current?.classList.contains('ck-ion-docked') });
+    return (e: CustomEvent<{ scrollTop: number }>) => {
+      const el = header.current;
+      const h = hero.current;
+      if (!el || !h) return;
+      const y = e.detail.scrollTop;
+      const barH = el.querySelector('ion-toolbar')?.offsetHeight ?? 56;
+      const at = (sel: string) => h.querySelector<HTMLElement>(sel);
+      const plates = at('.ck-plates');
+      const name = at('.ck-book-hero-title');
+      const search = at('.ck-hero-search');
+      const titled = !!name && name.offsetTop + name.offsetHeight - y <= barH;
+      el.classList.toggle('ck-ion-titled', titled);
+      h.classList.toggle('ck-ion-titled', titled);
+      if (!oldRef.current) return;
+      const p = Math.min(1, Math.max(0, y / Math.max(1, (plates ? plates.offsetTop + plates.offsetHeight : 200) - barH)));
+      h.style.setProperty('--ck-hero-p', String(p));
+      el.classList.toggle('ck-ion-solid', p >= 1);
+      const docked = !!search && search.offsetTop + 16 - y <= barH;
+      el.classList.toggle('ck-ion-docked', docked);
+      h.classList.toggle('ck-ion-docked', docked);
+      slide(e);
+    };
+  }, []);
+  const [query, setQuery] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [organizing, setOrganizing] = useState(false);
+  // cookbooks still on their way (a reload): the page's shape, never "isn't here"
+  if (!book && booksLoading) {
+    return (
+      <IonPage>
+        <IonHeader className="ck-ion-header ck-ion-hero-bar">
+          <IonToolbar>
+            <IonButtons slot="start">
+              <IonBackButton defaultHref="/cookbooks" text="" className="ck-ion-round-back" />
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent fullscreen className="ck-ion-book">
+          <IonSkeletonText animated className="ck-ion-book-skeleton" />
+        </IonContent>
+      </IonPage>
+    );
+  }
+  if (!book) {
+    return (
+      <IonPage>
+        <IonHeader className="ck-ion-header">
+          <IonToolbar>
+            <IonButtons slot="start">
+              <IonBackButton defaultHref="/cookbooks" text="" />
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          <p className="ck-note">This cookbook isn’t here.</p>
+        </IonContent>
+      </IonPage>
+    );
+  }
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  const sort = cookbookSort(book.id);
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const matches = (r: Recipe) => words.every((w) => r.title.toLowerCase().includes(w));
+  // as v1: each section a shelf, then Uncategorized when it has recipes; a cookbook without sections is one grid;
+  // searching shows one grid of what matches, with a count
+  const searching = words.length > 0;
+  const uncategorized = sortRecipes(existing(book.recipeIds, byId), sort);
+  const shelves = [
+    ...book.sections.map((s) => ({ id: s.id, name: s.name, recipes: sortRecipes(existing(s.recipeIds, byId), sort) })),
+    ...(uncategorized.length ? [{ id: 'uncategorized', name: 'Uncategorized', recipes: uncategorized }] : []),
+  ];
+  const all = [...new Map([...book.sections.flatMap((s) => existing(s.recipeIds, byId)), ...uncategorized].map((r) => [r.id, r])).values()];
+  const found = sortRecipes(all, sort).filter(matches);
+  const sortNote = sort === 'manual' ? '' : ` · ${SORT_LABELS[sort]}`;
+  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+  const rename = async () => {
+    const name = await prompt('Rename Cookbook', '', book.name);
+    if (name) saveCookbook({ ...book, name });
+  };
+  const addSection = async () => {
+    const name = await prompt('New Section', 'Like “Weeknights” or “For guests”.', '', 'Add');
+    if (name) saveCookbook({ ...book, sections: [...book.sections, { id: newId(), name, recipeIds: [] }] });
+  };
+  const remove = async () => {
+    if (!(await confirm(`Delete “${book.name}”?`, 'Its recipes stay in Recipes.', 'OK'))) return;
+    leaving.current = book;
+    router.goBack();
+    deleteCookbook(book.id);
+    say(`Deleted “${book.name}”`);
+  };
+  const sortMenu = (el: Element) =>
+    openMenu(el, [CookbookSort.options.map((k) => ({ label: SORT_LABELS[k], checked: sort === k, onClick: () => setCookbookSort(book.id, k) }))]);
+  const more = (el: Element) =>
+    openMenu(el, [
+      [
+        { label: 'Add Recipes', icon: Plus, onClick: () => setAdding(true) },
+        { label: 'New Section', icon: FolderPlus, onClick: addSection },
+        { label: 'Organize', icon: ListOrdered, onClick: () => setOrganizing(true) },
+      ],
+      [{ label: 'Rename', icon: Pencil, onClick: rename }],
+      [{ label: 'Delete', icon: Trash2, danger: true, onClick: remove }],
+    ]);
+
+  return (
+    <IonPage className="ck-ion-anchor">
+      <IonHeader ref={header} collapse={old ? undefined : 'fade'} className={`ck-ion-header ${old ? 'ck-ion-hero-bar ck-ion-slide-header' : 'ck-ion-fade-bar'}`}>
+        <IonToolbar>
+          <IonButtons slot="start">
+            <IonBackButton defaultHref="/cookbooks" text="" className="ck-ion-round-back" />
+          </IonButtons>
+          {/* the name only once it has gone under the bar, never in both places (ck-ion-titled; kept from Ionic's slide) */}
+          <IonTitle className="ck-ion-title-small ck-ion-hero-title">{book.name}</IonTitle>
+          <IonButtons slot="end">
+            <BarButton label="Add recipes" icon={Plus} primary onClick={() => setAdding(true)} />
+            <BarButton label="Sort" icon={ArrowUpDown} onClick={(e) => sortMenu(e.currentTarget)} />
+            <BarButton label="More actions" icon={Ellipsis} onClick={(e) => more(e.currentTarget)} />
+          </IonButtons>
+        </IonToolbar>
+        {old && (
+          <div className="ck-ion-header-extra ck-ion-docked-search">
+            <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search this cookbook" />
+          </div>
+        )}
+      </IonHeader>
+      <IonContent
+        fullscreen
+        className="ck-ion-book"
+        scrollEvents
+        onIonScroll={onScroll}
+      >
+        {/* v1's header (#90), with v1's own classes (cookbook.css): the colour, plates, name and counts, then its search,
+            which hands over to the bar's when it gets there */}
+        <section ref={hero} className="ck-ion-book-top" style={{ '--ck-tint': `var(--ck-book-${colorOf(book)})` } as CSSProperties}>
+          <div className="ck-book-hero">
+            <Plates photos={platePhotos(book, byId)} />
+            <h1 className="ck-book-hero-title">{book.name}</h1>
+            <p className="ck-book-hero-meta">
+              {recipesLoading ? '\u00a0' : `${plural(all.length, 'recipe')}${book.sections.length ? ` · ${plural(book.sections.length, 'section')}` : ''}${sortNote}`}
+            </p>
+          </div>
+          <div className="ck-hero-search">
+            <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search this cookbook" />
+          </div>
+        </section>
+        {recipesLoading ? (
+          <RecipeGridSkeleton className="ck-ion-grid-top" />
+        ) : !all.length ? (
+          <p className="ck-note ion-padding">No recipes in this cookbook yet.</p>
+        ) : searching || !book.sections.length ? (
+          <>
+            {searching && (
+              <p className="ck-note ck-ion-count">
+                {found.length} of {plural(all.length, 'recipe')}
+              </p>
+            )}
+            {searching && !found.length ? (
+              <p className="ck-note ck-ion-not-found">No recipes found</p>
+            ) : (
+              <div className="ck-ion-grid ck-ion-grid-top">
+                {(searching ? found : uncategorized).map((r) => (
+                  <RecipeCard key={r.id} recipe={r} href={`/cookbooks/recipe/${r.id}`} />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          shelves.map((s) => (
+            <div key={s.id} className="ck-shelf">
+              <div className="ck-shelf-head">
+                <button type="button" className="ck-shelf-title ck-ion-plain-button" onClick={() => tell('Section pages aren’t in v2 yet')}>
+                  {s.name} <span className="ck-shelf-count">{s.recipes.length}</span>
+                </button>
+                <button type="button" className="ck-shelf-all ck-ion-plain-button" onClick={() => tell('Section pages aren’t in v2 yet')}>
+                  See all
+                </button>
+              </div>
+              {s.recipes.length ? (
+                <div className="ck-shelf-row">
+                  {s.recipes.slice(0, SHELF).map((r) => (
+                    <RecipeCard key={r.id} recipe={r} href={`/cookbooks/recipe/${r.id}`} />
+                  ))}
+                </div>
+              ) : (
+                <p className="ck-note ck-shelf-empty">No recipes yet.</p>
+              )}
+            </div>
+          ))
+        )}
+      </IonContent>
+      <AddRecipesModal open={adding} cookbook={book} onClose={() => setAdding(false)} />
+      <OrganizeModal open={organizing} cookbook={book} onClose={() => setOrganizing(false)} />
+    </IonPage>
+  );
+}

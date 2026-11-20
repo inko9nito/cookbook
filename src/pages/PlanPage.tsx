@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Page, Navbar, NavTitle, NavRight, Subnavbar, Link, Block, Button, List, ListItem, SwipeoutActions, SwipeoutButton, Segmented,
-  Actions, ActionsGroup, ActionsLabel, ActionsButton,
 } from 'framework7-react';
 import { CalendarSearch, ChefHat, NotebookPen, Plus, ShoppingCart } from 'lucide-react';
+import Menu from '../components/ui/Menu';
 import WeekStrip from '../components/WeekStrip';
 import RecipePickerPopup from '../components/RecipePickerPopup';
 import { ShopWeekPopup } from '../components/AddGroceriesPopup';
@@ -300,31 +300,31 @@ export default function PlanPage() {
         </div>
       )}
 
-      <Actions opened={addMenu} onActionsClosed={() => setAddMenu(false)}>
-        <ActionsGroup>
-          <ActionsLabel>{`Add to ${mediumDate(addingTo)}`}</ActionsLabel>
-          <ActionsButton onClick={addRecipes}>Recipes</ActionsButton>
-          <ActionsButton onClick={addNote}>A note</ActionsButton>
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={addMenu}
+        onClosed={() => setAddMenu(false)}
+        title={`Add to ${mediumDate(addingTo)}`}
+        groups={[
+          [
+            { label: 'Recipes', icon: ChefHat, onClick: addRecipes },
+            { label: 'A note', icon: NotebookPen, onClick: addNote },
+          ],
+        ]}
+      />
 
       {/* issue #67: which meal a row is for */}
-      <Actions opened={!!slotFor} onActionsClosed={() => setSlotFor(null)}>
-        <ActionsGroup>
-          <ActionsLabel>Which meal?</ActionsLabel>
-          {[...MEALS, null].map((m) => (
-            <ActionsButton key={m ?? 'day'} strong={(slotFor?.meal ?? null) === m} onClick={() => slotFor && toMeal(slotFor, m)}>
-              {m ? mealName(m) : 'Any time'}
-            </ActionsButton>
-          ))}
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={!!slotFor}
+        onClosed={() => setSlotFor(null)}
+        title="Which meal?"
+        groups={[
+          [...MEALS, null].map((m) => ({
+            label: m ? mealName(m) : 'Any time',
+            checked: (slotFor?.meal ?? null) === m,
+            onClick: () => slotFor && toMeal(slotFor, m),
+          })),
+        ]}
+      />
 
       <ShopWeekPopup opened={shopping} day={selected} onClosed={() => setShopping(false)} />
       <NotePopup

@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
-  Popup, Page, View, Navbar, NavLeft, NavTitle, NavRight, Link, Block, BlockTitle, List, ListItem, Stepper, Actions, ActionsGroup, ActionsLabel,
-  ActionsButton, f7,
+  Popup, Page, View, Navbar, NavLeft, NavTitle, NavRight, Link, Block, BlockTitle, List, ListItem, Stepper, f7,
 } from 'framework7-react';
 import { ChefHat, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import Menu from './ui/Menu';
 import { addRows, itemNames, linesOf, newItems, type AddRow } from '../lib/groceries';
 import type { Names } from '../lib/grocery-names';
 import { coverPhoto, newId, type Recipe } from '../lib/recipe';
@@ -70,20 +70,15 @@ function AddList({ rows, on, flip, naming, onPick }: { rows: AddRow[]; on: (r: A
 /** Which of a recipe's choices to get (or leave it open). */
 function PickChoice({ row, onPick, onClosed }: { row: AddRow | null; onPick: (key: string, item: string | null) => void; onClosed: () => void }) {
   return (
-    <Actions opened={!!row} onActionsClosed={onClosed}>
-      <ActionsGroup>
-        <ActionsLabel>{row ? `The recipe says ${row.choices?.map((t) => t.item).join(' or ')}` : ''}</ActionsLabel>
-        {row?.choices?.map((t) => (
-          <ActionsButton key={t.item} strong={row.pick === t.item} onClick={() => onPick(row.key, t.item)}>
-            {cap(t.item)}
-          </ActionsButton>
-        ))}
-        {row && <ActionsButton strong={!row.pick} onClick={() => onPick(row.key, null)}>Either, decide in the store</ActionsButton>}
-      </ActionsGroup>
-      <ActionsGroup>
-        <ActionsButton strong>Cancel</ActionsButton>
-      </ActionsGroup>
-    </Actions>
+    <Menu
+      opened={!!row}
+      onClosed={onClosed}
+      title={row ? `The recipe says ${row.choices?.map((t) => t.item).join(' or ')}` : ''}
+      groups={[
+        (row?.choices ?? []).map((t) => ({ label: t.item, checked: row!.pick === t.item, onClick: () => onPick(row!.key, t.item) })),
+        row ? [{ label: 'Either, decide in the store', checked: !row.pick, onClick: () => onPick(row.key, null) }] : [],
+      ]}
+    />
   );
 }
 

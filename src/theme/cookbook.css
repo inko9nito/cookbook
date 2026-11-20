@@ -18,6 +18,7 @@
   --ck-frosted-button: rgba(255, 255, 255, 0.6); /* round bar buttons over a cookbook's pastel header, dark icons (issue #90) */
   --ck-plate-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); /* a cookbook's plates (round recipe photos) on its card */
   --ck-lift-shadow: 0 6px 18px rgba(0, 0, 0, 0.16), 0 1px 3px rgba(0, 0, 0, 0.08); /* a row lifted to move it (#78) */
+  --ck-menu-shadow: 0 12px 40px rgba(0, 0, 0, 0.18); /* a pull-down menu over the page (#39) */
   --ck-bar-shadow: 0 6px 10px -4px rgba(0, 0, 0, 0.07); /* #84: drawn below the bar only (a plain 0 4px 10px showed as a faint line above it too) */
   --ck-lift-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.22); /* a cook-mode tab lifted to be dragged (#116) */
   --ck-tab-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.12); /* the recipe tab shown in cook mode, lifted off the grey strip (#85) */ /* under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath (#67) */
@@ -1669,3 +1670,33 @@ html.ios .list.ck-grocery-list .swipeout-actions-right > a.ck-grocery-store { ba
 /* Style Guide → Empty state (issue #118): on a grey panel like a screen */
 .ck-empty-sample { margin: 0 16px 16px; padding: 8px 0 0; border-radius: 24px; background-color: var(--ck-bg); border: 1px solid var(--ck-line); }
 .ck-empty-sample .ck-empty { margin-top: 24px; }
+
+/* ── Menus (issue #39, src/components/ui/Menu.tsx): an iOS pull-down menu from the button tapped. Rows in the text
+   colour with the icon on the right, a thin line between each (the delete row too), red only to delete or clear, a ✓ on
+   the left of the picked choice. Flat white with a hairline and a soft shadow, no blur (see "Not iOS 26"). ── */
+html.ios .popover.ck-menu {
+  --f7-popover-width: 250px;
+  --f7-popover-border-radius: 14px;
+  --f7-list-bg-color: transparent;
+  --f7-list-item-min-height: 44px;
+  --f7-list-font-size: 17px;
+  --f7-list-item-title-font-size: 17px;
+  --f7-list-margin-vertical: 0px;
+  --f7-list-item-padding-horizontal: 16px;
+  --f7-list-item-media-margin: 8px;
+}
+html.ios .popover.ck-menu .popover-inner {
+  background: var(--ck-surface);
+  box-shadow: 0 0 0 1px var(--ck-line), var(--ck-menu-shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: calc(100vh - var(--f7-safe-area-top) - var(--f7-safe-area-bottom) - 24px);
+}
+html.ios .popover.ck-menu .item-title { white-space: normal; }
+html.ios .popover.ck-menu .item-after { color: var(--ck-fg2); }
+html.ios .popover.ck-menu .ck-menu-check { width: 22px; color: var(--ck-accent-ink); }
+html.ios .popover.ck-menu .ck-menu-danger .item-title,
+html.ios .popover.ck-menu .ck-menu-danger .item-after { color: var(--ck-error); }
+html.ios .popover.ck-menu .ck-menu-title { padding: 12px 16px 8px; font-size: 13px; color: var(--ck-muted); border-bottom: 1px solid var(--ck-line); }

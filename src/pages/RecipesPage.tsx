@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
 import {
   Page, Navbar, NavTitle, NavRight, Subnavbar, Link, Searchbar,
-  Block, BlockFooter, Chip, Actions, ActionsGroup, ActionsLabel, ActionsButton, Button,
+  Block, BlockFooter, Chip, Button,
 } from 'framework7-react';
-import { ArrowUpDown, Plus, Soup } from 'lucide-react';
+import { ArrowUpDown, Plus, Soup, Link2, Camera, PenLine } from 'lucide-react';
+import Menu from '../components/ui/Menu';
 import { useStore } from '../data/store';
 import { COURSES, SORT_LABELS, SortKey, sortRecipes } from '../lib/recipe';
 import { navIcon } from '../components/ui/icons';
@@ -160,19 +161,19 @@ export default function RecipesPage({ f7router }: Props) {
         </div>
       </Block>
 
-      <Actions key="new" opened={newOpen} onActionsClosed={() => setNewOpen(false)}>
-        <ActionsGroup>
-          <ActionsLabel>New recipe</ActionsLabel>
-          {/* the picker has to open in the tap itself (iOS only lets a tap open it) */}
-          {/* opened in the tap itself, so its field can be focused (iOS only raises the keyboard then) */}
-          <ActionsButton onClick={openFromLink}>From a link</ActionsButton>
-          <ActionsButton onClick={() => scanRef.current?.click()}>From photos or screenshots</ActionsButton>
-          <ActionsButton onClick={() => f7router?.navigate('/recipe/new/')}>Type it in</ActionsButton>
-        </ActionsGroup>
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={newOpen}
+        onClosed={() => setNewOpen(false)}
+        groups={[
+          [
+            // opened in the tap itself, so its field can be focused (iOS only raises the keyboard then)
+            { label: 'From a link', icon: Link2, onClick: openFromLink },
+            // the picker has to open in the tap itself (iOS only lets a tap open it)
+            { label: 'From photos or screenshots', icon: Camera, onClick: () => scanRef.current?.click() },
+            { label: 'Type it in', icon: PenLine, onClick: () => f7router?.navigate('/recipe/new/') },
+          ],
+        ]}
+      />
       {/* iOS offers the photo library, the camera (a cookbook page) and files */}
       <FromLinkPopup key="from-link" onImport={readLink} onOpenRecipe={(id) => f7router?.navigate(`/recipe/${id}/`)} />
       <input
@@ -189,30 +190,19 @@ export default function RecipesPage({ f7router }: Props) {
         }}
       />
 
-      <Actions key="sort" opened={sortOpen} onActionsClosed={() => setSortOpen(false)}>
-        <ActionsGroup>
-          <ActionsLabel>Sort recipes</ActionsLabel>
-          {SortKey.options.map((k) => (
-            <ActionsButton key={k} strong={k === sort} onClick={() => setSort(k)}>
-              {SORT_LABELS[k]}
-            </ActionsButton>
-          ))}
-        </ActionsGroup>
-        {tags.length > 1 && (
-          <ActionsGroup>
-            <ActionsLabel>With more than one tag picked, show recipes with</ActionsLabel>
-            <ActionsButton strong={!matchAny} onClick={() => setFilter(tags, 'all')}>
-              All the tags
-            </ActionsButton>
-            <ActionsButton strong={matchAny} onClick={() => setFilter(tags, 'any')}>
-              Any of the tags
-            </ActionsButton>
-          </ActionsGroup>
-        )}
-        <ActionsGroup>
-          <ActionsButton strong>Cancel</ActionsButton>
-        </ActionsGroup>
-      </Actions>
+      <Menu
+        opened={sortOpen}
+        onClosed={() => setSortOpen(false)}
+        groups={[
+          SortKey.options.map((k) => ({ label: SORT_LABELS[k], checked: k === sort, onClick: () => setSort(k) })),
+          tags.length > 1
+            ? [
+                { label: 'Recipes with all the tags', checked: !matchAny, onClick: () => setFilter(tags, 'all') },
+                { label: 'Recipes with any of the tags', checked: matchAny, onClick: () => setFilter(tags, 'any') },
+              ]
+            : [],
+        ]}
+      />
     </Page>
   );
 }

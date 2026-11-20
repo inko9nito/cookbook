@@ -28,6 +28,7 @@ colors:
   plate-shadow: "0 3px 8px rgba(0,0,0,0.18)"
   bar-shadow: "0 6px 10px -4px rgba(0,0,0,0.07)"
   lift-shadow: "0 6px 18px rgba(0,0,0,0.16), 0 1px 3px rgba(0,0,0,0.08)"
+  menu-shadow: "0 12px 40px rgba(0,0,0,0.18)"
   tab-shadow: "0 3px 6px -1px rgba(0,0,0,0.12)"
   lift-shadow: "0 8px 20px -4px rgba(0,0,0,0.22)"
   toast-shadow: "0 6px 24px rgba(0,0,0,0.18)"
@@ -181,6 +182,7 @@ Implementation: `src/theme/cookbook.css` (tokens and Framework7 variable mapping
 | `--ck-plate-shadow` | `0 3px 8px` 18% black | A cookbook's plates (round recipe photos) on its card |
 | `--ck-bar-shadow` | `0 6px 10px -4px` 7% black | Under the docked bars (the Planner's week strip, the Recipes and cookbook search bars), over the content scrolling beneath them (#67); below the bar only, never a faint line above it (#84) |
 | `--ck-lift-shadow` | `0 6px 18px` 16% + `0 1px 3px` 8% black | A row lifted to move it in the editor and Organize: white (`--ck-surface`) with 16px corners, as iOS lifts a row (#78: the pale Tomato fill read as an error) |
+| `--ck-menu-shadow` | `0 12px 40px` 18% black | A pull-down menu over the page (#39), with a `--ck-line` hairline around it |
 | `--ck-tab-shadow` | `0 3px 6px -1px` 12% black | The recipe tab shown in cook mode, lifted off the grey strip (#85) |
 | `--ck-lift-shadow` | `0 8px 20px -4px` 22% black | A cook-mode recipe tab held up to be dragged to another place (#116) |
 | `--ck-toast-shadow` | `0 6px 24px` 18% black | The dark toast floating over the page |
@@ -220,6 +222,7 @@ Where each component's shape comes from:
 | Main button | DoorDash | Pill, 52px tall (48px in the recipe footer), 20px bold (600) white label, bright Tomato fill (a contrast exception, see Typography) |
 | Other buttons | Pinterest | Soft grey fill, pill, 46px tall, 500 weight, dark text. **Every button in the app is a pill** (text buttons, dashed "Separate into groups", nav buttons, footer buttons); icon-only buttons are circles |
 | Pushed form screens (Edit / New Recipe) | iOS | Cancel (soft pill) · **centered title** · Save (filled bright Tomato pill, like every orange button). Tab screens keep left titles. No photo yet: a 120px soft grey box with a dashed edge, camera icon and "Add a photo"; the whole box is tappable |
+| Menus | iOS pull-down (GitHub app) | Issue #39: the user found centred red action-sheet rows overwhelming in a long list. **Every ⋯ and + menu, and every choice** (sort, meal, aisle, store, Pick one, timers) is a pull-down menu (a Framework7 Popover, `src/components/ui/Menu.tsx`) that opens from the button tapped (in the middle of the screen when opened from another menu), 250px wide, white with 14px corners, a `--ck-line` hairline and `--ck-menu-shadow`, no blur. **No header** on an options menu; a choice may say what it's choosing in a 13px muted line ("Which aisle for eggs?"). Rows 44px, 17px Nunito in `--ck-fg`, the Lucide icon on the right in `--ck-fg2` (22px, 1.75 stroke), a **thin line between every row** (the delete row too: no thick gap). Red (`--ck-error`) only for a row that deletes or clears, always last. A picked choice has a Tomato-ink ✓ on the left. No Cancel: tapping outside closes it. The editor's Discard Changes stays an iOS action sheet (a confirmation, not a menu) |
 | Sheet headers | (RED) | Plain bold title on the left, Tomato ink text button ("Done") on the right, no glass bubbles. Like everything in a sheet, 24px from the edges (`sheet-inset`): the title's line starts 24px below the top, the title and Done's text 24px from the sides |
 | Edges | (shared) | Issue #55. **A button with a shape** (round, pill) at a popup's edge sits **as far from the top as from the sides: 16px** (`edge-inset`, `--ck-edge-inset`): never 4px under a popup's rounded top and 16px from its sides. **Sheets** keep a roomier **24px from every edge** (`sheet-inset`, `--ck-sheet-inset`): the header's plain text (title, Done) 24px from the top and the sides, and the content lined up with it, fields, cards, segmented controls, chips, swatches, the calendar's day circles, and rows in a white card on the white sheet (the card has no visible edge, so its rows start on the 24px line), with 24px at the bottom. Never crowd plain text against an edge, never indent a header past its content, and never pad with spaces. `check:ui` checks every open popup and sheet in every state |
 | Form fields | Headspace | Soft grey filled box, 18px corners, no border, 12px semibold label above. Focus = 1.5px Tomato ring, error = red ring + red helper text. Edit screens use compact 14px text (like Prepear) |

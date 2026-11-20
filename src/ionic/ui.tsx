@@ -51,7 +51,8 @@ export function TabBar({ current }: { current: TabName }) {
                 (e.currentTarget.closest('.ion-page')?.querySelector(':scope > ion-content') as HTMLIonContentElement | null)?.scrollToTop(300);
                 return;
               }
-              document.querySelector<HTMLElement>(`ion-tab-bar.ck-ion-tabbar-engine ion-tab-button[aria-label="${label}"]`)?.click();
+              // by class: Ionic moves a tab button's label onto its inner link, so it can't be found by its label
+              document.querySelector<HTMLElement>(`ion-tab-bar.ck-ion-tabbar-engine .ck-ion-engine-${tab}`)?.click();
             }}
           >
             <Icon size={26} strokeWidth={1.75} />

@@ -83,7 +83,7 @@ function Tabs() {
       </IonRouterOutlet>
       <IonTabBar slot="bottom" className="ck-ion-tabbar-engine">
         {TABS.map(({ tab, label }) => (
-          <IonTabButton key={tab} tab={tab} href={`/${tab}`} aria-label={label} />
+          <IonTabButton key={tab} tab={tab} href={`/${tab}`} aria-label={label} className={`ck-ion-engine-${tab}`} />
         ))}
       </IonTabBar>
     </IonTabs>

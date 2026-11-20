@@ -333,3 +333,8 @@ button.ck-ion-tab {
   -webkit-tap-highlight-color: transparent;
 }
 button.ck-ion-tab.ck-ion-tab-on { color: var(--ck-accent); }
+
+/* an alert or action sheet takes the focus as it opens (for VoiceOver); no focus ring drawn round it (the user saw a
+   blue outline round Rename Cookbook) */
+ion-alert .alert-wrapper:focus, ion-alert .alert-wrapper:focus-visible,
+ion-action-sheet .action-sheet-wrapper:focus, ion-action-sheet .action-sheet-wrapper:focus-visible { outline: none; }

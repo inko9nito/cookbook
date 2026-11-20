@@ -9,10 +9,10 @@ const version = (process.env.COMMIT_REF ?? 'local').slice(0, 7);
 const built = new Date().toISOString();
 
 export default defineConfig({
-  // issue #141: a second page, /next/, the app without Framework7 (a trial on deploy previews)
+  // issue #141: more pages, /next/ and /ionic/, trials of the app without Framework7 (on deploy previews)
   build: {
     rollupOptions: {
-      input: { main: 'index.html', next: 'next/index.html' },
+      input: { main: 'index.html', next: 'next/index.html', ionic: 'ionic/index.html' },
     },
   },
   define: {
@@ -21,15 +21,17 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    // issue #141: /next/ (the app without Framework7) has its own manifest, so a home-screen icon made there opens it
+    // issue #141: /next/ and /ionic/ (trials without Framework7) have their own manifests, so a home-screen icon made there opens them
     // (the PWA plugin adds its own link as the page is written, so this edits the written page)
     {
       name: 'cookbook-next-manifest',
       apply: 'build',
       enforce: 'post',
       closeBundle() {
-        const file = path.resolve(__dirname, 'dist/next/index.html');
-        if (fs.existsSync(file)) fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('href="/manifest.webmanifest"', 'href="/next/manifest.webmanifest"'));
+        for (const page of ['next', 'ionic']) {
+          const file = path.resolve(__dirname, `dist/${page}/index.html`);
+          if (fs.existsSync(file)) fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('href="/manifest.webmanifest"', `href="/${page}/manifest.webmanifest"`));
+        }
       },
     },
     // /version.json: which build is live. Builds before issue #91 compare it with the build they run to see whether
@@ -64,11 +66,12 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,woff2}'],
         // the launch images are for iOS to show as the home-screen app opens (one per iPhone screen); the app never loads them
-        globIgnores: ['launch/**'],
+        // issue #141: the trials' pages and code stay out of the app's offline copy (Ionic's own chunks are p-*.js)
+        globIgnores: ['launch/**', 'next/**', 'ionic/**', 'assets/next-*', 'assets/ionic-*', 'assets/p-*'],
         navigateFallback: '/index.html',
         // the API and Netlify's own endpoints (sign-in) always go to the network
-        // /next/ is the app without Framework7 (issue #141, a trial): its own page, never this one
-        navigateFallbackDenylist: [/^\/api\//, /^\/\.netlify\//, /^\/next(\/|$)/],
+        // /next/ and /ionic/ are trials of the app without Framework7 (issue #141): their own pages, never this one
+        navigateFallbackDenylist: [/^\/api\//, /^\/\.netlify\//, /^\/next(\/|$)/, /^\/ionic(\/|$)/],
         runtimeCaching: [
           {
             // stored recipe photos never change (a new crop is a new photo), so keep them for the kitchen offline

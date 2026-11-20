@@ -210,7 +210,10 @@ export function CookProvider({ children }: { children: ReactNode }) {
       if (!finished.length) return;
       update((s) => ({ ...s, timers: s.timers.filter((x) => x.endsAt > n) }));
       ring();
-      f7.dialog.alert(finished.map((x) => `${timerName(x)} is up.`).join('\n'), 'Timer done');
+      const text = finished.map((x) => `${timerName(x)} is up.`).join('\n');
+      // issue #141: the Ionic trial (/ionic/) has no Framework7, and shows its own alert
+      if (f7?.dialog) f7.dialog.alert(text, 'Timer done');
+      else window.dispatchEvent(new CustomEvent('ck-alert', { detail: { title: 'Timer done', text } }));
     }, 1000);
     return () => clearInterval(t);
   }, [timers]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -11,6 +11,12 @@
   to = "/next/index.html"
   status = 200
 
+# Issue #141: the app on Ionic (a trial): its screens' addresses serve its own page
+[[redirects]]
+  from = "/ionic/*"
+  to = "/ionic/index.html"
+  status = 200
+
 # Single-page app: every path serves index.html
 [[redirects]]
   from = "/*"

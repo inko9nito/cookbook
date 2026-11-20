@@ -3,6 +3,7 @@
 
 import type { getDatabase } from '@netlify/database';
 import { Planned } from '../../src/lib/planner';
+import { NotYours } from './recipes';
 
 type Sql = ReturnType<typeof getDatabase>['sql'];
 
@@ -28,11 +29,13 @@ const toPlanned = (r: Row): Planned => ({
   createdAt: iso(r.created_at),
 });
 
-/** Everything planned, by day, then in the order added. */
-export async function listPlanned(sql: Sql): Promise<Planned[]> {
+// Every function takes the owner whose Planner it is (issue #146): '' is the admin's.
+
+/** Everything the owner planned, by day, then in the order added. */
+export async function listPlanned(sql: Sql, owner: string): Promise<Planned[]> {
   const rows = await sql<Row>`
     SELECT id, to_char(day, 'YYYY-MM-DD') AS day, recipe_id, note, meal, servings, created_at
-    FROM planned_recipes ORDER BY day, created_at, id`;
+    FROM planned_recipes WHERE owner_id = ${owner} ORDER BY day, created_at, id`;
   return rows.map(toPlanned);
 }
 
@@ -40,22 +43,25 @@ export async function listPlanned(sql: Sql): Promise<Planned[]> {
 export class UnknownRecipe extends Error {}
 
 /** Plan a recipe or a note for a day, or change one (the same id): another day, slot or servings. */
-export async function savePlanned(sql: Sql, input: Planned): Promise<Planned> {
+export async function savePlanned(sql: Sql, owner: string, input: Planned): Promise<Planned> {
   const p = Planned.parse(input);
   const recipeId = p.recipeId ?? null;
+  // only the owner's own recipes can be planned, and another owner's plan with this id is left alone
   const rows = await sql<Row>`
-    INSERT INTO planned_recipes (id, day, recipe_id, note, meal, servings, created_at)
-    SELECT ${p.id}, ${p.day}::date, ${recipeId}::text, ${p.note ?? null}::text, ${p.meal ?? null}::text,
+    INSERT INTO planned_recipes (owner_id, id, day, recipe_id, note, meal, servings, created_at)
+    SELECT ${owner}, ${p.id}, ${p.day}::date, ${recipeId}::text, ${p.note ?? null}::text, ${p.meal ?? null}::text,
            ${p.servings ?? null}::numeric, ${p.createdAt}::timestamptz
-    WHERE ${recipeId}::text IS NULL OR EXISTS (SELECT 1 FROM recipes r WHERE r.id = ${recipeId}::text)
+    WHERE ${recipeId}::text IS NULL OR EXISTS (SELECT 1 FROM recipes r WHERE r.id = ${recipeId}::text AND r.owner_id = ${owner})
     ON CONFLICT (id) DO UPDATE SET
       day = EXCLUDED.day, recipe_id = EXCLUDED.recipe_id, note = EXCLUDED.note, meal = EXCLUDED.meal, servings = EXCLUDED.servings
+    WHERE planned_recipes.owner_id = EXCLUDED.owner_id
     RETURNING id, to_char(day, 'YYYY-MM-DD') AS day, recipe_id, note, meal, servings, created_at`;
-  if (!rows.length) throw new UnknownRecipe('That recipe was deleted.');
-  return toPlanned(rows[0]);
+  if (rows.length) return toPlanned(rows[0]);
+  const [mine] = await sql<{ id: string }>`SELECT id FROM recipes WHERE id = ${recipeId}::text AND owner_id = ${owner}`;
+  throw recipeId && !mine ? new UnknownRecipe('That recipe was deleted.') : new NotYours('That isn’t in your Planner.');
 }
 
-export async function deletePlanned(sql: Sql, id: string): Promise<boolean> {
-  const rows = await sql<{ id: string }>`DELETE FROM planned_recipes WHERE id = ${id} RETURNING id`;
+export async function deletePlanned(sql: Sql, owner: string, id: string): Promise<boolean> {
+  const rows = await sql<{ id: string }>`DELETE FROM planned_recipes WHERE id = ${id} AND owner_id = ${owner} RETURNING id`;
   return rows.length > 0;
 }

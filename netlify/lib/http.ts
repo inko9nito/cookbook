@@ -34,18 +34,34 @@ export async function userFromRequest(req: Request, fetchImpl: typeof fetch = fe
   }
 }
 
+/** The original cookbook's owner: every row from before #146, and every `admin` account. */
+export const ADMIN_OWNER = '';
+
+/** Whose cookbook a request works on (`owner`, the rows' owner_id), and whether it's the admin's. */
+export type Account = { owner: string; admin: boolean };
+
 /**
- * Only an admin gets in: a signed-in account with the `admin` role, given in the Netlify UI (Identity → the user →
- * Roles). Nobody can give themselves one, so a Google account that signs up while registration is accidentally left
- * open still can't see the recipes.
- * Returns a Response to send back when the caller isn't allowed (or Identity couldn't check), or null when they are.
+ * Who may get in (issue #146): a signed-in account with a role given in the Netlify UI (Identity → the user → Roles).
+ * `admin`: the original cookbook, with everything (reading recipes with Claude, importing from Prepear). `user`: a
+ * cookbook of its own, kept under its Identity id, without the things that use Claude. Nobody can give themselves a
+ * role, so a Google account that signs up while registration is accidentally left open still gets nothing.
+ * Returns the account, or the Response to send back when the caller isn't allowed (or Identity couldn't check).
  */
-export async function refuseUnlessAdmin(req: Request, fetchImpl?: typeof fetch): Promise<Response | null> {
+export async function accountFrom(req: Request, fetchImpl?: typeof fetch): Promise<Account | Response> {
   const user = await userFromRequest(req, fetchImpl);
   if (user === UNAVAILABLE) return error(503, 'Couldn’t check your sign-in just now. Try again in a moment.');
   if (!user) return error(401, 'Sign in to open your cookbook.');
-  if (!user.app_metadata?.roles?.includes('admin')) return error(403, 'This account isn’t an admin of this cookbook.');
-  return null;
+  const roles = user.app_metadata?.roles ?? [];
+  if (roles.includes('admin')) return { owner: ADMIN_OWNER, admin: true };
+  if (roles.includes('user') && user.id) return { owner: user.id, admin: false };
+  return error(403, 'This account doesn’t have a cookbook yet. Ask the person who shared the app to give it one.');
+}
+
+/** Only the admin: the things that use Claude (billed to the site) or the original cookbook's kept Prepear export. */
+export async function refuseUnlessAdmin(req: Request, fetchImpl?: typeof fetch): Promise<Response | null> {
+  const account = await accountFrom(req, fetchImpl);
+  if (account instanceof Response) return account;
+  return account.admin ? null : error(403, 'Only the cookbook’s owner can do that.');
 }
 
 /** Production is the only deploy that deletes stored photos: deploy previews share the photo store with it. */

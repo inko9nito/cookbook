@@ -3588,6 +3588,26 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator('#view-cookbooks .page-current .ck-view-switch').count())) throw new Error('the tiles/list switch doesn’t come back');
   });
 
+  // Issue #146: an account with a cookbook of its own (?user) has no reading recipes with Claude and no Prepear import:
+  // Recipes' + (and its empty state's button) goes straight to typing one in, and Settings has no Import.
+  await step('40y-user-recipes-empty', async () => {
+    await page.goto(`${BASE}?empty&user`); await page.waitForTimeout(1500);
+    const pg = '#view-recipes .page-current';
+    if (!(await page.locator(`${pg} .ck-empty`, { hasText: 'Add your first one.' }).count())) throw new Error('a user’s empty Recipes still offers links and photos');
+    await page.locator(`${pg} .ck-empty-button`).tap(); await page.waitForTimeout(900);
+    if (await page.locator(MENU_ROW).count()) throw new Error('a user’s New recipe opens a menu');
+    if (!(await page.locator('#view-recipes .page-current .ck-edit-list').count())) throw new Error('a user’s New recipe doesn’t open the editor');
+  });
+  await step('40y2-user-settings', async () => {
+    await page.goto(`${BASE}?user`); await page.waitForTimeout(1500);
+    await page.locator('#view-recipes .page-current > .navbar a[aria-label="New recipe"]').tap(); await page.waitForTimeout(900);
+    if (await page.locator(MENU_ROW).count()) throw new Error('a user’s + opens a menu');
+    if (!(await page.locator('#view-recipes .page-current .ck-edit-list').count())) throw new Error('a user’s + doesn’t open the editor');
+    await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
+    const rows = await page.locator('#view-settings .page-current .ck-settings-places .item-title').allTextContents();
+    if (rows.join('|') !== 'Appearance') throw new Error(`a user’s Settings shows ${rows.join(', ')}`);
+  });
+
   // Issue #35: while the recipes and cookbooks first load, grey placeholders in their shape: no lone "All" chip, no
   // "0 recipes", no small spinner. ?loading makes the demo's recipes and cookbooks never arrive.
   const noLoadingTells = async (where) => {

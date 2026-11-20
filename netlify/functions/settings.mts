@@ -4,15 +4,16 @@ import type { Config } from '@netlify/functions';
 import { getDatabase } from '@netlify/database';
 import { ZodError } from 'zod';
 import { getSettings, saveSettings } from '../lib/recipes';
-import { error, json, refuseUnlessAdmin } from '../lib/http';
+import { accountFrom, error, json } from '../lib/http';
 
 export default async (req: Request) => {
-  const refused = await refuseUnlessAdmin(req);
-  if (refused) return refused;
+  const account = await accountFrom(req);
+  if (account instanceof Response) return account;
+  const { owner } = account;
   const { sql } = getDatabase();
   try {
-    if (req.method === 'GET') return json(await getSettings(sql));
-    if (req.method === 'PATCH') return json(await saveSettings(sql, await req.json()));
+    if (req.method === 'GET') return json(await getSettings(sql, owner));
+    if (req.method === 'PATCH') return json(await saveSettings(sql, owner, await req.json()));
     return error(405, 'Not allowed.');
   } catch (e) {
     if (e instanceof ZodError || e instanceof SyntaxError) return error(400, 'Those settings aren’t valid.');

@@ -6,7 +6,7 @@
 import { getDatabase } from '@netlify/database';
 import { getStore } from '@netlify/blobs';
 import { nameIngredients } from '../lib/grocery-names';
-import { refuseUnlessAdmin } from '../lib/http';
+import { ADMIN_OWNER, refuseUnlessAdmin } from '../lib/http';
 
 export default async (req: Request) => {
   if (await refuseUnlessAdmin(req)) return;
@@ -15,7 +15,7 @@ export default async (req: Request) => {
     const { names } = (await req.json().catch(() => ({}))) as { names?: unknown };
     if (!Array.isArray(names)) return;
     const list = names.filter((n): n is string => typeof n === 'string' && n.length <= 200).slice(0, 5000);
-    await nameIngredients(getDatabase().sql, list);
+    await nameIngredients(getDatabase().sql, ADMIN_OWNER, list);
   } catch (e) {
     console.error('Naming groceries stopped:', e instanceof Error ? e.message : e);
   } finally {

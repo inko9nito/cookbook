@@ -1,21 +1,22 @@
 // /api/groceries (issue #64): list everything on the grocery list (GET), or change it (POST { save, remove }: items to
-// save, new or changed, and ids to take off, in one go). Admin only.
+// save, new or changed, and ids to take off, in one go). Each account's own (issue #146).
 
 import type { Config } from '@netlify/functions';
 import { getDatabase } from '@netlify/database';
 import { ZodError } from 'zod';
 import { changeGroceries, listGroceries } from '../lib/groceries';
-import { error, json, refuseUnlessAdmin } from '../lib/http';
+import { accountFrom, error, json } from '../lib/http';
 
 export default async (req: Request) => {
-  const refused = await refuseUnlessAdmin(req);
-  if (refused) return refused;
+  const account = await accountFrom(req);
+  if (account instanceof Response) return account;
+  const { owner } = account;
   const db = getDatabase();
 
   try {
-    if (req.method === 'GET') return json(await listGroceries(db));
+    if (req.method === 'GET') return json(await listGroceries(db, owner));
     if (req.method === 'POST') {
-      await changeGroceries(db, await req.json());
+      await changeGroceries(db, owner, await req.json());
       return new Response(null, { status: 204 });
     }
     return error(405, 'Not allowed.');

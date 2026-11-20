@@ -3,14 +3,15 @@
 // and kept; if Claude can't be asked, the known ones and { error } (the app uses its rules for the rest).
 // POST { backfill: names } → starts grocery-names-background.mts, which names a whole library in batches, unless one
 // is already running → 202. PUT { key, things } → a correction from the phone, which Claude never overwrites.
-// Admin only: naming is billed to Netlify.
+// Each account's own names (issue #146). Only the admin's are named by Claude (billed to Netlify): another account
+// gets its corrections back and the app's rules stand in for the rest; it can't start a backfill.
 
 import type { Config } from '@netlify/functions';
 import { getDatabase } from '@netlify/database';
 import { getStore } from '@netlify/blobs';
 import { z, ZodError } from 'zod';
 import { NamingError, correctName, listNames, nameIngredients, BATCH } from '../lib/grocery-names';
-import { error, json, refuseUnlessAdmin } from '../lib/http';
+import { accountFrom, error, json } from '../lib/http';
 
 const Names = z.object({ names: z.array(z.string().max(200)).min(1).max(BATCH) });
 const Backfill = z.object({ backfill: z.array(z.string().max(200)).min(1).max(5000) });
@@ -19,17 +20,21 @@ const Backfill = z.object({ backfill: z.array(z.string().max(200)).min(1).max(50
 const BACKFILL_LIMIT_MS = 15 * 60_000;
 
 export default async (req: Request) => {
-  const refused = await refuseUnlessAdmin(req);
-  if (refused) return refused;
+  const account = await accountFrom(req);
+  if (account instanceof Response) return account;
+  const { owner } = account;
+  // no Claude for an account that isn't the admin's: only what it has already (its corrections)
+  const noClaude = async () => [];
   const { sql } = getDatabase();
 
   try {
-    if (req.method === 'GET') return json(await listNames(sql));
-    if (req.method === 'PUT') return json(await correctName(sql, await req.json()));
+    if (req.method === 'GET') return json(await listNames(sql, owner));
+    if (req.method === 'PUT') return json(await correctName(sql, owner, await req.json()));
     if (req.method === 'POST') {
       const body: unknown = await req.json();
       const backfill = Backfill.safeParse(body);
       if (backfill.success) {
+        if (!account.admin) return error(403, 'Only the cookbook’s owner can do that.');
         const jobs = getStore({ name: 'grocery-names', consistency: 'strong' });
         const running = (await jobs.get('backfill', { type: 'json' }).catch(() => null)) as { at?: number } | null;
         if (running?.at && Date.now() - running.at < BACKFILL_LIMIT_MS) return json({ running: true }, 202);
@@ -47,11 +52,11 @@ export default async (req: Request) => {
       }
       const { names } = Names.parse(body);
       try {
-        return json({ names: await nameIngredients(sql, names) });
+        return json({ names: await nameIngredients(sql, owner, names, account.admin ? undefined : noClaude) });
       } catch (e) {
         if (!(e instanceof NamingError)) throw e;
         // what's known, and why the rest isn't: the app uses its rules for those and asks again later
-        const known = await nameIngredients(sql, names, async () => []);
+        const known = await nameIngredients(sql, owner, names, noClaude);
         return json({ names: known, error: e.message });
       }
     }

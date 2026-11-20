@@ -5,7 +5,7 @@ import {
 } from 'framework7-react';
 import { ArrowUpDown, Plus, Soup, Link2, Camera, PenLine } from 'lucide-react';
 import Menu from '../components/ui/Menu';
-import { useStore } from '../data/store';
+import { useAccount, useStore } from '../data/store';
 import { COURSES, SORT_LABELS, SortKey, sortRecipes } from '../lib/recipe';
 import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
@@ -27,6 +27,9 @@ export default function RecipesPage({ f7router }: Props) {
   const [sortOpen, setSortOpen] = useState(false);
   // issue #17: + asks how: from a link (#15), from photos or screenshots (picked here, read in the editor), or type it in
   const [newOpen, setNewOpen] = useState(false);
+  // issue #146: reading recipes uses Claude, which only the admin's cookbook has; anyone else's + goes straight to typing
+  const { admin } = useAccount();
+  const startNew = () => (admin ? setNewOpen(true) : f7router?.navigate('/recipe/new/'));
   const scanRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   // issue #99: the search bar's line and shadow show only once the recipes have scrolled
@@ -70,7 +73,7 @@ export default function RecipesPage({ f7router }: Props) {
         <NavTitle>Recipes</NavTitle>
         <NavRight>
           {/* issue #27: the plus is the screen's main action, a filled Tomato button */}
-          <Link iconOnly onClick={() => setNewOpen(true)} aria-label="New recipe" className="ck-nav-primary">
+          <Link iconOnly onClick={startNew} aria-label="New recipe" className="ck-nav-primary">
             <Plus {...navIcon} />
           </Link>
           {!empty && (
@@ -122,8 +125,8 @@ export default function RecipesPage({ f7router }: Props) {
           key="empty"
           icon={Soup}
           title="No recipes yet"
-          text="Add one from a link or a photo."
-          action={{ label: 'New recipe', onClick: () => setNewOpen(true) }}
+          text={admin ? 'Add one from a link or a photo.' : 'Add your first one.'}
+          action={{ label: 'New recipe', onClick: startNew }}
         />
       )}
       {!loadError && !empty && (

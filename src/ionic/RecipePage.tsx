@@ -7,7 +7,7 @@ import {
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination } from 'swiper/modules';
 import {
-  BookOpen, BookPlus, CalendarDays, CalendarPlus, ChefHat, ChevronDown, ChevronRight, Copy, CookingPot, Ellipsis, Pencil,
+  BookOpen, BookPlus, CalendarDays, CalendarPlus, ChefHat, ChevronDown, ChevronRight, Copy, CookingPot, Ellipsis, ExternalLink, Pencil,
   Plus, Share, ShoppingCart, Star, Trash2,
 } from 'lucide-react';
 import { useCookbooks, usePlanner, useStore } from '../data/store';
@@ -41,6 +41,15 @@ function groupIngredients(list: Ingredient[]) {
  * A recipe, on Ionic. The bar is Ionic's fading header (`collapse="fade"`): see-through over the photo, filling in as
  * the page scrolls; back and ⋯ are round buttons over the photo. Start cooking sits in the footer.
  */
+/** The source's web address as a short name ("seriouseats.com"), for a source with an address and no name (v1). */
+const siteOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+};
+
 export default function RecipePage() {
   const { id = '' } = useParams();
   const tab = useTab();
@@ -332,10 +341,25 @@ export default function RecipePage() {
                 {planDays.map((d) => (
                   <IonChip key={d} onClick={() => router.push('/plan', 'root')}>
                     <CalendarDays size={16} strokeWidth={1.75} />
-                    {mediumDate(d)}
+                    {d === today() ? 'Today' : mediumDate(d)}
                   </IonChip>
                 ))}
               </div>
+            </>
+          )}
+          {(recipe.source || recipe.sourceUrl) && (
+            <>
+              <div className="ck-sec">
+                <h2>Source</h2>
+              </div>
+              {recipe.sourceUrl ? (
+                <a href={recipe.sourceUrl} target="_blank" rel="noreferrer" className="ck-source ck-source-link">
+                  {recipe.source || siteOf(recipe.sourceUrl)}
+                  <ExternalLink size={18} strokeWidth={2} aria-hidden="true" />
+                </a>
+              ) : (
+                <p className="ck-source">{recipe.source}</p>
+              )}
             </>
           )}
         </div>

@@ -513,3 +513,8 @@ ion-list.ck-ion-ing-list .ck-bullet { margin: 15px 12px 0 6px; }
 
 /* the crash screen (CrashScreen.tsx): its Reload button keeps a gap between the icon and the word */
 .ck-crash ion-button svg { margin-right: 6px; }
+
+/* a recipe's Source link, as v1's (cookbook.css .ck-source) */
+a.ck-source-link { display: inline-flex; align-items: center; gap: 6px; color: var(--ck-accent-ink); text-decoration: none; }
+/* the chip rows under Labels, Cookbooks and Planned sit where v1's did (its chips came 5px lower, the next heading 4px after) */
+.ck-panel-rest .ck-ion-chips-wrap { margin-top: 5px; margin-bottom: 4px; }

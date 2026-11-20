@@ -2741,6 +2741,9 @@ async function swipeLeft(ctx, page, locator) {
   });
   // issue #74: tapping a note opens it to change: a longer note, over several lines, kept as written
   await step('67e2-planner-note-edit', async () => {
+    // the toast from adding the note (checked in the step before) is done first: caught fading out over the note's
+    // screen, its half-see-through colours failed the contrast check
+    await toastGone();
     await page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] li.ck-plan-note`, { hasText: 'Leftovers' }).locator('a.item-link').tap();
     await page.waitForSelector('.ck-note-popup.modal-in textarea');
     const field = page.locator('.ck-note-popup.modal-in textarea');

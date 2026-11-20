@@ -1084,6 +1084,20 @@ async function swipeLeft(ctx, page, locator) {
     });
     if (Math.abs(off) > 3) throw new Error(`title is ${off}px off center`);
   });
+  // #140: deleting the only ingredient from its sheet takes the ingredient list away while the sheet (which Framework7
+  // moved into the view) is still open; without keys React rebuilt the sheet and the whole app went blank
+  await step('12g1-only-ingredient-deleted', async () => {
+    const ed = '.view.tab-active .page-current';
+    const crashes = errors.length;
+    await page.locator(`${ed} textarea[placeholder^="Add one ingredient per line"]`).fill('2 eggs'); await page.waitForTimeout(300);
+    await page.locator(`${ed} .button`, { hasText: 'Add 1 line' }).tap(); await page.waitForTimeout(500);
+    await page.locator(`${ed} .ck-edit-list li.swipeout`).first().locator('.item-content').first().tap(); await page.waitForTimeout(800);
+    await page.locator('.sheet-modal.modal-in .button', { hasText: 'Delete Ingredient' }).tap(); await page.waitForTimeout(900);
+    if (errors.length > crashes) throw new Error(`deleting the only ingredient threw: ${errors.slice(crashes).join(' | ')}`);
+    if (await page.locator('.ck-crash').count()) throw new Error('deleting the only ingredient crashed the app');
+    if (await page.locator(`${ed} .ck-edit-list li.swipeout`).count()) throw new Error('the ingredient is still there');
+    if (await page.locator('.sheet-modal.modal-in').count()) throw new Error('the sheet stayed open');
+  });
 
   // issue #17: a recipe read from a photo. The editor opens at once with the photo at the top and grey rows where the
   // ingredients and steps will go; then it fills in (the demo backend's made-up recipe) with the dish photo cropped out
@@ -3552,6 +3566,52 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.locator(`${GRO} .ck-empty`).count()) throw new Error('the empty state stays with something on the list');
     if (!(await page.locator(`${GRO} > .navbar .searchbar`).count()) || !(await page.locator(`${GRO} .ck-grocery-view`).count())) throw new Error('the search bar or the views don’t come back');
     if (!(await page.locator(GRO).evaluate((el) => el.classList.contains('page-with-subnavbar')))) throw new Error('the list runs under the search bar that came back');
+  });
+  // #140: adding the week to an empty list rebuilt the still-open Shop this week popup, React couldn't take it out of
+  // where Framework7 had moved it, and the whole app went blank until it was closed and opened again
+  await step('40u3-groceries-empty-shop-week', async () => {
+    await page.locator(`${GRO} a[aria-label="More grocery list actions"]`).tap(); await page.waitForTimeout(600);
+    await page.locator(MENU_ROW, { hasText: 'Clear all' }).tap(); await page.waitForTimeout(600);
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1200);
+    await toastGone();
+    if (!(await page.locator(`${GRO} .ck-empty`).count())) throw new Error('the list isn’t empty to start with');
+    const crashes = errors.length;
+    await page.locator(`${GRO} .ck-empty .ck-empty-button`).tap(); await page.waitForTimeout(700);
+    await page.locator(MENU_ROW, { hasText: 'From this week’s plan' }).tap(); await page.waitForTimeout(1000);
+    const sheet = page.locator('.ck-shop-week-popup.modal-in .page-current');
+    await sheet.locator('.navbar a', { hasText: 'Next' }).tap(); await page.waitForTimeout(1000);
+    await sheet.locator('.navbar a', { hasText: 'Add' }).tap(); await page.waitForTimeout(1500);
+    if (errors.length > crashes) throw new Error(`adding to an empty list threw: ${errors.slice(crashes).join(' | ')}`);
+    if (!(await page.locator('#app .tabbar').count())) throw new Error('the app went blank');
+    if (await page.locator('.ck-shop-week-popup.modal-in').count()) throw new Error('Shop this week stayed open');
+    if (await page.locator(`${GRO} .ck-empty`).count()) throw new Error('the empty state stays with the week on the list');
+    if (!(await groTitles()).some((t) => /fresh corn kernels/i.test(t))) throw new Error('the week’s ingredients aren’t on the list');
+    await toastGone();
+  });
+  // #140: a crash shows what happened and Reload, never a blank white screen; Reload comes back to the tab it was on.
+  // window.ckCrash() (the demo only) makes the app crash where it is.
+  await step('40u4-crash-screen', async () => {
+    await page.evaluate(() => window.ckCrash()); await page.waitForTimeout(800);
+    const crash = page.locator('.ck-crash');
+    if (!(await crash.count())) throw new Error('a crash shows no crash screen');
+    if ((await crash.locator('.ck-empty-title').textContent()) !== 'Something went wrong') throw new Error('the crash screen has no title');
+    // the error means nothing to the user: folded away under Details, there for a screenshot
+    if (await crash.locator('.ck-crash-error').isVisible()) throw new Error('the error shows before Details is tapped');
+    const box = await crash.locator('.ck-empty-button').boundingBox();
+    if (!box || box.y + box.height > page.viewportSize().height) throw new Error('Reload isn’t in sight');
+  });
+  await step('40u4b-crash-details', async () => {
+    const crash = page.locator('.ck-crash');
+    await crash.locator('.ck-crash-details summary').tap(); await page.waitForTimeout(400);
+    const text = await crash.locator('.ck-crash-error').textContent();
+    if (!(await crash.locator('.ck-crash-error').isVisible()) || !/ckCrash/.test(text)) throw new Error(`Details doesn't show the error ("${text}")`);
+    if (!/\n\s*at |@/.test(text)) throw new Error('Details shows the message but not where in the code');
+  });
+  await step('40u5-crash-reloaded', async () => {
+    await page.locator('.ck-crash .ck-empty-button').tap();
+    await page.waitForSelector('#app .tabbar', { timeout: 10000 }); await page.waitForTimeout(1500);
+    if (await page.locator('.ck-crash').count()) throw new Error('the crash screen stayed after Reload');
+    if (!(await page.locator('#view-groceries.tab-active').count())) throw new Error('Reload didn’t come back to Groceries');
   });
 
   // Issue #118 on Recipes and Cookbooks: ?empty starts the demo with nothing. Each keeps its title and +, hides what

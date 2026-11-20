@@ -9,6 +9,7 @@ import CookMode from './components/CookMode';
 import SignInScreen from './components/SignInScreen';
 import { takeStartTab } from './data/startTab';
 import { LaunchLoaderDone } from './data/launch';
+import { CrashBoundary, CrashForCheck } from './components/CrashScreen';
 
 const f7params = {
   name: 'Cookbook',
@@ -57,6 +58,8 @@ const startTab = takeStartTab();
 
 export default function CookbookApp() {
   return (
+    // issue #140: a crash shows what happened and a Reload button, not a blank white screen
+    <CrashBoundary>
     <AuthProvider>
       <StoreProvider>
         <CookProvider>
@@ -91,11 +94,13 @@ export default function CookbookApp() {
         <SignInScreen />
         <SessionGuard />
         <LaunchLoaderDone />
+        <CrashForCheck />
         {/* issue #85: cook mode lives with the app, so it stays (tucked away) while you look at other recipes */}
         <CookMode />
       </App>
         </CookProvider>
       </StoreProvider>
     </AuthProvider>
+    </CrashBoundary>
   );
 }

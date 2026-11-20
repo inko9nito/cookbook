@@ -165,6 +165,7 @@ export default function RecipesPage({ f7router }: Props) {
       </Block>
 
       <Menu
+        key="new-menu"
         opened={newOpen}
         onClosed={() => setNewOpen(false)}
         groups={[
@@ -194,6 +195,7 @@ export default function RecipesPage({ f7router }: Props) {
       />
 
       <Menu
+        key="sort-menu"
         opened={sortOpen}
         onClosed={() => setSortOpen(false)}
         groups={[

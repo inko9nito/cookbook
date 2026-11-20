@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { BookOpen, CalendarDays, ChefHat, Settings, ShoppingCart, type LucideIcon } from 'lucide-react';
-import '../theme/cookbook.css';
+// the design tokens come in through next.css (@import), not as a module of their own: shared with the app's page, the
+// build put them in a shared stylesheet loaded before Framework7's, which then overrode the app's rules
 import './next.css';
 import { AuthProvider, useAuth } from '../data/auth';
 import { SessionGuard, StoreProvider } from '../data/store';

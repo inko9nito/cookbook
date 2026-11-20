@@ -1840,6 +1840,21 @@ html.ios .popover.ck-menu .popover-inner {
   overflow-y: auto;
   max-height: calc(100vh - var(--f7-safe-area-top) - var(--f7-safe-area-bottom) - 24px);
 }
+/* Opening and closing (the user's recording of iOS Notes, #39): the menu grows straight out of the button it came from
+   and shrinks back into it, quickly, and the page isn't dimmed. Framework7's own popover animation, tuned: no 80px slide
+   of the inside (its --f7-popover-inner-offset), its scale from the button (Framework7 sets the transform-origin there)
+   in 250ms on its own curve instead of 400–600ms, out in 180ms; the backdrop stays (a tap outside only closes the menu)
+   but clear. Still with Reduce Motion. */
+html.ios .popover.ck-menu { --f7-popover-inner-offset: translate3d(0, 0, 0); }
+html.ios .popover.ck-menu.modal-in,
+html.ios .popover.ck-menu.modal-in .popover-inner { transition-duration: 250ms; }
+html.ios .popover.ck-menu.modal-out,
+html.ios .popover.ck-menu.modal-out .popover-inner { transition-duration: 180ms; transition-timing-function: ease-in; }
+html.ios .popover-backdrop { background: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  html.ios .popover.ck-menu,
+  html.ios .popover.ck-menu .popover-inner { transition-duration: 0ms !important; }
+}
 html.ios .popover.ck-menu .item-title { white-space: normal; }
 html.ios .popover.ck-menu .item-after { color: var(--ck-fg2); }
 html.ios .popover.ck-menu .ck-menu-check { width: 22px; color: var(--ck-accent-ink); }

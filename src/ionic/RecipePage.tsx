@@ -232,7 +232,7 @@ export default function RecipePage() {
         {groupIngredients(recipe.ingredients).map((g) => (
           <div key={g.id} className="ck-ing-group">
             {g.label && <div className="ck-group-label">{g.label}</div>}
-            <IonList lines="full" className="ck-ion-plain-list">
+            <IonList lines="inset" className="ck-ion-plain-list ck-ion-ing-list">
               {g.items.map((i) => {
                 const linked = linkedRecipe(i, recipes);
                 return (

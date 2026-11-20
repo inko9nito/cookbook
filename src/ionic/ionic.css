@@ -169,11 +169,14 @@ ion-modal.ck-ion-card-modal { --background: var(--ck-bg); }
 .ck-ion-card-header ion-toolbar { --min-height: 56px; }
 ion-searchbar.ck-ion-card-search { padding: 12px 16px 0; }
 ion-textarea.ck-ion-note-field { font-size: 18px; line-height: 1.45; --padding-top: 0; min-height: 60vh; }
-ion-footer.ck-ion-cta-footer ion-toolbar { --background: var(--ck-bg); --padding-start: 16px; --padding-end: 16px; --padding-top: 8px; --padding-bottom: 8px; --border-width: 0; }
+/* v1's bottom bar: white, a line on top, 64px with the 48px button in it */
+ion-footer.ck-ion-cta-footer { background: var(--ck-surface); border-top: 1px solid var(--ck-line); }
+ion-footer.ck-ion-cta-footer ion-toolbar { --background: var(--ck-surface); --min-height: 63px; --padding-start: 16px; --padding-end: 16px; --padding-top: 0; --padding-bottom: 0; --border-width: 0; }
 .ck-ion-cta-row { display: flex; gap: 10px; align-items: center; }
 ion-button.ck-ion-cta {
   --background: var(--ck-accent); --background-activated: var(--ck-accent-press); --color: var(--ck-surface); --box-shadow: none;
-  flex: 1; height: 48px; margin: 0; font-family: var(--ck-font-display); font-size: 20px; font-weight: 500; text-transform: none; gap: 6px;
+  flex: 1; height: 48px; min-height: 48px; margin: 0; --padding-top: 0; --padding-bottom: 0; --padding-start: 22px; --padding-end: 22px;
+  font-family: var(--ck-font-display); font-size: 20px; font-weight: 600; letter-spacing: normal; text-transform: none; gap: 6px;
 }
 ion-button.ck-ion-cta-back {
   --background: var(--ck-fg); --color: var(--ck-surface); --padding-start: 16px; --padding-end: 18px; height: 48px; margin: 0;
@@ -498,6 +501,15 @@ button.ck-ion-sign-out.ck-ion-plain-button { height: 44px; padding: 0 4px; font-
 button.ck-ion-refresh.ck-ion-plain-button { display: grid; place-items: center end; width: 128px; height: 72px; margin: -14px -16px -14px 0; padding-right: 30px; color: var(--ck-accent-ink); }
 .ck-ion-settings-label { margin-top: 8px; }
 ion-segment.ck-ion-settings-segment { margin: 6px 16px 0; width: auto; }
+
+/* a recipe's ingredients as v1's: 15px rows, 36px for one line, the note 13px muted right under it, the line between
+   rows starting at the words, none after the last */
+ion-list.ck-ion-ing-list ion-item { --min-height: 36px; --padding-top: 0; --padding-bottom: 0; --padding-start: 16px; --inner-padding-end: 0; --border-color: var(--ck-line); font-size: 15px; }
+ion-list.ck-ion-ing-list ion-item:last-of-type { --inner-border-width: 0; }
+ion-list.ck-ion-ing-list ion-label.sc-ion-label-ios-h { margin: 7px 0 6px; line-height: 21px; font-size: 15px; } /* + the 0.55px line = v1 */
+ion-list.ck-ion-ing-list.list-ios { padding: 0; }
+ion-list.ck-ion-ing-list .ck-ion-row-note { margin: 0; font-size: 13px; line-height: 16px; color: var(--ck-muted); }
+ion-list.ck-ion-ing-list .ck-bullet { margin: 15px 12px 0 6px; }
 
 /* the crash screen (CrashScreen.tsx): its Reload button keeps a gap between the icon and the word */
 .ck-crash ion-button svg { margin-right: 6px; }

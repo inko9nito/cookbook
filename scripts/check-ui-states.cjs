@@ -1984,6 +1984,29 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'Cancel' }).tap(); await page.waitForTimeout(500);
   });
 
+  // #141: deleting a recipe goes back with its page still showing the recipe as it slides away (not "This recipe was
+  // deleted."), and the Recipes header is there afterwards. The next step starts afresh, the recipe back.
+  await step('25h2-delete-recipe', async () => {
+    await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(700);
+    await page.locator(MENU_ROW, { hasText: /^Delete$/ }).tap(); await page.waitForTimeout(700);
+    await page.evaluate(() => {
+      window.__ckSeen = [];
+      const look = () => {
+        document.querySelectorAll('#view-recipes > .page').forEach((p) => {
+          if (p.dataset.name !== 'recipes') window.__ckSeen.push(p.querySelector('.page-content')?.textContent.includes('This recipe was deleted') ? 'gone' : 'recipe');
+        });
+        if (window.__ckSeen.length < 400) requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    });
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
+    const seen = await page.evaluate(() => [...new Set(window.__ckSeen)]);
+    if (seen.join() !== 'recipe') throw new Error(`while going back, the deleted recipe's page showed ${JSON.stringify(seen)}`);
+    const title = await page.locator('.view.tab-active .page-current > .navbar .title').first().textContent();
+    if (title.trim() !== 'Recipes') throw new Error(`after deleting a recipe, the header reads "${title}"`);
+    if (await page.locator('.view.tab-active .page-current .ck-card', { hasText: 'Tahini Sauce' }).count()) throw new Error('the deleted recipe is still listed');
+  });
+
   // ── Cookbooks (issue #25), from a fresh start (the demo's three cookbooks) ──
   const CUR = '.view.tab-active .page-current';
   const cards = () => page.locator(`${CUR} .ck-card-grid .ck-card .ck-card-title`).allTextContents();
@@ -2358,6 +2381,33 @@ async function swipeLeft(ctx, page, locator) {
     if (!title.includes('Fish')) throw new Error(`a new section opens "${title}"`);
     if (!(await page.locator(`${CUR} .ck-list-state`, { hasText: 'No recipes in this section yet' }).count())) throw new Error('an empty section doesn’t say so');
   });
+  // #141: a deleted section's page keeps showing it while it slides back to its cookbook (not "This section isn't here
+  // any more"), and the cookbook's header is there afterwards
+  await step('26h2-delete-section', async () => {
+    await page.locator('.view.tab-active .page-current > .navbar .link.back').tap(); await page.waitForTimeout(900);
+    await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
+    await page.locator(MENU_ROW, { hasText: 'Add Section' }).tap(); await page.waitForTimeout(600);
+    await prompt('Temp');
+    await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
+    await page.locator(MENU_ROW, { hasText: /^Delete$/ }).tap(); await page.waitForTimeout(600);
+    await page.evaluate(() => {
+      window.__ckSeen = [];
+      const look = () => {
+        document.querySelectorAll('#view-cookbooks > .page[data-name="cookbook"]').forEach((p) => {
+          window.__ckSeen.push(p.querySelector('.page-content')?.textContent.includes('isn’t here any more') ? 'gone' : p.querySelector(':scope > .navbar .title')?.firstChild?.textContent ?? '');
+        });
+        if (window.__ckSeen.length < 400) requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    });
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
+    const seen = await page.evaluate(() => [...new Set(window.__ckSeen)]);
+    // the section's page as Temp, and the cookbook's under it
+    if (!seen.includes('Temp') || seen.some((t) => t !== 'Temp' && t !== 'Everything else')) throw new Error(`while going back, the deleted section's page showed ${JSON.stringify(seen)}`);
+    const title = await page.locator(`${CUR} > .navbar .title`).first().textContent();
+    if (!title.includes('Everything else')) throw new Error(`after deleting a section, the page is "${title}"`);
+    await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
+  });
   await step('26i-add-to-cookbook', async () => {
     await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
     await page.locator(`${CUR} .ck-card`, { hasText: 'Corn pudding' }).tap(); await page.waitForTimeout(1000);
@@ -2422,7 +2472,19 @@ async function swipeLeft(ctx, page, locator) {
     // #141: no blurred layer over the page (iPhone Safari stopped drawing the Cookbooks header after this dialog closed)
     const blurred = await blurAnywhere();
     if (blurred.length) throw new Error(`blurred with the dialog open: ${blurred.slice(0, 5).join(' | ')}`);
+    // #141: the deleted cookbook's page keeps showing it while it slides away; turning into "Not found" mid-slide left
+    // iPhone Safari not drawing the Cookbooks header that slid in under it
+    await page.evaluate(() => {
+      window.__ckSeen = [];
+      const look = () => {
+        document.querySelectorAll('#view-cookbooks > .page[data-name="cookbook"]').forEach((p) => window.__ckSeen.push(p.querySelector(':scope > .navbar .title')?.textContent ?? ''));
+        if (window.__ckSeen.length < 400) requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    });
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
+    const seen = await page.evaluate(() => [...new Set(window.__ckSeen)]);
+    if (!seen.includes('Soups') || seen.some((t) => t !== 'Soups')) throw new Error(`while going back, the deleted cookbook's page showed ${JSON.stringify(seen)}`);
     const tiles = await page.locator(`${CUR} .ck-book-tile .ck-book-name`).allTextContents();
     if (tiles.includes('Soups') || tiles.length !== 3) throw new Error(`after deleting, the cookbooks are ${JSON.stringify(tiles)}`);
     const header = await page.locator(`${CUR} > .navbar .title`).evaluate((t) => [t.textContent, t.getBoundingClientRect().height]);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   f7,
@@ -17,7 +17,7 @@ import { showInPlanner } from '../data/plannerNav';
 import { busyDays, mealName, MEALS, mediumDate, plan, today, upcomingDaysOf, type Day, type Meal } from '../lib/planner';
 import { pickDay } from '../components/ui/pickDay';
 import { colorOf, placesOfRecipe } from '../lib/cookbook';
-import { titleCase, linkedRecipe, newId, usedIn, type Ingredient } from '../lib/recipe';
+import { titleCase, linkedRecipe, newId, usedIn, type Ingredient, type Recipe } from '../lib/recipe';
 import { friendly } from '../lib/ingredients';
 import { footerText, type UnitPicks } from '../components/ui/ingredientLine';
 import { ConvertibleAmount, toggleTarget, withPick, type ConvertTarget } from '../components/UnitChoices';
@@ -102,7 +102,10 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const { recipes, deleteRecipe, setFilter } = useStore();
   const { cookbooks } = useCookbooks();
   const { planned, savePlanned } = usePlanner();
-  const recipe = recipes.find((r) => r.id === f7route?.params.id);
+  // issue #141: Delete goes back at once, and the page keeps showing the recipe while it slides away rather than turning
+  // into "This recipe was deleted." mid-slide (that flip left iPhone Safari not drawing the header that slid in)
+  const leaving = useRef<Recipe | null>(null);
+  const recipe = leaving.current ?? recipes.find((r) => r.id === f7route?.params.id);
   const cook = useCook();
   // issue #67: opened from the Planner, it starts at the servings it was planned with (?servings=6)
   const [ownFactor, setOwnFactor] = useState(() => {
@@ -403,6 +406,7 @@ export default function RecipePage({ f7route, f7router }: Props) {
               danger: true,
               onClick: () =>
                 f7.dialog.confirm(deleteText(recipe.title, usedIn(recipe.id, recipes).map((r) => r.title)), 'Delete Recipe', () => {
+                  leaving.current = recipe;
                   deleteRecipe(recipe.id);
                   f7router?.back();
                   say(`Deleted “${recipe.title}”`);

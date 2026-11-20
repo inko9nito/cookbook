@@ -60,7 +60,11 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const [choosingCover, setChoosingCover] = useState(false);
   const [organizing, setOrganizing] = useState(false);
 
-  const book = cookbooks.find((c) => c.id === f7route?.params.id);
+  // issue #141: deleting the cookbook (or this section) goes back at once, and this page keeps showing it as it was while it
+  // slides away, instead of turning into "Not found" mid-slide. That flip (the header and the whole page swapped while
+  // Framework7 slid it out) left iPhone Safari not drawing the Cookbooks header that slid in under it.
+  const leaving = useRef<Cookbook | null>(null);
+  const book = leaving.current ?? cookbooks.find((c) => c.id === f7route?.params.id);
   const sectionId = f7route?.params.sectionId ?? null;
   const uncategorized = sectionId === UNCATEGORIZED;
   // the place this page shows: a section, Uncategorized (null), or the whole cookbook (null, with no section)
@@ -198,6 +202,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         moving ? `Its ${count(moving, 'recipe')} move to Uncategorized.` : 'It has no recipes.',
         `Delete “${section.name}”?`,
         () => {
+          leaving.current = book;
           save({ ...book, recipeIds: [...new Set([...book.recipeIds, ...section.recipeIds])], sections: book.sections.filter((s) => s.id !== section.id) });
           f7router?.back();
           say(`Deleted “${section.name}”`);
@@ -205,6 +210,7 @@ export default function CookbookPage({ f7route, f7router }: Props) {
       );
     } else {
       f7.dialog.confirm('Its recipes stay in Recipes.', `Delete “${book.name}”?`, () => {
+        leaving.current = book;
         deleteCookbook(book.id);
         f7router?.back();
         say(`Deleted “${book.name}”`);

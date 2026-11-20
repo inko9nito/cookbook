@@ -367,8 +367,8 @@ async function swipeLeft(ctx, page, locator) {
     if (c.plus?.join() !== 'rgb(228, 87, 46),rgb(255, 255, 255)') throw new Error(`the plus is ${JSON.stringify(c.plus)}, not filled Tomato with a white icon`);
     if (c.sort?.[0] === 'rgb(228, 87, 46)') throw new Error('Sort is filled Tomato too');
   });
-  // #141: nor on anything else, dialogs and sheets included (after Delete's dialog closed, Safari stopped drawing the
-  // header that came in under it). 26k checks with a dialog open.
+  // nor on anything else, dialogs and sheets included, as a precaution (tried first for #141). 26k checks with a dialog
+  // open.
   await step('01a-no-blur-on-bars', async () => {
     const blurred = await blurAnywhere();
     if (blurred.length) throw new Error(`still blurred: ${blurred.slice(0, 5).join(' | ')}`);
@@ -2469,11 +2469,10 @@ async function swipeLeft(ctx, page, locator) {
   await step('26k-delete-cookbook', async () => {
     await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
     await page.locator(MENU_ROW, { hasText: /^Delete$/ }).tap(); await page.waitForTimeout(600);
-    // #141: no blurred layer over the page (iPhone Safari stopped drawing the Cookbooks header after this dialog closed)
+    // #141: no blurred layer over the page (a precaution, see 01a)
     const blurred = await blurAnywhere();
     if (blurred.length) throw new Error(`blurred with the dialog open: ${blurred.slice(0, 5).join(' | ')}`);
-    // #141: the deleted cookbook's page keeps showing it while it slides away; turning into "Not found" mid-slide left
-    // iPhone Safari not drawing the Cookbooks header that slid in under it
+    // the deleted cookbook's page keeps showing it while it slides away, never "Not found" mid-slide (#141's recording)
     await page.evaluate(() => {
       window.__ckSeen = [];
       const look = () => {

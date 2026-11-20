@@ -713,6 +713,8 @@ html.ios .segmented-strong .button.button-active.active-state {
 /* ── Ingredients (Instacart) ── */
 .ck-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
 .ck-note { color: var(--ck-muted); font-size: 13px; }
+/* temporary, issue #141: the Copy report link beside the cookbook count (deploy previews only) */
+.ck-count .ck-report-link { margin-left: 12px; font-size: 13px; color: var(--ck-accent-ink); }
 
 /* ── Style guide swatches ── */
 .ck-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }

@@ -102,8 +102,8 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const { recipes, deleteRecipe, setFilter } = useStore();
   const { cookbooks } = useCookbooks();
   const { planned, savePlanned } = usePlanner();
-  // issue #141: Delete goes back at once, and the page keeps showing the recipe while it slides away rather than turning
-  // into "This recipe was deleted." mid-slide (that flip left iPhone Safari not drawing the header that slid in)
+  // Delete goes back at once, and the page keeps showing the recipe while it slides away rather than turning into "This
+  // recipe was deleted." mid-slide (as cookbooks did in issue #141's recording)
   const leaving = useRef<Recipe | null>(null);
   const recipe = leaving.current ?? recipes.find((r) => r.id === f7route?.params.id);
   const cook = useCook();

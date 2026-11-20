@@ -60,9 +60,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const [choosingCover, setChoosingCover] = useState(false);
   const [organizing, setOrganizing] = useState(false);
 
-  // issue #141: deleting the cookbook (or this section) goes back at once, and this page keeps showing it as it was while it
-  // slides away, instead of turning into "Not found" mid-slide. That flip (the header and the whole page swapped while
-  // Framework7 slid it out) left iPhone Safari not drawing the Cookbooks header that slid in under it.
+  // Deleting the cookbook (or this section) goes back at once, and this page keeps showing it as it was while it slides
+  // away, instead of turning into "Not found" mid-slide (seen in issue #141's recording)
   const leaving = useRef<Cookbook | null>(null);
   const book = leaving.current ?? cookbooks.find((c) => c.id === f7route?.params.id);
   const sectionId = f7route?.params.sectionId ?? null;

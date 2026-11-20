@@ -43,11 +43,11 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
   const browser = await chromium.launch();
   try {
     const page = await (await browser.newContext()).newPage();
-    const running = () => page.evaluate(() => [...document.querySelectorAll('.ck-ion-version span')].map((e) => e.textContent).join(''));
+    const running = () => page.evaluate(() => [...document.querySelectorAll('.ck-ion-version-row .ck-version-text')].map((e) => e.textContent).join(''));
     // Settings is the last tab (issue #27)
     const openSettings = async () => {
       await page.locator('ion-footer button[aria-label="Settings"]:visible').click({ timeout: 15000 });
-      await page.waitForSelector('.ck-ion-version', { timeout: 10000 });
+      await page.waitForSelector('.ck-ion-version-row', { timeout: 10000 });
     };
 
     await page.goto(base);
@@ -68,7 +68,7 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     if (!(await running()).startsWith('aaaaaaa')) problems.push('the page changed version by itself, so this check can’t tell anything');
 
     // the refresh icon (tapping the version itself copies it, issue #48)
-    await page.locator('.ck-ion-version ion-button').click();
+    await page.locator('.ck-ion-version-row .ck-ion-refresh').click();
     await page.waitForTimeout(4000);
     // the app comes back on Settings, without tapping the tab again (issue #48)
     const onTab = await page.evaluate(() => location.pathname);
@@ -79,7 +79,7 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     // issue #91: with nothing newer, the icon still reloads the app (the home-screen app's only way to reload), and
     // comes back on Settings, still on the new version
     await page.evaluate(() => { window.__ckNotReloaded = true; });
-    await page.locator('.ck-ion-version ion-button').click();
+    await page.locator('.ck-ion-version-row .ck-ion-refresh').click();
     await page.waitForTimeout(4000);
     if (await page.evaluate(() => window.__ckNotReloaded)) problems.push('with nothing newer, tapping refresh didn’t reload the app');
     const again = await page.evaluate(() => location.pathname);

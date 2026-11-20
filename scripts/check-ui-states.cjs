@@ -2760,6 +2760,9 @@ async function swipeLeft(ctx, page, locator) {
   });
   // issue #74: tapping a note opens it to change: a longer note, over several lines, kept as written
   await step('67e2-planner-note-edit', async () => {
+    // the toast from adding the note (checked in the step before) is done first: caught fading out over the note's
+    // screen, its half-see-through colours failed the contrast check
+    await toastGone();
     await page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] li.ck-plan-note`, { hasText: 'Leftovers' }).locator('a.item-link').tap();
     await page.waitForSelector('.ck-note-popup.modal-in textarea');
     const field = page.locator('.ck-note-popup.modal-in textarea');
@@ -2946,6 +2949,53 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.locator(fab).count()) throw new Error('the Cooking pill shows in Settings');
     await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
     if (!(await page.locator(fab).isVisible())) throw new Error('the Cooking pill didn’t come back on Recipes');
+  });
+  // Issue #124: now and then the pill's pot boils over the way the launch loader's does. At rest the lid is ajar, as in
+  // Lucide's icon; it drops shut, rocks on one end and then the other, the pot squashing as it lands, and its last right
+  // upswing stops ajar (it doesn't land and open again): every 12s (the first 3s in), still otherwise; still and ajar
+  // with Reduce Motion
+  await step('36b3-cook-pill-pot-boils', async () => {
+    const pot = `${fab} .ck-pill-pot`;
+    const parts = ['.ck-pill-pot-body', '.ck-pill-pot-open', '.ck-pill-pot-lid', '.ck-pill-pot-lid > span'];
+    const at = (t) => page.locator(pot).evaluate((p, [t, parts]) => parts.map((q) => {
+      const el = p.querySelector(q), a = el.getAnimations()[0];
+      if (!a) return null;
+      a.pause(); a.currentTime = t;
+      return { name: a.animationName, period: a.effect.getComputedTiming().duration, transform: getComputedStyle(el).transform };
+    }), [t, parts]);
+    const still = (r) => r.transform === 'none' || r.transform === 'matrix(1, 0, 0, 1, 0, 0)';
+    // ajar: tipped up to the right (Lucide's -14°) and lifted, as Lucide draws it
+    const ajar = (r) => { const m = (r.transform.match(/matrix\(([^)]+)\)/) || [])[1]?.split(',').map(Number); return !!m && Math.abs(Math.atan2(m[1], m[0]) * 180 / Math.PI + 14.04) < 0.1; };
+    const rest = await at(0);
+    if (rest.some((r) => !r)) throw new Error('the Cooking pill’s pot doesn’t move');
+    if (rest.map((r) => r.name).join() !== 'ck-pill-pot,ck-pill-lid-open,ck-pill-lid-right,ck-pill-lid-left' || rest.some((r) => r.period !== 12000)) throw new Error(`the pot plays ${JSON.stringify(rest)}`);
+    if (!ajar(rest[1]) || !still(rest[0]) || !still(rest[2]) || !still(rest[3])) throw new Error(`the pot isn’t at rest with its lid ajar at first: ${JSON.stringify(rest)}`);
+    // the lid drops shut (2.93s), then the loader's order: its left side lifts first (3.24s), then its right (3.68s); the
+    // pot squashes as it lands (2.99s shutting, 3.53s)
+    const shut = await at(2930), left = await at(3240), right = await at(3680);
+    if (!still(shut[1])) throw new Error(`the lid doesn’t drop shut before it rocks: ${JSON.stringify(shut)}`);
+    if (!still(left[1]) || still(left[3]) || !still(left[2])) throw new Error(`the lid’s left side doesn’t lift first: ${JSON.stringify(left)}`);
+    if (still(right[2]) || !still(right[3])) throw new Error(`the lid’s right side doesn’t lift next: ${JSON.stringify(right)}`);
+    for (const t of [2990, 3530]) {
+      const sy = Number((((await at(t))[0].transform.match(/matrix\(([^)]+)\)/) || [])[1] || '').split(',')[3]);
+      if (!(sy < 0.92)) throw new Error(`the pot hardly squashes at ${t}ms (scale ${sy})`);
+    }
+    // the last right upswing (4.41s on) ends ajar and stays: the lid never shuts again, the pot doesn't squash again
+    for (const t of [4700, 4900, 5200, 5500, 8000, 11900]) {
+      const r = await at(t);
+      if (!ajar(r[1]) || !still(r[0]) || !still(r[2]) || !still(r[3])) throw new Error(`at ${t}ms the lid isn’t resting ajar after its last upswing: ${JSON.stringify(r)}`);
+    }
+    const up = await at(4500);
+    if (still(up[1]) || ajar(up[1])) throw new Error(`the lid doesn’t swing up into place at the end: ${JSON.stringify(up)}`);
+    await page.locator(pot).evaluate((p) => p.querySelectorAll('*').forEach((s) => s.getAnimations().forEach((a) => a.play())));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const calm = await page.locator(pot).evaluate((p) => ({
+      none: [...p.querySelectorAll('*')].every((s) => !s.getAnimations().length),
+      transform: getComputedStyle(p.querySelector('.ck-pill-pot-open')).transform,
+    }));
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    if (!calm.none) throw new Error('the pot still boils over with Reduce Motion');
+    if (!ajar(calm)) throw new Error(`with Reduce Motion the lid isn’t ajar (${calm.transform})`);
   });
   await step('36c-cook-second-recipe', async () => {
     await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Corn' }).tap(); await page.waitForTimeout(900);
@@ -3353,6 +3403,76 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('#view-groceries .page-current .navbar .link.back').tap(); await page.waitForTimeout(900);
     if (!(await page.locator(`${GRO} a[aria-label="More grocery list actions"]`).count())) throw new Error('back from Grocery Stores didn’t return to the list');
   });
+  // Issue #135: the app's font is Parkinsans at 90%, from the CSS alone. Settings → Appearance → Font (the top of the
+  // Appearance page) picks another for
+  // the whole app at once, each row drawn in its own font; each font has its own sizes (sliders for titles and for
+  // reading text, scaling the font itself with size-adjust); the choice is on the page from the first paint after a
+  // reload. Put back to Parkinsans for the steps after.
+  const family = (sel) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).fontFamily.split(',')[0].replace(/['"]/g, ''));
+  const fontsCss = () => page.evaluate(() => document.getElementById('ck-fonts')?.textContent ?? '');
+  const sizesRead = () => page.locator('#view-settings .page-current .ck-size-value').allInnerTexts();
+  const tapRange = async (label, at) => {
+    const bar = page.locator('.view.tab-active .page-current .ck-size-row', { hasText: label }).locator('.range-slider');
+    const box = await bar.boundingBox();
+    await page.touchscreen.tap(box.x + box.width * at, box.y + box.height / 2); await page.waitForTimeout(400);
+  };
+  const openAppearance = async () => {
+    await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(800);
+    await page.locator('#view-settings .page-current li', { hasText: 'Appearance' }).locator('a').tap(); await page.waitForTimeout(1000);
+  };
+  await step('40t2-font', async () => {
+    await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(800);
+    if ((await family('#view-settings .page-current > .navbar .title')) !== 'Parkinsans Variable') throw new Error('the app isn’t in Parkinsans');
+    await page.locator('#view-settings .page-current li', { hasText: 'Appearance' }).locator('a').tap(); await page.waitForTimeout(1000);
+    if (await fontsCss()) throw new Error('the usual font and sizes write faces of their own');
+    if (await page.locator('.fab.ck-font-fab').count()) throw new Error('the Aa button is still there');
+    const row = page.locator('#view-settings .page-current li', { hasText: /^Font\s*Parkinsans/ });
+    if (!(await row.count())) throw new Error('the Font row doesn’t say Parkinsans');
+    await row.locator('a').tap(); await page.waitForTimeout(1000);
+    const samples = await page.locator('#view-settings .page-current .ck-font-sample-name').evaluateAll((els) => els.map((e) => getComputedStyle(e).fontFamily.split(',')[0].replace(/['"]/g, '')));
+    if (samples.join('|') !== 'Parkinsans Variable|Funnel Display Variable|Red Hat Display Variable|Fredoka Variable') throw new Error(`the rows are drawn in ${samples.join(', ')}`);
+    if ((await sizesRead()).join('|') !== '90%|90%') throw new Error(`Parkinsans’ sizes read ${(await sizesRead()).join(', ')}, not 90%`);
+    if (!(await page.locator('#view-settings .page-current .ck-size-reset.disabled').count())) throw new Error('Reset sizes is on at the usual sizes');
+    await page.locator('#view-settings .page-current li', { hasText: 'Funnel' }).locator('label').tap(); await page.waitForTimeout(600);
+    if ((await family('#view-settings .page-current > .navbar .title')) !== 'ck-display') throw new Error('the bar’s title isn’t in the font picked');
+    if ((await family('#view-settings .page-current .block-footer')) !== 'ck-text') throw new Error('reading text isn’t in the font picked');
+    if (!/funnel-display[\s\S]*funnel-sans/.test(await fontsCss())) throw new Error('the font picked isn’t Funnel');
+    if ((await sizesRead()).join('|') !== '100%|100%') throw new Error(`Funnel starts at ${(await sizesRead()).join(', ')}, not its own 100%`);
+    const parkinsans = await page.locator('#view-settings .page-current .ck-font-sample-name').first().evaluate((e) => getComputedStyle(e).fontFamily);
+    if (!parkinsans.startsWith('"Parkinsans')) throw new Error(`the Parkinsans row turned into ${parkinsans}`);
+    // the titles slider, near its right end: Funnel's titles grow, its reading text stays
+    const before = await page.locator('#view-settings .page-current > .navbar .title').evaluate((e) => e.getBoundingClientRect().width);
+    await tapRange('Titles and buttons', 0.9);
+    const pct = Number((await sizesRead())[0].replace('%', ''));
+    if (!(pct > 110)) throw new Error(`the titles slider reads ${pct}% after moving it right`);
+    const css = await fontsCss();
+    if (!css.includes(`size-adjust: ${pct}%`) || !css.includes('size-adjust: 100%')) throw new Error('the sizes aren’t on the fonts');
+    const after = await page.locator('#view-settings .page-current > .navbar .title').evaluate((e) => e.getBoundingClientRect().width);
+    if (!(after > before * 1.05)) throw new Error(`the bar’s title didn’t grow (${before.toFixed(0)} → ${after.toFixed(0)}px)`);
+  });
+  await step('40t3-font-recipes', async () => {
+    await page.reload(); await page.waitForTimeout(1500);
+    if ((await page.evaluate(() => document.documentElement.dataset.font)) !== 'funnel') throw new Error('the font wasn’t kept after a reload');
+    if (!/size-adjust: 1[1-2]\d%/.test(await fontsCss())) throw new Error('the titles’ size wasn’t kept after a reload');
+    if (!(await page.evaluate(() => document.fonts.check("600 20px 'ck-display'")))) throw new Error('the font picked isn’t loaded');
+    await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(900);
+    if ((await family('.view.tab-active .page-current > .navbar .title')) !== 'ck-display') throw new Error('Recipes isn’t in the font picked');
+  });
+  await step('40t4-font-back', async () => {
+    await openAppearance();
+    await page.locator('#view-settings .page-current li', { hasText: /^Font/ }).locator('a').tap(); await page.waitForTimeout(1000);
+    await page.locator('#view-settings .page-current li', { hasText: 'Parkinsans' }).locator('label').tap(); await page.waitForTimeout(600);
+    if (await fontsCss()) throw new Error('back on Parkinsans at 90%, faces of its own are still written');
+    if ((await family('#view-settings .page-current > .navbar .title')) !== 'Parkinsans Variable') throw new Error('back on Parkinsans, the title isn’t');
+    // Funnel kept its own sizes
+    await page.locator('#view-settings .page-current li', { hasText: 'Funnel' }).locator('label').tap(); await page.waitForTimeout(500);
+    if (!(Number((await sizesRead())[0].replace('%', '')) > 110)) throw new Error('Funnel forgot its titles’ size');
+    await page.locator('#view-settings .page-current .ck-size-reset').tap(); await page.waitForTimeout(400);
+    if ((await sizesRead()).join('|') !== '100%|100%') throw new Error('Reset sizes didn’t put Funnel back to 100%');
+    await page.locator('#view-settings .page-current li', { hasText: 'Parkinsans' }).locator('label').tap(); await page.waitForTimeout(500);
+  });
+  await page.evaluate(() => { localStorage.removeItem('ck-fonts'); window.ckFonts.save(window.ckFonts.read()); });
+  await page.reload(); await page.waitForTimeout(1200);
   // Issue #118: an empty list keeps only its title, + and ⋯: no search bar, no By aisle | By recipe, no store line, no
   // instructions; an icon, a few words and one button that opens +'s choices.
   await step('40u-groceries-empty', async () => {

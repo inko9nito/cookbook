@@ -9,6 +9,7 @@ import GroceryStoresPage from './pages/GroceryStoresPage';
 import SettingsPage from './pages/SettingsPage';
 import StyleGuidePage from './pages/StyleGuidePage';
 import PrepearImportPage from './pages/PrepearImportPage';
+import FontPage from './pages/FontPage';
 
 const routes = [
   { path: '/', component: RecipesPage },
@@ -24,6 +25,7 @@ const routes = [
   { path: '/settings/', component: SettingsPage },
   { path: '/settings/style-guide/', component: StyleGuidePage },
   { path: '/settings/prepear/', component: PrepearImportPage },
+  { path: '/settings/font/', component: FontPage },
 ];
 
 export default routes;

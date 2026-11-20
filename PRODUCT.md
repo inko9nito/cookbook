@@ -46,7 +46,7 @@ Built for exactly one cook's habits, with no social, discovery or sharing featur
 
 - Name: Cookbook.
 - Feel: friendly and casual, like a well-made iPhone app; not a business tool.
-- The visual system is recorded in `DESIGN.md` (component shapes chosen from six design systems, unified Cool grey neutrals, Tomato accent, iPhone system font).
+- The visual system is recorded in `DESIGN.md` (component shapes chosen from six design systems, unified Cool grey neutrals, Tomato accent, Parkinsans).
 - Icons: Lucide only.
 
 ## Evidence on Hand

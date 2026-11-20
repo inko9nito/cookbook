@@ -266,10 +266,10 @@ ion-title.ck-ion-center { text-align: center; }
 
 /* ══ cook mode: Ionic's card over the app ══ */
 ion-modal.ck-ion-cook { --background: var(--ck-bg); --ck-cook-bar: 56px; }
-.ck-ion-cook-header ion-toolbar { --background: var(--ck-bg); --min-height: 60px; --padding-start: 16px; --padding-end: 12px; padding-top: 6px; }
-.ck-ion-cook-header ion-title { position: static; text-align: start; padding-inline: 0; font-size: 21px; }
+.ck-ion-cook-header ion-toolbar { --background: var(--ck-bg); --min-height: 60px; --padding-start: 16px; --padding-end: 16px; padding-top: 0; }
+.ck-ion-cook-header ion-title { position: static; text-align: start; padding: 0; margin: 0; font-size: 21px; color: var(--ck-title); }
 .ck-ion-grabber {
-  position: absolute; top: 0; left: 0; right: 0; margin: 0 auto; width: 36px; height: 5px; border-radius: 9999px;
+  position: absolute; top: 8px; left: 0; right: 0; margin: 0 auto; width: 36px; height: 5px; border-radius: 9999px;
   background-color: var(--ck-strong); pointer-events: none;
 }
 ion-button.ck-ion-timer-pill {
@@ -573,3 +573,21 @@ ion-alert.ck-ion-dialog .alert-button.sc-ion-alert-ios {
 ion-alert.ck-ion-dialog .alert-button.sc-ion-alert-ios:last-child { background: var(--ck-accent); color: var(--ck-surface); font-weight: 600; }
 ion-alert.ck-ion-dialog .alert-button.sc-ion-alert-ios:only-child { background: var(--ck-accent); color: var(--ck-surface); }
 ion-alert.ck-ion-dialog .alert-button.alert-button-role-destructive.sc-ion-alert-ios { background: var(--ck-accent); color: var(--ck-surface); }
+
+/* cook mode as v1's: the card 20px from the top, the name 16px in on a 72px header with ✓ and ✕ 16px from the top;
+   ingredient rows 38px for one line, the box centred, the words 16px after it, the note 14px under, lines starting at
+   the words; no lines between steps */
+ion-modal.ck-ion-cook { --height: calc(100% - var(--ion-safe-area-top, 0px) - 20px); --border-radius: 32px; }
+ion-modal.ck-ion-cook ion-header ion-toolbar:first-of-type { padding-top: 0 !important; }
+.ck-ion-cook-header ion-toolbar { --min-height: 72px; --padding-top: 0; --padding-bottom: 0; }
+ion-list.ck-ion-cook-ings ion-item { --min-height: 38px; --border-color: var(--ck-line); }
+ion-list.ck-ion-cook-ings ion-checkbox.ck-ion-tick { align-self: center; margin: 0 16px 0 0; }
+ion-list.ck-ion-cook-ings .ck-ion-cook-line { padding: 7px 0; line-height: 24px; }
+ion-list.ck-ion-cook-ings .ck-ion-cook-line .ck-ion-row-note { display: block; margin: 0; font-size: 14px; line-height: 16.8px; color: var(--ck-muted); }
+ion-modal.ck-ion-cook .ck-ion-cook-header ion-toolbar { padding: 0 !important; }
+/* with recipe tabs along the bottom, Directions fades into the page colour over its last 16px where it meets them, as
+   the halves do at the divider (v1), with room at the end so the last step scrolls clear; a half shown alone fades at
+   both ends */
+ion-content.ck-ion-cook-tabbed .ck-pane-steps { -webkit-mask-image: linear-gradient(#000 calc(100% - 16px), transparent); mask-image: linear-gradient(#000 calc(100% - 16px), transparent); }
+ion-content.ck-ion-cook-tabbed .ck-pane-steps::after { content: ''; display: block; height: 16px; }
+ion-content.ck-ion-cook-tabbed .ck-pane.ck-pane-alone { -webkit-mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); }

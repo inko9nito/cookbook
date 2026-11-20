@@ -203,7 +203,7 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
           </IonButtons>
         </IonToolbar>
       </IonHeader>
-      <IonContent scrollY={false} className="ck-ion-cook-content">
+      <IonContent scrollY={false} className={`ck-ion-cook-content${tabbed ? ' ck-ion-cook-tabbed' : ''}`}>
         {tabs.map((r) => {
           const own = s.amounts[r.id] ?? { factor: 1, picks: {} };
           const t = s.ticks[r.id] ?? NO_TICKS;
@@ -389,7 +389,7 @@ function RecipeTab({
             {ingGroups.filter((g) => g.items.length).map((g) => (
               <div key={g.id} className="ck-ing-group">
                 {g.label && <div className="ck-group-label">{g.label}</div>}
-                <IonList lines="full" className="ck-ion-cook-list">
+                <IonList lines="inset" className="ck-ion-cook-list ck-ion-cook-ings">
                   {g.items.map((i) => (
                     <IonItem key={i.id} className={[doneIng.has(i.id) ? 'ck-done' : '', converting?.ing.id === i.id ? 'ck-ing-on' : ''].join(' ')}>
                       {/* the box on its own (Ionic's checkbox keeps taps on its label from buttons inside it); the text
@@ -415,7 +415,7 @@ function RecipeTab({
               <h2>Directions</h2>
             </div>
             <IonAccordionGroup multiple value={openExtras} className="ck-ion-step-folds">
-              <IonList lines="full" className="ck-ion-cook-list ck-ion-cook-steps">
+              <IonList lines="none" className="ck-ion-cook-list ck-ion-cook-steps">
                 {steps.map((st) => {
                   if (st.kind === 'header') {
                     return (

@@ -9,7 +9,6 @@ import { navIcon } from '../components/ui/icons';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAtTop } from '../components/ui/atTop';
 import { say } from '../components/ui/toast';
-import { confirmDelete } from '../components/ui/confirmDelete';
 import RecipeCard from '../components/ui/RecipeCard';
 import { CountSkeleton, RecipeGridSkeleton } from '../components/ui/Skeletons';
 import RecipePickerPopup from '../components/RecipePickerPopup';
@@ -24,7 +23,7 @@ import CookingFab from '../components/CookingFab';
 
 type Props = {
   f7route?: { params: Record<string, string> };
-  f7router?: { back: () => void; navigate: (url: string) => void; once?: (event: 'routeChanged', handler: () => void) => void };
+  f7router?: { back: () => void; navigate: (url: string) => void };
 };
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -61,8 +60,9 @@ export default function CookbookPage({ f7route, f7router }: Props) {
   const [choosingCover, setChoosingCover] = useState(false);
   const [organizing, setOrganizing] = useState(false);
 
-  // issue #141: once Delete is confirmed, this page keeps showing the cookbook (or section) as it was until it has gone,
-  // never "Not found" mid-slide
+  // issue #141: deleting the cookbook (or this section) goes back at once, and this page keeps showing it as it was while it
+  // slides away, instead of turning into "Not found" mid-slide. That flip (the header and the whole page swapped while
+  // Framework7 slid it out) left iPhone Safari not drawing the Cookbooks header that slid in under it.
   const leaving = useRef<Cookbook | null>(null);
   const book = leaving.current ?? cookbooks.find((c) => c.id === f7route?.params.id);
   const sectionId = f7route?.params.sectionId ?? null;
@@ -195,26 +195,26 @@ export default function CookbookPage({ f7route, f7router }: Props) {
       f7router?.navigate(`/cookbook/${book.id}/section/${s.id}/`);
     });
 
-  // issue #141: the dialog closes, the page goes back, then it's deleted (confirmDelete)
   const remove = () => {
-    const keep = () => (leaving.current = book);
     if (section) {
       const moving = section.recipeIds.filter((id) => byId.has(id) && !book.recipeIds.includes(id)).length;
-      confirmDelete(
+      f7.dialog.confirm(
         moving ? `Its ${count(moving, 'recipe')} move to Uncategorized.` : 'It has no recipes.',
         `Delete “${section.name}”?`,
-        f7router,
         () => {
+          leaving.current = book;
           save({ ...book, recipeIds: [...new Set([...book.recipeIds, ...section.recipeIds])], sections: book.sections.filter((s) => s.id !== section.id) });
+          f7router?.back();
           say(`Deleted “${section.name}”`);
         },
-        keep,
       );
     } else {
-      confirmDelete('Its recipes stay in Recipes.', `Delete “${book.name}”?`, f7router, () => {
+      f7.dialog.confirm('Its recipes stay in Recipes.', `Delete “${book.name}”?`, () => {
+        leaving.current = book;
         deleteCookbook(book.id);
+        f7router?.back();
         say(`Deleted “${book.name}”`);
-      }, keep);
+      });
     }
   };
 

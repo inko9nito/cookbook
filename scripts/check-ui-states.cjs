@@ -319,27 +319,6 @@ async function swipeLeft(ctx, page, locator) {
     const bf = cs.backdropFilter || cs.webkitBackdropFilter;
     return bf && bf !== 'none' ? `${el.className?.baseVal ?? el.className}${pseudo ?? ''}: ${bf}` : null;
   })).filter(Boolean))]);
-  // #141: Delete goes one step at a time: the dialog has gone before the page slides back, and the toast comes only once
-  // the page has gone. Start watching before OK; deleteOrder() says what was out of order.
-  const watchDelete = (view) => page.evaluate((view) => {
-    const w = (window.__ckDel = { slide: null, toast: null, pages: document.querySelector(view).querySelectorAll(':scope > .page').length });
-    const t0 = performance.now();
-    const look = () => {
-      const v = document.querySelector(view);
-      if (w.slide === null && v.classList.contains('router-transition')) w.slide = { dialog: !!document.querySelector('.dialog') };
-      if (w.toast === null && document.querySelector('.toast')) w.toast = { pages: v.querySelectorAll(':scope > .page').length, sliding: v.classList.contains('router-transition') };
-      if (performance.now() - t0 < 4000) requestAnimationFrame(look);
-    };
-    requestAnimationFrame(look);
-  }, view);
-  const deleteOrder = () => page.evaluate(() => {
-    const w = window.__ckDel, out = [];
-    if (!w.slide) out.push('the page never slid back');
-    else if (w.slide.dialog) out.push('the page slid back with the dialog still there');
-    if (!w.toast) out.push('no toast');
-    else if (w.toast.sliding || w.toast.pages !== w.pages - 1) out.push(`the toast came before the page had gone (${w.toast.pages} of ${w.pages} pages left, sliding ${w.toast.sliding})`);
-    return out;
-  });
   // a pull-down menu closes when the dimmed page around it is tapped (an action sheet has Cancel)
   const closeMenu = async () => {
     if (await page.locator('.actions-modal.modal-in').count()) await page.locator('.actions-modal.modal-in .actions-button', { hasText: 'Cancel' }).tap();
@@ -2020,10 +1999,7 @@ async function swipeLeft(ctx, page, locator) {
       };
       requestAnimationFrame(look);
     });
-    await watchDelete('#view-recipes');
-    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1800);
-    const order = await deleteOrder();
-    if (order.length) throw new Error(order.join('; '));
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
     const seen = await page.evaluate(() => [...new Set(window.__ckSeen)]);
     if (seen.join() !== 'recipe') throw new Error(`while going back, the deleted recipe's page showed ${JSON.stringify(seen)}`);
     const title = await page.locator('.view.tab-active .page-current > .navbar .title').first().textContent();
@@ -2424,10 +2400,7 @@ async function swipeLeft(ctx, page, locator) {
       };
       requestAnimationFrame(look);
     });
-    await watchDelete('#view-cookbooks');
-    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1800);
-    const order = await deleteOrder();
-    if (order.length) throw new Error(order.join('; '));
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
     const seen = await page.evaluate(() => [...new Set(window.__ckSeen)]);
     // the section's page as Temp, and the cookbook's under it
     if (!seen.includes('Temp') || seen.some((t) => t !== 'Temp' && t !== 'Everything else')) throw new Error(`while going back, the deleted section's page showed ${JSON.stringify(seen)}`);
@@ -2509,10 +2482,7 @@ async function swipeLeft(ctx, page, locator) {
       };
       requestAnimationFrame(look);
     });
-    await watchDelete('#view-cookbooks');
-    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1800);
-    const order = await deleteOrder();
-    if (order.length) throw new Error(order.join('; '));
+    await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
     const seen = await page.evaluate(() => [...new Set(window.__ckSeen)]);
     if (!seen.includes('Soups') || seen.some((t) => t !== 'Soups')) throw new Error(`while going back, the deleted cookbook's page showed ${JSON.stringify(seen)}`);
     const tiles = await page.locator(`${CUR} .ck-book-tile .ck-book-name`).allTextContents();

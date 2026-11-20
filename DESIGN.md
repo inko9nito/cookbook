@@ -6,6 +6,7 @@ colors:
   surface-white: "#ffffff"
   soft-fill: "#ececee"
   ink: "#262628"
+  title-ink: "#000000"
   ink-secondary: "#55555a"
   ink-muted: "#6e6e73"
   ink-done: "#a5a5aa"
@@ -171,6 +172,7 @@ Implementation: `src/theme/cookbook.css` (tokens and Framework7 variable mapping
 | `--ck-surface` | `#ffffff` | Cards, fields, search bar, lists that sit on the background |
 | `--ck-soft` | `#ececee` | Filled buttons, stepper buttons, segmented track |
 | `--ck-fg` | `#262628` | Main text, active chip and segment |
+| `--ck-title` | `#000000` | The big page titles in the bar (Recipes, Cookbooks…), black as in v1 |
 | `--ck-fg2` | `#55555a` | Secondary text |
 | `--ck-muted` | `#6e6e73` | Meta text, placeholders, inactive tabs (iOS secondary label grey) |
 | `--ck-photo-dark` | `#000000` | Behind a photo being cropped (Crop Photo) |

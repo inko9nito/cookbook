@@ -33,13 +33,18 @@
   --ion-placeholder-color: var(--ck-fg2);
   --ion-backdrop-opacity: 0.32;
 }
-body { background-color: var(--ck-bg); }
+body { background-color: var(--ck-bg); line-height: 1.4; } /* v1's (Framework7's) line height for everything */
 
 /* ── bars: the title on the left, separate round buttons (not iOS 26's capsules), no glass ── */
-.ck-ion-header ion-toolbar { --padding-start: 12px; --padding-end: 12px; --min-height: 56px; }
+.ck-ion-header ion-toolbar {
+  /* v1's bar: 48px, the title 16px in, the buttons 16px from the right edge, 8px apart */
+  --padding-start: 16px; --padding-end: 16px; --padding-top: 0; --padding-bottom: 0; --min-height: 48px;
+}
+.ck-ion-header ion-toolbar ion-buttons { gap: 8px; margin: 0; }
+.ck-ion-header ion-toolbar ion-buttons .ck-ion-bar-button { margin: 0; }
 ion-title.ck-ion-title {
-  position: static; padding-inline: 4px; text-align: start;
-  font-family: var(--ck-font-display); font-size: 26px; font-weight: 600; letter-spacing: -0.02em;
+  position: static; padding-inline: 0; text-align: start; color: var(--ck-title);
+  font-family: var(--ck-font-display); font-size: 26px; font-weight: 600; line-height: 1.2;
 }
 ion-title.ck-ion-title-small { font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; }
 .ck-ion-bar-button {
@@ -67,7 +72,7 @@ ion-toolbar.ck-ion-subbar { --padding-start: 0; --padding-end: 0; --padding-bott
 .ck-ion-chips-wrap { flex-wrap: wrap; overflow: visible; padding: 0; }
 .ck-ion-chips ion-chip, .ck-ion-chips-wrap ion-chip {
   --background: var(--ck-soft); --color: var(--ck-fg); margin: 0; flex: none; height: 34px; padding-inline: 15px;
-  font-weight: 600; font-size: 14px; gap: 6px;
+  font-weight: 500; font-size: 14px; line-height: 34px; gap: 6px; border-radius: 9999px; padding-block: 0;
 }
 .ck-ion-chips ion-chip.ck-ion-chip-on { --background: var(--ck-fg); --color: var(--ck-surface); }
 .ck-ion-segment { margin: 12px 16px 0; width: auto; --background: var(--ck-soft); }
@@ -77,7 +82,10 @@ ion-tab-bar.ck-ion-tabbar { --border: 1px solid var(--ck-line); height: 56px; }
 ion-tab-bar.ck-ion-tabbar ion-tab-button { --color-selected: var(--ck-accent); }
 
 /* ── lists ── */
-.ck-ion-count { margin: 16px 16px 12px; }
+.ck-ion-count { margin: 16px 16px 0; line-height: 20px; }
+/* v1 kept Framework7's block gap (35px) between the count and the cards */
+.ck-ion-count + .ck-ion-grid { margin-top: 35px; }
+.ck-ion-grid { font-size: 14px; }
 .ck-ion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 12px; padding: 0 16px 120px; }
 a.ck-ion-card { -webkit-tap-highlight-color: transparent; }
 a.ck-ion-card:active { opacity: 0.7; }
@@ -301,15 +309,20 @@ ion-item .ck-ion-accent-text, ion-label.ck-ion-accent-text { color: var(--ck-acc
 
 /* ── under the bar: the search field and what goes with it (chips, the view switch, the week strip), in the header
    but not in Ionic's toolbar, which sized itself short on the iPhone and cut the chips in half ── */
-.ck-ion-header-extra { display: block; background: var(--ck-bg); padding: 0 0 12px; }
+.ck-ion-header-extra { display: block; background: var(--ck-bg); padding: 4px 0 10px; }
 /* one search field everywhere: soft grey pill, the placeholder on the left (the app's look) */
 .ck-ion-header-extra ion-searchbar, ion-searchbar.ck-ion-card-search, ion-searchbar.ck-ion-hero-search {
   --background: var(--ck-soft); --border-radius: 20px; --placeholder-color: var(--ck-fg2); --placeholder-opacity: 1; --icon-color: var(--ck-fg2);
   --box-shadow: none; padding: 0 16px; min-height: 0; height: 44px; text-align: start;
 }
+/* v1's search field: 44px, the magnifier 16px in, the words 44px in, 500 like all text, the placeholder muted */
+ion-searchbar .searchbar-input-container { height: 44px; }
+ion-searchbar.searchbar-left-aligned.sc-ion-searchbar-ios-h .searchbar-input.sc-ion-searchbar-ios { padding-inline-start: 44px; padding-top: 0; padding-bottom: 0; font-weight: 500; font-size: 17px; line-height: normal; }
+ion-searchbar.sc-ion-searchbar-ios-h .searchbar-search-icon.sc-ion-searchbar-ios { width: 15px; inset-inline-start: 16px; opacity: 0.9; }
+.ck-ion-header-extra ion-searchbar, ion-searchbar.ck-ion-card-search { --placeholder-color: var(--ck-muted); --icon-color: var(--ck-muted); }
 ion-searchbar.ck-ion-hero-search { --background: var(--ck-surface); padding: 16px 0 4px; height: auto; }
 .ck-ion-handed-over { visibility: hidden; }
-.ck-ion-header-extra .ck-ion-chips { padding-top: 12px; }
+.ck-ion-header-extra .ck-ion-chips { padding-top: 0; margin-top: 14px; }
 .ck-ion-header-extra .ck-ion-segment { margin-top: 12px; }
 .ck-ion-week-bar { padding-bottom: 6px; }
 /* the view switch as the app has it: the picked side dark with white text */
@@ -323,13 +336,13 @@ ion-segment.ck-ion-segment ion-segment-button, ion-content.ck-ion-sheet-content 
    and only switches tabs. Flat and docked (not floating), Tomato for the tab you're on ── */
 ion-tab-bar.ck-ion-tabbar-engine { display: none; }
 ion-footer.ck-ion-tabbar { background: var(--ck-surface); border-top: 1px solid var(--ck-line); }
-.ck-ion-tabbar-row { display: flex; height: 56px; padding-bottom: 0; }
+.ck-ion-tabbar-row { display: flex; height: 59px; padding-bottom: 0; } /* v1's 60px with its line, as the user's other app */
 ion-footer.ck-ion-tabbar { padding-bottom: var(--ion-safe-area-bottom, 0px); }
 button.ck-ion-tab {
-  flex: 1; display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--ck-fg2);
+  flex: 1; display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--ck-muted);
   -webkit-tap-highlight-color: transparent;
 }
-button.ck-ion-tab.ck-ion-tab-on { color: var(--ck-accent); }
+button.ck-ion-tab.ck-ion-tab-on { color: var(--ck-accent-ink); }
 
 /* an alert or action sheet takes the focus as it opens (for VoiceOver); no focus ring drawn round it (the user saw a
    blue outline round Rename Cookbook) */
@@ -342,7 +355,7 @@ ion-action-sheet .action-sheet-wrapper:focus, ion-action-sheet .action-sheet-wra
    under the clock stays solid (the header's own background). Ionic has no such bar, so this is ours. ══ */
 ion-header.ck-ion-slide-header { background: var(--ck-bg); transition: transform 400ms ease; }
 ion-header.ck-ion-slide-header > ion-toolbar:first-of-type { transition: opacity 400ms ease; }
-ion-header.ck-ion-slide-header.ck-ion-bar-hidden { transform: translateY(-56px); }
+ion-header.ck-ion-slide-header.ck-ion-bar-hidden { transform: translateY(-48px); }
 ion-header.ck-ion-slide-header.ck-ion-bar-hidden > ion-toolbar:first-of-type { opacity: 0; pointer-events: none; }
 /* #99: the docked bar's line and shadow only once the page has scrolled */
 ion-header.ck-ion-slide-header.ck-ion-scrolled:not(.ck-ion-photo-bar):not(.ck-ion-hero-bar) { box-shadow: var(--ck-bar-shadow); }

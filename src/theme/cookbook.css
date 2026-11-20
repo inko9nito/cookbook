@@ -8,6 +8,7 @@
   --ck-surface: #ffffff;
   --ck-soft: #ececee;
   --ck-fg: #262628;
+  --ck-title: #000000; /* the big page titles in the bar (Recipes, Cookbooks…): black, as Framework7 drew them in v1 */
   --ck-fg2: #55555a;
   --ck-muted: #6e6e73;
   --ck-photo-dark: #000000; /* behind a photo being cropped */

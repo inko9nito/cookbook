@@ -4,7 +4,7 @@ import {
 } from '@ionic/react';
 import { ArrowUpDown, Camera, Link2, PenLine, Plus } from 'lucide-react';
 import { useAccount, useStore } from '../data/store';
-import { SORT_LABELS, sortRecipes, type SortKey } from '../lib/recipe';
+import { COURSES, SORT_LABELS, sortRecipes, type SortKey } from '../lib/recipe';
 import { say } from './toast';
 import { TabPage } from './scroll';
 import { BarButton, CookingPill, RecipeCard, openMenu } from './ui';
@@ -15,7 +15,11 @@ export default function RecipesPage() {
   const filterTags = settings.filterTags;
   const [query, setQuery] = useState('');
   const router = useIonRouter();
-  const tags = useMemo(() => [...new Set(recipes.flatMap((r) => r.tags))].sort((a, b) => a.localeCompare(b)), [recipes]);
+  // the courses first, in their order, then the rest A–Z (as v1)
+  const tags = useMemo(() => {
+    const used = new Set(recipes.flatMap((r) => r.tags));
+    return [...COURSES.filter((t) => used.has(t)), ...[...used].filter((t) => !COURSES.includes(t)).sort()];
+  }, [recipes]);
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   const shown = sortRecipes(recipes, sort).filter(
     (r) => (!filterTags.length || filterTags.some((t) => r.tags.includes(t))) && words.every((w) => r.title.toLowerCase().includes(w)),

@@ -54,7 +54,7 @@ export function TabBar({ current }: { current: TabName }) {
               document.querySelector<HTMLElement>(`ion-tab-bar.ck-ion-tabbar-engine .ck-ion-engine-${tab}`)?.click();
             }}
           >
-            <Icon size={26} strokeWidth={1.75} />
+            <Icon size={24} strokeWidth={2} />
           </button>
         ))}
       </nav>

@@ -3596,13 +3596,13 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator(`${pg} .ck-empty`, { hasText: 'Add your first one.' }).count())) throw new Error('a user’s empty Recipes still offers links and photos');
     await page.locator(`${pg} .ck-empty-button`).tap(); await page.waitForTimeout(900);
     if (await page.locator(MENU_ROW).count()) throw new Error('a user’s New recipe opens a menu');
-    if (!(await page.locator('#view-recipes .page-current .ck-edit-list').count())) throw new Error('a user’s New recipe doesn’t open the editor');
+    if ((await page.locator('#view-recipes .page-current > .navbar .title').textContent())?.trim() !== 'New Recipe') throw new Error('a user’s New recipe doesn’t open the editor');
   });
   await step('40y2-user-settings', async () => {
     await page.goto(`${BASE}?user`); await page.waitForTimeout(1500);
     await page.locator('#view-recipes .page-current > .navbar a[aria-label="New recipe"]').tap(); await page.waitForTimeout(900);
     if (await page.locator(MENU_ROW).count()) throw new Error('a user’s + opens a menu');
-    if (!(await page.locator('#view-recipes .page-current .ck-edit-list').count())) throw new Error('a user’s + doesn’t open the editor');
+    if ((await page.locator('#view-recipes .page-current > .navbar .title').textContent())?.trim() !== 'New Recipe') throw new Error('a user’s + doesn’t open the editor');
     await page.locator('.tabbar a[aria-label="Settings"]').tap(); await page.waitForTimeout(700);
     const rows = await page.locator('#view-settings .page-current .ck-settings-places .item-title').allTextContents();
     if (rows.join('|') !== 'Appearance') throw new Error(`a user’s Settings shows ${rows.join(', ')}`);

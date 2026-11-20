@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, IonContent, IonList, IonItem, IonLabel,
@@ -9,7 +9,10 @@ import { useCookbooks, useStore } from '../data/store';
 import { byName, colorOf, cookbookRecipeIds, emptyCookbook, existing, platePhotos, type Cookbook } from '../lib/cookbook';
 import { CookbookSort, SORT_LABELS, newId, sortRecipes, type Recipe } from '../lib/recipe';
 import { photoStyle } from './photo';
-import { say } from './toast';
+import { say, tell } from './toast';
+
+// how many recipes a section's shelf shows (v1); See all opens the rest
+const SHELF = 12;
 import { TabPage, barOnScroll, useScrollStyle } from './scroll';
 import { BarButton, CookingPill, Plates, RecipeCard, openMenu, useConfirm, usePrompt } from './ui';
 import { AddRecipesModal, OrganizeModal } from './modals';
@@ -46,15 +49,15 @@ export function CookbooksPage() {
         </>
       }
     >
-        <p className="ck-note ck-ion-count">{loading ? ' ' : `${sorted.length} ${sorted.length === 1 ? 'cookbook' : 'cookbooks'}`}</p>
+        <p className="ck-note ck-ion-count ck-ion-count-loose">{loading ? ' ' : `${sorted.length} ${sorted.length === 1 ? 'cookbook' : 'cookbooks'}`}</p>
         {loading ? (
-          <div className="ck-ion-grid">
+          <div className="ck-ion-grid ck-ion-book-grid">
             {[0, 1, 2, 3].map((i) => (
               <IonSkeletonText key={i} animated className="ck-ion-tile-skeleton" />
             ))}
           </div>
         ) : grid ? (
-          <div className="ck-ion-grid">
+          <div className="ck-ion-grid ck-ion-book-grid">
             {sorted.map((c) => (
               <a
                 key={c.id}
@@ -129,9 +132,11 @@ export function CookbookPage() {
       const barH = el.querySelector('ion-toolbar')?.offsetHeight ?? 56;
       const at = (sel: string) => h.querySelector<HTMLElement>(sel);
       const plates = at('.ck-plates');
-      const name = at('.ck-ion-book-title');
-      const search = at('.ck-ion-hero-search-wrap');
-      el.classList.toggle('ck-ion-titled', !!name && name.offsetTop + name.offsetHeight - y <= barH);
+      const name = at('.ck-book-hero-title');
+      const search = at('.ck-hero-search');
+      const titled = !!name && name.offsetTop + name.offsetHeight - y <= barH;
+      el.classList.toggle('ck-ion-titled', titled);
+      h.classList.toggle('ck-ion-titled', titled);
       if (!oldRef.current) return;
       const p = Math.min(1, Math.max(0, y / Math.max(1, (plates ? plates.offsetTop + plates.offsetHeight : 200) - barH)));
       h.style.setProperty('--ck-hero-p', String(p));
@@ -182,12 +187,18 @@ export function CookbookPage() {
   const sort = cookbookSort(book.id);
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   const matches = (r: Recipe) => words.every((w) => r.title.toLowerCase().includes(w));
+  // as v1: each section a shelf, then Uncategorized when it has recipes; a cookbook without sections is one grid;
+  // searching shows one grid of what matches, with a count
+  const searching = words.length > 0;
+  const uncategorized = sortRecipes(existing(book.recipeIds, byId), sort);
   const shelves = [
-    { id: null as string | null, name: book.sections.length ? 'Uncategorized' : '', ids: book.recipeIds },
-    ...book.sections.map((s) => ({ id: s.id as string | null, name: s.name, ids: s.recipeIds })),
-  ]
-    .map((s) => ({ ...s, recipes: sortRecipes(existing(s.ids, byId), sort).filter(matches) }))
-    .filter((s) => s.recipes.length || (s.id !== null && !words.length));
+    ...book.sections.map((s) => ({ id: s.id, name: s.name, recipes: sortRecipes(existing(s.recipeIds, byId), sort) })),
+    ...(uncategorized.length ? [{ id: 'uncategorized', name: 'Uncategorized', recipes: uncategorized }] : []),
+  ];
+  const all = [...new Map([...book.sections.flatMap((s) => existing(s.recipeIds, byId)), ...uncategorized].map((r) => [r.id, r])).values()];
+  const found = sortRecipes(all, sort).filter(matches);
+  const sortNote = sort === 'manual' ? '' : ` · ${SORT_LABELS[sort]}`;
+  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
   const rename = async () => {
     const name = await prompt('Rename Cookbook', '', book.name, 'Save');
@@ -244,12 +255,18 @@ export function CookbookPage() {
         scrollEvents
         onIonScroll={onScroll}
       >
-        <section ref={hero} className={`ck-ion-book-hero ck-tint-${colorOf(book)}`}>
-          <Plates photos={platePhotos(book, byId)} />
-          <h1 className="ck-ion-book-title">{book.name}</h1>
-          <p className="ck-ion-book-meta">{recipesLoading ? '\u00a0' : countOf(book, byId)}</p>
-          <div className="ck-ion-hero-search-wrap">
-            <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search this cookbook" className="ck-ion-hero-search" />
+        {/* v1's header (#90), with v1's own classes (cookbook.css): the colour, plates, name and counts, then its search,
+            which hands over to the bar's when it gets there */}
+        <section ref={hero} className="ck-ion-book-top" style={{ '--ck-tint': `var(--ck-book-${colorOf(book)})` } as CSSProperties}>
+          <div className="ck-book-hero">
+            <Plates photos={platePhotos(book, byId)} />
+            <h1 className="ck-book-hero-title">{book.name}</h1>
+            <p className="ck-book-hero-meta">
+              {recipesLoading ? '\u00a0' : `${plural(all.length, 'recipe')}${book.sections.length ? ` · ${plural(book.sections.length, 'section')}` : ''}${sortNote}`}
+            </p>
+          </div>
+          <div className="ck-hero-search">
+            <IonSearchbar value={query} onIonInput={(e) => setQuery(e.detail.value ?? '')} placeholder="Search this cookbook" />
           </div>
         </section>
         {recipesLoading ? (
@@ -261,26 +278,44 @@ export function CookbookPage() {
               </div>
             ))}
           </div>
-        ) : shelves.length === 0 ? (
-          <p className="ck-note ion-padding">{words.length ? 'Nothing matches.' : 'No recipes in this cookbook yet.'}</p>
+        ) : !all.length ? (
+          <p className="ck-note ion-padding">No recipes in this cookbook yet.</p>
+        ) : searching || !book.sections.length ? (
+          <>
+            {searching && (
+              <p className="ck-note ck-ion-count">
+                {found.length} of {plural(all.length, 'recipe')}
+              </p>
+            )}
+            {searching && !found.length ? (
+              <p className="ck-note ck-ion-not-found">No recipes found</p>
+            ) : (
+              <div className="ck-ion-grid ck-ion-grid-top">
+                {(searching ? found : uncategorized).map((r) => (
+                  <RecipeCard key={r.id} recipe={r} href={`/cookbooks/recipe/${r.id}`} />
+                ))}
+              </div>
+            )}
+          </>
         ) : (
           shelves.map((s) => (
-            <div key={s.id ?? 'none'} className="ck-ion-shelf">
-              {s.name && (
-                <div className="ck-ion-sec">
-                  <h2>
-                    {s.name} <span className="ck-note">{s.recipes.length}</span>
-                  </h2>
-                </div>
-              )}
+            <div key={s.id} className="ck-shelf">
+              <div className="ck-shelf-head">
+                <button type="button" className="ck-shelf-title ck-ion-plain-button" onClick={() => tell('Section pages aren’t in v2 yet')}>
+                  {s.name} <span className="ck-shelf-count">{s.recipes.length}</span>
+                </button>
+                <button type="button" className="ck-shelf-all ck-ion-plain-button" onClick={() => tell('Section pages aren’t in v2 yet')}>
+                  See all
+                </button>
+              </div>
               {s.recipes.length ? (
-                <div className={s.name ? 'ck-ion-shelf-row' : 'ck-ion-grid'}>
-                  {s.recipes.map((r) => (
+                <div className="ck-shelf-row">
+                  {s.recipes.slice(0, SHELF).map((r) => (
                     <RecipeCard key={r.id} recipe={r} href={`/cookbooks/recipe/${r.id}`} />
                   ))}
                 </div>
               ) : (
-                <p className="ck-note ck-ion-shelf-empty">Nothing in this section yet.</p>
+                <p className="ck-note ck-shelf-empty">No recipes yet.</p>
               )}
             </div>
           ))

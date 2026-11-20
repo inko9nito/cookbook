@@ -65,12 +65,10 @@ ion-back-button.ck-ion-round-back, .ck-ion-header ion-back-button {
 }
 .ck-ion-text-button { --color: var(--ck-accent-ink); font-weight: 500; text-transform: none; }
 .ck-ion-strong { font-weight: 700; }
-.ck-ion-icon-button { --color: var(--ck-fg2); --padding-start: 6px; --padding-end: 6px; margin: 0; }
 .ck-ion-accent-text { color: var(--ck-accent-ink); }
 
 /* under the title: the search field and the label chips (Recipes, Groceries) */
-ion-toolbar.ck-ion-subbar { --padding-start: 0; --padding-end: 0; --padding-bottom: 12px; --min-height: 0; }
-.ck-ion-subbar ion-searchbar, ion-searchbar.ck-ion-card-search {
+ ion-searchbar.ck-ion-card-search {
   --background: var(--ck-soft); --border-radius: 20px; --placeholder-color: var(--ck-fg2); --placeholder-opacity: 1; --icon-color: var(--ck-fg2);
   padding: 0 16px; min-height: 0;
 }
@@ -100,8 +98,6 @@ ion-list.ck-ion-inset { --ion-item-background: var(--ck-surface); border-radius:
 ion-list.ck-ion-inset ion-item { --min-height: 48px; font-size: 16px; }
 .ck-ion-thumb { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; flex: none; margin-inline-end: 12px; }
 .ck-ion-thumb-round { border-radius: 50%; }
-.ck-ion-swatch { width: 22px; height: 22px; border-radius: 50%; margin-inline-end: 12px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06); }
-ion-item.ck-ion-indented { --padding-start: 50px; }
 ion-item.ck-ion-organize-heading { font-family: var(--ck-font-display); font-weight: 600; font-size: 17px; --background: var(--ck-bg); }
 .ck-ion-footnote { display: block; margin: 16px 20px 0; font-size: 13px; line-height: 1.4; color: var(--ck-muted); }
 .ck-ion-footnote a { color: var(--ck-accent-ink); }
@@ -113,7 +109,6 @@ ion-item.ck-ion-organize-heading { font-family: var(--ck-font-display); font-wei
 ion-note.ck-ion-line-note { display: block; margin-top: 2px; font-size: 13px; color: var(--ck-muted); }
 .ck-ion-row-note { display: block; margin: 2px 0 0; font-size: 13px; color: var(--ck-muted); }
 ion-item.ck-done .ck-ion-line, ion-item.ck-done .ck-ion-cook-line, ion-item.ck-done .ck-cook-text { text-decoration: line-through; color: var(--ck-done-ink); }
-ion-note.ck-ion-amount { font-weight: 700; color: var(--ck-fg); font-size: 15px; padding-inline-start: 8px; }
 .ck-ion-radio-label { display: flex; align-items: baseline; gap: 10px; font-weight: 600; }
 .ck-ion-radio-label ion-note { font-weight: 400; font-size: 13px; }
 
@@ -208,49 +203,17 @@ ion-button.ck-ion-viewer-close {
 /* ── a cookbook: its colour and plates under a see-through bar, frosted buttons, solid once they've scrolled away ── */
 .ck-ion-hero-bar:not(.ck-ion-solid) ion-back-button, .ck-ion-hero-bar:not(.ck-ion-solid) .ck-ion-bar-button:not(.ck-ion-bar-primary) { --background: var(--ck-frosted-button); }
 ion-title.ck-ion-hero-title { position: static; text-align: start; padding-inline: 8px; }
-.ck-ion-book-hero {
-  background-image: linear-gradient(transparent 62%, var(--ck-bg) 100%);
-  padding: calc(var(--ion-safe-area-top, 0px) + 64px) 16px 4px; overflow: hidden;
-}
-.ck-ion-book-hero .ck-plates { height: 156px; margin: 0 -16px; }
-.ck-ion-book-hero .ck-plates .ck-plate { border-width: 4px; }
-.ck-ion-book-hero .ck-plates .ck-plate-middle { width: 150px; height: 150px; }
-.ck-ion-book-hero .ck-plates .ck-plate-left, .ck-ion-book-hero .ck-plates .ck-plate-right { width: 108px; height: 108px; }
-.ck-ion-book-hero .ck-plates .ck-plate-left { margin-right: -34px; }
-.ck-ion-book-hero .ck-plates .ck-plate-right { margin-left: -34px; }
-.ck-ion-book-title { margin: 12px 0 0; font-family: var(--ck-font-display); font-size: 32px; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; text-wrap: balance; }
-.ck-ion-book-meta { margin: 6px 0 0; font-size: 14px; color: var(--ck-fg2); }
-ion-searchbar.ck-ion-hero-search { --background: var(--ck-surface); --border-radius: 20px; padding: 16px 0 4px; }
-.ck-ion-shelf-row { display: grid; grid-auto-flow: column; grid-auto-columns: 42%; gap: 12px; overflow-x: auto; padding: 0 16px 8px; scroll-snap-type: x mandatory; scrollbar-width: none; }
-.ck-ion-shelf-row > * { scroll-snap-align: start; }
-.ck-ion-shelf-empty { margin: 0 16px; }
-.ck-ion-shelf:last-child { padding-bottom: 120px; }
 a.ck-ion-book-tile { border-radius: 20px; padding: 14px 12px 14px; overflow: hidden; }
 /* Cookbooks (v1): the count a block's gap (35px) below the bar, the cards 14px apart in rows */
 .ck-ion-count.ck-ion-count-loose { margin-top: 35px; }
 .ck-ion-grid.ck-ion-book-grid { row-gap: 14px; }
-.ck-ion-tile-skeleton { height: 190px; border-radius: 20px; margin: 0; }
 
 /* ── the Planner ── */
-ion-toolbar.ck-ion-week-bar { --padding-bottom: 6px; }
-.ck-ion-week-name { padding: 0 16px 6px; font-size: 13px; color: var(--ck-muted); }
 .ck-ion-week { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 8px; }
 .ck-ion-day { display: grid; justify-items: center; gap: var(--ck-day-dot-gap); padding: 0; border: 0; background: none; font: inherit; color: var(--ck-fg); }
-.ck-ion-day-letter { font-size: 12px; color: var(--ck-muted); }
-.ck-ion-day-circle { display: grid; place-items: center; width: var(--ck-day-size); height: var(--ck-day-size); border-radius: 50%; font-size: 16px; font-weight: 600; }
-.ck-ion-day-today .ck-ion-day-circle { color: var(--ck-accent-ink); }
-.ck-ion-day-on .ck-ion-day-circle { background-color: var(--ck-accent); color: var(--ck-surface); }
-.ck-ion-day-dot { width: 5px; height: 5px; border-radius: 50%; }
-.ck-ion-day-dot.on { background-color: var(--ck-accent); }
-.ck-ion-day-head h2 { margin: 18px 0 4px; }
-.ck-ion-agenda-on .ck-ion-day-head h2 { color: var(--ck-accent-ink); }
-.ck-ion-day-empty { margin: 0 20px; }
 ion-item-option.ck-ion-option-move { --background: var(--ck-fg2); }
-.ck-ion-week-hint { padding-bottom: 120px; }
 
 /* ── Groceries ── */
-button.ck-ion-store { display: inline-flex; align-items: center; gap: 4px; margin: 14px 20px 0; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; color: var(--ck-fg2); }
-button.ck-ion-store b { color: var(--ck-fg); }
 ion-button.ck-ion-instacart { --color: var(--ck-accent-ink); }
 
 /* ── Settings ── */
@@ -317,7 +280,6 @@ ion-button.ck-ion-viewer-close::part(native) { border-radius: 9999px; }
 ion-content.ck-ion-recipe::part(scroll), ion-content.ck-ion-book::part(scroll) { padding-top: 0; }
 
 /* the search field with what's under it (chips, the view switch), stacked */
-.ck-ion-subbar-stack { display: block; width: 100%; }
 ion-item .ck-ion-accent-text, ion-label.ck-ion-accent-text { color: var(--ck-accent-ink); }
 
 /* ── under the bar: the search field and what goes with it (chips, the view switch, the week strip), in the header
@@ -325,7 +287,7 @@ ion-item .ck-ion-accent-text, ion-label.ck-ion-accent-text { color: var(--ck-acc
 .ck-ion-header-extra { display: block; background: var(--ck-bg); padding: 4px 0 12px; } /* v1's docked bar: 4px over the search, 12px under */
 .ck-ion-header-extra:has(.ck-ion-chips) { padding-bottom: 10px; }
 /* one search field everywhere: soft grey pill, the placeholder on the left (the app's look) */
-.ck-ion-header-extra ion-searchbar, ion-searchbar.ck-ion-card-search, ion-searchbar.ck-ion-hero-search {
+.ck-ion-header-extra ion-searchbar, ion-searchbar.ck-ion-card-search {
   --background: var(--ck-soft); --border-radius: 20px; --placeholder-color: var(--ck-fg2); --placeholder-opacity: 1; --icon-color: var(--ck-fg2);
   --box-shadow: none; padding: 0 16px; min-height: 0; height: 44px; text-align: start;
 }
@@ -339,11 +301,8 @@ ion-searchbar .searchbar-input-container { height: 44px; }
 ion-searchbar.searchbar-left-aligned.sc-ion-searchbar-ios-h .searchbar-input.sc-ion-searchbar-ios { padding-inline-start: 44px; padding-top: 0; padding-bottom: 0; font-weight: 500; font-size: 17px; line-height: normal; }
 ion-searchbar.sc-ion-searchbar-ios-h .searchbar-search-icon.sc-ion-searchbar-ios { width: 15px; inset-inline-start: 16px; opacity: 0.9; }
 .ck-ion-header-extra ion-searchbar, ion-searchbar.ck-ion-card-search { --placeholder-color: var(--ck-muted); --icon-color: var(--ck-muted); }
-ion-searchbar.ck-ion-hero-search { --background: var(--ck-surface); padding: 16px 0 4px; height: auto; }
-.ck-ion-handed-over { visibility: hidden; }
 .ck-ion-header-extra .ck-ion-chips { padding-top: 0; margin-top: 14px; }
 .ck-ion-header-extra .ck-ion-segment { margin-top: 12px; }
-.ck-ion-week-bar { padding-bottom: 6px; }
 /* the view switch as the app has it: the picked side dark with white text */
 ion-segment.ck-ion-segment, ion-content.ck-ion-sheet-content ion-segment { --background: var(--ck-soft); }
 ion-segment.ck-ion-segment ion-segment-button, ion-content.ck-ion-sheet-content ion-segment ion-segment-button {
@@ -402,14 +361,9 @@ ion-header.ck-ion-photo-bar.ck-ion-solid ion-back-button, ion-header.ck-ion-phot
 ion-header ion-title.ck-ion-hero-title { opacity: 0 !important; transition: opacity 200ms ease; }
 ion-header.ck-ion-titled ion-title.ck-ion-hero-title { opacity: 1 !important; }
 /* a cookbook's plates and colour fade as they go under the bar (#90) */
-.ck-ion-book-hero { position: relative; }
-.ck-ion-book-hero > * { position: relative; }
-.ck-ion-book-hero::before { content: ''; position: absolute; inset: 0; background: var(--ck-bg); opacity: var(--ck-hero-p, 0); pointer-events: none; }
-.ck-ion-book-hero .ck-plates { opacity: calc(1 - var(--ck-hero-p, 0)); }
 /* its search hands over to the one docked under the bar the moment it reaches it: both are always there, only one shows */
 ion-header .ck-ion-header-extra.ck-ion-docked-search { visibility: hidden; background: transparent; }
 ion-header.ck-ion-docked .ck-ion-header-extra.ck-ion-docked-search { visibility: visible; background: var(--ck-bg); }
-.ck-ion-book-hero.ck-ion-docked .ck-ion-hero-search-wrap { visibility: hidden; }
 .ck-ion-book-skeleton { height: 300px; margin: 0; border-radius: 0; }
 .ck-ion-hero-skeleton { height: auto; margin: 0; border-radius: 0; }
 .ck-ion-grid-top { padding-top: 16px; }

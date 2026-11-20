@@ -2132,7 +2132,7 @@ async function swipeLeft(ctx, page, locator) {
     if (items.some((t) => /Change (Cover|Colour)/.test(t)) || !items.includes('Edit Cover')) throw new Error(`the menu is ${JSON.stringify(items)}`);
     // #39: the user's order and words, Add Recipes left to the bar's +, a thick band before Delete
     const groups = await page.locator('.popover.modal-in .ck-menu-list').evaluateAll((ls) => ls.map((l) => [...l.querySelectorAll('.item-title')].map((t) => t.textContent).join('|')));
-    if (groups.join(' / ') !== 'Rename|Edit Cover|Organize|Add Section / Delete') throw new Error(`the cookbook menu reads ${groups.join(' / ')}`);
+    if (groups.join(' / ') !== 'Rename|Edit Cover / Organize|Add Section / Delete') throw new Error(`the cookbook menu reads ${groups.join(' / ')}`);
     await page.locator(MENU_ROW, { hasText: 'Edit Cover' }).tap(); await page.waitForTimeout(1000);
     // Pulled Beef is the chosen cover (the middle plate); the corn and the kebabs are filled in either side
     const order = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-cover-cell')].map((c) => c.getAttribute('aria-label').split(',')[0]));

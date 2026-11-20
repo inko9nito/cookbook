@@ -371,6 +371,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
           [
             !uncategorized && { label: 'Rename', icon: Pencil, onClick: rename },
             !section && { label: 'Edit Cover', icon: ImageIcon, onClick: () => setChoosingCover(true) },
+          ],
+          [
             canOrganize && { label: 'Organize', icon: ListOrdered, onClick: () => setOrganizing(true) },
             !section && { label: 'Add Section', icon: FolderPlus, onClick: newSection },
           ],

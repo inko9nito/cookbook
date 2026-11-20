@@ -75,7 +75,7 @@ function PickChoice({ row, onPick, onClosed }: { row: AddRow | null; onPick: (ke
       onClosed={onClosed}
       title={row ? `The recipe says ${row.choices?.map((t) => t.item).join(' or ')}` : ''}
       groups={[
-        (row?.choices ?? []).map((t) => ({ label: t.item, checked: row!.pick === t.item, onClick: () => onPick(row!.key, t.item) })),
+        (row?.choices ?? []).map((t) => ({ label: cap(t.item), checked: row!.pick === t.item, onClick: () => onPick(row!.key, t.item) })),
         row ? [{ label: 'Either, decide in the store', checked: !row.pick, onClick: () => onPick(row.key, null) }] : [],
       ]}
     />

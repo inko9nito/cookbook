@@ -75,7 +75,7 @@ export function barOnScroll(
 
 /** A tab's first page, in the style picked: the title, its buttons, what sits under the title (search, chips…), the tab bar. */
 export function TabPage({
-  tab, title, buttons, extra, children, contentRef,
+  tab, title, buttons, extra, children, contentRef, hides = false,
 }: {
   tab: TabName;
   title: string;
@@ -83,10 +83,14 @@ export function TabPage({
   extra?: ReactNode;
   children: ReactNode;
   contentRef?: RefObject<HTMLIonContentElement | null>;
+  /** the title row slides away on scrolling down (old style): as v1, only Recipes (and a cookbook, a recipe) do */
+  hides?: boolean;
 }) {
   const style = useScrollStyle();
   const header = useRef<HTMLIonHeaderElement>(null);
-  const onBar = useMemo(() => barOnScroll(header), []);
+  const hidesRef = useRef(hides);
+  hidesRef.current = hides;
+  const onBar = useMemo(() => barOnScroll(header, { hide: () => hidesRef.current }), []);
   const onScroll = style === 'old' ? onBar : undefined;
   return (
     <IonPage className={`ck-ion-anchor ck-ion-scroll-${style}`}>

@@ -42,7 +42,7 @@ export default function RecipesPage() {
       : typeItIn();
 
   return (
-    <TabPage tab="recipes" title="Recipes"
+    <TabPage tab="recipes" title="Recipes" hides
       buttons={
         <>
           <BarButton label="New recipe" icon={Plus} primary onClick={(e) => add(e.currentTarget)} />

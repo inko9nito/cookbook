@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonContent, IonList, IonItem, IonLabel, IonCheckbox,
-  IonSearchbar, IonDatetime, IonReorderGroup, IonReorder, IonItemSliding, IonItemOptions, IonItemOption, IonNote,
+  IonSearchbar, IonReorderGroup, IonReorder, IonItemSliding, IonItemOptions, IonItemOption, IonNote,
   IonNav, IonBackButton, IonFooter, IonTextarea,
 } from '@ionic/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -9,12 +9,13 @@ import { Pagination, Zoom } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/zoom';
-import { ChefHat, X } from 'lucide-react';
+import { ChefHat, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useCookbooks, useGroceries, useStore } from '../data/store';
 import { addToNote, byName, changeNote, colorOf, isIn, organizeRows, fromOrganizeRows, toggleIn, type Cookbook, type OrganizeRow } from '../lib/cookbook';
 import { coverPhoto, newId, type Photo, type Recipe } from '../lib/recipe';
 import { addRows, linesOf, newItems } from '../lib/groceries';
-import type { Day } from '../lib/planner';
+import { mediumDate, today, type Day } from '../lib/planner';
+import type { Swiper as SwiperClass } from 'swiper/types';
 import { photoStyle } from './photo';
 import { say } from './toast';
 
@@ -222,35 +223,101 @@ export function OrganizeModal({ open, cookbook, onClose }: { open: boolean; cook
 
 // ── a day: Ionic's calendar in a sheet ──
 
+/**
+ * Pick a day (#62, #67): a month at a time in a sheet, drawn exactly like the Planner's week strip (the same circle,
+ * number and dot: v1's calendar was styled to match it, and Ionic's date picker didn't), weeks from Monday. Swipe or
+ * the arrows for another month (Swiper, as the strip). A tapped day fills in, then the sheet closes and the pick goes
+ * through. Swiping the sheet down picks nothing.
+ */
 export function DaySheet({ open, title, busy, value, onPick, onClose }: { open: boolean; title: string; busy?: Set<Day>; value?: Day; onPick: (day: Day) => void; onClose: () => void }) {
-  const picked = useRef(false);
+  const now = today();
+  const [chosen, setChosen] = useState<Day | null>(null);
+  const start = monthStart(value ?? now);
+  const months = useMemo(() => Array.from({ length: MONTHS * 2 + 1 }, (_, i) => addMonths(start, i - MONTHS)), [start]);
+  const [shown, setShown] = useState(MONTHS);
+  const swiper = useRef<SwiperClass | null>(null);
+  const picked = chosen ?? value;
   return (
     <IonModal
       isOpen={open}
-      onWillPresent={() => (picked.current = false)}
+      onWillPresent={() => {
+        setChosen(null);
+        setShown(MONTHS);
+      }}
       onDidDismiss={onClose}
       breakpoints={[0, 1]}
       initialBreakpoint={1}
-      className="ck-ion-sheet ck-ion-auto-sheet"
+      handle={false}
+      className="ck-ion-sheet ck-ion-auto-sheet ck-ion-day-sheet"
     >
       <div className="ck-ion-auto-inner">
-        <div className="ck-ion-sheet-title">{title}</div>
-        <IonDatetime
-          presentation="date"
-          firstDayOfWeek={1}
-          value={value}
-          highlightedDates={[...(busy ?? [])].map((date) => ({ date, textColor: 'var(--ck-accent-ink)', backgroundColor: 'var(--ck-accent-tint)' }))}
-          onIonChange={(e) => {
-            const v = String(e.detail.value ?? '').slice(0, 10);
-            if (!v || picked.current) return;
-            picked.current = true;
-            onPick(v);
-          }}
-        />
+        <div className="ck-ion-sheet-title ck-ion-day-sheet-title">{title}</div>
+        <div className="ck-month-bar">
+          <div className="ck-month-pill">
+            <button type="button" className="ck-ion-plain-button ck-month-arrow" aria-label="Previous month" onClick={() => swiper.current?.slidePrev()}>
+              <ChevronLeft size={24} strokeWidth={2.25} />
+            </button>
+            <span className="ck-month-name">{monthName(months[shown])}</span>
+            <button type="button" className="ck-ion-plain-button ck-month-arrow" aria-label="Next month" onClick={() => swiper.current?.slideNext()}>
+              <ChevronRight size={24} strokeWidth={2.25} />
+            </button>
+          </div>
+        </div>
+        <div className="ck-month-week">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+            <span key={d}>{d}</span>
+          ))}
+        </div>
+        <Swiper initialSlide={MONTHS} onSwiper={(sw) => (swiper.current = sw)} onSlideChange={(sw) => setShown(sw.activeIndex)} observer observeParents>
+          {months.map((m) => (
+            <SwiperSlide key={m}>
+              <div className="ck-month">
+                {monthCells(m).map((d, i) =>
+                  d ? (
+                    <button
+                      key={d}
+                      type="button"
+                      className={`ck-week-day ck-ion-plain-button${d === picked ? ' ck-week-selected' : ''}${d === now ? ' ck-week-today' : ''}${busy?.has(d) ? ' ck-week-busy' : ''}`}
+                      aria-label={mediumDate(d)}
+                      onClick={() => {
+                        if (chosen) return;
+                        setChosen(d);
+                        setTimeout(() => onPick(d), SHOW_PICK_MS);
+                      }}
+                    >
+                      <span className="ck-week-num" aria-hidden="true">{Number(d.slice(8))}</span>
+                      <span className="ck-week-dot" aria-hidden="true" />
+                    </button>
+                  ) : (
+                    <span key={`x${i}`} />
+                  ),
+                )}
+              </div>
+            </SwiperSlide>
+          ))}
+        </Swiper>
       </div>
     </IonModal>
   );
 }
+
+const MONTHS = 24; // months either side of the one shown
+const SHOW_PICK_MS = 280; // the tapped day shows filled for a moment before the sheet closes (v1)
+const monthStart = (day: Day): Day => `${day.slice(0, 7)}-01`;
+const addMonths = (first: Day, n: number): Day => {
+  const d = new Date(Number(first.slice(0, 4)), Number(first.slice(5, 7)) - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+};
+const monthName = (first: Day) => new Date(Number(first.slice(0, 4)), Number(first.slice(5, 7)) - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+/** a month's six weeks from Monday: its days, and nothing in the cells of the months either side (as iOS's Calendar) */
+const monthCells = (first: Day): (Day | null)[] => {
+  const lead = (new Date(Number(first.slice(0, 4)), Number(first.slice(5, 7)) - 1, 1).getDay() + 6) % 7;
+  const days = new Date(Number(first.slice(0, 4)), Number(first.slice(5, 7)), 0).getDate();
+  return Array.from({ length: 42 }, (_, i) => {
+    const n = i - lead + 1;
+    return n >= 1 && n <= days ? `${first.slice(0, 8)}${String(n).padStart(2, '0')}` : null;
+  });
+};
 
 // ── Add to Grocery List: a card that opens on the recipe's ingredients ──
 

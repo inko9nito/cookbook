@@ -50,7 +50,7 @@ export function SettingsPage() {
         </IonSegment>
         <p className="ck-ion-footnote">
           {scroll === 'old'
-            ? 'Title rows slide away as you scroll down and come back as you scroll up; search and chips stay at the top. A cookbook’s plates fade under a see-through bar.'
+            ? 'As v1: on Recipes, a cookbook and a recipe the title row slides away as you scroll down and comes back as you scroll up; search and chips stay at the top. A cookbook’s plates fade under a see-through bar.'
             : 'Ionic’s own: the big title scrolls away with the page and a small one fades into the bar, which stays. Search and chips scroll away.'}
         </p>
         <IonList inset lines="full" className="ck-ion-inset">

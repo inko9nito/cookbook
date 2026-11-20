@@ -10,6 +10,8 @@
   --f7-navbar-height: 48px;
   --f7-subnavbar-height: 60px;
   --f7-safe-area-top: var(--ion-safe-area-top, 0px);
+  --f7-safe-area-bottom: var(--ion-safe-area-bottom, 0px);
+  --f7-tabbar-icons-height: 60px;
   --ion-font-family: var(--ck-font);
   --ion-background-color: var(--ck-bg);
   --ion-background-color-rgb: 245, 245, 245;
@@ -426,6 +428,39 @@ button.ck-shelf-all.ck-ion-plain-button { line-height: 1.4; font-family: var(--c
 .ck-ion-book-top.ck-ion-titled .ck-book-hero-meta { visibility: hidden; }
 button.ck-ion-plain-button { padding: 0; border: 0; background: none; text-align: start; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ck-ion-not-found { margin: 24px 16px; text-align: center; }
+
+/* the Planner, with v1's classes (cookbook.css: .ck-week-*, .ck-agenda, .ck-plan-*): the strip under the bar keeps its
+   line and shadow always, as v1's */
+.ck-ion-header-extra:has(> .ck-week-label) { padding: 10px 0 2px; }
+.ck-ion-header-extra > .ck-week-label { margin-bottom: 12px; }
+.ck-plan-day-head h2 { line-height: 1.4; }
+.ck-agenda { --f7-subnavbar-height: 122px; } /* the week strip's height, for the room after the last day */
+ion-header:has(.ck-week-label) { box-shadow: 0 0.5px 0 var(--ck-strong), var(--ck-bar-shadow); }
+button.ck-week-day.ck-ion-plain-button { width: 100%; padding: 0 0 14px; text-align: center; }
+button.ck-plan-add.ck-ion-plain-button { display: grid; place-items: center; width: 40px; height: 40px; flex: none; color: var(--ck-accent-ink); }
+ion-button.ck-ion-plan-today { font-family: var(--ck-font); font-size: 17px; font-weight: 500; margin: 0 4px 0 0; }
+ion-list.list-inset.ck-ion-plan-list { margin: 0 16px; padding: 0; border-radius: 16px; --ion-item-background: var(--ck-surface); }
+ion-list.ck-ion-plan-list ion-item { --min-height: 68px; --padding-start: 12px; --inner-padding-end: 12px; --border-color: var(--ck-line); }
+ion-list.ck-ion-plan-list ion-item-sliding:last-child ion-item { --border-width: 0; --inner-border-width: 0; }
+ion-list.ck-ion-plan-list .ck-picker-thumb { margin: 12px 16px 12px 0; }
+ion-list.ck-ion-plan-list ion-label { margin: 0; }
+ion-list.ck-ion-plan-list ion-label h3 { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.4; color: var(--ck-fg); }
+ion-list.ck-ion-plan-list .ck-ion-plan-note ion-label h3 { font-weight: 500; white-space: pre-line; overflow-wrap: anywhere; }
+ion-list.ck-ion-plan-list ion-label p { margin: 0; font-size: 13px; font-weight: 500; line-height: 1.25; color: var(--ck-muted); }
+ion-item-option.ck-ion-option-meal { --background: var(--ck-muted); }
+
+/* Pick a day (DaySheet): v1's calendar sheet, white with 32px corners, the question 24px in; the month's days are the
+   week strip's (.ck-week-day), 50px rows over 18px side insets, so the first and last circles meet the 24px edge */
+ion-modal.ck-ion-day-sheet { --background: var(--ck-surface); --border-radius: 32px; }
+ion-modal.ck-ion-day-sheet .ck-ion-auto-inner { padding: 0 0 calc(32px + var(--ion-safe-area-bottom, 0px)); }
+.ck-ion-sheet-title.ck-ion-day-sheet-title { display: flex; align-items: center; height: 72px; padding: 0 24px; box-sizing: border-box; color: var(--ck-fg); }
+.ck-month-bar { display: flex; justify-content: center; align-items: flex-start; height: 56px; padding-top: 16px; box-sizing: border-box; }
+.ck-month-pill { display: flex; align-items: center; gap: 12px; height: 40px; border-radius: 32px; background: var(--ck-surface); box-shadow: 0 0 0 1px var(--ck-line), 0 2px 8px rgba(0, 0, 0, 0.06); }
+.ck-month-name { min-width: 7.5em; text-align: center; font-size: 17px; font-weight: 500; color: var(--ck-accent-ink); }
+button.ck-month-arrow { display: grid; place-items: center; width: 48px; height: 48px; color: var(--ck-accent-ink); }
+.ck-month-week { display: grid; grid-template-columns: repeat(7, 1fr); margin-top: 16px; padding: 0 18px; height: 18px; font-size: 11px; font-weight: 500; line-height: 18px; color: var(--ck-muted); text-align: center; }
+.ck-month { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 50px; padding: 0 18px; }
+.ck-month button.ck-week-day.ck-ion-plain-button { padding: 6px 0 0; align-content: start; }
 
 /* the crash screen (CrashScreen.tsx): its Reload button keeps a gap between the icon and the word */
 .ck-crash ion-button svg { margin-right: 6px; }

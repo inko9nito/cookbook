@@ -2,22 +2,23 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonContent, IonList, IonItem, IonLabel, IonCheckbox,
   IonSearchbar, IonReorderGroup, IonReorder, IonItemSliding, IonItemOptions, IonItemOption, IonNote,
-  IonNav, IonBackButton, IonFooter, IonTextarea,
+  IonNav, IonBackButton, IonFooter, IonTextarea, IonAccordionGroup, IonAccordion,
 } from '@ionic/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, Zoom } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/zoom';
-import { ChefHat, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { BookOpen, ChefHat, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { useCookbooks, useGroceries, useStore } from '../data/store';
-import { addToNote, byName, changeNote, colorOf, isIn, organizeRows, fromOrganizeRows, toggleIn, type Cookbook, type OrganizeRow } from '../lib/cookbook';
+import { addToNote, byName, changeNote, emptyCookbook, isIn, platePhotos, organizeRows, fromOrganizeRows, toggleIn, type Cookbook, type OrganizeRow } from '../lib/cookbook';
 import { coverPhoto, newId, type Photo, type Recipe } from '../lib/recipe';
 import { addRows, linesOf, newItems } from '../lib/groceries';
 import { mediumDate, today, type Day } from '../lib/planner';
 import type { Swiper as SwiperClass } from 'swiper/types';
 import { photoStyle } from './photo';
 import { say } from './toast';
+import { usePrompt } from './ui';
 
 /**
  * Issue #141, the move to Ionic: the app's popups as Ionic modals. "Card" ones are iOS's card (the app shrinks back behind
@@ -33,17 +34,17 @@ function CardHeader({ title, onCancel, onDone, done = 'Done' }: { title: string;
       <IonToolbar>
         {onCancel && (
           <IonButtons slot="start">
-            <IonButton className="ck-ion-text-button" onClick={onCancel}>
+            <button type="button" className="ck-ion-plain-button ck-ion-pill-cancel" onClick={onCancel}>
               Cancel
-            </IonButton>
+            </button>
           </IonButtons>
         )}
         <IonTitle>{title}</IonTitle>
         {onDone && (
           <IonButtons slot="end">
-            <IonButton className="ck-ion-text-button ck-ion-strong" onClick={onDone}>
+            <button type="button" className="ck-ion-plain-button ck-ion-pill-done" onClick={onDone}>
               {done}
-            </IonButton>
+            </button>
           </IonButtons>
         )}
       </IonToolbar>
@@ -64,41 +65,91 @@ const Thumb = ({ recipe }: { recipe?: Recipe }) => {
 
 export function AddToCookbookModal({ open, recipe, onClose }: { open: boolean; recipe: Recipe; onClose: () => void }) {
   const { cookbooks, saveCookbook } = useCookbooks();
+  const { recipes } = useStore();
+  const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
+  const prompt = usePrompt();
   const [draft, setDraft] = useState<Cookbook[]>([]);
+  const [made, setMade] = useState<Cookbook[]>([]);
   useEffect(() => {
-    if (open) setDraft([...cookbooks].sort(byName));
+    if (open) {
+      setDraft([...cookbooks]);
+      setMade([]);
+    }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const done = () => {
-    const changed = draft.filter((c) => c !== cookbooks.find((x) => x.id === c.id));
-    changed.forEach(saveCookbook);
-    const note = addToNote(recipe.id, cookbooks, changed);
+    const changed = draft.filter((c) => JSON.stringify(c) !== JSON.stringify(cookbooks.find((x) => x.id === c.id)));
+    [...changed, ...made].forEach(saveCookbook);
+    const note = addToNote(recipe.id, cookbooks, [...changed, ...made]);
     onClose();
     if (note) say(note);
   };
-  const set = (c: Cookbook, sectionId: string | null, on: boolean) => setDraft((d) => d.map((x) => (x.id === c.id ? toggleIn(x, sectionId, recipe.id, on) : x)));
+  // v1: a new cookbook starts with this recipe in it
+  const newCookbook = async () => {
+    const name = await prompt('New Cookbook', 'It starts with this recipe in it.', '', 'Add');
+    if (name?.trim()) setMade((m) => [...m, { ...emptyCookbook(name, newId), recipeIds: [recipe.id] }]);
+  };
+  const set = (c: Cookbook, sectionId: string | null, on: boolean) => {
+    const next = toggleIn(c, sectionId, recipe.id, on);
+    if (made.some((m) => m.id === c.id)) setMade((ms) => ms.map((m) => (m.id === c.id ? next : m)));
+    else setDraft((d) => d.map((x) => (x.id === c.id ? next : x)));
+  };
+  const thumb = (c: Cookbook) => {
+    const cover = platePhotos(c, byId)[0];
+    return (
+      <span slot="start" className={`ck-picker-thumb ck-photo${cover ? '' : ' ck-photo-empty'}`} style={photoStyle(cover)} aria-hidden="true">
+        {!cover && <BookOpen size={16} strokeWidth={1.5} />}
+      </span>
+    );
+  };
+  const sorted = [...draft, ...made].sort(byName);
   return (
     <IonModal isOpen={open} onDidDismiss={onClose} presentingElement={appEl()} className="ck-ion-card-modal">
       <CardHeader title="Add to Cookbook" onCancel={onClose} onDone={done} />
       <IonContent>
-        <IonList inset lines="full" className="ck-ion-inset">
-          {draft.map((c) => (
-            <div key={c.id}>
-              <IonItem>
-                <span slot="start" className={`ck-ion-swatch ck-tint-${colorOf(c)}`} />
-                <IonCheckbox checked={isIn(c, null, recipe.id)} onIonChange={(e) => set(c, null, e.detail.checked)} justify="space-between">
-                  {c.name}
-                </IonCheckbox>
-              </IonItem>
-              {c.sections.map((s) => (
-                <IonItem key={s.id} className="ck-ion-indented">
-                  <IonCheckbox checked={isIn(c, s.id, recipe.id)} onIonChange={(e) => set(c, s.id, e.detail.checked)} justify="space-between">
-                    {s.name}
-                  </IonCheckbox>
-                </IonItem>
-              ))}
-            </div>
-          ))}
+        <IonList inset lines="full" className="ck-ion-inset ck-ion-card-list">
+          <IonItem button detail={false} onClick={newCookbook}>
+            <Plus slot="start" size={18} strokeWidth={2} className="ck-ion-new-icon" />
+            <IonLabel>New Cookbook</IonLabel>
+          </IonItem>
         </IonList>
+        {sorted.length > 0 && (
+          <IonList inset lines="inset" className="ck-ion-inset ck-ion-card-list ck-ion-addto-list">
+            {/* a cookbook with sections folds them away (#83): its row says which ones the recipe is in */}
+            <IonAccordionGroup multiple>
+              {sorted.map((c) => {
+                if (!c.sections.length)
+                  return (
+                    <IonItem key={c.id} className="ck-ion-addto-row">
+                      <IonCheckbox slot="start" className="ck-ion-tick" checked={isIn(c, null, recipe.id)} onIonChange={(e) => set(c, null, e.detail.checked)} aria-label={c.name} />
+                      {thumb(c)}
+                      <IonLabel onClick={() => set(c, null, !isIn(c, null, recipe.id))}>{c.name}</IonLabel>
+                    </IonItem>
+                  );
+                const sections = [{ id: null as string | null, name: 'Uncategorized' }, ...c.sections];
+                const inSections = sections.filter((s) => isIn(c, s.id, recipe.id)).map((s) => s.name);
+                return (
+                  <IonAccordion key={c.id} value={c.id} className="ck-ion-addto-book">
+                    <IonItem slot="header" className="ck-ion-addto-row ck-ion-addto-parent">
+                      {thumb(c)}
+                      <IonLabel>
+                        {c.name}
+                        {inSections.length > 0 && <p>In {inSections.join(', ')}</p>}
+                      </IonLabel>
+                    </IonItem>
+                    <div slot="content">
+                      {sections.map((s) => (
+                        <IonItem key={s.id ?? ''} className="ck-ion-addto-section">
+                          <IonCheckbox slot="start" className="ck-ion-tick" checked={isIn(c, s.id, recipe.id)} onIonChange={(e) => set(c, s.id, e.detail.checked)} aria-label={s.name} />
+                          <IonLabel onClick={() => set(c, s.id, !isIn(c, s.id, recipe.id))}>{s.name}</IonLabel>
+                        </IonItem>
+                      ))}
+                    </div>
+                  </IonAccordion>
+                );
+              })}
+            </IonAccordionGroup>
+          </IonList>
+        )}
       </IonContent>
     </IonModal>
   );

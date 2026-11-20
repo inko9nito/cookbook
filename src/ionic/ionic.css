@@ -166,7 +166,7 @@ ion-modal.ck-ion-auto-sheet .ck-ion-auto-inner { padding: 8px 0 calc(16px + var(
 .ck-ion-sheet-title { padding: 18px 24px 6px; font-family: var(--ck-font-display); font-size: 17px; font-weight: 600; }
 ion-modal.ck-ion-auto-sheet ion-datetime { --background: var(--ck-bg); margin: 0 auto; }
 ion-modal.ck-ion-card-modal { --background: var(--ck-bg); }
-.ck-ion-card-header ion-toolbar { --min-height: 56px; }
+.ck-ion-card-header ion-toolbar { --min-height: 72px; --padding-top: 0; --padding-bottom: 0; --padding-start: 16px; --padding-end: 16px; }
 ion-searchbar.ck-ion-card-search { padding: 12px 16px 0; }
 ion-textarea.ck-ion-note-field { font-size: 18px; line-height: 1.45; --padding-top: 0; min-height: 60vh; }
 /* v1's bottom bar: white, a line on top, 64px with the 48px button in it */
@@ -529,3 +529,28 @@ ion-modal.ck-ion-sheet .ck-ion-sheet-header ion-button { --color: var(--ck-accen
 ion-content.ck-ion-sheet-content ion-segment.ck-ion-strong-segment { margin: 18px 24px 0; width: auto; }
 ion-button.ck-ion-step { --background: var(--ck-soft); --box-shadow: none; width: 34px; height: 34px; min-height: 34px; margin: 0; }
 ion-modal.ck-ion-sheet.ck-ion-sheet ion-header ion-toolbar:first-of-type { padding-top: 0 !important; padding-bottom: 0 !important; } /* Ionic leaves room for its handle, which v1's sheets don't have */
+
+/* cards as v1's popups: 32px corners, a 72px header with a grey Cancel pill, the title in the middle and a Tomato Done
+   pill (#55: 16px from the top and sides) */
+ion-modal.ck-ion-card-modal { --border-radius: 32px; }
+ion-modal.ck-ion-card-modal ion-header ion-toolbar:first-of-type { padding-top: 0 !important; }
+.ck-ion-card-header ion-title { font-size: 17px; font-weight: 500; color: var(--ck-title); }
+button.ck-ion-pill-cancel.ck-ion-plain-button, button.ck-ion-pill-done.ck-ion-plain-button {
+  height: 40px; padding: 0 12px; border-radius: 9999px; font-family: var(--ck-font); font-size: 17px; line-height: 40px; text-align: center;
+}
+button.ck-ion-pill-cancel.ck-ion-plain-button { background: var(--ck-soft); color: var(--ck-fg); font-weight: 400; }
+button.ck-ion-pill-done.ck-ion-plain-button { background: var(--ck-accent); color: var(--ck-surface); font-weight: 600; }
+button.ck-ion-pill-done.ck-ion-plain-button:disabled { opacity: 0.4; }
+ion-list.list-ios.list-inset.ck-ion-card-list { margin: 16px 16px 0; }
+ion-list.list-ios.list-inset.ck-ion-card-list + ion-list.ck-ion-card-list { margin-top: 16px; }
+.ck-ion-new-icon { color: var(--ck-accent-ink); margin-inline-end: 16px; }
+ion-list.ck-ion-addto-list ion-item { --min-height: 68px; }
+ion-list.ck-ion-addto-list ion-checkbox.ck-ion-tick { margin: 0 16px 0 0; }
+ion-list.ck-ion-addto-list .ck-picker-thumb { margin: 12px 16px 12px 0; }
+ion-list.ck-ion-addto-list ion-label { font-weight: 600; }
+ion-list.ck-ion-addto-list ion-label p { margin: 0; font-size: 12px; font-weight: 500; color: var(--ck-muted); }
+ion-list.ck-ion-addto-list ion-item.ck-ion-addto-section { --min-height: 48px; --padding-start: 54px; }
+ion-list.ck-ion-addto-list ion-item.ck-ion-addto-section ion-label { font-weight: 500; }
+ion-list.ck-ion-addto-list .ck-ion-addto-parent { --padding-start: 54px; }
+ion-list.ck-ion-addto-list ion-item { --border-color: var(--ck-line); }
+ion-list.ck-ion-addto-list ion-item .ion-accordion-toggle-icon { color: var(--ck-strong); font-size: 18px; }

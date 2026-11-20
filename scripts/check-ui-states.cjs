@@ -2114,7 +2114,7 @@ async function swipeLeft(ctx, page, locator) {
     if ((await cards()).join(',') !== 'Corn pudding,Tahini Sauce') throw new Error(`the Uncategorized page shows ${JSON.stringify(await cards())}`);
     await page.locator(`${CUR} > .navbar a[aria-label="More actions"]`).tap(); await page.waitForTimeout(700);
     const items = await page.locator(MENU_ROW).allTextContents();
-    if (items.join('|') !== 'Add Recipes|Organize') throw new Error(`Uncategorized's menu is ${JSON.stringify(items)}`);
+    if (items.join('|') !== 'Organize') throw new Error(`Uncategorized's menu is ${JSON.stringify(items)}`);
     await closeMenu(); await page.waitForTimeout(600);
     await page.locator(`${CUR} > .navbar .link.back`).tap(); await page.waitForTimeout(900);
   });
@@ -2130,6 +2130,9 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator(`${CUR} > .navbar a[aria-label="More actions"]`).tap(); await page.waitForTimeout(700);
     const items = await page.locator(MENU_ROW).allTextContents();
     if (items.some((t) => /Change (Cover|Colour)/.test(t)) || !items.includes('Edit Cover')) throw new Error(`the menu is ${JSON.stringify(items)}`);
+    // #39: the user's order and words, Add Recipes left to the bar's +, a thick band before Delete
+    const groups = await page.locator('.popover.modal-in .ck-menu-list').evaluateAll((ls) => ls.map((l) => [...l.querySelectorAll('.item-title')].map((t) => t.textContent).join('|')));
+    if (groups.join(' / ') !== 'Rename|Edit Cover|Organize|Add Section / Delete') throw new Error(`the cookbook menu reads ${groups.join(' / ')}`);
     await page.locator(MENU_ROW, { hasText: 'Edit Cover' }).tap(); await page.waitForTimeout(1000);
     // Pulled Beef is the chosen cover (the middle plate); the corn and the kebabs are filled in either side
     const order = await page.evaluate(() => [...document.querySelectorAll('.popup.modal-in .ck-cover-cell')].map((c) => c.getAttribute('aria-label').split(',')[0]));
@@ -2310,7 +2313,7 @@ async function swipeLeft(ctx, page, locator) {
   await step('26f-section-more', async () => {
     await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
     const items = await page.locator(MENU_ROW).allTextContents();
-    if (items.join('|') !== 'Add Recipes|Organize|Rename Section|Delete Section') throw new Error(`the section menu is ${JSON.stringify(items)}`);
+    if (items.join('|') !== 'Rename|Organize|Delete') throw new Error(`the section menu is ${JSON.stringify(items)}`);
   });
   await step('26g-organize', async () => {
     await page.locator(MENU_ROW, { hasText: 'Organize' }).tap(); await page.waitForTimeout(1000);
@@ -2337,7 +2340,7 @@ async function swipeLeft(ctx, page, locator) {
   await step('26h-new-section', async () => {
     await page.locator('.view.tab-active .page-current > .navbar .link.back').tap(); await page.waitForTimeout(900);
     await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
-    await page.locator(MENU_ROW, { hasText: 'New Section' }).tap(); await page.waitForTimeout(600);
+    await page.locator(MENU_ROW, { hasText: 'Add Section' }).tap(); await page.waitForTimeout(600);
     await prompt('Fish');
     const title = await page.locator('.view.tab-active .page-current > .navbar .title').first().textContent();
     if (!title.includes('Fish')) throw new Error(`a new section opens "${title}"`);
@@ -2403,7 +2406,7 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('26k-delete-cookbook', async () => {
     await page.locator('.view.tab-active .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
-    await page.locator(MENU_ROW, { hasText: 'Delete Cookbook' }).tap(); await page.waitForTimeout(600);
+    await page.locator(MENU_ROW, { hasText: /^Delete$/ }).tap(); await page.waitForTimeout(600);
     await page.locator('.dialog.modal-in .dialog-button', { hasText: 'OK' }).tap(); await page.waitForTimeout(1000);
     const tiles = await page.locator(`${CUR} .ck-book-tile .ck-book-name`).allTextContents();
     if (tiles.includes('Soups') || tiles.length !== 3) throw new Error(`after deleting, the cookbooks are ${JSON.stringify(tiles)}`);
@@ -2485,7 +2488,7 @@ async function swipeLeft(ctx, page, locator) {
     }
     if (seen.some((x) => x !== 'Slow soups|true')) throw new Error(`while saving, the new cookbook's page showed ${JSON.stringify([...new Set(seen)])}`);
     await page.locator('#view-cookbooks .page-current > .navbar a[aria-label="More actions"]').tap(); await page.waitForTimeout(700);
-    await page.locator(MENU_ROW, { hasText: 'New Section' }).tap(); await page.waitForTimeout(600);
+    await page.locator(MENU_ROW, { hasText: 'Add Section' }).tap(); await page.waitForTimeout(600);
     await prompt('Section 1');
     const seen2 = [];
     for (let i = 0; i < 12; i++) {

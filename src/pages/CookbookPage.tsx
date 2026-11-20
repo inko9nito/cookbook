@@ -144,6 +144,8 @@ export default function CookbookPage({ f7route, f7router }: Props) {
       </Page>
     );
   }
+  // something for Organize to order: recipes, or sections to move
+  const canOrganize = cookbookRecipeIds(book).some((id) => byId.has(id)) || book.sections.length > 1;
 
   const save = (c: Cookbook) => saveCookbook(c);
   // issue #95: the cookbook's sort, for every shelf, section and search in it (Manual: the order Organize sets)
@@ -260,9 +262,12 @@ export default function CookbookPage({ f7route, f7router }: Props) {
           <Link iconOnly onClick={() => setSortOpen(true)} aria-label="Sort recipes">
             <ArrowUpDown {...navIcon} />
           </Link>
-          <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
-            <Ellipsis {...navIcon} />
-          </Link>
+          {/* Uncategorized's ⋯ only organizes: no ⋯ while there's nothing to organize */}
+          {(!uncategorized || canOrganize) && (
+            <Link iconOnly onClick={() => setMoreOpen(true)} aria-label="More actions">
+              <Ellipsis {...navIcon} />
+            </Link>
+          )}
         </NavRight>
         {/* issue #63: the search bar stays under the title while the shelves scroll (Framework7's subnavbar, as on
             Recipes). It's always there, even with nothing to search yet, so the page keeps its shape. */}
@@ -362,14 +367,14 @@ export default function CookbookPage({ f7route, f7router }: Props) {
         opened={moreOpen}
         onClosed={() => setMoreOpen(false)}
         groups={[
+          // the user's order and words (#39); Add Recipes is the bar's +
           [
-            { label: 'Add Recipes', icon: Plus, onClick: () => setAdding(true) },
-            (cookbookRecipeIds(book).some((id) => byId.has(id)) || book.sections.length > 1) && { label: 'Organize', icon: ListOrdered, onClick: () => setOrganizing(true) },
-            !section && { label: 'New Section', icon: FolderPlus, onClick: newSection },
-            !uncategorized && { label: section ? 'Rename Section' : 'Rename Cookbook', icon: Pencil, onClick: rename },
+            !uncategorized && { label: 'Rename', icon: Pencil, onClick: rename },
             !section && { label: 'Edit Cover', icon: ImageIcon, onClick: () => setChoosingCover(true) },
+            canOrganize && { label: 'Organize', icon: ListOrdered, onClick: () => setOrganizing(true) },
+            !section && { label: 'Add Section', icon: FolderPlus, onClick: newSection },
           ],
-          [!uncategorized && { label: section ? 'Delete Section' : 'Delete Cookbook', icon: Trash2, danger: true, onClick: remove }],
+          [!uncategorized && { label: 'Delete', icon: Trash2, danger: true, onClick: remove }],
         ]}
       />
 

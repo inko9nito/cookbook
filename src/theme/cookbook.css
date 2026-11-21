@@ -664,6 +664,14 @@ html.ios .subnavbar.ck-search-bar .searchbar { flex: none; width: auto; margin: 
    no card around them, so the photos are bigger and the grid is calmer ── */
 .ck-card-grid { --f7-grid-gap: 12px; }
 .ck-card-grid .grid, .grid.ck-card-grid { row-gap: 20px; }
+/* iPad (#157): three per row upright, four sideways (recipes and cookbooks alike). Both sides 600px or more is an iPad
+   (an iPhone is under 600 one way or the other), so a phone keeps two either way round */
+@media (min-width: 600px) and (min-height: 600px) {
+  .ck-card-grid > .grid.grid-cols-2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .ck-card-grid > .grid.grid-cols-2 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 .link.ck-card, .ck-card {
   display: flex; flex-direction: column; min-width: 0;
   color: var(--ck-fg); text-decoration: none;

@@ -155,7 +155,7 @@ export default function RecipesPage({ f7router }: Props) {
           No recipes found
         </BlockFooter>
       )}
-      {/* Prepear's grid: two cards per row */}
+      {/* Prepear's grid: two cards per row (on an iPad three upright, four sideways: cookbook.css, #157) */}
       <Block key="grid" className="ck-card-grid">
         <div className="grid grid-cols-2 grid-gap">
           {found.map((r) => (

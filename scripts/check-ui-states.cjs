@@ -3784,27 +3784,28 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await page.locator('#ck-launch .ck-launch-stage').isVisible())) throw new Error('the pot stays away on the next ordinary launch');
   });
 
-  // iPad (#157, #158): an iPad Air's screen, upright then sideways. Three recipes per row upright, four sideways (and the
-  // same for cookbooks); cook mode fills the screen as the push card instead of Framework7's 630px box in the middle
+  // iPad (#157, #158): an iPad Air's screen, upright then sideways. Four recipes per row upright, five sideways (and the
+  // same for cookbooks); cook mode fills the screen as the push card instead of Framework7's 630px box in the middle,
+  // its text kept to a column in the middle (long lines are hard to read)
   const phoneSize = page.viewportSize();
   const perRow = (sel) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
   await step('96a-ipad-portrait-recipes', async () => {
     await page.setViewportSize({ width: 820, height: 1180 });
     await page.goto(BASE); await page.waitForTimeout(1500);
     const n = await perRow('#view-recipes .page-current .ck-card-grid > .grid');
-    if (n !== 3) throw new Error(`${n} recipes per row on an upright iPad, not 3`);
+    if (n !== 4) throw new Error(`${n} recipes per row on an upright iPad, not 4`);
   });
   await step('96b-ipad-landscape-recipes', async () => {
     await page.setViewportSize({ width: 1180, height: 820 }); await page.waitForTimeout(500);
     const n = await perRow('#view-recipes .page-current .ck-card-grid > .grid');
-    if (n !== 4) throw new Error(`${n} recipes per row on a sideways iPad, not 4`);
+    if (n !== 5) throw new Error(`${n} recipes per row on a sideways iPad, not 5`);
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(800);
     // an earlier step may have left the Cookbooks tab as a list: back to tiles
     if (!(await page.locator('#view-cookbooks .page-current .ck-card-grid > .grid').count())) {
       await page.locator('#view-cookbooks .page-current > .navbar .ck-view-switch').tap(); await page.waitForTimeout(600);
     }
     const b = await perRow('#view-cookbooks .page-current .ck-card-grid > .grid');
-    if (b !== 4) throw new Error(`${b} cookbooks per row on a sideways iPad, not 4`);
+    if (b !== 5) throw new Error(`${b} cookbooks per row on a sideways iPad, not 5`);
     await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(600);
   });
   await step('96c-ipad-cook-mode', async () => {
@@ -3815,6 +3816,15 @@ async function swipeLeft(ctx, page, locator) {
     const r = await page.locator('.popup.ck-cook.modal-in').boundingBox();
     if (!r || r.width < 819 || r.x > 1) throw new Error(`cook mode is ${Math.round(r?.width)}px wide at ${Math.round(r?.x)}px, not the iPad's full width`);
     if (r.y + r.height < 1179 || r.y > 60) throw new Error(`cook mode runs from ${Math.round(r.y)} to ${Math.round(r.y + r.height)}px, not to the screen's bottom`);
+    const col = await page.evaluate(() => {
+      const text = document.querySelector('.popup.ck-cook .tab-active .ck-pane-steps .ck-cook-text').getBoundingClientRect();
+      const title = document.querySelector('.popup.ck-cook .navbar .title').getBoundingClientRect();
+      const head = document.querySelector('.popup.ck-cook .tab-active .ck-pane-steps .ck-pane-head h2').getBoundingClientRect();
+      return { left: text.left, right: text.right, title: title.left, head: head.left };
+    });
+    if (col.right - col.left > 680) throw new Error(`cook mode's steps run ${Math.round(col.right - col.left)}px wide on an iPad`);
+    if (Math.abs(col.left - (820 - col.right)) > 60) throw new Error(`cook mode's column isn't in the middle (${Math.round(col.left)}px left, ${Math.round(820 - col.right)}px right)`);
+    if (Math.abs(col.title - col.head) > 1) throw new Error(`cook mode's title (${col.title}px) isn't lined up with the column (${col.head}px)`);
     if (!(await page.locator('.popup.ck-cook.popup-push').count()) || !(await page.evaluate(() => document.documentElement.matches(':has(.popup-push-in)')))) throw new Error('cook mode isn’t the push card on an iPad');
   });
   await cookEnd();

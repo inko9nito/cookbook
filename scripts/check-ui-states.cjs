@@ -3788,23 +3788,28 @@ async function swipeLeft(ctx, page, locator) {
   // same for cookbooks); cook mode fills the screen as the push card instead of Framework7's 630px box in the middle
   const phoneSize = page.viewportSize();
   const perRow = (sel) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
-  await step('41a-ipad-portrait-recipes', async () => {
+  await step('96a-ipad-portrait-recipes', async () => {
     await page.setViewportSize({ width: 820, height: 1180 });
     await page.goto(BASE); await page.waitForTimeout(1500);
     const n = await perRow('#view-recipes .page-current .ck-card-grid > .grid');
     if (n !== 3) throw new Error(`${n} recipes per row on an upright iPad, not 3`);
   });
-  await step('41b-ipad-landscape-recipes', async () => {
+  await step('96b-ipad-landscape-recipes', async () => {
     await page.setViewportSize({ width: 1180, height: 820 }); await page.waitForTimeout(500);
     const n = await perRow('#view-recipes .page-current .ck-card-grid > .grid');
     if (n !== 4) throw new Error(`${n} recipes per row on a sideways iPad, not 4`);
     await page.locator('.tabbar a[aria-label="Cookbooks"]').tap(); await page.waitForTimeout(800);
+    // an earlier step may have left the Cookbooks tab as a list: back to tiles
+    if (!(await page.locator('#view-cookbooks .page-current .ck-card-grid > .grid').count())) {
+      await page.locator('#view-cookbooks .page-current > .navbar .ck-view-switch').tap(); await page.waitForTimeout(600);
+    }
     const b = await perRow('#view-cookbooks .page-current .ck-card-grid > .grid');
     if (b !== 4) throw new Error(`${b} cookbooks per row on a sideways iPad, not 4`);
     await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(600);
   });
-  await step('41c-ipad-cook-mode', async () => {
-    await page.setViewportSize({ width: 820, height: 1180 }); await page.waitForTimeout(400);
+  await step('96c-ipad-cook-mode', async () => {
+    await page.setViewportSize({ width: 820, height: 1180 });
+    await page.goto(BASE); await page.waitForTimeout(1500);
     await page.locator('#view-recipes .page-current .ck-card').first().tap(); await page.waitForTimeout(1200);
     await page.locator('.view.tab-active .page-current .ck-cta-button', { hasText: 'Start cooking' }).tap(); await page.waitForTimeout(1200);
     const r = await page.locator('.popup.ck-cook.modal-in').boundingBox();

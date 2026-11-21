@@ -214,8 +214,9 @@ function CookScreen({ tabs }: { tabs: Recipe[] }) {
     <>
       {/* issue #116: an iOS card over the app (Framework7's push popup: rounded top corners, the app shrinking back behind
           it, as GitHub's sheets do). Swiping the top bar down tucks it away (Framework7's swipe to close, on the bar only:
-          the halves scroll), and the app grows back under the finger */}
-      <Popup className="ck-cook" opened={s.expanded} onPopupClosed={onClosed} push swipeToClose="to-bottom" swipeHandler=".ck-cook .navbar">
+          the halves scroll), and the app grows back under the finger. tabletFullscreen (#158): on an iPad Framework7
+          otherwise draws a popup as a 630px box in the middle, and only does the push card when it's full screen */}
+      <Popup className="ck-cook" opened={s.expanded} onPopupClosed={onClosed} push tabletFullscreen swipeToClose="to-bottom" swipeHandler=".ck-cook .navbar">
         <Page pageContent={false}>
           <Navbar>
             {/* the grabber says the card swipes down */}

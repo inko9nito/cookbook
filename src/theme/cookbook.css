@@ -868,11 +868,11 @@ html.ios .segmented.ck-underline-tabs .button.button-active.active-state {
 .ck-split-body { --ck-split-half: 22px; position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 /* isolation keeps Framework7's list layering (lists are z-index 1) inside each half, so the handle, last in the markup, stays on top */
 .ck-pane { min-height: 0; overflow-y: auto; overscroll-behavior: contain; isolation: isolate; }
-/* iPad (#158): long lines are hard to read, so each half (and the title above them) keeps to a column of at most
-   --ck-cook-measure in the middle, the space either side padding; on a phone the column is the whole width */
+/* iPad (#158): long lines are hard to read, so each half keeps to a column of at most --ck-cook-measure in the middle,
+   the space either side padding; on a phone the column is the whole width. The top bar stays full width, its buttons
+   16px from the card's edges (#55), as iPad apps keep their bars */
 .popup.ck-cook { --ck-cook-measure: 680px; --ck-cook-side: max(0px, calc((100% - var(--ck-cook-measure)) / 2)); }
 .ck-pane { padding-left: var(--ck-cook-side); padding-right: var(--ck-cook-side); }
-html.ios .popup.ck-cook .navbar { --f7-navbar-inner-padding-left: calc(16px + var(--ck-cook-side)); --f7-navbar-inner-padding-right: calc(16px + var(--ck-cook-side)); }
 .ck-pane-ingredients { flex: 0 0 auto; }
 /* text scrolling up under the top bar fades into the page colour over its last 16px, as it does at the divider,
    instead of meeting the bar (or the shown tab) at a hard edge */

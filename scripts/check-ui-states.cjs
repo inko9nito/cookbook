@@ -3818,13 +3818,10 @@ async function swipeLeft(ctx, page, locator) {
     if (r.y + r.height < 1179 || r.y > 60) throw new Error(`cook mode runs from ${Math.round(r.y)} to ${Math.round(r.y + r.height)}px, not to the screen's bottom`);
     const col = await page.evaluate(() => {
       const text = document.querySelector('.popup.ck-cook .tab-active .ck-pane-steps .ck-cook-text').getBoundingClientRect();
-      const title = document.querySelector('.popup.ck-cook .navbar .title').getBoundingClientRect();
-      const head = document.querySelector('.popup.ck-cook .tab-active .ck-pane-steps .ck-pane-head h2').getBoundingClientRect();
-      return { left: text.left, right: text.right, title: title.left, head: head.left };
+      return { left: text.left, right: text.right };
     });
     if (col.right - col.left > 680) throw new Error(`cook mode's steps run ${Math.round(col.right - col.left)}px wide on an iPad`);
     if (Math.abs(col.left - (820 - col.right)) > 60) throw new Error(`cook mode's column isn't in the middle (${Math.round(col.left)}px left, ${Math.round(820 - col.right)}px right)`);
-    if (Math.abs(col.title - col.head) > 1) throw new Error(`cook mode's title (${col.title}px) isn't lined up with the column (${col.head}px)`);
     if (!(await page.locator('.popup.ck-cook.popup-push').count()) || !(await page.evaluate(() => document.documentElement.matches(':has(.popup-push-in)')))) throw new Error('cook mode isn’t the push card on an iPad');
   });
   await cookEnd();

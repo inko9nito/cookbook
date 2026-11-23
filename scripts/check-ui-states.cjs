@@ -3433,7 +3433,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.locator('#view-recipes .page-current a[aria-label="More actions"]').tap(); await page.waitForTimeout(800);
     await page.locator(MENU_ROW, { hasText: 'Add to Grocery List' }).tap(); await page.waitForTimeout(1500);
     const sheet = page.locator('.ck-add-recipe-popup.modal-in');
-    const sauce = sheet.locator('.ck-add-list li').filter({ has: page.locator('.item-title', { hasText: /^\s*Tahini sauce\s*$/ }) });
+    const sauce = sheet.locator('.ck-add-list li', { hasText: /^\s*Tahini sauce/ }); // not its ingredients' rows ("For Tahini Sauce")
     if (!(await sauce.locator('.item-footer').textContent()).includes('Its own recipe: Tahini Sauce')) throw new Error('the tahini sauce doesn’t say it’s a recipe');
     const count = async () => sheet.locator('.ck-add-list li').count();
     const before = await count();
@@ -3447,7 +3447,7 @@ async function swipeLeft(ctx, page, locator) {
   });
   await step('40r3-buy-linked-recipe', async () => {
     const sheet = page.locator('.ck-add-recipe-popup.modal-in');
-    const sauce = sheet.locator('.ck-add-list li').filter({ has: page.locator('.item-title', { hasText: /^\s*Tahini sauce\s*$/ }) });
+    const sauce = sheet.locator('.ck-add-list li', { hasText: /^\s*Tahini sauce/ }); // not its ingredients' rows ("For Tahini Sauce")
     await sauce.locator('a', { hasText: 'Buy it' }).tap(); await page.waitForTimeout(500);
     if (!(await sauce.locator('input').isChecked())) throw new Error('Buy it didn’t tick the sauce');
     const footers = await sheet.locator('.ck-add-list li .item-footer').allTextContents();

@@ -214,6 +214,50 @@ describe('the add sheets', () => {
     const [row] = addRows([{ recipe: pie }], [], [crust, pie]);
     expect(row.on).toBe(false);
     expect(row.note).toBe('Its own recipe: Pie Crust');
+    expect(row.linked?.title).toBe('Pie Crust');
+  });
+
+  // issue #162
+  describe('making an ingredient that is its own recipe', () => {
+    const sauce = { ...recipe('s', 'Tahini Sauce', 6, [ing('t1', '½', 'cup', 'tahini'), ing('t2', '1', 'clove', 'garlic'), ing('t3', '3', 'tbsp', 'lemon juice')]), servingSize: '2 tbsp' };
+    const bowl = recipe('b', 'Kebab Bowl', 4, [ing('b1', '3', 'cloves', 'garlic'), { ...ing('b2', '½', 'cup', 'tahini sauce'), recipeId: 's' }]);
+    const all = [sauce, bowl];
+
+    test('its ingredients join the rows at the servings it needs, added up with the rest, as that recipe’s items', () => {
+      const key = addRows([{ recipe: bowl }], [], all).find((r) => r.linked)!.key;
+      const rows = addRows([{ recipe: bowl, plannedId: 'p1' }], [], all, new Map(), {}, new Set([key]));
+      // ½ cup is 8 tbsp, at 2 tbsp a serving: 4 of the sauce's 6 servings
+      expect(rows.map((r) => `${r.amount} ${r.name}|${r.on}|${r.note}`)).toEqual([
+        '3⅔ cloves garlic|true|',
+        '½ cup tahini sauce|false|Making 4 servings, its ingredients are below',
+        '⅓ cup tahini|true|For Tahini Sauce',
+        '2 tbsp lemon juice|true|For Tahini Sauce',
+      ]);
+      const made = rows.find((r) => r.key === key)!;
+      expect(made).toMatchObject({ making: true, adds: [] });
+      expect(rows[0].adds).toEqual([
+        { recipeId: 'b', ingredientId: 'b1', plannedId: 'p1' },
+        { recipeId: 's', ingredientId: 't2', servings: 4, plannedId: 'p1' },
+      ]);
+    });
+
+    test('without a serving size to go by, one batch for each batch of the recipe it goes in', () => {
+      const crust = recipe('c', 'Pie Crust', 8, [ing('c1', '2', 'cups', 'flour')]);
+      const pie = recipe('p', 'Apple Pie', 8, [{ ...ing('p1', '1', '', 'pie crust'), recipeId: 'c' }]);
+      const key = addRows([{ recipe: pie }], [], [crust, pie])[0].key;
+      const rows = addRows([{ recipe: pie, servings: 16 }], [], [crust, pie], new Map(), {}, new Set([key]));
+      expect(rows.map((r) => `${r.amount} ${r.name}`)).toEqual(['2 pie crusts', '4 cups flour']);
+      expect(rows[1].adds).toEqual([{ recipeId: 'c', ingredientId: 'c1', servings: 16 }]);
+    });
+
+    test('a recipe that comes back round to itself is bought, not made again', () => {
+      const a = recipe('a', 'A', 4, [{ ...ing('a1', '1', 'cup', 'b sauce'), recipeId: 'bb' }]);
+      const bb = recipe('bb', 'B Sauce', 4, [{ ...ing('x1', '1', 'cup', 'a sauce'), recipeId: 'a' }]);
+      const keys = new Set(addRows([{ recipe: a }], [], [a, bb]).map((r) => r.key));
+      keys.add(addRows([{ recipe: bb }], [], [a, bb])[0].key);
+      const rows = addRows([{ recipe: a }], [], [a, bb], new Map(), {}, keys);
+      expect(rows.map((r) => `${r.name}|${r.making ?? false}|${r.adds.length}`)).toEqual(['b sauce|true|0', 'a sauce|false|1']);
+    });
   });
 });
 

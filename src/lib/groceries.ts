@@ -13,8 +13,8 @@
 
 import { z } from 'zod';
 import type { Ingredient, Recipe } from './recipe';
-import { formatNumber, parseLine, readAmount, scaleAmount, unitFor } from './ingredients';
-import { amountIn, neaterAmount, shortUnit } from './units';
+import { formatNumber, friendly, parseLine, readAmount, scaleAmount, unitFor } from './ingredients';
+import { amountIn, neaterAmount, shortUnit, unitId } from './units';
 import { AISLE_NAMES, AISLES, nameKey, shopName, thingsOf, type Aisle, type GroceryThing, type Names } from './grocery-names';
 
 export { AISLE_NAMES, AISLES, aisleOf, isStaple, nameKey, shopName, type Aisle } from './grocery-names';
@@ -314,7 +314,7 @@ export type AddRow = {
   key: string;
   amount: string;
   name: string;
-  /** "Usually on hand", "Its own recipe: Pie Crust", "Adds to the 2 tbsp already on your list" */
+  /** "Usually on hand", "Its own recipe: Pie Crust", "Adds to the 2 tbsp already on your list", "For Tahini Sauce" */
   note: string;
   /** starts ticked */
   on: boolean;
@@ -322,14 +322,37 @@ export type AddRow = {
   choices?: GroceryThing[];
   /** the choice picked, if any */
   pick?: string;
+  /** issue #162: the ingredient is a recipe of its own (issue #11), which can be made instead of bought */
+  linked?: Recipe;
+  /** making it: its ingredients are rows of their own, and this row adds nothing */
+  making?: boolean;
   /** the items it adds when ticked */
   adds: Omit<GroceryItem, 'id' | 'createdAt' | 'checked'>[];
 };
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Issue #162: how many servings of a linked recipe (issue #11) to make for an ingredient. When its serving size is a
+ * measure the ingredient's amount converts to ("½ cup tahini sauce", served "2 tbsp" a time), just enough (4 servings);
+ * otherwise one batch for each batch of the recipe it goes in (the recipe doubled, two pie crusts).
+ */
+export function servingsToMake(need: { amount: string; unit: string }, linked: Recipe, factor = 1): number {
+  const size = parseLine(linked.servingSize);
+  // "2 tbsp" alone reads as 2 of something called "tbsp"
+  const unit = size.unit || (unitId(size.name) ? size.name : '');
+  const each = readAmount(size.amount);
+  const n = unit && need.unit ? amountIn(need.amount, need.unit, unit) : null;
+  const servings = each && n ? (n.high ?? n.low) / (each.high ?? each.low) : linked.servings * factor;
+  return Math.min(1000, Math.max(0.01, round2(servings)));
+}
+
 /**
  * The ingredients of some recipes at some servings, added up, for the add screens (one recipe, or Shop this week). A
  * choice is a row of its own, as written; `picks` (row key → the thing picked) makes it that thing, and says so when
- * that thing is already on the list.
+ * that thing is already on the list. An ingredient that's a recipe of its own starts unticked; in `making` (row keys),
+ * it's made instead (issue #162): its recipe's ingredients join the rows, at the servings it needs, added up with the
+ * rest, and the items they add are that recipe's (by ids, like any other).
  */
 export function addRows(
   sources: { recipe: Recipe; servings?: number; plannedId?: string }[],
@@ -337,22 +360,46 @@ export function addRows(
   recipes: Recipe[],
   names: Names = new Map(),
   picks: Record<string, string> = {},
+  making: ReadonlySet<string> = new Set(),
 ): AddRow[] {
-  type Group = { parts: { amount: string; unit: string; name: string }[]; things: GroceryThing[]; adds: AddRow['adds']; linked?: Recipe };
+  type Group = {
+    parts: { amount: string; unit: string; name: string }[];
+    things: GroceryThing[];
+    adds: AddRow['adds'];
+    linked?: Recipe;
+    /** servings of the linked recipe being made */
+    makes?: number;
+    /** the linked recipes it's for, when it's only for those ("For Tahini Sauce") */
+    for: Set<string>;
+    direct: boolean;
+  };
   const groups = new Map<string, Group>();
-  for (const { recipe, servings, plannedId } of sources) {
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  const walk = (recipe: Recipe, servings: number | undefined, plannedId: string | undefined, chain: string[], within?: Recipe) => {
     for (const ing of recipe.ingredients) {
       if (ing.kind === 'header' || !ing.name.trim()) continue;
       const part = ingredientPart(recipe, ing, servings);
       const things = thingsOf(ing.name, names);
       const key = thingKey(things, chosen(things)) || `${recipe.id}:${ing.id}`;
-      const g = groups.get(key) ?? { parts: [], things, adds: [] };
-      g.parts.push(part);
-      g.adds.push({ recipeId: recipe.id, ingredientId: ing.id, ...(servings ? { servings } : {}), ...(plannedId ? { plannedId } : {}) });
-      if (ing.recipeId && !g.linked) g.linked = recipes.find((r) => r.id === ing.recipeId);
+      const g = groups.get(key) ?? { parts: [], things, adds: [], for: new Set<string>(), direct: false };
       groups.set(key, g);
+      g.parts.push(part);
+      if (within) g.for.add(within.title);
+      else g.direct = true;
+      const linked = ing.recipeId ? byId.get(ing.recipeId) : undefined;
+      if (linked && !g.linked) g.linked = linked;
+      // made, not bought: its own ingredients instead (a recipe that comes back round to itself is bought)
+      if (linked && making.has(key) && !chain.includes(linked.id)) {
+        const makes = servingsToMake(part, linked, factorFor(recipe, servings));
+        g.makes = (g.makes ?? 0) + makes;
+        walk(linked, makes === linked.servings ? undefined : makes, plannedId, [...chain, linked.id], linked);
+        continue;
+      }
+      g.adds.push({ recipeId: recipe.id, ingredientId: ing.id, ...(servings ? { servings } : {}), ...(plannedId ? { plannedId } : {}) });
     }
-  }
+  };
+  for (const { recipe, servings, plannedId } of sources) walk(recipe, servings, plannedId, [recipe.id]);
+
   return [...groups].map(([key, g]) => {
     const amount = addUp(g.parts);
     const choices = g.things.length > 1 ? g.things : undefined;
@@ -362,15 +409,22 @@ export function addRows(
     const sameKey = thingKey(g.things, thing);
     const onList = list.find((l) => !l.checked && thingKey(l.choices ?? [], l.thing) === sameKey);
     const onHand = thing ? thing.onHand : g.things.every((t) => t.onHand);
-    const note = g.linked
-      ? `Its own recipe: ${g.linked.title}`
-      : onHand
-        ? 'Usually on hand'
-        : onList
-          ? onList.amount
-            ? `Adds to the ${lineText(onList)} already on your list`
-            : 'Already on your list'
-          : '';
+    const making = g.makes !== undefined && !g.adds.length;
+    const forNote = !g.direct && g.for.size ? `For ${[...g.for].join(' and ')}` : '';
+    const note = making
+      ? `Making ${friendly(g.makes!)} ${g.makes === 1 ? 'serving' : 'servings'}, its ingredients are below`
+      : g.linked
+        ? `Its own recipe: ${g.linked.title}`
+        : [
+            forNote,
+            onHand
+              ? 'Usually on hand'
+              : onList
+                ? onList.amount
+                  ? `Adds to the ${lineText(onList)} already on your list`
+                  : 'Already on your list'
+                : '',
+          ].filter(Boolean).join(' · ');
     return {
       key,
       amount,
@@ -379,6 +433,8 @@ export function addRows(
       on: !onHand && !g.linked,
       ...(choices ? { choices } : {}),
       ...(pick ? { pick } : {}),
+      ...(g.linked ? { linked: g.linked } : {}),
+      ...(making ? { making } : {}),
       adds: pick ? g.adds.map((a) => ({ ...a, choice: pick })) : g.adds,
     };
   });

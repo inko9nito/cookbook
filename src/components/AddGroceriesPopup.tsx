@@ -18,25 +18,52 @@ import { say } from './ui/toast';
 const itemsWord = (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`;
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const ingredientNames = (rs: Recipe[]) => rs.flatMap((r) => r.ingredients.filter((i) => i.kind !== 'header' && i.name.trim()).map((i) => i.name));
+/** Some recipes and the recipes their ingredients are made from (issue #11), and theirs, to name all they could add. */
+function withLinked(rs: Recipe[], recipes: Recipe[]): Recipe[] {
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  const all = new Map(rs.map((r) => [r.id, r]));
+  for (const r of all.values()) {
+    for (const i of r.ingredients) {
+      const linked = i.recipeId ? byId.get(i.recipeId) : undefined;
+      if (linked && !all.has(linked.id)) all.set(linked.id, linked);
+    }
+  }
+  return [...all.values()];
+}
 
 // Issue #64: the add screens are full-screen Framework7 popups like Add Recipes (the user found the bottom sheets too
 // easy to swipe away while scrolling, losing the ticks): Cancel at the top left, Next or Add at the top right, and only
 // the top bar swipes it down. Shop this week's second step slides in (a Framework7 View inside the popup) with a Back.
 
-/** Ticks on an add screen's rows: each starts as the row says (things usually on hand unticked), and a tap flips it. */
-function useTicks(rows: AddRow[], round: number) {
+/**
+ * Ticks on an add screen's rows: each starts as the row says (things usually on hand unticked), and a tap flips it.
+ * Issue #162: a row that's a recipe of its own can be made instead (`making`, its ingredients become rows); ticking it
+ * then, or Buy it, buys it again, ticked.
+ */
+function useTicks(round: number) {
   const [flipped, setFlipped] = useState<Set<string>>(new Set());
-  useEffect(() => setFlipped(new Set()), [round]);
-  const on = (r: AddRow) => r.on !== flipped.has(r.key);
-  const flip = (key: string) => setFlipped((s) => (s.has(key) ? new Set([...s].filter((k) => k !== key)) : new Set([...s, key])));
-  return { on, flip, ticked: rows.filter(on) };
+  const [making, setMaking] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setFlipped(new Set());
+    setMaking(new Set());
+  }, [round]);
+  const on = (r: AddRow) => !r.making && r.on !== flipped.has(r.key);
+  const without = (s: Set<string>, key: string) => new Set([...s].filter((k) => k !== key));
+  const flip = (key: string) => setFlipped((s) => (s.has(key) ? without(s, key) : new Set([...s, key])));
+  const make = (r: AddRow, yes: boolean) => {
+    setMaking((s) => (yes ? new Set([...s, r.key]) : without(s, r.key)));
+    // bought again: ticked
+    setFlipped((s) => (yes || r.on ? without(s, r.key) : new Set([...s, r.key])));
+  };
+  return { on, flip, make, making };
 }
+type Ticks = ReturnType<typeof useTicks>;
 
 /**
  * The ingredients to add (the thing to buy, its amount under it), ticked unless they're usually on hand. A choice the
  * recipe offers ("soy sauce or tamari") has Pick one at its end: as picked, it adds up with the same thing on the list.
  */
-function AddList({ rows, on, flip, naming, onPick }: { rows: AddRow[]; on: (r: AddRow) => boolean; flip: (key: string) => void; naming: boolean; onPick: (r: AddRow) => void }) {
+function AddList({ rows, ticks: { on, flip, make }, naming, onPick }: { rows: AddRow[]; ticks: Ticks; naming: boolean; onPick: (r: AddRow) => void }) {
   return (
     <>
         <BlockTitle className="ck-add-label">Untick what you have</BlockTitle>
@@ -49,7 +76,7 @@ function AddList({ rows, on, flip, naming, onPick }: { rows: AddRow[]; on: (r: A
                 key={r.key}
                 checkbox
                 checked={on(r)}
-                onChange={() => flip(r.key)}
+                onChange={() => (r.making ? make(r, false) : flip(r.key))}
                 title={cap(r.name)}
                 footer={[r.amount, r.note].filter(Boolean).join(' · ') || undefined}
               >
@@ -57,6 +84,17 @@ function AddList({ rows, on, flip, naming, onPick }: { rows: AddRow[]; on: (r: A
                   <Link slot="after" className="ck-choice-link" onClick={() => onPick(r)} aria-label={`Pick which: ${r.choices.map((t) => t.item).join(' or ')}`}>
                     {r.pick ? 'Change' : 'Pick one'}
                     <ChevronDown size={14} strokeWidth={2.25} aria-hidden="true" />
+                  </Link>
+                )}
+                {/* issue #162: an ingredient that's a recipe of its own: make it (its ingredients instead) or buy it */}
+                {r.linked && (
+                  <Link
+                    slot="after"
+                    className="ck-choice-link"
+                    onClick={() => make(r, !r.making)}
+                    aria-label={r.making ? `Buy ${r.name} instead of making it` : `Make ${r.name}: add the ingredients of ${r.linked.title}`}
+                  >
+                    {r.making ? 'Buy it' : 'Make it'}
                   </Link>
                 )}
               </ListItem>
@@ -113,11 +151,12 @@ export function AddRecipePopup({ recipe, servings: startServings, onClosed }: { 
     setRound((n) => n + 1);
   }, [recipe]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { names, naming } = useNamed(recipe ? [...ingredientNames([recipe]), ...itemNames(items, recipes)] : [], !!recipe);
+  const { names, naming } = useNamed(recipe ? [...ingredientNames(withLinked([recipe], recipes)), ...itemNames(items, recipes)] : [], !!recipe);
   const { picks, pick, choosing, setChoosing } = usePicks(round);
   const lines = linesOf(items, recipes, settings.groceryAisles, names);
-  const rows = recipe ? addRows([{ recipe, servings: servings === recipe.servings ? undefined : servings }], lines, recipes, names, picks) : [];
-  const { on, flip, ticked } = useTicks(rows, round);
+  const ticks = useTicks(round);
+  const rows = recipe ? addRows([{ recipe, servings: servings === recipe.servings ? undefined : servings }], lines, recipes, names, picks, ticks.making) : [];
+  const ticked = rows.filter(ticks.on);
 
   const add = () => {
     if (!ticked.length || naming) return;
@@ -150,7 +189,7 @@ export function AddRecipePopup({ recipe, servings: startServings, onClosed }: { 
                   <Stepper round className="ck-stepper" value={servings} min={1} max={99} onStepperChange={(v: number) => setServings(v)} />
                 </div>
               </Block>
-              <AddList rows={rows} on={on} flip={flip} naming={naming} onPick={setChoosing} />
+              <AddList rows={rows} ticks={ticks} naming={naming} onPick={setChoosing} />
             </>
           )}
         </Page>
@@ -175,7 +214,8 @@ type ShopWeek = {
   picked: Planned[];
   now: Day;
   rows: AddRow[];
-  ticks: ReturnType<typeof useTicks>;
+  ticks: Ticks;
+  ticked: AddRow[];
   naming: boolean;
   names: Names;
   setChoosing: (r: AddRow) => void;
@@ -245,7 +285,7 @@ function ShopRecipesStep({ f7router }: { f7router?: { navigate: (url: string) =>
 /** Step two: their ingredients at the planned servings, added up; untick what you have, then Add. */
 function ShopIngredientsStep() {
   const s = useShopWeek();
-  const n = s.ticks.ticked.length;
+  const n = s.ticked.length;
   return (
     <Page name="shop-week-ingredients">
       <Navbar innerClassName="navbar-inner-centered-title">
@@ -260,7 +300,7 @@ function ShopIngredientsStep() {
       <Block className="ck-add-head">
         <p className="ck-note">{`${s.picked.length} ${s.picked.length === 1 ? 'recipe' : 'recipes'} · ${s.label}`}</p>
       </Block>
-      <AddList rows={s.rows} on={s.ticks.on} flip={s.ticks.flip} naming={s.naming} onPick={s.setChoosing} />
+      <AddList rows={s.rows} ticks={s.ticks} naming={s.naming} onPick={s.setChoosing} />
     </Page>
   );
 }
@@ -308,25 +348,26 @@ export function ShopWeekPopup({ opened, day, onClosed }: { opened: boolean; day?
 
   // the week's ingredients are named while its recipes are picked, so step two is ready when it opens
   const weekRecipes = [...new Set(week.map((p) => p.recipeId!))].map((id) => byId.get(id)!);
-  const { names, naming } = useNamed([...ingredientNames(weekRecipes), ...itemNames(items, recipes)], opened);
+  const { names, naming } = useNamed([...ingredientNames(withLinked(weekRecipes, recipes)), ...itemNames(items, recipes)], opened);
   const { picks, pick, choosing, setChoosing } = usePicks(round);
   const lines = linesOf(items, recipes, settings.groceryAisles, names);
-  const rows = addRows(picked.map((p) => ({ recipe: byId.get(p.recipeId!)!, servings: p.servings, plannedId: p.id })), lines, recipes, names, picks);
-  const ticks = useTicks(rows, round);
+  const ticks = useTicks(round);
+  const rows = addRows(picked.map((p) => ({ recipe: byId.get(p.recipeId!)!, servings: p.servings, plannedId: p.id })), lines, recipes, names, picks, ticks.making);
+  const ticked = rows.filter(ticks.on);
 
   const moveWeek = (by: number) => {
     setStart(addDays(start, by * 7));
     setFlipped(new Set());
   };
   const add = () => {
-    if (!ticks.ticked.length || naming) return;
-    changeGroceries(newItems(ticks.ticked.flatMap((r) => r.adds), newId));
+    if (!ticked.length || naming) return;
+    changeGroceries(newItems(ticked.flatMap((r) => r.adds), newId));
     if (popup.current.el) f7.popup.close(popup.current.el);
-    say(`Added ${itemsWord(ticks.ticked.length)} to the grocery list`);
+    say(`Added ${itemsWord(ticked.length)} to the grocery list`);
   };
   const label = [weekName(start, now), weekRange(start, now)].filter(Boolean).join(' · ');
 
-  const value: ShopWeek = { label, days, week, byId, onList, isOn, flipRecipe, moveWeek, picked, now, rows, ticks, naming, names, setChoosing, add };
+  const value: ShopWeek = { label, days, week, byId, onList, isOn, flipRecipe, moveWeek, picked, now, rows, ticks, ticked, naming, names, setChoosing, add };
   return (
     <>
       <Popup

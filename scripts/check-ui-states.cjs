@@ -3426,7 +3426,35 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await groTitles()).some((t) => /beef/i.test(t))) throw new Error('the recipe’s ingredients aren’t on the list');
     await page.waitForTimeout(2000); // the toast
   });
+  // issue #162: an ingredient that's a recipe of its own (the kebabs' tahini sauce) can be made: its ingredients join the rows
+  await step('40r2-make-linked-recipe', async () => {
+    await page.locator('.tabbar a[aria-label="Recipes"]').tap(); await page.waitForTimeout(800);
+    await page.locator('#view-recipes .page-current .ck-card', { hasText: 'Kebabs' }).first().tap(); await page.waitForTimeout(1200);
+    await page.locator('#view-recipes .page-current a[aria-label="More actions"]').tap(); await page.waitForTimeout(800);
+    await page.locator(MENU_ROW, { hasText: 'Add to Grocery List' }).tap(); await page.waitForTimeout(1500);
+    const sheet = page.locator('.ck-add-recipe-popup.modal-in');
+    const sauce = sheet.locator('.ck-add-list li', { hasText: /^\s*Tahini sauce/ }); // not its ingredients' rows ("For Tahini Sauce")
+    if (!(await sauce.locator('.item-footer').textContent()).includes('Its own recipe: Tahini Sauce')) throw new Error('the tahini sauce doesn’t say it’s a recipe');
+    const count = async () => sheet.locator('.ck-add-list li').count();
+    const before = await count();
+    await sauce.locator('a', { hasText: 'Make it' }).tap(); await page.waitForTimeout(500);
+    const footers = await sheet.locator('.ck-add-list li .item-footer').allTextContents();
+    if (!footers.some((f) => /For Tahini Sauce/.test(f))) throw new Error(`the sauce’s ingredients didn’t join the rows (${footers.join(' | ')})`);
+    if ((await count()) <= before) throw new Error('no new rows for the sauce');
+    if (await sauce.locator('input').isChecked()) throw new Error('the sauce itself is still ticked to buy');
+    if (!(await sauce.locator('.item-footer').textContent()).includes('Making')) throw new Error('the sauce doesn’t say it’s being made');
+    await sauce.scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
+  });
+  await step('40r3-buy-linked-recipe', async () => {
+    const sheet = page.locator('.ck-add-recipe-popup.modal-in');
+    const sauce = sheet.locator('.ck-add-list li', { hasText: /^\s*Tahini sauce/ }); // not its ingredients' rows ("For Tahini Sauce")
+    await sauce.locator('a', { hasText: 'Buy it' }).tap(); await page.waitForTimeout(500);
+    if (!(await sauce.locator('input').isChecked())) throw new Error('Buy it didn’t tick the sauce');
+    const footers = await sheet.locator('.ck-add-list li .item-footer').allTextContents();
+    if (footers.some((f) => /For Tahini Sauce/.test(f))) throw new Error('the sauce’s ingredients stayed');
+  });
   await step('40s-planner-shop-button', async () => {
+    await page.locator('.ck-add-recipe-popup.modal-in .navbar a', { hasText: 'Cancel' }).tap().catch(() => {}); await page.waitForTimeout(900);
     await page.locator('.tabbar a[aria-label="Plan"]').tap(); await page.waitForTimeout(900);
     await page.locator('#view-plan .page-current > .navbar a[aria-label="Shop this week"]').tap(); await page.waitForTimeout(1000);
     if (!(await page.locator('.ck-shop-week-popup.modal-in').isVisible())) throw new Error('the Planner’s cart didn’t open Shop this week');

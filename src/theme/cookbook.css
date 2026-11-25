@@ -1718,7 +1718,8 @@ swiper-container.ck-week-swiper { width: 100%; }
    long press). Holding is never the iOS link menu or a text selection, and the row held lifts off the card as the
    editor's rows do: white, rounded, a soft shadow, no pressed shade. The rows are links, and holding a link on the
    iPhone starts iOS's own drag of the link, which cancels the touch before the hold registers (the row never lifted):
-   so a row's link can't be dragged by iOS (the page also stops the long-press menu, PlanPage's onContextMenu). */
+   so a row's link can't be dragged by iOS (the page also stops the long-press menu, PlanPage's onContextMenu). That
+   wasn't enough on the phone: the rows are "#" links now, the recipe opened from the tap (PlanPage). */
 .list.ck-plan-list li { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .list.ck-plan-list li a { -webkit-user-drag: none; -webkit-touch-callout: none; }
 .list.ck-plan-list li.sorting { background-color: var(--ck-surface); border-radius: 16px; box-shadow: var(--ck-lift-shadow); }

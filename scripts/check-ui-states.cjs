@@ -2908,6 +2908,10 @@ async function swipeLeft(ctx, page, locator) {
       return { drag: css.webkitUserDrag, callout: css.webkitTouchCallout, menu: menu.defaultPrevented };
     });
     if (link.drag !== 'none' || !link.menu) throw new Error(`holding a row's link would start iOS's link drag or menu: ${JSON.stringify(link)}`);
+    // and a row isn't a link to its recipe's address (holding a real link on the iPhone was iOS's link, never the row's
+    // hold): the recipe opens from the tap, like the editor's rows
+    const hrefs = await page.locator(`${PLAN} .ck-plan-list a.item-link`).evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+    if (hrefs.some((h) => h !== '#')) throw new Error(`Planner rows link to ${JSON.stringify(hrefs)}`);
     const box = await last.boundingBox();
     planHold = { cdp: await ctx.newCDPSession(page), x: box.x + 120, y: box.y + box.height / 2 };
     await planHold.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: planHold.x, y: planHold.y }] });

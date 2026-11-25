@@ -53,7 +53,7 @@ function useToday() {
  * place in its slot (issue #164, Framework7's sortable list started by a long press, as R7 asks: no handles, no mode).
  * The calendar button jumps to any day.
  */
-export default function PlanPage() {
+export default function PlanPage({ f7router }: { f7router?: { navigate: (url: string) => void } }) {
   const { recipes, loading: recipesLoading } = useStore();
   const { planned, loading: plannedLoading, loadError, reload, savePlanned, deletePlanned } = usePlanner();
   const now = useToday();
@@ -219,8 +219,12 @@ export default function PlanPage() {
       <ListItem
         key={p.id}
         swipeout
+        // issue #164: a "#" link opened from the tap, like the editor's rows (and the notes here). With the recipe's
+        // address as its href, holding the row on the iPhone was iOS's link (its preview, its drag), which cancelled the
+        // touch before the hold could pick the row up.
+        link="#"
         // issue #67: it opens at the servings it was planned with
-        link={`/recipe/${r.id}/${p.servings ? `?servings=${p.servings}` : ''}`}
+        onClick={() => f7router?.navigate(`/recipe/${r.id}/${p.servings ? `?servings=${p.servings}` : ''}`)}
         title={r.title}
         footer={meta || undefined}
         onSwipeoutDeleted={() => takeOff(p)}

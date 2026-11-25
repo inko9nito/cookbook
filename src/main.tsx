@@ -7,6 +7,7 @@ import './theme/cookbook.css';
 import './app.css';
 
 import CookbookApp from './App';
+import { startTouchLog } from './data/touchLog';
 
 Framework7.use(Framework7React);
 
@@ -20,5 +21,8 @@ if (location.hash.startsWith('#!') || history.state) history.replaceState(null, 
 window.addEventListener('pageshow', (e) => {
   if (e.persisted) location.reload();
 });
+
+// TEMPORARY (issue #164): `?touchlog` reports what each long hold on a row did
+startTouchLog();
 
 createRoot(document.getElementById('app')!).render(<CookbookApp />);

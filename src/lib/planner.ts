@@ -29,7 +29,9 @@ export const Planned = z
     meal: z.enum(MEALS).optional(),
     /** issue #67: the servings picked on the recipe page when it was added; none: the recipe's own */
     servings: z.number().positive().max(1000).optional(),
-    /** ISO timestamp. Within a slot, items show in the order they were added. */
+    /** issue #164: its place in its slot (0 first), once the slot has been put in order by dragging */
+    position: z.number().int().min(0).max(10_000).optional(),
+    /** ISO timestamp. Within a slot, items show in their places, then the rest in the order they were added. */
     createdAt: z.string(),
   })
   .refine((p) => !p.recipeId !== !p.note, { message: 'needs a recipe or a note, not both' });
@@ -102,14 +104,19 @@ export function weekName(start: Day, now: Day): string | undefined {
 
 // ── planned recipes ──
 
-const byAdded = (a: Planned, b: Planned) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
+/**
+ * The order within a slot (issue #164): items put in their places by dragging first, by place; then any added since,
+ * in the order they were added.
+ */
+export const inOrder = (a: Planned, b: Planned) =>
+  (a.position ?? Infinity) - (b.position ?? Infinity) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
 
-/** A day's planned items, in the order they were added. */
-export const plannedOn = (list: Planned[], day: Day) => list.filter((p) => p.day === day).sort(byAdded);
+/** A day's planned items, in order. */
+export const plannedOn = (list: Planned[], day: Day) => list.filter((p) => p.day === day).sort(inOrder);
 
 /**
- * A day's items by slot: those for the day as a whole first (no label), then Breakfast, Lunch and Dinner, each in the
- * order added. Empty slots are left out.
+ * A day's items by slot: those for the day as a whole first (no label), then Breakfast, Lunch and Dinner, each in its
+ * order. Empty slots are left out.
  */
 export const slotsOn = (list: Planned[], day: Day): { meal: Meal | null; items: Planned[] }[] => {
   const items = plannedOn(list, day);
@@ -146,8 +153,29 @@ export const planNote = (note: string, day: Day, newId: () => string, meal?: Mea
   createdAt: new Date().toISOString(),
 });
 
-/** The same item in another slot (null: for the day as a whole). */
+/** Without its place: it goes after the items already in the slot it lands in. */
+const unplaced = (p: Planned): Planned => {
+  const { position: _place, ...rest } = p;
+  return rest;
+};
+
+/** The same item in another slot (null: for the day as a whole), at the end of it. */
 export const inMeal = (p: Planned, meal: Meal | null): Planned => {
-  const { meal: _old, ...rest } = p;
+  const { meal: _old, ...rest } = unplaced(p);
   return meal ? { ...rest, meal } : rest;
 };
+
+/** The same item on another day, at the end of its slot there. */
+export const onDay = (p: Planned, day: Day): Planned => ({ ...unplaced(p), day });
+
+/**
+ * Issue #164: a slot's items (in order) with one dragged from `from` to `to`. Every item gets its place (0, 1, 2…);
+ * what comes back is only the items whose place changed, to save.
+ */
+export function reorder(items: Planned[], from: number, to: number): Planned[] {
+  const list = [...items];
+  const [moved] = list.splice(from, 1);
+  if (!moved) return [];
+  list.splice(to, 0, moved);
+  return list.flatMap((p, position): Planned[] => (p.position === position ? [] : [{ ...p, position }]));
+}

@@ -7,7 +7,7 @@ import Menu from './ui/Menu';
 import { addRows, itemNames, linesOf, newItems, type AddRow } from '../lib/groceries';
 import type { Names } from '../lib/grocery-names';
 import { coverPhoto, newId, type Recipe } from '../lib/recipe';
-import { addDays, dayName, mealName, today, weekDays, weekName, weekRange, weekStart, type Day, type Planned } from '../lib/planner';
+import { addDays, dayName, inOrder, mealName, today, weekDays, weekName, weekRange, weekStart, type Day, type Planned } from '../lib/planner';
 import { friendly } from '../lib/ingredients';
 import { useGroceries, useNamed, usePlanner, useStore } from '../data/store';
 import { inlineIcon } from './ui/icons';
@@ -299,7 +299,7 @@ export function ShopWeekPopup({ opened, day, onClosed }: { opened: boolean; day?
   const days = weekDays(start);
   const week = planned
     .filter((p) => p.recipeId && byId.has(p.recipeId) && days.includes(p.day))
-    .sort((a, b) => a.day.localeCompare(b.day) || a.createdAt.localeCompare(b.createdAt));
+    .sort((a, b) => a.day.localeCompare(b.day) || inOrder(a, b));
   const onList = new Set(items.map((g) => g.plannedId).filter(Boolean));
   const startsOn = (p: Planned) => p.day >= now && !onList.has(p.id);
   const isOn = (p: Planned) => startsOn(p) !== flipped.has(p.id);

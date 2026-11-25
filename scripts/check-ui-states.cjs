@@ -2540,7 +2540,8 @@ async function swipeLeft(ctx, page, locator) {
     await page.waitForSelector('.calendar.modal-in');
     const [y, m, d] = day.split('-').map(Number);
     // Framework7's calendar names a day by year, 0-based month and day; the month shown may need a swipe to the next
-    const cell = page.locator(`.calendar.modal-in .calendar-month-current .calendar-day[data-date="${y}-${m - 1}-${d}"]`);
+    // (its grid also holds the next month's first days, hidden: those don't count)
+    const cell = page.locator(`.calendar.modal-in .calendar-month-current .calendar-day:not(.calendar-day-next):not(.calendar-day-prev)[data-date="${y}-${m - 1}-${d}"]`);
     if (!(await cell.count())) { await page.locator('.calendar.modal-in .calendar-next-month-button, .calendar.modal-in .icon-next').first().tap(); await page.waitForTimeout(500); }
     await cell.tap();
     // issue #67: the tapped day fills in before the sheet closes
@@ -2885,6 +2886,52 @@ async function swipeLeft(ctx, page, locator) {
     if (look.lastLine !== 'none') throw new Error('a hairline under the last row of a card');
     if (new Set(look.gaps).size !== 1) throw new Error(`the thumbnail's gaps (left, top, bottom) are ${look.gaps}`);
   });
+
+  // Issue #164: holding a Planner row picks it up (no handles, no mode: R7), lifted off its card; dragging it to the top
+  // of its slot puts it there, and letting go doesn't open the recipe
+  let planHold, planList, planBefore;
+  await step('164a-planner-row-held', async () => {
+    planList = page.locator(`${PLAN} .ck-plan-list`).filter({ has: page.locator('li:nth-child(2)') }).first();
+    if (!(await planList.count())) throw new Error('no slot with two rows to put in order');
+    const rowNames = () => planList.locator('.item-title').evaluateAll((els) => els.map((e) => [...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim()));
+    planList.rowNames = rowNames;
+    planBefore = await rowNames();
+    if (await page.locator(`${PLAN} .ck-plan-list .sortable-handler`).evaluateAll((hs) => hs.some((h) => getComputedStyle(h).opacity !== '0'))) throw new Error('drag handles show on the Planner');
+    const last = planList.locator('li').last();
+    await last.scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
+    const box = await last.boundingBox();
+    planHold = { cdp: await ctx.newCDPSession(page), x: box.x + 120, y: box.y + box.height / 2 };
+    await planHold.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: planHold.x, y: planHold.y }] });
+    await page.waitForTimeout(900);
+    const held = await last.evaluate((e) => ({ sorting: e.classList.contains('sorting'), bg: getComputedStyle(e).backgroundColor, shadow: getComputedStyle(e).boxShadow, callout: getComputedStyle(e).webkitTouchCallout }));
+    if (!held.sorting) throw new Error('holding a Planner row didn’t pick it up');
+    if (held.bg !== 'rgb(255, 255, 255)' || held.shadow === 'none') throw new Error(`the held row isn't lifted: ${JSON.stringify(held)}`);
+  });
+  await step('164b-planner-row-dragged', async () => {
+    if (!planHold) throw new Error('nothing held');
+    const top = await planList.locator('li').first().boundingBox();
+    const to = top.y + 4;
+    for (let i = 1; i <= 8; i++) {
+      await planHold.cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: planHold.x, y: planHold.y + ((to - planHold.y) * i) / 8 }] });
+      await page.waitForTimeout(40);
+    }
+    await page.screenshot({ path: path.join(OUT, '164b-planner-row-dragging.png') });
+    await planHold.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await planHold.cdp.detach().catch(() => {});
+    planHold = null;
+    await page.waitForTimeout(800);
+    const after = await planList.rowNames();
+    const want = [planBefore[planBefore.length - 1], ...planBefore.slice(0, -1)];
+    if (JSON.stringify(after) !== JSON.stringify(want)) throw new Error(`after dragging the last row to the top the slot reads ${JSON.stringify(after)}, not ${JSON.stringify(want)}`);
+    if ((await page.locator('#view-plan .page-current').getAttribute('data-name')) !== 'plan') throw new Error('letting go opened the recipe');
+    if (await page.locator(`${PLAN} .ck-plan-list li.sorting`).count()) throw new Error('the row stayed lifted');
+    const tx = await planList.locator('li').evaluateAll((els) => els.map((e) => e.style.transform).filter((t) => t && !/^translate3d\(0(px)?, 0(%|px)?, 0(px)?\)$/.test(t)));
+    if (tx.length) throw new Error(`rows left moved: ${JSON.stringify(tx)}`);
+  });
+  if (planHold) {
+    await planHold.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }).catch(() => {});
+    await planHold.cdp.detach().catch(() => {});
+  }
 
   // Issue #82: a recipe without directions says so under the heading, with Add directions (opening the editor there),
   // and cook mode shows the ingredients alone, filling the screen, with no divider

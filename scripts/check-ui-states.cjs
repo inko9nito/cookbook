@@ -3001,8 +3001,10 @@ async function swipeLeft(ctx, page, locator) {
     }
     if (await page.locator('.view.tab-active .page-current .ck-edit-list li.ck-step-row').count()) throw new Error('the directions were not deleted');
     await page.locator('.view.tab-active .page-current .navbar a', { hasText: 'Save' }).tap(); await page.waitForTimeout(1000);
-    await page.locator('.view.tab-active .page-current .ck-sec-empty').scrollIntoViewIfNeeded(); await page.waitForTimeout(400);
-    const empty = await page.locator('.view.tab-active .page-current .ck-panel-rest .ck-sec-empty').innerText();
+    // (Notes has its own empty card when there are none, #165)
+    const directionsEmpty = page.locator('.view.tab-active .page-current .ck-panel-rest .ck-sec-empty', { hasText: 'No directions' });
+    await directionsEmpty.scrollIntoViewIfNeeded(); await page.waitForTimeout(400);
+    const empty = await directionsEmpty.innerText();
     if (!empty.includes('No directions yet.') || !empty.includes('Add directions')) throw new Error(`under Directions: "${empty}"`);
   });
   await step('82b-add-directions-opens-editor', async () => {

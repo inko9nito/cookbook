@@ -752,7 +752,7 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
           onSortableSort={(data: { from: number; to: number }) => setNotes((list) => moveItem(list, data.from, data.to))}
         >
           {notes.map((n, i) => (
-            <ListItem key={n.id} swipeout className="ck-step-row ck-note-row" onSwipeoutDeleted={() => setNotes((list) => list.filter((x) => x.id !== n.id))}>
+            <ListItem key={n.id} swipeout className="ck-note-row" onSwipeoutDeleted={() => setNotes((list) => list.filter((x) => x.id !== n.id))}>
               <NoteField slot="title" note={n} no={i + 1} onType={(text) => setNotes((list) => list.map((x) => (x.id === n.id ? { ...x, text } : x)))} />
               <SwipeoutActions right>
                 <SwipeoutButton delete>Delete</SwipeoutButton>

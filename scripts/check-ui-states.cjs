@@ -2899,6 +2899,15 @@ async function swipeLeft(ctx, page, locator) {
     if (await page.locator(`${PLAN} .ck-plan-list .sortable-handler`).evaluateAll((hs) => hs.some((h) => getComputedStyle(h).opacity !== '0'))) throw new Error('drag handles show on the Planner');
     const last = planList.locator('li').last();
     await last.scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
+    // the rows are links: on the iPhone, holding one started iOS's own drag of the link (and its menu), which cancelled
+    // the touch before the hold lifted the row
+    const link = await last.locator('a.item-link').evaluate((a) => {
+      const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+      a.dispatchEvent(menu);
+      const css = getComputedStyle(a);
+      return { drag: css.webkitUserDrag, callout: css.webkitTouchCallout, menu: menu.defaultPrevented };
+    });
+    if (link.drag !== 'none' || !link.menu) throw new Error(`holding a row's link would start iOS's link drag or menu: ${JSON.stringify(link)}`);
     const box = await last.boundingBox();
     planHold = { cdp: await ctx.newCDPSession(page), x: box.x + 120, y: box.y + box.height / 2 };
     await planHold.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: planHold.x, y: planHold.y }] });

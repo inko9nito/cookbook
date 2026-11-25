@@ -267,7 +267,13 @@ export default function PlanPage() {
           </Button>
         </Block>
       ) : (
-        <div key="agenda" ref={agenda} className="ck-agenda">
+        <div
+          key="agenda"
+          ref={agenda}
+          className="ck-agenda"
+          // issue #164: holding a row picks it up to drag; iOS's long-press menu for the link would open instead
+          onContextMenu={(e) => e.preventDefault()}
+        >
           {weekDays(start).map((day) => {
             const slots = slotsOn(shown, day);
             const name = dayName(day, now);

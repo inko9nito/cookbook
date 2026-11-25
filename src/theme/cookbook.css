@@ -1716,8 +1716,11 @@ swiper-container.ck-week-swiper { width: 100%; }
 .list.ck-plan-list .item-content { padding-left: 12px; }
 /* issue #164: holding a row picks it up to drag it to another place in its slot (Framework7's sortable, started by the
    long press). Holding is never the iOS link menu or a text selection, and the row held lifts off the card as the
-   editor's rows do: white, rounded, a soft shadow, no pressed shade. */
+   editor's rows do: white, rounded, a soft shadow, no pressed shade. The rows are links, and holding a link on the
+   iPhone starts iOS's own drag of the link, which cancels the touch before the hold registers (the row never lifted):
+   so a row's link can't be dragged by iOS (the page also stops the long-press menu, PlanPage's onContextMenu). */
 .list.ck-plan-list li { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.list.ck-plan-list li a { -webkit-user-drag: none; -webkit-touch-callout: none; }
 .list.ck-plan-list li.sorting { background-color: var(--ck-surface); border-radius: 16px; box-shadow: var(--ck-lift-shadow); }
 .list.ck-plan-list li.sorting .item-link.active-state { background-color: transparent; }
 .ck-plan-empty { margin: 0; padding: 0 16px; }

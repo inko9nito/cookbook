@@ -20,7 +20,7 @@ import { coverPhoto, newId, type Recipe } from '../lib/recipe';
 import { friendly } from '../lib/ingredients';
 import CookingFab from '../components/CookingFab';
 import {
-  busyDays, dayName, daysBetween, inMeal, mealName, mediumDate, MEALS, plan, planNote, plannedOn, shortDate, slotsOn, today,
+  busyDays, dayName, daysBetween, inMeal, mealName, mediumDate, MEALS, onDay, plan, planNote, plannedOn, reorder, shortDate, slotsOn, today,
   weekDays, weekName, weekRange, weekStart, type Day, type Meal, type Planned,
 } from '../lib/planner';
 import { say } from '../components/ui/toast';
@@ -49,9 +49,11 @@ function useToday() {
  * (Breakfast, Lunch, Dinner). Picking a day scrolls the agenda to it, and scrolling the agenda picks the day at the top.
  * + adds recipes (in a slot, picked in the recipe picker) or a note to the picked day (each day also has its own +); a
  * recipe row opens its recipe at the servings it was planned with; a note row edits the note. Swiping a row offers Meal
- * (its slot), Move (another day, from a month calendar) and Remove. The calendar button jumps to any day.
+ * (its slot), Move (another day, from a month calendar) and Remove. Holding a row picks it up to drag it to another
+ * place in its slot (issue #164, Framework7's sortable list started by a long press, as R7 asks: no handles, no mode).
+ * The calendar button jumps to any day.
  */
-export default function PlanPage() {
+export default function PlanPage({ f7router }: { f7router?: { navigate: (url: string) => void } }) {
   const { recipes, loading: recipesLoading } = useStore();
   const { planned, loading: plannedLoading, loadError, reload, savePlanned, deletePlanned } = usePlanner();
   const now = useToday();
@@ -179,10 +181,13 @@ export default function PlanPage() {
       busy,
       onPick: (day) => {
         if (day === p.day) return;
-        savePlanned({ ...p, day });
+        savePlanned(onDay(p, day));
         say(`Moved to ${mediumDate(day)}`);
       },
     });
+  // issue #164: a row dragged to another place in its slot; the slot's rows keep their new places (each one that moved
+  // is saved)
+  const putInOrder = (items: Planned[], from: number, to: number) => reorder(items, from, to).forEach((p) => savePlanned(p));
   const jump = () => pickDay({ title: 'Go to which day?', value: selected, busy, onPick: (day) => select(day, false) });
 
   const row = (p: Planned) => {
@@ -214,8 +219,12 @@ export default function PlanPage() {
       <ListItem
         key={p.id}
         swipeout
+        // issue #164: a "#" link opened from the tap, like the editor's rows (and the notes here). With the recipe's
+        // address as its href, holding the row on the iPhone was iOS's link (its preview, its drag), which cancelled the
+        // touch before the hold could pick the row up.
+        link="#"
         // issue #67: it opens at the servings it was planned with
-        link={`/recipe/${r.id}/${p.servings ? `?servings=${p.servings}` : ''}`}
+        onClick={() => f7router?.navigate(`/recipe/${r.id}/${p.servings ? `?servings=${p.servings}` : ''}`)}
         title={r.title}
         footer={meta || undefined}
         onSwipeoutDeleted={() => takeOff(p)}
@@ -262,7 +271,13 @@ export default function PlanPage() {
           </Button>
         </Block>
       ) : (
-        <div key="agenda" ref={agenda} className="ck-agenda">
+        <div
+          key="agenda"
+          ref={agenda}
+          className="ck-agenda"
+          // issue #164: holding a row picks it up to drag; iOS's long-press menu for the link would open instead
+          onContextMenu={(e) => e.preventDefault()}
+        >
           {weekDays(start).map((day) => {
             const slots = slotsOn(shown, day);
             const name = dayName(day, now);
@@ -283,7 +298,16 @@ export default function PlanPage() {
                   slots.map(({ meal, items }) => (
                     <div key={meal ?? 'day'} className="ck-plan-slot">
                       {meal && <div className="ck-plan-slot-label">{mealName(meal)}</div>}
-                      <List strongIos insetIos dividersIos className="ck-plan-list">
+                      <List
+                        strongIos
+                        insetIos
+                        dividersIos
+                        className="ck-plan-list"
+                        // issue #164: hold a row to drag it (no handles: sortableEnabled stays off)
+                        sortable
+                        sortableTapHold
+                        onSortableSort={(d: { from: number; to: number }) => putInOrder(items, d.from, d.to)}
+                      >
                         {items.map(row)}
                       </List>
                     </div>

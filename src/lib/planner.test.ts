@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { addDays, dayName, dayOf, daysBetween, inMeal, Planned, plan, planNote, plannedOn, slotsOn, upcomingDaysOf, weekDays, weekName, weekRange, weekStart, type Planned as P } from './planner';
+import { addDays, dayName, dayOf, daysBetween, inMeal, onDay, Planned, plan, planNote, plannedOn, reorder, slotsOn, upcomingDaysOf, weekDays, weekName, weekRange, weekStart, type Planned as P } from './planner';
 
 const p = (id: string, day: string, recipeId: string, createdAt: string): P => ({ id, day, recipeId, createdAt });
 
@@ -102,5 +102,36 @@ describe('meal slots and notes (issue #67)', () => {
     expect(planNote('  Eating out ', '2026-11-18', () => 'id3')).toMatchObject({ note: 'Eating out' });
     expect(inMeal(p, 'lunch').meal).toBe('lunch');
     expect(inMeal(p, null)).not.toHaveProperty('meal');
+  });
+});
+
+describe('putting a slot in order by dragging (issue #164)', () => {
+  const day = '2026-11-18';
+  const list: P[] = [
+    p('a', day, 'r1', '2026-11-17T10:00:00.000Z'),
+    p('b', day, 'r2', '2026-11-17T10:00:01.000Z'),
+    p('c', day, 'r3', '2026-11-17T10:00:02.000Z'),
+  ];
+
+  test('a dragged row takes its place; every row in the slot keeps one, and only the changed ones are saved', () => {
+    const changed = reorder(plannedOn(list, day), 2, 0);
+    expect(changed.map((x) => [x.id, x.position])).toEqual([['c', 0], ['a', 1], ['b', 2]]);
+    const after = list.map((x) => changed.find((c) => c.id === x.id) ?? x);
+    expect(plannedOn(after, day).map((x) => x.id)).toEqual(['c', 'a', 'b']);
+    // dragging again saves only what moved
+    expect(reorder(plannedOn(after, day), 1, 2).map((x) => [x.id, x.position])).toEqual([['b', 1], ['a', 2]]);
+    expect(reorder(plannedOn(after, day), 5, 0)).toEqual([]);
+  });
+
+  test('items added after the slot was put in order go at the end, in the order added', () => {
+    const placed = [{ ...list[1], position: 0 }, { ...list[0], position: 1 }, p('d', day, 'r4', '2026-11-16T10:00:00.000Z'), list[2]];
+    expect(plannedOn(placed, day).map((x) => x.id)).toEqual(['b', 'a', 'd', 'c']);
+    expect(slotsOn(placed, day)[0].items.map((x) => x.id)).toEqual(['b', 'a', 'd', 'c']);
+  });
+
+  test('moved to another slot or day, an item leaves its place behind and goes at the end there', () => {
+    const placed = { ...list[0], position: 0, meal: 'lunch' as const };
+    expect(inMeal(placed, 'dinner')).toEqual({ ...list[0], meal: 'dinner' });
+    expect(onDay(placed, '2026-11-19')).toEqual({ ...list[0], meal: 'lunch', day: '2026-11-19' });
   });
 });

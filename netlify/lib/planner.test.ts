@@ -64,6 +64,22 @@ describe('the planner in the database', () => {
     await deletePlanned(db.sql, A, 'p5');
   });
 
+  test('a place in its slot comes first, then the rest as added (#164)', async () => {
+    await savePlanned(db.sql, A, { id: 'q1', day: '2026-11-25', recipeId: 'r1', createdAt: '2026-11-24T10:00:00.000Z' });
+    await savePlanned(db.sql, A, { id: 'q2', day: '2026-11-25', recipeId: 'r2', createdAt: '2026-11-24T10:00:01.000Z' });
+    await savePlanned(db.sql, A, { id: 'q3', day: '2026-11-25', note: 'Leftovers', createdAt: '2026-11-24T10:00:02.000Z' });
+    const day = async () => (await listPlanned(db.sql, A)).filter((p) => p.day === '2026-11-25').map((p) => p.id);
+    expect(await day()).toEqual(['q1', 'q2', 'q3']);
+    const q2 = await savePlanned(db.sql, A, { id: 'q2', day: '2026-11-25', recipeId: 'r2', position: 0, createdAt: '2026-11-24T10:00:01.000Z' });
+    expect(q2.position).toBe(0);
+    await savePlanned(db.sql, A, { id: 'q1', day: '2026-11-25', recipeId: 'r1', position: 1, createdAt: '2026-11-24T10:00:00.000Z' });
+    expect(await day()).toEqual(['q2', 'q1', 'q3']);
+    // saved without a place again (moved to another slot), it goes after the placed ones
+    await savePlanned(db.sql, A, { id: 'q2', day: '2026-11-25', recipeId: 'r2', createdAt: '2026-11-24T10:00:01.000Z' });
+    expect(await day()).toEqual(['q1', 'q2', 'q3']);
+    for (const id of ['q1', 'q2', 'q3']) await deletePlanned(db.sql, A, id);
+  });
+
   test('taking one off its day, and deleting a recipe takes it off every day', async () => {
     expect(await deletePlanned(db.sql, A, 'p2')).toBe(true);
     expect(await deletePlanned(db.sql, A, 'p2')).toBe(false);

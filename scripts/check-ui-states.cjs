@@ -547,6 +547,90 @@ async function swipeLeft(ctx, page, locator) {
   await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 5000 }).catch(() => {});
   await step('05d-recipe-scaled', async () => { await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 420)); });
   await step('06-recipe-bottom', async () => { await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 99999)); });
+  // issue #165: separate notes. Their count is in the header (a fourth stat) and jumps down to them; a note is changed
+  // or deleted in its own screen (Undo brings it back where it was), + Add adds one, and holding one drags it elsewhere
+  {
+    const CUR0 = '.view.tab-active .page-current';
+    const NOTES = `${CUR0} .ck-note-list .item-title`;
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0));
+    await page.waitForTimeout(400);
+    await step('06n1-notes-count', async () => {
+      const stat = (await page.locator(`${CUR0} .ck-stat-notes`).textContent()).replace(/\s+/g, '');
+      if (stat !== '3notes') throw new Error(`the header's notes count reads "${stat}", expected 3 notes`);
+      await page.locator(`${CUR0} .ck-stat-notes`).tap();
+      await page.waitForTimeout(900);
+      const top = await page.locator(`${CUR0} .ck-sec`, { hasText: 'Notes' }).evaluate((e) => Math.round(e.getBoundingClientRect().top));
+      if (top < 40 || top > 140) throw new Error(`tapping the count left the Notes heading ${top}px from the top`);
+      const texts = await page.locator(NOTES).allTextContents();
+      if (texts.length !== 3 || !texts[0].startsWith('Thighs')) throw new Error(`the notes read ${JSON.stringify(texts)}`);
+    });
+    await step('06n2-note-held', async () => {
+      const rows = page.locator(`${CUR0} .ck-note-list li`);
+      const box = await rows.nth(2).boundingBox();
+      const first = await rows.first().boundingBox();
+      const cdp = await ctx.newCDPSession(page);
+      const x = box.x + 120;
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: box.y + box.height / 2 }] });
+      await page.waitForTimeout(900);
+      const held = await rows.nth(2).evaluate((e) => ({ sorting: e.classList.contains('sorting'), shadow: getComputedStyle(e).boxShadow }));
+      if (!held.sorting || held.shadow === 'none') throw new Error(`holding a note didn't lift it: ${JSON.stringify(held)}`);
+      await page.screenshot({ path: path.join(OUT, '06n2-note-held.png') });
+      for (let i = 1; i <= 12; i++) {
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: box.y + box.height / 2 - ((box.y - first.y + 10) * i) / 12 }] });
+        await page.waitForTimeout(30);
+      }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await cdp.detach();
+      await page.waitForTimeout(800);
+      const texts = await page.locator(NOTES).allTextContents();
+      if (!texts[0].startsWith('Leftovers') || !texts[1].startsWith('Thighs')) throw new Error(`dragged to the top, the notes read ${JSON.stringify(texts)}`);
+    });
+    await step('06n3-note-screen', async () => {
+      await page.locator(`${CUR0} .ck-note-list li`).nth(1).locator('a').tap();
+      await page.waitForTimeout(800);
+      const title = await page.locator('.ck-note-popup.modal-in .navbar .title').textContent();
+      const text = await page.locator('.ck-note-popup.modal-in textarea').inputValue();
+      if (title !== 'Note' || !text.startsWith('Thighs')) throw new Error(`the note's screen is "${title}" with "${text}"`);
+      if (!(await page.locator('.ck-note-popup.modal-in .ck-note-remove', { hasText: 'Delete Note' }).count())) throw new Error('no Delete Note');
+    });
+    await step('06n4-note-deleted', async () => {
+      await page.locator('.ck-note-popup.modal-in .ck-note-remove a').tap();
+      await page.waitForTimeout(900);
+      const texts = await page.locator(NOTES).allTextContents();
+      if (texts.length !== 2 || texts.some((t) => t.startsWith('Thighs'))) throw new Error(`after Delete Note the notes read ${JSON.stringify(texts)}`);
+      if (!(await page.locator('.toast.modal-in', { hasText: 'Note deleted' }).count())) throw new Error('no Note deleted toast');
+    });
+    await step('06n5-note-undo', async () => {
+      await page.locator('.toast.modal-in .toast-button').tap();
+      await page.waitForTimeout(700);
+      const texts = await page.locator(NOTES).allTextContents();
+      if (texts.length !== 3 || !texts[1].startsWith('Thighs')) throw new Error(`Undo put the notes back as ${JSON.stringify(texts)}`);
+    });
+    await step('06n6-note-new', async () => {
+      await page.locator(`${CUR0} .ck-sec-add`, { hasText: 'Add' }).tap();
+      await page.waitForTimeout(800);
+      const focused = await page.evaluate(() => document.activeElement?.closest('.ck-note-popup.modal-in') != null);
+      if (!focused) throw new Error('a new note’s field isn’t focused (iOS would not raise the keyboard)');
+      if (await page.locator('.ck-note-popup.modal-in .ck-note-remove').count()) throw new Error('a new note offers Delete Note');
+      await page.locator('.ck-note-popup.modal-in textarea').fill('Double the garlic next time.');
+    });
+    await step('06n7-note-added', async () => {
+      await page.locator('.ck-note-popup.modal-in .ck-nav-primary', { hasText: 'Save' }).tap();
+      await page.waitForTimeout(900);
+      const texts = await page.locator(NOTES).allTextContents();
+      if (texts.at(-1) !== 'Double the garlic next time.') throw new Error(`the new note isn't last: ${JSON.stringify(texts)}`);
+      const stat = (await page.locator(`${CUR0} .ck-stat-notes`).textContent()).replace(/\s+/g, '');
+      if (stat !== '4notes') throw new Error(`the count reads "${stat}" after adding one`);
+    });
+    // back to the three notes, for the steps after
+    await page.locator(`${CUR0} .ck-note-list li`).nth(3).locator('a').tap();
+    await page.waitForTimeout(800);
+    await page.locator('.ck-note-popup.modal-in .ck-note-remove a').tap();
+    await page.waitForTimeout(900);
+    await page.waitForFunction(() => !document.querySelector('.toast.modal-in, .toast.modal-out'), null, { timeout: 6000 }).catch(() => {});
+    await page.evaluate(() => document.querySelector('.view.tab-active .page-current .page-content').scrollTo(0, 0));
+    await page.waitForTimeout(600);
+  }
   await step('07-more-actions', async () => {
     await page.locator('.navbar a[aria-label="More actions"]:visible').first().tap(); await page.waitForTimeout(500);
     // #39: the user's order and words, in four groups with a thick band between them
@@ -1058,6 +1142,20 @@ async function swipeLeft(ctx, page, locator) {
     if (!on) throw new Error('new tag is not shown as a selected chip');
     if ((await page.locator('.view.tab-active .page-current .ck-tag-add input').inputValue()) !== '') throw new Error('tag field not cleared after adding');
     if (await page.locator('.view.tab-active .page-current .ck-fields input[placeholder^="#"]').count()) throw new Error('the separate Tags text field is still there');
+  });
+  // issue #165: each note its own row in the editor, with a handle to drag it; Add a note puts the cursor in a new one
+  await step('12d4-edit-notes', async () => {
+    const rows = page.locator('.view.tab-active .page-current textarea[data-note-id]');
+    if ((await rows.count()) !== 3) throw new Error(`the editor has ${await rows.count()} note rows, expected 3`);
+    const handles = await page.locator('.view.tab-active .page-current li.ck-note-row .sortable-handler').count();
+    if (handles !== 3) throw new Error(`${handles} note rows have a drag handle`);
+    const add = page.locator('.view.tab-active .page-current .button', { hasText: 'Add a note' });
+    await add.scrollIntoViewIfNeeded();
+    await add.tap();
+    await page.waitForTimeout(300);
+    const focused = await page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
+    if (focused !== 'Note 4') throw new Error(`Add a note put the cursor in "${focused}"`);
+    await page.keyboard.type('Rest the skewers before serving.');
   });
   await step('12e-discard-prompt', async () => { await page.locator('.navbar a', { hasText: 'Cancel' }).filter({ visible: true }).first().tap(); });
   await page.locator(MENU_ROW, { hasText: 'Discard Changes' }).tap().catch(() => {});
@@ -2790,12 +2888,12 @@ async function swipeLeft(ctx, page, locator) {
     if (!(await field.evaluate((t) => document.activeElement === t))) throw new Error('the note field isn’t focused');
     const tall = (await field.boundingBox()).height;
     if (tall < 150) throw new Error(`the note field is ${Math.round(tall)}px tall`);
-    if (!(await page.locator('.ck-note-popup .title').textContent()).startsWith('Note for ')) throw new Error('the note screen isn’t titled Note for …');
-    if (await page.locator('.ck-note-popup .ck-note-remove').count()) throw new Error('a new note offers Remove Note');
+    if (!(await page.locator('.ck-note-popup.modal-in .title').textContent()).startsWith('Note for ')) throw new Error('the note screen isn’t titled Note for …');
+    if (await page.locator('.ck-note-popup.modal-in .ck-note-remove').count()) throw new Error('a new note offers Remove Note');
     await field.fill('Leftovers for lunch');
   });
   await step('67e-planner-note-added', async () => {
-    await page.locator('.ck-note-popup .ck-nav-primary', { hasText: 'Save' }).tap(); await page.waitForTimeout(900);
+    await page.locator('.ck-note-popup.modal-in .ck-nav-primary', { hasText: 'Save' }).tap(); await page.waitForTimeout(900);
     if (!(await rowsOn(today0)).includes('Leftovers for lunch')) throw new Error(`today shows ${JSON.stringify(await rowsOn(today0))}`);
     await expectToast(/^Added a note to /);
     // the note's square is the design's soft grey with a muted icon, not butter
@@ -2816,7 +2914,7 @@ async function swipeLeft(ctx, page, locator) {
     await page.waitForTimeout(300);
   });
   await step('67e3-planner-note-long', async () => {
-    await page.locator('.ck-note-popup .ck-nav-primary', { hasText: 'Save' }).tap(); await page.waitForTimeout(900);
+    await page.locator('.ck-note-popup.modal-in .ck-nav-primary', { hasText: 'Save' }).tap(); await page.waitForTimeout(900);
     const row = page.locator(`${PLAN} .ck-plan-day[data-day="${today0}"] li.ck-plan-note`, { hasText: 'Leftovers' });
     const tall = await row.locator('.item-title').evaluate((t) => Math.round(t.getBoundingClientRect().height));
     if (tall < 60) throw new Error(`the long note shows in ${tall}px, as if on one line`);

@@ -24,7 +24,7 @@ Copy the recipe exactly as it is written. Keep the wording, amounts, fractions (
 - prepMinutes and cookMinutes: only if stated, in minutes ("1 hr 15 min" → 75). If only a total time is given, put it in cookMinutes. Null if not stated.
 - ingredients: one line per ingredient, as printed ("2 cups (250 g) flour, sifted"). Join a line that wraps onto the next printed line. Ingredients under a heading ("For the sauce", "Topping") go in a group with that heading, without a trailing colon; ingredients under no heading go in a group with an empty heading.
 - directions: one entry per step, without its step number; join a step that continues onto the next image. Unnumbered paragraphs are one step each. Group them under headings the same way as the ingredients.
-- notes: tips, swaps, storage and make-ahead notes written with the recipe, as written. Leave out the story or introduction before the recipe, nutrition facts, hashtags, and anything that is the app or website around it (buttons, likes, comments, ads).
+- notes: tips, swaps, storage and make-ahead notes written with the recipe, as written. Put a blank line between separate notes. Leave out the story or introduction before the recipe, nutrition facts, hashtags, and anything that is the app or website around it (buttons, likes, comments, ads).
 - dishPhoto: if an image includes a photograph of the finished dish, the box around that photograph, in pixels of that image (each image's size is given before it), with image counted from 0. Choose the largest such photograph. Null if there is none: a photo of a printed page or a screenshot of text alone has none.
 - found: false if the images don't show a recipe at all; then leave everything else empty.`;
 
@@ -39,7 +39,7 @@ Copy the recipe exactly as it is written. Keep the wording, amounts, fractions, 
 - prepMinutes and cookMinutes: only if stated, in minutes ("1 hr 15 min" → 75). If only a total time is given, put it in cookMinutes. Null if not stated.
 - ingredients: one line per ingredient, as written ("2 cups (250 g) flour, sifted"), without a bullet. Ingredients under a heading ("For the sauce", "Topping") go in a group with that heading, without a trailing colon; ingredients under no heading go in a group with an empty heading.
 - directions: one entry per step, without its step number. Unnumbered paragraphs are one step each. Group them under headings the same way as the ingredients.
-- notes: tips, swaps, storage and make-ahead notes written with the recipe, as written. Leave out the story or introduction, nutrition facts, hashtags, reader comments, and anything that is the site around it.
+- notes: tips, swaps, storage and make-ahead notes written with the recipe, as written. Put a blank line between separate notes. Leave out the story or introduction, nutrition facts, hashtags, reader comments, and anything that is the site around it.
 - dishPhoto: always null (there are no images).
 - found: false if the page doesn't have a recipe on it (only a link to one, or a page that couldn't be shown); then leave everything else empty.`;
 

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { NetlifyDB } from '@netlify/database-dev';
 import { getDatabase } from '@netlify/database';
 import { deleteRecipe, getSettings, listRecipes, photoKeys, saveRecipe, saveSettings } from './recipes';
-import { emptyRecipe, type Recipe } from '../../src/lib/recipe';
+import { emptyRecipe, notesOf, withNotes, type Recipe } from '../../src/lib/recipe';
 
 // the admin's cookbook, the original one (issue #146)
 const A = '';
@@ -49,6 +49,17 @@ describe('recipes in the database', () => {
     expect(again.prepearIds).toEqual(['p-adapted', 'p-original']);
     const { saved: plain } = await saveRecipe(db.sql, A, recipe({ id: 'typed-in' }));
     expect(plain.prepearIds).toBeUndefined();
+  });
+
+  test('notes are kept each on its own, in order, with the text older versions read (#165)', async () => {
+    const list = [{ id: 'n2', text: 'Freezes well.' }, { id: 'n1', text: 'Halve the sugar.\n\nOr use honey.' }];
+    const { saved } = await saveRecipe(db.sql, A, withNotes(recipe({ id: 'noted' }), list));
+    expect(saved.noteList).toEqual(list);
+    expect(saved.notes).toBe('Freezes well.\n\nHalve the sugar.\n\nOr use honey.');
+    // saved by a version from before #165: no list, the text is read as notes
+    const { saved: old } = await saveRecipe(db.sql, A, { ...recipe({ id: 'old-notes', notes: 'One.\n\nTwo.' }), noteList: undefined });
+    expect(old.noteList).toBeUndefined();
+    expect(notesOf(old).map((n) => n.text)).toEqual(['One.', 'Two.']);
   });
 
   test('saving keeps every field and tidies tags', async () => {

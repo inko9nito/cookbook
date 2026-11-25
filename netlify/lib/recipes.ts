@@ -21,6 +21,7 @@ type Row = {
   ingredients: Recipe['ingredients'];
   steps: Recipe['steps'];
   notes: string;
+  note_list: Recipe['noteList'] | null;
   rating: number;
   times_made: number;
   prepear_ids: string[] | null;
@@ -46,6 +47,7 @@ export const fromRow = (r: Row): Recipe => ({
   ingredients: r.ingredients,
   steps: r.steps,
   notes: r.notes,
+  ...(r.note_list ? { noteList: r.note_list } : {}),
   rating: r.rating,
   timesMade: r.times_made,
   ...(r.prepear_ids?.length ? { prepearIds: r.prepear_ids } : {}),
@@ -92,17 +94,17 @@ export async function saveRecipe(sql: Sql, owner: string, input: Recipe): Promis
   const [row] = await sql<Row>`
     INSERT INTO recipes (
       owner_id, id, title, source, source_url, servings, serving_size, prep_minutes, cook_minutes, total_minutes,
-      photos, tags, ingredients, steps, notes, rating, times_made, prepear_ids, last_made_at, created_at, updated_at
+      photos, tags, ingredients, steps, notes, note_list, rating, times_made, prepear_ids, last_made_at, created_at, updated_at
     ) VALUES (
       ${owner}, ${r.id}, ${r.title}, ${r.source}, ${r.sourceUrl ?? null}, ${r.servings}, ${r.servingSize}, ${r.prepMinutes},
       ${r.cookMinutes}, ${r.minutes}, ${JSON.stringify(r.photos)}::jsonb, ${tags}::text[], ${JSON.stringify(r.ingredients)}::jsonb,
-      ${JSON.stringify(r.steps)}::jsonb, ${r.notes}, ${r.rating}, ${r.timesMade}, ${r.prepearIds ?? []}::text[], ${r.lastMadeAt ?? null}, ${r.createdAt}, now()
+      ${JSON.stringify(r.steps)}::jsonb, ${r.notes}, ${r.noteList ? JSON.stringify(r.noteList) : null}::jsonb, ${r.rating}, ${r.timesMade}, ${r.prepearIds ?? []}::text[], ${r.lastMadeAt ?? null}, ${r.createdAt}, now()
     )
     ON CONFLICT (id) DO UPDATE SET
       title = EXCLUDED.title, source = EXCLUDED.source, source_url = EXCLUDED.source_url, servings = EXCLUDED.servings,
       serving_size = EXCLUDED.serving_size, prep_minutes = EXCLUDED.prep_minutes, cook_minutes = EXCLUDED.cook_minutes,
       total_minutes = EXCLUDED.total_minutes, photos = EXCLUDED.photos, tags = EXCLUDED.tags,
-      ingredients = EXCLUDED.ingredients, steps = EXCLUDED.steps, notes = EXCLUDED.notes, rating = EXCLUDED.rating,
+      ingredients = EXCLUDED.ingredients, steps = EXCLUDED.steps, notes = EXCLUDED.notes, note_list = EXCLUDED.note_list, rating = EXCLUDED.rating,
       times_made = EXCLUDED.times_made, prepear_ids = EXCLUDED.prepear_ids, last_made_at = EXCLUDED.last_made_at, updated_at = now()
     WHERE recipes.owner_id = EXCLUDED.owner_id
     RETURNING *`;

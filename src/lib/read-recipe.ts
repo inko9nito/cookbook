@@ -5,7 +5,7 @@
 
 import { z } from 'zod';
 import { parseLine, isStepLabel, stepText } from './ingredients';
-import { newId, recipeNamed, type Ingredient, type Recipe, type Step } from './recipe';
+import { newId, notesOf, recipeNamed, splitNotes, withNotes, type Ingredient, type Recipe, type Step } from './recipe';
 
 /** At most this many images per recipe (a recipe over two screenshots, or a page and its facing page). */
 export const MAX_READ_IMAGES = 4;
@@ -145,7 +145,8 @@ export function readToRecipe(read: ReadRecipe, others: Recipe[] = []) {
     cookMinutes: minutes(read.cookMinutes),
     ingredients,
     steps,
-    notes: read.notes.trim(),
+    // issue #165: notes written apart (a blank line between them) are separate notes
+    notes: splitNotes(read.notes),
   };
 }
 
@@ -165,7 +166,7 @@ export function withReading(draft: Recipe, read: ReadRecipe, others: Recipe[] = 
     cookMinutes: draft.cookMinutes || r.cookMinutes,
     ingredients: [...draft.ingredients, ...r.ingredients],
     steps: [...draft.steps, ...r.steps],
-    notes: [draft.notes.trim(), r.notes].filter(Boolean).join('\n\n'),
+    ...withNotes({ notes: '' }, [...notesOf(draft), ...r.notes]),
   };
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Page, Navbar, NavRight, Link, Block, List, ListItem, Button, Toolbar,
   f7,
@@ -17,7 +17,8 @@ import { showInPlanner } from '../data/plannerNav';
 import { busyDays, mealName, MEALS, mediumDate, plan, today, upcomingDaysOf, type Day, type Meal } from '../lib/planner';
 import { pickDay } from '../components/ui/pickDay';
 import { colorOf, placesOfRecipe } from '../lib/cookbook';
-import { titleCase, linkedRecipe, newId, usedIn, type Ingredient } from '../lib/recipe';
+import { titleCase, linkedRecipe, moveItem, newId, notesOf, usedIn, withNotes, NOTE_TEXT_MAX, type Ingredient, type Note } from '../lib/recipe';
+import NotePopup, { openNote } from '../components/NotePopup';
 import { friendly } from '../lib/ingredients';
 import { footerText, type UnitPicks } from '../components/ui/ingredientLine';
 import { ConvertibleAmount, toggleTarget, withPick, type ConvertTarget } from '../components/UnitChoices';
@@ -99,7 +100,7 @@ const siteOf = (url: string) => {
  * The tab bar is hidden here.
  */
 export default function RecipePage({ f7route, f7router }: Props) {
-  const { recipes, deleteRecipe, setFilter } = useStore();
+  const { recipes, deleteRecipe, saveRecipe, setFilter } = useStore();
   const { cookbooks } = useCookbooks();
   const { planned, savePlanned } = usePlanner();
   const recipe = recipes.find((r) => r.id === f7route?.params.id);
@@ -127,6 +128,14 @@ export default function RecipePage({ f7route, f7router }: Props) {
   const picks = cooked?.picks ?? ownPicks;
   const setFactor = (f: number) => (cooked && recipe ? cook.setFactor(recipe.id, f) : setOwnFactor(f));
   const pickUnit = (id: string, unit: string | null) => (cooked && recipe ? cook.setPick(recipe.id, id, unit) : setOwnPicks((p) => withPick(p, id, unit)));
+  // issue #165: the note being changed in the note screen (null: a new one). Each recipe page has its own note screen
+  // (another recipe page can be open in another tab), opened by its name.
+  const [noteEditing, setNoteEditing] = useState<Note | null>(null);
+  const [noteScreen] = useState(() => `ck-recipe-note-${newId().slice(0, 8)}`);
+  const notesHead = useRef<HTMLDivElement>(null);
+  // the recipe as it is now, for an Undo that comes after other changes
+  const latest = useRef(recipe);
+  latest.current = recipe;
 
   if (!recipe) {
     return (
@@ -138,6 +147,45 @@ export default function RecipePage({ f7route, f7router }: Props) {
   }
 
   const soon = (what: string) => tell(`${what} comes in a later phase`, 1500);
+  // issue #165: separate notes, added, changed, deleted and reordered right here, not only in the editor
+  const notes = notesOf(recipe);
+  const saveNotes = (list: Note[]) => latest.current && saveRecipe(withNotes(latest.current, list));
+  // the note screen opens in the tap itself, so the keyboard comes up (NotePopup)
+  const addNote = () => {
+    setNoteEditing(null);
+    openNote(noteScreen);
+  };
+  const editNote = (n: Note) => {
+    setNoteEditing(n);
+    openNote(noteScreen);
+  };
+  const saveNote = (text: string) => {
+    const now = latest.current ? notesOf(latest.current) : notes;
+    if (!noteEditing) return saveNotes([...now, { id: newId(), text }]);
+    if (noteEditing.text !== text) saveNotes(now.map((n) => (n.id === noteEditing.id ? { ...n, text } : n)));
+  };
+  const deleteNote = (n: Note) => {
+    const at = notes.findIndex((x) => x.id === n.id);
+    saveNotes(notes.filter((x) => x.id !== n.id));
+    // Undo puts it back where it was, among the notes there are by then
+    say('Note deleted', {
+      undo: () => {
+        const now = latest.current ? notesOf(latest.current) : [];
+        if (!now.some((x) => x.id === n.id)) saveNotes([...now.slice(0, at), n, ...now.slice(at)]);
+      },
+    });
+  };
+  // the count in the header jumps down to the notes (Framework7's own scroll, none with Reduce Motion), the heading
+  // just under the bar
+  const showNotes = () => {
+    const head = notesHead.current;
+    const content = head?.closest<HTMLElement>('.page-content');
+    if (!head || !content) return;
+    const bar = head.closest('.page')?.querySelector('.navbar')?.getBoundingClientRect().bottom ?? 0;
+    const to = content.scrollTop + head.getBoundingClientRect().top - Math.max(bar, 0) - 12;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    f7.$(content).scrollTop(Math.max(0, to), still ? 0 : 300);
+  };
   const places = placesOfRecipe(cookbooks, recipe.id);
   // issue #62: the days it's planned for, from today on
   const planDays = upcomingDaysOf(planned, recipe.id, today());
@@ -228,6 +276,11 @@ export default function RecipePage({ f7route, f7router }: Props) {
             <b>{recipe.minutes > 0 ? formatMinutes(recipe.minutes).replace(' hr ', 'h ').replace(' min', 'm').replace(' hr', 'h') : '–'}</b>
             <span>total time</span>
           </div>
+          {/* issue #165: how many notes, so they aren't missed; tap to jump to them */}
+          <Link className={`ck-stat-notes ${notes.length ? 'ck-has-notes' : ''}`} onClick={showNotes} aria-label={`${notes.length} ${notes.length === 1 ? 'note' : 'notes'}, show notes`}>
+            <b>{notes.length}</b>
+            <span>{notes.length === 1 ? 'note' : 'notes'}</span>
+          </Link>
         </div>
 
         <div className="ck-sec">
@@ -294,13 +347,34 @@ export default function RecipePage({ f7route, f7router }: Props) {
           </div>
         )}
 
-        {recipe.notes && (
-          <>
-            <div className="ck-sec">
-              <h2>Notes</h2>
-            </div>
-            <div className="ck-notes">{recipe.notes}</div>
-          </>
+        {/* issue #165: each note on its own card row; tap one to change or delete it, hold one to drag it to another
+            place (Framework7's Sortable on a long press, no handles), + Add for another */}
+        <div className="ck-sec" ref={notesHead}>
+          <h2>Notes</h2>
+          {notes.length > 0 && (
+            <Link className="ck-sec-add" onClick={addNote} aria-label="Add a note">
+              <Plus {...inlineIcon} aria-hidden="true" />
+              Add
+            </Link>
+          )}
+        </div>
+        {notes.length === 0 && <EmptySection text="No notes yet." action="Add a note" onAdd={addNote} />}
+        {notes.length > 0 && (
+          <List
+            className="ck-note-list"
+            strong
+            inset
+            dividers
+            sortable
+            sortableTapHold
+            onSortableSort={(data: { from: number; to: number }) => saveNotes(moveItem(notes, data.from, data.to))}
+          >
+            {notes.map((n) => (
+              <ListItem key={n.id} link="#" noChevron onClick={() => editNote(n)}>
+                <span slot="title">{n.text}</span>
+              </ListItem>
+            ))}
+          </List>
         )}
 
         {/* issue #41: where it belongs, as chips that open it. Labels open Recipes filtered by that label; each cookbook
@@ -368,6 +442,17 @@ export default function RecipePage({ f7route, f7router }: Props) {
       </div>
 
 
+      <NotePopup
+        key="note-screen"
+        name={noteScreen}
+        title={noteEditing ? 'Note' : 'New Note'}
+        note={noteEditing?.text ?? ''}
+        placeholder="Cooking tips, swaps, or thoughts for next time"
+        maxLength={NOTE_TEXT_MAX}
+        onSave={saveNote}
+        removeLabel="Delete Note"
+        onRemove={noteEditing ? () => deleteNote(noteEditing) : undefined}
+      />
       <UnitSheet slot="fixed" target={converting} factor={factor} picks={picks} onPick={pickUnit} onClosed={() => setConverting(null)} />
       <ScaleSheet opened={scaleOpen} recipe={recipe} factor={factor} onFactor={setFactor} onClose={() => setScaleOpen(false)} />
 

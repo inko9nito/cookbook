@@ -1099,7 +1099,10 @@ async function swipeLeft(ctx, page, locator) {
         // group rows: centred on the "Group" + name label, level with the ↑ ↓ buttons
         const target = li.querySelector('.ck-group-title') || li.querySelector('.ck-step-no') || li.querySelector('.item-title');
         let line = target.getBoundingClientRect();
-        if (!target.classList.contains('ck-group-title')) {
+        // a note (#165) is typed in its row: its first line is the field's first 20px line
+        const note = li.querySelector('textarea[data-note-id]');
+        if (note) line = { top: note.getBoundingClientRect().top, height: 20 };
+        else if (!target.classList.contains('ck-group-title')) {
           const w = document.createTreeWalker(target, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode()) && !n.textContent.trim());
           const r = document.createRange(); r.selectNodeContents(n); line = r.getClientRects()[0];
         }

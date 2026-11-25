@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { Recipe, Settings, emptyRecipe, linkedRecipe, recipeNamed, sortRecipes, usedIn, type Ingredient } from './recipe';
+import { Recipe, Settings, emptyRecipe, joinNotes, linkedRecipe, notesOf, recipeNamed, sortRecipes, splitNotes, usedIn, withNotes, type Ingredient } from './recipe';
 
 const recipe = (id: string, title: string, ingredients: Ingredient[] = []): Recipe => ({ ...emptyRecipe(), id, title, ingredients });
 const line = (name: string, recipeId?: string): Ingredient => ({ id: name, amount: '1', unit: '', name, note: '', ...(recipeId ? { recipeId } : {}) });
@@ -55,5 +55,33 @@ describe('sorting (R1, and in a cookbook #95)', () => {
     expect(Settings.parse({}).cookbookSorts).toEqual({});
     expect(Settings.parse({ cookbookSorts: { b1: 'az' } }).cookbookSorts.b1).toBe('az');
     expect(() => Settings.parse({ cookbookSorts: { b1: 'sideways' } })).toThrow();
+  });
+});
+
+describe('notes, each on its own (issue #165)', () => {
+  const texts = (r: Pick<Recipe, 'notes' | 'noteList'>) => notesOf(r).map((n) => n.text);
+
+  test('a recipe from before #165 has its text split at blank lines, with ids that stay the same', () => {
+    const old = { notes: 'Halve the sugar.\n\nBake a day ahead.\nFreezes well.\n \n\nServe warm.' };
+    expect(texts(old)).toEqual(['Halve the sugar.', 'Bake a day ahead.\nFreezes well.', 'Serve warm.']);
+    expect(notesOf(old).map((n) => n.id)).toEqual(notesOf(old).map((n) => n.id));
+    expect(texts({ notes: '  ' })).toEqual([]);
+  });
+
+  test('the list is read as it is, a note with a blank line in it included', () => {
+    const r = withNotes(emptyRecipe(), [{ id: 'b', text: 'Two\n\nparagraphs' }, { id: 'a', text: 'One' }]);
+    expect(r.notes).toBe('Two\n\nparagraphs\n\nOne');
+    expect(notesOf(r).map((n) => n.id)).toEqual(['b', 'a']);
+    expect(Recipe.parse(r).noteList).toHaveLength(2);
+  });
+
+  test('the text changed by an older version of the app wins over a list it carried along unchanged', () => {
+    const r = { ...withNotes(emptyRecipe(), [{ id: 'a', text: 'One' }]), notes: 'One\n\nAdded on the old app' };
+    expect(texts(r)).toEqual(['One', 'Added on the old app']);
+  });
+
+  test('empty notes are left out of the text', () => {
+    expect(joinNotes([{ id: 'a', text: ' ' }, { id: 'b', text: ' Keep ' }])).toBe('Keep');
+    expect(splitNotes('x\n\ny', (i) => `n${i}`)).toEqual([{ id: 'n0', text: 'x' }, { id: 'n1', text: 'y' }]);
   });
 });

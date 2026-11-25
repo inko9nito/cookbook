@@ -137,6 +137,7 @@ describe('a recipe', () => {
       timesMade: 1,
       tags: ['dinner', 'gundry', 'low sodium', 'phase 1'],
       notes: 'Use thighs.\n\nFry, don’t bake!',
+      noteList: [{ id: expect.any(String), text: 'Use thighs.' }, { id: expect.any(String), text: 'Fry, don’t bake!' }],
     });
     expect(r.createdAt).toBe('2023-01-17T01:09:05.078Z'); // when I made my copy
     expect(r.prepearIds).toEqual(['5fd9e320-8ddb-11e9-8c19-000000000002', '894a7560-9603-11ed-9b35-000000000003']);

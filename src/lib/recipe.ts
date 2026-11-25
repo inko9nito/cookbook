@@ -6,6 +6,9 @@ import { AISLES, GroceryStore } from './groceries';
 
 const id = z.string().min(1).max(64);
 
+/** the longest one note can be (issue #165) */
+export const NOTE_TEXT_MAX = 4000;
+
 /** One row in a recipe's ingredient list: an ingredient, or a group header ("For the sauce"; its title is in `name`). */
 export const Ingredient = z.object({
   id,
@@ -31,6 +34,10 @@ export const Step = z.object({
   text: z.string().max(4000),
 });
 export type Step = z.infer<typeof Step>;
+
+/** Issue #165: one of a recipe's notes. A recipe has several, in the order the user put them in. */
+export const Note = z.object({ id, text: z.string().max(NOTE_TEXT_MAX) });
+export type Note = z.infer<typeof Note>;
 
 export const CropBox = z.object({ x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive() });
 
@@ -67,7 +74,14 @@ export const Recipe = z.object({
   tags: z.array(z.string().min(1).max(60)).max(60),
   ingredients: z.array(Ingredient).max(400),
   steps: z.array(Step).max(200),
-  notes: z.string().max(20000),
+  /**
+   * All the notes as one text, a blank line between them. Issue #165 made notes separate (`noteList`); this stays for
+   * versions of the app from before it, and for recipes saved by them. Read notes with `notesOf()`, change them with
+   * `withNotes()`, which keeps the two together.
+   */
+  notes: z.string().max(200000),
+  /** issue #165: the notes, each on its own, in order */
+  noteList: z.array(Note).max(40).optional(),
   rating: z.number().int().min(0).max(5),
   timesMade: z.number().int().min(0),
   /**
@@ -146,9 +160,46 @@ export const emptyRecipe = (): Recipe => ({
   ingredients: [],
   steps: [],
   notes: '',
+  noteList: [],
   rating: 0,
   timesMade: 0,
 });
+
+/** Notes as one text (`Recipe.notes`): each note trimmed, empty ones left out, a blank line between them. */
+export const joinNotes = (list: Note[]): string =>
+  list
+    .map((n) => n.text.trim())
+    .filter(Boolean)
+    .join('\n\n');
+
+/** A text of notes as separate notes, split at blank lines (how notes were kept apart in one field before #165). */
+export const splitNotes = (text: string, idFor: (i: number) => string = () => newId()): Note[] =>
+  text
+    .split(/\n[ \t]*\n/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((t, i) => ({ id: idFor(i), text: t }));
+
+/**
+ * Issue #165: a recipe's notes, each on its own. Its `noteList`, unless the recipe has none (from before #165) or its
+ * `notes` text was changed without it (an older version of the app saved it): then that text, split at blank lines,
+ * with ids that stay the same each time it's read.
+ */
+export function notesOf(r: Pick<Recipe, 'notes' | 'noteList'>): Note[] {
+  if (r.noteList && joinNotes(r.noteList) === r.notes.trim()) return r.noteList;
+  return splitNotes(r.notes, (i) => `note-${i + 1}`);
+}
+
+/** The recipe with these notes: the list, and the text older versions of the app read. */
+export const withNotes = <R extends Pick<Recipe, 'notes' | 'noteList'>>(r: R, list: Note[]): R => ({ ...r, noteList: list, notes: joinNotes(list) });
+
+/** The list with one item moved (Framework7's Sortable gives the indexes). */
+export const moveItem = <T,>(list: T[], from: number, to: number): T[] => {
+  const copy = [...list];
+  const [item] = copy.splice(from, 1);
+  copy.splice(to, 0, item);
+  return copy;
+};
 
 /** An ingredient after its fields were edited: the typed line becomes the edited line. */
 export const withRaw = (i: Ingredient): Ingredient => (i.kind === 'header' ? i : { ...i, raw: formatIngredient(i) });

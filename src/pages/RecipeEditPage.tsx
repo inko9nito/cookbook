@@ -5,7 +5,10 @@ import {
 } from 'framework7-react';
 import { Camera, ImagePlus, Trash2, Plus, ArrowUp, ArrowDown, Crop, Star, Globe } from 'lucide-react';
 import { useStore } from '../data/store';
-import { COURSES, emptyRecipe, newId, titleCase, withRaw, linkedRecipe, recipeNamed, type Ingredient, type Photo, type Recipe, type Step } from '../lib/recipe';
+import {
+  COURSES, emptyRecipe, newId, titleCase, withRaw, linkedRecipe, recipeNamed, notesOf, withNotes, moveItem, NOTE_TEXT_MAX,
+  type Ingredient, type Note, type Photo, type Recipe, type Step,
+} from '../lib/recipe';
 import { parseLine, isHeaderLine, headerText, pastedLines, isStepLabel, stepText } from '../lib/ingredients';
 import IngredientSheet from '../components/IngredientSheet';
 import RecipeLinkPopup from '../components/RecipeLinkPopup';
@@ -116,6 +119,27 @@ function StepField({ step, no, onType, onKeyDown }: StepFieldProps & { slot: 'ti
   );
 }
 
+/** Issue #165: a note typed right in its row, like a step (Framework7 grows the field as you type). */
+function NoteField({ note, no, onType }: { note: Note; no: number; onType: (value: string) => void; slot: 'title' }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    if (ref.current) f7?.input?.resizeTextarea(ref.current);
+  }, [note.text]);
+  return (
+    <textarea
+      ref={ref}
+      className="ck-step-input resizable"
+      data-note-id={note.id}
+      rows={1}
+      value={note.text}
+      maxLength={NOTE_TEXT_MAX}
+      placeholder="Cooking tips, swaps, or thoughts for next time"
+      aria-label={`Note ${no}`}
+      onChange={(e) => onType(e.target.value)}
+    />
+  );
+}
+
 /**
  * Edit Recipe: a stacked page (pushed, with swipe-back) with Prepear's editing features:
  * photo, name, grouped ingredients and directions with paste boxes, notes, tags (courses included),
@@ -124,7 +148,11 @@ function StepField({ step, no, onType, onKeyDown }: StepFieldProps & { slot: 'ti
 export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }: Props) {
   const { recipes, saveRecipe } = useStore();
   const id = f7route?.params.id;
-  const original = useMemo<Recipe>(() => recipes.find((r) => r.id === id) ?? emptyRecipe(), []); // eslint-disable-line react-hooks/exhaustive-deps
+  // its notes as a list (issue #165; a recipe from before it has one text), so an untouched recipe isn't "changed"
+  const original = useMemo<Recipe>(() => {
+    const r = recipes.find((x) => x.id === id) ?? emptyRecipe();
+    return withNotes(r, notesOf(r));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [draft, setDraft] = useState<Recipe>(original);
   const set = (patch: Partial<Recipe>) => setDraft((d) => ({ ...d, ...patch }));
 
@@ -154,6 +182,20 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
     }
     setFocusStep(null);
   }, [focusStep]);
+  // issue #165: a note just added: put the cursor in it, in the tap itself so iOS raises the keyboard
+  const [focusNote, setFocusNote] = useState<string | null>(null);
+  useLayoutEffect(() => {
+    if (!focusNote) return;
+    document.querySelector<HTMLTextAreaElement>(`.page-current textarea[data-note-id="${focusNote}"]`)?.focus();
+    setFocusNote(null);
+  }, [focusNote]);
+  const notes = notesOf(draft);
+  const setNotes = (change: (list: Note[]) => Note[]) => setDraft((d) => withNotes(d, change(notesOf(d))));
+  const addNote = () => {
+    const note = { id: newId(), text: '' };
+    setNotes((list) => [...list, note]);
+    setFocusNote(note.id);
+  };
   const fileRef = useRef<HTMLInputElement>(null);
   // after ↑/↓ moves a group, scroll so that group stays under the finger
   const keepInView = useRef<{ id: string; dir: -1 | 1; top: number } | null>(null);
@@ -389,6 +431,8 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
       minutes: draft.prepMinutes + draft.cookMinutes,
       // a step left empty (Return pressed at the end of the last one) isn't kept
       steps: draft.steps.filter((s) => s.kind === 'header' || s.text.trim()),
+      // nor a note left empty
+      ...withNotes({ notes: '' }, notes.map((n) => ({ ...n, text: n.text.trim() })).filter((n) => n.text)),
     });
     f7router?.back();
     // a new recipe lands in the list, maybe out of sight (by the sort); an edit shows on the recipe itself
@@ -693,11 +737,35 @@ export default function RecipeEditPage({ f7route, f7router, scanFiles, scanUrl }
         </Button>
       </Block>
 
-      {/* Notes */}
-      <BlockTitle key="notes-title" medium>Notes</BlockTitle>
-      <List key="notes" className="ck-fields">
-        <ListInput type="textarea" resizable placeholder="Cooking tips, swaps, or thoughts for next time" value={draft.notes} onInput={(e) => set({ notes: e.target.value })} />
-      </List>
+      {/* Notes (issue #165): each its own row, typed right in it; hold a row's handle to move it, swipe it to delete */}
+      <BlockTitle key="notes-title" medium data-at="notes">Notes</BlockTitle>
+      {notes.length > 0 && (
+        <List
+          key="notes"
+          className="ck-edit-list"
+          strong
+          inset
+          dividers
+          sortable
+          sortableEnabled
+          sortableTapHold
+          onSortableSort={(data: { from: number; to: number }) => setNotes((list) => moveItem(list, data.from, data.to))}
+        >
+          {notes.map((n, i) => (
+            <ListItem key={n.id} swipeout className="ck-step-row ck-note-row" onSwipeoutDeleted={() => setNotes((list) => list.filter((x) => x.id !== n.id))}>
+              <NoteField slot="title" note={n} no={i + 1} onType={(text) => setNotes((list) => list.map((x) => (x.id === n.id ? { ...x, text } : x)))} />
+              <SwipeoutActions right>
+                <SwipeoutButton delete>Delete</SwipeoutButton>
+              </SwipeoutActions>
+            </ListItem>
+          ))}
+        </List>
+      )}
+      <Block key="note-buttons" className="ck-stack">
+        <Button className="ck-dashed" onClick={addNote}>
+          <Plus {...inlineIcon} /> Add a note
+        </Button>
+      </Block>
 
       {/* Recipe info */}
       <BlockTitle key="info-title" medium>Recipe info</BlockTitle>

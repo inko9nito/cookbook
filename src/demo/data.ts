@@ -107,7 +107,7 @@ export const sampleRecipes: Recipe[] = [
       step('Grill 10 to 15 minutes, turning every few minutes, until the chicken is charred in spots and reaches 165°F inside. Move the skewers to a cooler part of the grill if they flare up.'),
       step('Rest the kebabs on a platter for 5 minutes. Serve with warm pitas, tahini sauce, parsley and lemon wedges.'),
     ],
-    notes: 'Thighs stay juicier than breasts here. In winter, broil them on a foil-lined sheet pan about 4 inches from the heat, 6 to 8 minutes per side.',
+    notes: 'Thighs stay juicier than breasts here.\n\nIn winter, broil them on a foil-lined sheet pan about 4 inches from the heat, 6 to 8 minutes per side.\n\nLeftovers make a great pita lunch with a spoon of tahini sauce.',
   },
   {
     id: '3',

@@ -77,6 +77,8 @@ describe('withReading', () => {
     expect(r.cookMinutes).toBe(45);
     expect(r.ingredients[0].id).toBe('x');
     expect(r.notes).toBe('From Gran.\n\nKeeps for 3 days.');
+    // issue #165: each a note of its own
+    expect(r.noteList?.map((n) => n.text)).toEqual(['From Gran.', 'Keeps for 3 days.']);
   });
 
   test('the schema accepts a reading with no recipe', () => {

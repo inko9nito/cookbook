@@ -3,7 +3,7 @@
 // What Prepear's answers look like: docs/PLAN.md §6.
 
 import { formatIngredient, parseLine } from './ingredients';
-import { newId, type Ingredient, type Recipe, type Step } from './recipe';
+import { newId, NOTE_TEXT_MAX, withNotes, type Ingredient, type Recipe, type Step } from './recipe';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Json = any;
@@ -212,7 +212,8 @@ export function prepearRecipe(answer: Json, askedId: string, exp: Pick<PrepearEx
     tags: prepearTags([...(r.tags ?? []), ...metas.flatMap((m) => m.tags ?? [])]).slice(0, 60),
     ingredients: prepearIngredients(r.ingredients).slice(0, 400),
     steps: prepearSteps(r.directions).slice(0, 200),
-    notes: notes.join('\n\n').slice(0, 20000),
+    // issue #165: each of Prepear's notes (and comments) stays a note of its own
+    ...withNotes({ notes: '', noteList: [] }, notes.slice(0, 40).map((text) => ({ id: newId(), text: text.slice(0, NOTE_TEXT_MAX) }))),
     rating: Math.min(5, Math.max(0, rating)),
     timesMade: metas.some((m) => m.prepeared === true) ? 1 : 0,
     prepearIds: [...new Set(ids.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length <= 64))].slice(0, 10),

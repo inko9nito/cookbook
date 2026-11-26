@@ -266,6 +266,8 @@ async function swipeLeft(ctx, page, locator) {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ ...devices['iPhone 15 Pro'], deviceScaleFactor: 1 });
+  // issue #169: notifications allowed, as on the user's phone, so a timer doesn't stop to ask (169a–d check the asking)
+  await ctx.grantPermissions(['notifications'], { origin: new URL(BASE).origin });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -3783,6 +3785,107 @@ async function swipeLeft(ctx, page, locator) {
     await page.reload(); await page.waitForTimeout(1000);
     if (!(await page.locator('#ck-launch .ck-launch-stage').isVisible())) throw new Error('the pot stays away on the next ordinary launch');
   });
+
+  // issue #169: the app icon's badge counts the recipes in cook mode, and a timer's push is held on the server (the demo
+  // keeps it in window.ckPushTimers) until it's stopped. The first timer asks iOS whether the app may send notifications
+  // (stubbed here: Chromium can't show iOS's question); Settings → Timer Notifications turns both off.
+  {
+    const asking = (answer) => () => {
+      let perm = 'default';
+      Object.defineProperty(Notification, 'permission', { get: () => perm, configurable: true });
+      Notification.requestPermission = async () => { window.__ckAsked = (window.__ckAsked || 0) + 1; perm = answer; return perm; };
+    };
+    const pctx = await browser.newContext({ ...devices['iPhone 15 Pro'], deviceScaleFactor: 1 });
+    await pctx.addInitScript(asking('granted'));
+    const p = await pctx.newPage();
+    p.on('pageerror', (e) => errors.push(e.message));
+    const stepOn = async (name, fn) => {
+      try {
+        await fn();
+        total += await audit(p, name);
+      } catch (e) {
+        total += 1;
+        console.log(`✗ ${name}: could not reach this state (${e.message.split('\n')[0]})`);
+        await p.screenshot({ path: path.join(OUT, `${name}-failed.png`) }).catch(() => {});
+      }
+    };
+    const state = () => p.evaluate(() => ({ asked: window.__ckAsked || 0, badge: window.ckBadge, held: [...(window.ckPushTimers?.values() ?? [])] }));
+    const startCooking = async () => {
+      await p.locator('.view.tab-active .page-current .ck-cta-button', { hasText: 'Start cooking' }).tap(); await p.waitForTimeout(900);
+    };
+    const timerButton = () => p.locator('.ck-cook .ck-pane-steps .ck-timer-button').first();
+    try {
+      await p.goto(BASE); await p.waitForTimeout(1200);
+      await p.locator('.view.tab-active .page-current .ck-card').first().tap(); await p.waitForTimeout(900);
+      await stepOn('169a-timer-asks-and-holds-push', async () => {
+        await startCooking();
+        let s = await state();
+        if (s.asked) throw new Error('the app asked for notifications before a timer was started');
+        if (s.badge) throw new Error(`the badge shows ${s.badge} before notifications are allowed`);
+        if (!(await timerButton().count())) throw new Error('the first recipe has no timer to start');
+        await timerButton().tap(); await p.waitForTimeout(800);
+        s = await state();
+        if (s.asked !== 1) throw new Error(`starting the timer asked ${s.asked} times for notifications`);
+        if (s.badge !== 1) throw new Error(`the badge shows ${s.badge} with one recipe cooking`);
+        if (s.held.length !== 1) throw new Error(`${s.held.length} timer pushes held on the server`);
+        const t = s.held[0];
+        if (!/^Step \d+: the .+ timer is up\.$/.test(t.body) || !t.title || t.title === 'Recipe') throw new Error(`the push reads "${t.title}: ${t.body}"`);
+        const left = t.endsAt - Date.now();
+        if (left < 10_000) throw new Error(`the push is set for ${Math.round(left / 1000)}s from now`);
+      });
+      await stepOn('169b-timer-stopped-cancels-push', async () => {
+        await timerButton().tap(); await p.waitForTimeout(600);
+        const s = await state();
+        if (s.held.length) throw new Error('the stopped timer’s push is still held');
+        if (s.asked !== 1) throw new Error('the app asked again');
+      });
+      await stepOn('169c-settings-switch-off', async () => {
+        await timerButton().tap(); await p.waitForTimeout(600);
+        if ((await state()).held.length !== 1) throw new Error('the restarted timer’s push isn’t held');
+        await p.goBack(); await p.waitForTimeout(1000); // iOS's back gesture tucks cook mode away
+        await p.locator('.tabbar a[aria-label="Settings"]').tap(); await p.waitForTimeout(800);
+        const toggle = p.locator('.view.tab-active .page-current .ck-settings-push .toggle');
+        if (!(await toggle.count())) throw new Error('Settings has no Timer Notifications switch');
+        if (!(await toggle.locator('input').isChecked())) throw new Error('Timer Notifications is off');
+        await toggle.tap(); await p.waitForTimeout(600);
+        const s = await state();
+        if (await toggle.locator('input').isChecked()) throw new Error('the switch didn’t turn off');
+        if (s.badge) throw new Error(`the badge still shows ${s.badge}`);
+        if (s.held.length) throw new Error('the running timer’s push is still held');
+      });
+      await stepOn('169c2-settings-switch-on', async () => {
+        await p.locator('.view.tab-active .page-current .ck-settings-push .toggle').tap(); await p.waitForTimeout(600);
+        const s = await state();
+        if (s.badge !== 1) throw new Error(`the badge shows ${s.badge} after switching back on`);
+        if (s.held.length !== 1) throw new Error('the running timer’s push isn’t held again');
+      });
+    } finally {
+      await pctx.close();
+    }
+    // notifications refused in iOS: the switch can't be turned on here, and says where to
+    const dctx = await browser.newContext({ ...devices['iPhone 15 Pro'], deviceScaleFactor: 1 });
+    await dctx.addInitScript(() => Object.defineProperty(Notification, 'permission', { get: () => 'denied', configurable: true }));
+    const d = await dctx.newPage();
+    try {
+      await d.goto(BASE); await d.waitForTimeout(1200);
+      await d.locator('.tabbar a[aria-label="Settings"]').tap(); await d.waitForTimeout(800);
+      const name = '169d-settings-notifications-refused';
+      try {
+        const toggle = d.locator('.view.tab-active .page-current .ck-settings-push .toggle');
+        if (!(await toggle.locator('input').isDisabled())) throw new Error('the switch can still be used');
+        if (await toggle.locator('input').isChecked()) throw new Error('the switch shows on');
+        const note = await d.locator('.view.tab-active .page-current .ck-settings-push-note').textContent();
+        if (!/Settings → Notifications → Cookbook/.test(note)) throw new Error(`the note reads "${note}"`);
+        total += await audit(d, name);
+      } catch (e) {
+        total += 1;
+        console.log(`✗ ${name}: could not reach this state (${e.message.split('\n')[0]})`);
+        await d.screenshot({ path: path.join(OUT, `${name}-failed.png`) }).catch(() => {});
+      }
+    } finally {
+      await dctx.close();
+    }
+  }
 
   // the sign-in screen (the live site shows it until signed in with Google; the demo shows it with ?signin)
   await step('19-sign-in', async () => {

@@ -49,6 +49,8 @@ export default defineConfig({
         navigateFallback: '/index.html',
         // the API and Netlify's own endpoints (sign-in) always go to the network
         navigateFallbackDenylist: [/^\/api\//, /^\/\.netlify\//],
+        // issue #169: shows cook mode timers' push notifications
+        importScripts: ['push-sw.js'],
         runtimeCaching: [
           {
             // stored recipe photos never change (a new crop is a new photo), so keep them for the kitchen offline

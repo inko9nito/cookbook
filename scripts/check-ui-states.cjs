@@ -266,8 +266,9 @@ async function swipeLeft(ctx, page, locator) {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ ...devices['iPhone 15 Pro'], deviceScaleFactor: 1 });
-  // issue #169: notifications allowed, as on the user's phone, so a timer doesn't stop to ask (169a–d check the asking)
-  await ctx.grantPermissions(['notifications'], { origin: new URL(BASE).origin });
+  // issue #169: notifications allowed, as on the user's phone, so a timer doesn't stop to ask (169a–d check the asking).
+  // Headless Chromium says "denied" even when granted, so the page is told "granted"
+  await ctx.addInitScript(() => Object.defineProperty(Notification, 'permission', { get: () => 'granted', configurable: true }));
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));

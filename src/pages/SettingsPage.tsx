@@ -92,7 +92,8 @@ export default function SettingsPage() {
               slot="after"
               checked={push.wanted && push.permission !== 'denied'}
               disabled={push.permission === 'denied'}
-              onChange={(e: { target: HTMLInputElement }) => setPushWanted(e.target.checked)}
+              // flips the setting: the switch is drawn from it, and by now React has put the box back as it was
+              onChange={() => setPushWanted(!push.wanted)}
             />
           </ListItem>
         </List>

@@ -1362,7 +1362,8 @@ async function swipeLeft(ctx, page, locator) {
     });
     if (t.loose || t.notWhite) throw new Error(`${t.loose + t.notWhite} Settings group(s) not in a white card`);
     if (t.titles.length) throw new Error(`Settings still has group titles: ${JSON.stringify(t.titles)}`);
-    if (t.cards.join(' | ') !== 'demo@example.com | Import+Appearance') throw new Error(`Settings cards read ${JSON.stringify(t.cards)}`);
+    // issue #169: Timer Notifications, its own card (shown where the phone can do it, as Chromium can)
+    if (t.cards.join(' | ') !== 'demo@example.com | Import+Appearance | Timer Notifications') throw new Error(`Settings cards read ${JSON.stringify(t.cards)}`);
     if (t.footers) throw new Error(`Settings has ${t.footers} footers, expected none`);
     if (t.versionInList) throw new Error('the version is still in a card');
     if (!t.button) throw new Error('no refresh icon beside the version');
@@ -2542,7 +2543,8 @@ async function swipeLeft(ctx, page, locator) {
     await page.waitForSelector('.calendar.modal-in');
     const [y, m, d] = day.split('-').map(Number);
     // Framework7's calendar names a day by year, 0-based month and day; the month shown may need a swipe to the next
-    const cell = page.locator(`.calendar.modal-in .calendar-month-current .calendar-day[data-date="${y}-${m - 1}-${d}"]`);
+    // (not the next month's first days, which the current month's grid holds hidden at its end)
+    const cell = page.locator(`.calendar.modal-in .calendar-month-current .calendar-day:not(.calendar-day-next):not(.calendar-day-prev)[data-date="${y}-${m - 1}-${d}"]`);
     if (!(await cell.count())) { await page.locator('.calendar.modal-in .calendar-next-month-button, .calendar.modal-in .icon-next').first().tap(); await page.waitForTimeout(500); }
     await cell.tap();
     // issue #67: the tapped day fills in before the sheet closes
@@ -3790,13 +3792,14 @@ async function swipeLeft(ctx, page, locator) {
   // keeps it in window.ckPushTimers) until it's stopped. The first timer asks iOS whether the app may send notifications
   // (stubbed here: Chromium can't show iOS's question); Settings → Timer Notifications turns both off.
   {
-    const asking = (answer) => () => {
+    // (run in the page, so the answer is passed in rather than taken from here)
+    const asking = (answer) => {
       let perm = 'default';
       Object.defineProperty(Notification, 'permission', { get: () => perm, configurable: true });
       Notification.requestPermission = async () => { window.__ckAsked = (window.__ckAsked || 0) + 1; perm = answer; return perm; };
     };
     const pctx = await browser.newContext({ ...devices['iPhone 15 Pro'], deviceScaleFactor: 1 });
-    await pctx.addInitScript(asking('granted'));
+    await pctx.addInitScript(asking, 'granted');
     const p = await pctx.newPage();
     p.on('pageerror', (e) => errors.push(e.message));
     const stepOn = async (name, fn) => {

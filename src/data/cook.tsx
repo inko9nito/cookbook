@@ -8,6 +8,10 @@ import { f7 } from 'framework7-react';
 import { useAuth } from './auth';
 import { useStore } from './store';
 import { forgetCook, loadCook, saveCook, type PaneScroll, type SavedCook } from './cookSession';
+import { askForPush, pushError, pushOn, pushTarget, showBadge, usePush, warmUpPush } from './push';
+import { tell } from '../components/ui/toast';
+import { backend } from './api';
+import { timerWords } from '../lib/push';
 import { withPick } from '../components/UnitChoices';
 import type { UnitPicks } from '../components/ui/ingredientLine';
 import type { Recipe } from '../lib/recipe';
@@ -16,7 +20,11 @@ import type { Recipe } from '../lib/recipe';
 export type Ticks = { ing: Set<string>; steps: Set<string> };
 /** a recipe's scale and unit picks in cook mode */
 export type Amounts = { factor: number; picks: UnitPicks };
-export type RunningTimer = { id: number; recipeId: string; label: string; step: number; endsAt: number };
+/** `key` (issue #169): the timer's push on the server, the same after a reload (`id` is only this run's) */
+export type RunningTimer = { id: number; key: string; recipeId: string; label: string; step: number; endsAt: number };
+
+const newKey = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 
 type Session = {
   /** the recipes open in cook mode, a tab each in the order along the bar (a new one at the end; #116: drag to move), and the one shown */
@@ -39,7 +47,7 @@ const fromSaved = (s: SavedCook): Session => ({
   expanded: s.expanded,
   ticks: Object.fromEntries(Object.entries(s.ticks).map(([id, t]) => [id, { ing: new Set(t.ing), steps: new Set(t.steps) }])),
   amounts: s.amounts,
-  timers: s.timers.map((t, i) => ({ ...t, id: i + 1 })),
+  timers: s.timers.map((t, i) => ({ ...t, id: i + 1, key: t.key ?? newKey() })),
 });
 const toSaved = (s: Session, scroll: Record<string, PaneScroll>): Omit<SavedCook, 'savedAt'> => ({
   open: s.open,
@@ -105,6 +113,9 @@ export function useNow(on: boolean) {
 }
 
 type WakeLock = { release: () => Promise<void> };
+
+/** a timer's notification couldn't be set up, and the app has said so (once a session) */
+let pushTold = false;
 
 export function CookProvider({ children }: { children: ReactNode }) {
   const { status } = useAuth();
@@ -215,6 +226,58 @@ export function CookProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(t);
   }, [timers]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── issue #169: the app icon's badge, and each timer's push held on the server ──
+  const push = usePush();
+  const openCount = session?.open.length ?? 0;
+  useEffect(() => showBadge(openCount), [openCount, push]);
+  // what a timer's tap needs to subscribe this phone at once (iOS only allows it in the tap), fetched ahead
+  useEffect(() => {
+    if (status === 'signedIn') void warmUpPush();
+  }, [status, push]);
+
+  // the timers whose push the server holds (key → when it's up). Started on the server as a timer starts (again after a
+  // reload: the same key just changes it), taken back when one is stopped, closed or cooking ends; a timer that's up
+  // keeps its push, which is on its way
+  const held = useRef(new Map<string, number>());
+  useEffect(() => {
+    const now = Date.now();
+    const on = pushOn(push);
+    for (const [key, endsAt] of held.current) {
+      if (on && timers.some((t) => t.key === key)) continue;
+      held.current.delete(key);
+      if (endsAt > now) backend.cancelTimerPush(key).catch(() => {});
+    }
+    // the recipes' names go in the notification, so wait for them after a reload
+    if (!on || loading) return;
+    for (const t of timers) {
+      if (held.current.has(t.key) || t.endsAt <= now) continue;
+      held.current.set(t.key, t.endsAt);
+      const words = timerWords(title(t.recipeId), t.step, t.label);
+      (async () => {
+        const target = await pushTarget();
+        if (!target) throw new Error(pushError());
+        if (held.current.has(t.key)) await backend.holdTimerPush({ id: t.key, endsAt: t.endsAt, ...words, target });
+      })().catch((e: unknown) => {
+        // no push this time: the timer still rings in the app. Say so (once a session), rather than leave the user
+        // waiting for a notification that won't come
+        held.current.delete(t.key);
+        if (pushTold) return;
+        pushTold = true;
+        tell(`No notification for this timer: ${e instanceof Error ? e.message : String(e)}`, 6000);
+      });
+    }
+  }, [timers, push, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // tapping a timer's notification while the app is running shows cook mode (public/push-sw.js)
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const onMessage = (e: MessageEvent) => {
+      if ((e.data as { type?: string } | null)?.type === 'ck-show-cook') setSession((s) => (s && !s.expanded ? { ...s, expanded: true } : s));
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+  }, []);
+
   const cook: Cook = {
     session,
     start: (recipeId, amounts) =>
@@ -283,8 +346,10 @@ export function CookProvider({ children }: { children: ReactNode }) {
     clearTicks: (recipeId) => update((s) => ({ ...s, ticks: { ...s.ticks, [recipeId]: noTicks() } })),
     startTimer: (recipeId, step, label, seconds) => {
       allowSound();
+      // issue #169: the first timer asks iOS whether the app may send notifications (only a tap can)
+      askForPush();
       const id = nextTimerId.current++;
-      update((s) => ({ ...s, timers: [...s.timers, { id, recipeId, label, step, endsAt: Date.now() + seconds * 1000 }] }));
+      update((s) => ({ ...s, timers: [...s.timers, { id, key: newKey(), recipeId, label, step, endsAt: Date.now() + seconds * 1000 }] }));
     },
     stopTimer: (id) => update((s) => ({ ...s, timers: s.timers.filter((x) => x.id !== id) })),
     stopAllTimers: () => update((s) => ({ ...s, timers: [] })),

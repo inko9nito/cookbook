@@ -22,7 +22,8 @@ const SavedCook = z.object({
   expanded: z.boolean(),
   ticks: z.record(z.string(), z.object({ ing: z.array(z.string()), steps: z.array(z.string()) })),
   amounts: z.record(z.string(), z.object({ factor: z.number().positive(), picks: Picks })),
-  timers: z.array(z.object({ recipeId: z.string(), label: z.string(), step: z.number(), endsAt: z.number() })),
+  // key (issue #169): the timer's push on the server; missing in sessions kept before it
+  timers: z.array(z.object({ recipeId: z.string(), label: z.string(), step: z.number(), endsAt: z.number(), key: z.string().optional() })),
   scroll: z.record(z.string(), z.object({ ing: z.number(), steps: z.number() })),
   savedAt: z.number(),
 });

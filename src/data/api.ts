@@ -11,6 +11,7 @@ import { LinkReading, ReadRecipe, type ReadRequest } from '../lib/read-recipe';
 import {
   demoCookbooks as demoCookbooksSeed, demoGroceries as demoGroceriesSeed, demoPlanned as demoPlannedSeed, demoRecipes as demoRecipesSeed, demoStores,
 } from '../demo/data';
+import type { TimerPush } from '../lib/push';
 import { accessToken, currentUser, SignedOutError } from './identity';
 
 export type Backend = {
@@ -54,6 +55,12 @@ export type Backend = {
   backfillGroceryNames: (names: string[]) => Promise<void>;
   /** a correction from the phone (Same as…, Rename…), which Claude never overwrites */
   correctGroceryName: (name: Omit<GroceryName, 'by'>) => Promise<GroceryName>;
+  /** issue #169: the server's public key for push notifications, which the phone subscribes with */
+  pushKey: () => Promise<string>;
+  /** a running timer's push, sent by the server when it's up (the same id again changes it) */
+  holdTimerPush: (t: TimerPush) => Promise<void>;
+  /** the timer was stopped: no push */
+  cancelTimerPush: (id: string) => Promise<void>;
 };
 
 /**
@@ -173,6 +180,9 @@ const http: Backend = {
     await call<unknown>('/api/grocery-names', jsonInit('POST', { backfill: names }));
   },
   correctGroceryName: (name) => call<GroceryName>('/api/grocery-names', jsonInit('PUT', name)),
+  pushKey: async () => (await call<{ publicKey: string }>('/api/push/key')).publicKey,
+  holdTimerPush: (t) => call<void>(`/api/push/timers/${encodeURIComponent(t.id)}`, jsonInit('PUT', t)),
+  cancelTimerPush: (id) => call<void>(`/api/push/timers/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   // the reading runs in a background function (it can take longer than an ordinary call may); ask for it every 2s
   readRecipe: async (images) => {
     const { id } = await call<{ id?: unknown }>('/api/read-recipe', jsonInit('POST', { images }));
@@ -367,7 +377,16 @@ const demo: Backend = {
     demoNames.set(kept.key, kept);
     return kept;
   },
+  // issue #169: the demo holds timers' pushes where the UI check can see them (window.ckPushTimers); none is sent
+  pushKey: async () => 'BDemoPublicKeyForTheLocalDemoOnly',
+  holdTimerPush: async (t) => void demoPushTimers().set(t.id, t),
+  cancelTimerPush: async (id) => void demoPushTimers().delete(id),
 };
+
+function demoPushTimers(): Map<string, TimerPush> {
+  const w = window as unknown as { ckPushTimers?: Map<string, TimerPush> };
+  return (w.ckPushTimers ??= new Map());
+}
 
 /**
  * `?slow` (the demo only, for the UI check): calls take as long as on the network, reads 0.3s and saves 1.2s (a save

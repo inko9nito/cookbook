@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { Page, Navbar, NavTitle, List, ListItem, Link, Block, f7 } from 'framework7-react';
+import { Page, Navbar, NavTitle, List, ListItem, Link, Block, BlockFooter, Toggle, f7 } from 'framework7-react';
 import { showTabbar } from '../components/ui/tabbar';
 import { useAuth } from '../data/auth';
 import { clearCache, useAccount } from '../data/store';
@@ -8,10 +8,12 @@ import { inlineIcon } from '../components/ui/icons';
 import { appVersion, updateApp } from '../lib/appUpdate';
 import { reopenOnTab } from '../data/startTab';
 import { say, tell } from '../components/ui/toast';
+import { setPushWanted, usePush } from '../data/push';
 
 export default function SettingsPage() {
   const { email, signOut } = useAuth();
   const { admin } = useAccount();
+  const push = usePush();
   const confirmSignOut = () =>
     f7.dialog
       .create({
@@ -81,9 +83,29 @@ export default function SettingsPage() {
         {admin && <ListItem link="/settings/prepear/" title="Import" />}
         <ListItem link="/settings/style-guide/" title="Appearance" />
       </List>
+      {/* issue #169: a push when a cook mode timer is up, and the count of recipes cooking on the app icon. Only where
+          the phone can (the home-screen app); iOS asks the first time a timer starts, or when it's switched on here */}
+      {push.supported && (
+        <List key="push" strongIos insetIos dividersIos className="ck-settings-push">
+          <ListItem title="Timer Notifications">
+            <Toggle
+              slot="after"
+              checked={push.wanted && push.permission !== 'denied'}
+              disabled={push.permission === 'denied'}
+              // flips the setting: the switch is drawn from it, and by now React has put the box back as it was
+              onChange={() => setPushWanted(!push.wanted)}
+            />
+          </ListItem>
+        </List>
+      )}
+      {push.supported && push.permission === 'denied' && (
+        <BlockFooter key="push-denied" className="ck-settings-push-note">
+          Notifications are off for Cookbook. Turn them on in the iPhone’s Settings → Notifications → Cookbook.
+        </BlockFooter>
+      )}
       {/* the build running, on the page rather than in a card: tapping it copies it; the refresh icon beside it
           brings in a newer one and reloads the app (issues #48, #91, #128) */}
-      <Block className="ck-version">
+      <Block key="version" className="ck-version">
         <span className="ck-version-text" role="button" tabIndex={0} onClick={copyVersion} onKeyDown={(e) => e.key === 'Enter' && copyVersion()}>
           {appVersion()}
         </span>

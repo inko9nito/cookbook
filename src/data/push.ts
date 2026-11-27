@@ -47,12 +47,6 @@ export function usePush(): PushState {
 /** Pushes and the badge are on: allowed by iOS, and not turned off in Settings. */
 export const pushOn = (s: PushState = state) => s.supported && s.wanted && s.permission === 'granted';
 
-/** In a tap (a timer starting, or the Settings switch): the first time, iOS asks whether the app may send notifications. */
-export function askForPush() {
-  if (!state.supported || !state.wanted || Notification.permission !== 'default') return;
-  Notification.requestPermission().then(refresh, refresh);
-}
-
 /** Settings → Timer Notifications, on this phone. */
 export function setPushWanted(on: boolean) {
   try {
@@ -62,7 +56,10 @@ export function setPushWanted(on: boolean) {
     /* no storage: it stays as it is */
   }
   refresh();
-  if (on) askForPush();
+  if (on) {
+    askForPush();
+    void warmUpPush();
+  }
 }
 
 /** The app icon's badge: how many recipes are open in cook mode; none, or pushes turned off: no badge. */
@@ -78,46 +75,101 @@ export function showBadge(n: number) {
 }
 
 // ── this phone's push subscription: where the server sends its timers' pushes ──
+//
+// iPhone Safari only lets the app subscribe from inside a tap (the first version subscribed a moment later, after
+// fetching the server's key, and iOS refused, so no push ever came: #169). So the service worker's registration and
+// the server's key are fetched ahead (`warmUpPush`, once signed in), and the timer's tap subscribes at once: on the
+// first timer, that also asks iOS for permission.
 
 const within = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<undefined>((r) => setTimeout(() => r(undefined), ms))]);
 
 const bytesOf = (base64url: string) => {
   const b64 = base64url.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(base64url.length / 4) * 4, '=');
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) as Uint8Array<ArrayBuffer>;
 };
 const sameBytes = (a: ArrayBuffer | null, b: Uint8Array) => {
   if (!a || a.byteLength !== b.length) return false;
   const x = new Uint8Array(a);
   return x.every((v, i) => v === b[i]);
 };
-
-async function subscribe(): Promise<PushTarget | null> {
-  const reg = await within(navigator.serviceWorker.ready, 5000);
-  if (!reg) return null;
-  const key = bytesOf(await backend.pushKey());
-  let sub = await reg.pushManager.getSubscription();
-  // subscribed with another key (it changed on the server): subscribe again
-  if (sub && !sameBytes(sub.options.applicationServerKey, key)) {
-    await sub.unsubscribe().catch(() => {});
-    sub = null;
-  }
-  sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-  const { endpoint, keys } = sub.toJSON();
+const targetOf = (sub: PushSubscription | null): PushTarget | null => {
+  const { endpoint, keys } = sub?.toJSON() ?? {};
   return endpoint && keys?.p256dh && keys.auth ? { endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } } : null;
+};
+
+/** fetched ahead, so a tap can subscribe without waiting */
+let ready: { reg: ServiceWorkerRegistration; key: Uint8Array<ArrayBuffer> } | null = null;
+let warming: Promise<void> | null = null;
+/** this phone's subscription once known (null: none yet) */
+let target: PushTarget | null = null;
+/** why the last try to subscribe failed, for the message the app shows */
+let lastError = '';
+
+/** Fetch the service worker's registration and the server's key, and pick up a subscription made before. */
+export function warmUpPush(): Promise<void> {
+  if (isDemo || !state.supported || !state.wanted || state.permission === 'denied') return Promise.resolve();
+  warming ??= (async () => {
+    const reg = await within(navigator.serviceWorker.ready, 10000);
+    if (!reg) throw new Error('the app’s offline worker isn’t running');
+    const key = bytesOf(await backend.pushKey());
+    ready = { reg, key };
+    const sub = await reg.pushManager.getSubscription();
+    // subscribed with another key (it changed on the server): that one's no use; the next tap subscribes again
+    if (sub && !sameBytes(sub.options.applicationServerKey, key)) await sub.unsubscribe().catch(() => {});
+    else target = targetOf(sub);
+  })().catch((e) => {
+    lastError = e instanceof Error ? e.message : String(e);
+    warming = null; // try again next time
+  });
+  return warming;
 }
 
+/** a subscribe on its way (the tap's), which the timer waits for rather than starting another */
 let subscribing: Promise<PushTarget | null> | null = null;
 
-/** Where the server sends this phone's pushes, or null when pushes are off or the phone couldn't subscribe. */
-export function pushTarget(): Promise<PushTarget | null> {
-  if (!pushOn()) return Promise.resolve(null);
-  // the demo (locally) has no push service
-  if (isDemo) return Promise.resolve({ endpoint: 'https://web.push.apple.com/demo', keys: { p256dh: 'demo', auth: 'demo' } });
-  subscribing ??= subscribe()
-    .catch(() => null)
-    .then((t) => {
-      if (!t) subscribing = null; // try again next time
-      return t;
+function subscribeNow(): Promise<PushTarget | null> {
+  if (!ready) return Promise.resolve(null);
+  subscribing = ready.reg.pushManager
+    .subscribe({ userVisibleOnly: true, applicationServerKey: ready.key })
+    .then((sub) => (target = targetOf(sub)))
+    .catch((e) => {
+      lastError = e instanceof Error ? e.message : String(e);
+      return null;
+    })
+    .finally(() => {
+      subscribing = null;
+      refresh();
     });
   return subscribing;
 }
+
+/**
+ * In a tap (a timer starting, or the Settings switch), before anything else: subscribe this phone, which asks iOS
+ * for permission the first time. Without what's fetched ahead (still on its way, or offline), it only asks for
+ * permission; the next tap subscribes.
+ */
+export function askForPush() {
+  if (!state.supported || !state.wanted || state.permission === 'denied' || target) return;
+  if (isDemo || !ready) {
+    if (Notification.permission === 'default') Notification.requestPermission().then(refresh, refresh);
+    return;
+  }
+  void subscribeNow();
+}
+
+/** Where the server sends this phone's pushes, or null when pushes are off or the phone isn't subscribed. */
+export async function pushTarget(): Promise<PushTarget | null> {
+  if (!pushOn()) return null;
+  // the demo (locally) has no push service
+  if (isDemo) return { endpoint: 'https://web.push.apple.com/demo', keys: { p256dh: 'demo', auth: 'demo' } };
+  if (target) return target;
+  if (subscribing) await subscribing;
+  if (target) return target;
+  await warmUpPush();
+  if (target) return target;
+  // not subscribed yet: browsers that allow it outside a tap (not iPhone Safari) subscribe now
+  return subscribeNow();
+}
+
+/** Why this phone couldn't subscribe, last time it tried. */
+export const pushError = () => lastError || 'the phone didn’t give the app a place to send notifications';

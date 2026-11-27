@@ -8,7 +8,8 @@ import { f7 } from 'framework7-react';
 import { useAuth } from './auth';
 import { useStore } from './store';
 import { forgetCook, loadCook, saveCook, type PaneScroll, type SavedCook } from './cookSession';
-import { askForPush, pushOn, pushTarget, showBadge, usePush } from './push';
+import { askForPush, pushError, pushOn, pushTarget, showBadge, usePush, warmUpPush } from './push';
+import { tell } from '../components/ui/toast';
 import { backend } from './api';
 import { timerWords } from '../lib/push';
 import { withPick } from '../components/UnitChoices';
@@ -112,6 +113,9 @@ export function useNow(on: boolean) {
 }
 
 type WakeLock = { release: () => Promise<void> };
+
+/** a timer's notification couldn't be set up, and the app has said so (once a session) */
+let pushTold = false;
 
 export function CookProvider({ children }: { children: ReactNode }) {
   const { status } = useAuth();
@@ -226,6 +230,10 @@ export function CookProvider({ children }: { children: ReactNode }) {
   const push = usePush();
   const openCount = session?.open.length ?? 0;
   useEffect(() => showBadge(openCount), [openCount, push]);
+  // what a timer's tap needs to subscribe this phone at once (iOS only allows it in the tap), fetched ahead
+  useEffect(() => {
+    if (status === 'signedIn') void warmUpPush();
+  }, [status, push]);
 
   // the timers whose push the server holds (key → when it's up). Started on the server as a timer starts (again after a
   // reload: the same key just changes it), taken back when one is stopped, closed or cooking ends; a timer that's up
@@ -247,11 +255,16 @@ export function CookProvider({ children }: { children: ReactNode }) {
       const words = timerWords(title(t.recipeId), t.step, t.label);
       (async () => {
         const target = await pushTarget();
-        if (!target) throw new Error('No push subscription');
+        if (!target) throw new Error(pushError());
         if (held.current.has(t.key)) await backend.holdTimerPush({ id: t.key, endsAt: t.endsAt, ...words, target });
-      })()
-        // no push this time (offline, or the phone couldn't subscribe): the timer still rings in the app
-        .catch(() => held.current.delete(t.key));
+      })().catch((e: unknown) => {
+        // no push this time: the timer still rings in the app. Say so (once a session), rather than leave the user
+        // waiting for a notification that won't come
+        held.current.delete(t.key);
+        if (pushTold) return;
+        pushTold = true;
+        tell(`No notification for this timer: ${e instanceof Error ? e.message : String(e)}`, 6000);
+      });
     }
   }, [timers, push, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
